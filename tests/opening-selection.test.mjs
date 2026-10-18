@@ -25,7 +25,7 @@ async function fixture(t){
  const call=(action,args={})=>host.request({action,sessionId:current?.authoringSessionId,cardScope:current,...args},undefined,authority);
  const prepare=async(source=saved())=>{select(source);return host.startFromStudio({snapshot:buildSavedSnapshot(source),authoringSessionId:current.authoringSessionId,generation:current.generation});};
  const offer=async()=>{const r=await call('openingOffer');assert(r.ok,JSON.stringify(r));return r.value;};
- const choice=(o,index=0)=>({offerId:o.offerId,cardId:o.cardId,revision:o.revision,snapshotHash:o.snapshotHash,openingIndex:index});
+ const choice=(o,index=0)=>({offerId:o.offerId,cardId:o.cardId,revision:o.revision,snapshotHash:o.snapshotHash,openingIndex:index,playerName:'Synthetic player'});
  t.after(async()=>{await host.close();assert.equal(modelCalls,0);});
  return {root,host,engine,prepare,offer,choice,call,select,authority,scope:()=>current,advance:n=>now+=n};
 }
@@ -43,10 +43,10 @@ test('formal Studio handoff defers multiple openings; exact alternative and full
  assert.equal(await f.offer(),null);
  assert.equal((await f.call('create',{snapshot:buildSavedSnapshot(source)})).error.code,'CARD_SCOPED_STUDIO_REQUIRED');
 });
-test('one valid opening starts directly; blank main and blank alternatives retain original indexes; all empty rejects',async t=>{
+test('one valid opening confirms the name; blank main and blank alternatives retain original indexes; all empty rejects',async t=>{
  const f=await fixture(t);
  for(const [source,index,text]of [[saved('Only main.',[]),0,'Only main.'],[saved(' ',['','Only alternative.']),2,'Only alternative.']]){
-  const result=await f.prepare(source);assert(result.runId);assert.equal(result.openingRequired,undefined);
+  const pending=await f.prepare(source);assert.equal(pending.openingRequired,true);const o=await f.offer();const result=(await f.call('openingStart',f.choice(o,index))).value;assert(result.runId);
   const run=await f.engine.store.read(result.runId);assert.equal(run.snapshot.opening.id,'studio-opening-'+index);assert.equal(run.snapshot.opening.text,text);
  }
  const multi=saved('',['A','','B']);await f.prepare(multi);assert.deepEqual((await f.offer()).options.map(x=>x.index),[1,3]);

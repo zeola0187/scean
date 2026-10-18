@@ -3,3 +3,5 @@
 .opening-selection select,.opening-selection button{width:100%;min-height:44px;margin:6px 0;white-space:normal;overflow-wrap:anywhere}
 .opening-selection .opening-preview{max-height:42vh;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font:inherit}
 .opening-selection .error{overflow-wrap:anywhere}
+
+#opening-player-name,#player-default-name,#player-bind-name,#create-player-name,#studio-player-name{box-sizing:border-box;width:100%;min-width:0;min-height:44px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:inherit;font:inherit}#player-identity-panel{padding:8px 0;overflow-wrap:anywhere}#player-identity-panel button{max-width:100%;white-space:normal}

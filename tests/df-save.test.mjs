@@ -48,7 +48,7 @@ test('D-final v3 backfills old chapters independently without changing their IDs
 
 test('D-final strict bundle/domain version pairing rejects schema smuggling even with a recomputed manifest',async()=>{
   const f=await upgraded(),valid=encodeRunBundle(await f.store.read(f.run.runId));
-  for(const schemaVersion of [0,2,4,'3'])assert.throws(()=>validateRunBundle({...valid,schemaVersion}),code('SAVE_FORMAT_VERSION'));
+  for(const schemaVersion of [0,2,5,'3'])assert.throws(()=>validateRunBundle({...valid,schemaVersion}),code('SAVE_FORMAT_VERSION'));
   assert.throws(()=>validateRunBundle({...valid,schemaVersion:1}),code('SAVE_FIELDS'));
   const old=encodeRunBundle(await oldRun());assert.throws(()=>validateRunBundle({...old,schemaVersion:3}),code('SAVE_FORMAT_VERSION'));
   const missing=copy(valid);delete missing.run.narrative;resign(missing);assert.throws(()=>validateRunBundle(missing),code('SAVE_FORMAT_VERSION'));

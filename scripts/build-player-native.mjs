@@ -10,6 +10,7 @@ import {nativeFrameBootstrap} from '../plugin/native-frame-source.mjs';
 const root=path.resolve(import.meta.dirname,'..'),web=path.join(root,'isolated/web');
 export async function compileNativePlayer(){
   await fs.copyFile(path.join(root,'core/condition-ast.mjs'),path.join(web,'condition-ast.mjs'));
+  await fs.copyFile(path.join(root,'core/player-literal.mjs'),path.join(web,'player-text.mjs'));
   const modules=new Map(),sources=[];
   async function compile(name){
     if(modules.has(name))return modules.get(name);

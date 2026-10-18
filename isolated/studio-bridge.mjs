@@ -164,7 +164,7 @@ export class IsolatedStudioBridge {
         // scope and revision checks. From this point the independent Run creation
         // is accepted and drains to a receipt even if the authoring page closes.
         // Never report a late lease failure after the Run is already durable.
-        return this.sceanHost.startFromStudio({...args,snapshot:transferred,signal:undefined});
+        return this.sceanHost.startFromStudio({...args,snapshot:transferred,...(request.playerName!==undefined?{playerName:request.playerName}:{}),signal:undefined});
       },inspectFromStudio:args=>this.sceanHost.inspectFromStudio(args),attachInspection:args=>this.sceanHost.attachInspection(args)
     }:null);
     const result=await control(this.agent,{mode:'start',claim,document_id:documentId,expected_revision:expectedRevision,...worldbookDocumentId?{worldbook_document_id:worldbookDocumentId,worldbook_revision:worldbookRevision}:{},preset:clone(preset),characters},combined);

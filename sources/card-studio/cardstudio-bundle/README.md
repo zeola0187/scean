@@ -1,4 +1,4 @@
-# SCEAN Studio 1.4.0
+# SCEAN Studio 1.4.1
 
 Native authoring bundle for the SCEAN suite. The stable package identity
 @local/dsh-card-studio-scean-test is retained for compatibility. Nine active
@@ -9,9 +9,16 @@ Original SCEAN code and Skills: AGPL-3.0-only. The independently authored
 advanced-tavern-card-authoring directory retains its complete MIT grant in
 skills/advanced-tavern-card-authoring/SOURCE.txt. Preserve all notices.
 
-Source: https://github.com/zeola0187/scean/tree/v1.4.0
+Source: https://github.com/zeola0187/scean/tree/v1.4.1
 Install/update the complete suite from https://github.com/zeola0187/scean
 Build and regression commands live at the full source checkout root; installed
 component packages have no historical standalone build scripts. Existing
 Session, Content/Full scope, revision CAS, Snapshot and author-confirmation
 contracts remain. No new Runtime or host enforcement is introduced by the Skill.
+
+## 1.4.1
+
+主角名稱可設通用預設並在每局覆寫；舊局可補名一次，僅影響後續生成。
+本版亦整合舞臺入口對齊及可還原的素材回收。
+有姓名的故事使用 v4 備份；降版須配對還原升級前 runtime 與資料，
+不可讓舊版寫入較新的姓名／v4 資料。詳見 [完整來源與升級說明](https://github.com/zeola0187/scean/blob/v1.4.1/docs/PLAYER-NAME.zh-TW.md)。

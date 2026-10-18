@@ -9,7 +9,7 @@ function fixture(request){
  const ui=mountOpeningSelection({enabled:true,document,request,onCreated:async r=>created.push(r),openStudio:()=>created.push('studio')});
  return {ui,element,created,click:id=>element(id).events.click()};
 }
-const offer=()=>({offerId:'offer',cardId:'card',revision:7,snapshotHash:'bound-hash',options:[{index:0,title:'主開場',text:'<script>plain source only</script>'},{index:2,title:'替代開場 2',text:'Alternative scene.'}]});
+const offer=()=>({offerId:'offer',cardId:'card',revision:7,snapshotHash:'bound-hash',defaultPlayerName:'Synthetic player',options:[{index:0,title:'主開場',text:'<script>plain source only</script>'},{index:2,title:'替代開場 2',text:'Alternative scene.'}]});
 test('shared Desktop/Web selector previews raw text and sends the original saved index and version binding',async()=>{
  const calls=[],f=fixture(async(a,p)=>{calls.push([a,p]);return a==='openingOffer'?offer():{runId:'new-run'};});
  await f.ui.refresh();assert.equal(f.element('opening-selection').hidden,false);
@@ -17,7 +17,7 @@ test('shared Desktop/Web selector previews raw text and sends the original saved
  f.element('opening-choice').value='2';f.element('opening-choice').events.change();
  assert.equal(f.element('saved-opening-preview').textContent,'Alternative scene.');
  await f.click('opening-start');
- assert.deepEqual(calls[1],['openingStart',{offerId:'offer',cardId:'card',revision:7,snapshotHash:'bound-hash',openingIndex:2}]);
+ assert.deepEqual(calls[1],['openingStart',{offerId:'offer',cardId:'card',revision:7,snapshotHash:'bound-hash',openingIndex:2,playerName:'Synthetic player'}]);
  assert.deepEqual(f.created,[{runId:'new-run'}]);assert.equal(f.element('opening-selection').hidden,true);
 });
 test('cancel does not start or select a Run, and a lost start reply retains the same bound choice for explicit retry',async()=>{

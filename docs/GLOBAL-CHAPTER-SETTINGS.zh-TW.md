@@ -1,6 +1,6 @@
 # 舞臺全域設定：章節、模型與金鑰
 
-SCEAN Suite／Runtime／Studio 公開版本為 **1.4.0**。在 DSH 安裝／更新使用主頁網址 `https://github.com/zeola0187/scean`，不需指定私人分支。套件身份與工作區資料契約保留；本發布流程不改現役安裝、私人 Profile、Run 或既有金鑰。
+SCEAN Suite／Runtime／Studio 公開版本為 **1.4.1**。在 DSH 安裝／更新使用主頁網址 `https://github.com/zeola0187/scean`，不需指定私人分支。套件身份與工作區資料契約保留；本發布流程不改現役安裝、私人 Profile、Run 或既有金鑰。
 
 ## 使用方式
 

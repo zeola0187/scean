@@ -1,3 +1,5 @@
+import {playerTemplateSpans} from '../core/player-text.mjs';
+import {playerName} from '../core/player-identity.mjs';
 import {randomUUID} from 'node:crypto';
 import {validateSnapshot,clone} from '../core/contracts.mjs';
 import {snapshotCardScope,sameCardScope} from './card-scope.mjs';
@@ -25,7 +27,6 @@ export class OpeningSelections {
     const fixed=validateSnapshot(snapshot),options=savedOpenings(fixed);
     for(const [id,row] of this.rows)if(!row.promise&&(row.expiresAt<this.host.now()||row.authoringSessionId===authoringSessionId&&row.generation===generation&&!row.result))this.rows.delete(id);
     if(!options.length)fail('OPENING_EMPTY','這張已保存卡沒有非空開場，請回 Studio 保存開場後再交接。');
-    if(options.length===1)return this.host.startFromStudio({snapshot:selectSavedOpening(fixed,options[0].index),authoringSessionId,generation,initialState,signal});
     const scope=snapshotCardScope(fixed);
     if(!scope)fail('OPENING_CARD_SCOPE','選開場需要可確認的 Studio 已保存卡片。');
     if(this.rows.size>=64)fail('OPENING_CAPACITY','待選開場過多，請稍後重新交接。');
@@ -42,7 +43,7 @@ export class OpeningSelections {
     const row=[...this.rows.values()].reverse().find(row=>!row.result&&!row.cancelled&&row.authoringSessionId===scope.authoringSessionId&&sameCardScope(row.scope,scope));
     if(!row)return null;
     this.current(row,scope);
-    return {offerId:row.offerId,cardId:row.snapshot.cardId,revision:row.snapshot.revision,snapshotHash:row.snapshot.hash,expiresAt:row.expiresAt,options:clone(row.options)};
+    return {offerId:row.offerId,cardId:row.snapshot.cardId,revision:row.snapshot.revision,snapshotHash:row.snapshot.hash,expiresAt:row.expiresAt,options:row.options.map(o=>({...clone(o),...(playerTemplateSpans(o.text)!==undefined?{textSpans:playerTemplateSpans(o.text)}:{})})),defaultPlayerName:this.host.metadata.playerDefaults.name};
   }
   bound(request,scope){
     const row=this.rows.get(request.offerId);this.current(row,scope);
@@ -58,24 +59,24 @@ export class OpeningSelections {
   async start(request,scope,resolveScope,signal){
     const row=this.bound(request,scope);
     if(row.cancelled)fail('OPENING_EXPIRED','待選開場已取消，請回 Studio 重新交接。');
-    const snapshot=selectSavedOpening(row.snapshot,request.openingIndex);
-    if(row.selectedIndex!==undefined&&row.selectedIndex!==request.openingIndex)fail('OPENING_ALREADY_STARTED','此選擇已用於開局；請重新交接以另開故事。');
+    const snapshot=selectSavedOpening(row.snapshot,request.openingIndex),name=playerName(request.playerName);
+    if(row.selectedIndex!==undefined&&(row.selectedIndex!==request.openingIndex||row.playerName!==name))fail('OPENING_ALREADY_STARTED','此選擇已用於開局；請重新交接以另開故事。');
     if(row.result)return clone(row.result);
     if(row.promise)return row.promise;
-    signal?.throwIfAborted();row.selectedIndex=request.openingIndex;
+    signal?.throwIfAborted();row.selectedIndex=request.openingIndex;row.playerName=name;
     const job=(async()=>{
       let existing;try{existing=await this.host.engine.store.read(row.runId);}catch(error){if(error.code!=='RUN_NOT_FOUND')throw error;}
       this.current(row,await resolveScope());signal?.throwIfAborted();
       row.admitted=true;
       // After this admission point, publication drains to a receipt; closing the
       // page or cancelling its request cannot erase an already accepted Run.
-      if(existing){if(existing.snapshot.hash!==snapshot.hash)fail('OPENING_RUN_CONFLICT','開局保存結果不符，請重新整理故事列表。');await this.host.refreshRuns();}
-      else await this.host.createRun({snapshot,initialState:row.initialState,runId:row.runId,openingId:snapshot.opening.id});
+      if(existing){if(existing.snapshot.hash!==snapshot.hash||existing.playerIdentity?.name!==name)fail('OPENING_RUN_CONFLICT','開局保存結果不符，請重新整理故事列表。');await this.host.refreshRuns();}
+      else await this.host.createRun({snapshot,initialState:row.initialState,runId:row.runId,openingId:snapshot.opening.id,playerName:name});
       row.result={runId:row.runId,binding:this.host.issueBinding(row.runId,row.authoringSessionId,row.generation)};
       try{await this.host.persist();}catch(error){row.result=null;throw error;}
       return clone(row.result);
     })();
-    row.promise=job;try{return await job;}finally{row.promise=null;if(!row.admitted&&!row.result)delete row.selectedIndex;}
+    row.promise=job;try{return await job;}finally{row.promise=null;if(!row.admitted&&!row.result){delete row.selectedIndex;delete row.playerName;}}
   }
   cancel(request,scope){
     const row=this.bound(request,scope);

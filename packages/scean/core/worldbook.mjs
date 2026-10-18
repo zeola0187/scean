@@ -1,3 +1,4 @@
+import {resolvePlayerText,projectTemplateText} from './player-text.mjs';
 import { clone, hash, SceanError } from './contracts.mjs';
 import { publicData } from './memory-policy.mjs';
 
@@ -127,7 +128,7 @@ function settings(entry, book, config) {
  * order; diagnostics.selectionOrder is the independent admission priority order.
  * A selected entry is context, never an event or a state update.
  */
-export function selectWorldbooks(snapshot, { playerInput = '', recentDialogue = [], config = {} } = {}) {
+export function selectWorldbooks(snapshot, { playerInput = '', recentDialogue = [], config = {}, playerName } = {}) {
   const requestedWindow = config.scanWindow;
   if (typeof playerInput !== 'string' || !object(config) || requestedWindow && (!['messages', 'player_turns'].includes(requestedWindow.unit) || !Number.isSafeInteger(requestedWindow.count) || requestedWindow.count < 0 || requestedWindow.count > 1000) || config.maxEntries !== undefined && (!Number.isSafeInteger(config.maxEntries) || config.maxEntries < 0 || config.maxEntries > 10000)) throw new SceanError('INVALID_WORLDBOOK_CONFIG');
   const diagnostics = { schemaVersion: 1, status: 'selected', books: [], entries: [], warnings: [], selectionOrder: [], presentationOrder: [], scan: [], stageUse: 'pending' };
@@ -177,8 +178,9 @@ export function selectWorldbooks(snapshot, { playerInput = '', recentDialogue = 
       else { placement = 'after_char'; diagnostics.warnings.push(warning('UNSUPPORTED_PLACEMENT', { ref, fallback: placement })); }
       if (entry.enabled === false || entry.disable === true) { state.reason = 'disabled'; continue; }
       if (!entry.content.trim()) { state.reason = 'empty_content'; continue; }
-      const primary = strings(entry.keys ?? entry.key), secondary = strings(entry.secondary_keys ?? entry.keysecondary);
-      if (options.regex || [...primary, ...secondary].some(regexLike)) { state.reason = 'unsupported_regex'; diagnostics.warnings.push(warning('REGEX_UNSUPPORTED', { ref })); continue; }
+      const rawPrimary=strings(entry.keys??entry.key),rawSecondary=strings(entry.secondary_keys??entry.keysecondary);
+      const primary=rawPrimary.map(key=>resolvePlayerText(key,playerName)),secondary=rawSecondary.map(key=>resolvePlayerText(key,playerName));
+      if (options.regex || [...rawPrimary,...rawSecondary].some(regexLike)) { state.reason = 'unsupported_regex'; diagnostics.warnings.push(warning('REGEX_UNSUPPORTED', { ref })); continue; }
       if (/<%|<script\b|\{\{|@@/i.test(entry.content)) diagnostics.warnings.push(warning('EXECUTABLE_SYNTAX_LITERAL_ONLY', { ref }));
       if (entry.constant === true) state.reason = 'constant';
       else {
@@ -195,7 +197,7 @@ export function selectWorldbooks(snapshot, { playerInput = '', recentDialogue = 
         state.reason = 'key_match';
       }
       state.status = 'candidate';
-      candidates.push({ ref, ...provenance, entryId, content: entry.content, priority: options.priority, placement, visibility: 'public', displayIndex: finite(entry.displayIndex, index), bookIndex, entryIndex: index });
+      candidates.push({ ref, ...provenance, entryId, content: projectTemplateText(entry.content,playerName), priority: options.priority, placement, visibility: 'public', displayIndex: finite(entry.displayIndex, index), bookIndex, entryIndex: index });
     }
   }
   const ordered = candidates.sort((a, b) => b.priority - a.priority || a.displayIndex - b.displayIndex || a.bookIndex - b.bookIndex || a.entryIndex - b.entryIndex);

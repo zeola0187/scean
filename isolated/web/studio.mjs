@@ -200,7 +200,7 @@ export function mountStudio({api,onRunCreated}){
     if(dirty())throw new Error('請先保存修改，再交接已保存版本。');
     const worldbook=state.items.find(item=>item.id===$('studio-book').value&&item.type==='worldbook');
     const payload=studioHandoffPayload(state.document,{worldbook,openingIndex:Number($('studio-opening-choice').value)});
-    const result=await request('handoff',payload);state.handoff=result;
+    payload.playerName=$('studio-player-name').value;const result=await request('handoff',payload);state.handoff=result;
     $('studio-run-section').hidden=false;$('studio-run-label').textContent=`Run ${result.runId} · 卡片保存版本 ${payload.expectedRevision} · Preset：SCEAN 預設`;
     $('studio-inspection').textContent='尚未讀取。按「查閱 Run 狀態與記憶」使用此工作副本的唯讀交接權限。';
     status('已建立固定快照的新 Run。');await onRunCreated(result);dialog.close();

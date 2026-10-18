@@ -143,6 +143,18 @@
       "source": "core/narrative.mjs"
     },
     {
+      "path": "packages/scean/core/player-identity.mjs",
+      "source": "core/player-identity.mjs"
+    },
+    {
+      "path": "packages/scean/core/player-literal.mjs",
+      "source": "core/player-literal.mjs"
+    },
+    {
+      "path": "packages/scean/core/player-text.mjs",
+      "source": "core/player-text.mjs"
+    },
+    {
       "path": "packages/scean/core/post-stat-output.mjs",
       "source": "core/post-stat-output.mjs"
     },
@@ -189,6 +201,10 @@
     {
       "path": "packages/scean/isolated/web/frontend-runtime.mjs",
       "source": "isolated/web/frontend-runtime.mjs"
+    },
+    {
+      "path": "packages/scean/isolated/web/player-text.mjs",
+      "source": "core/player-literal.mjs"
     },
     {
       "path": "packages/scean/licenses/aventuras-chapter-provenance.json",

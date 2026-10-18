@@ -16,7 +16,7 @@ for(const enableExistingEmbedding of [false,true])test(`formal chapter missing-k
   const fiber=ctx.plugin(plugin,{dataRoot:root,chapterModelsEnabled:true,chapterRetrievalEnabled:true,chapterEmbeddingEnabled:true,enableExistingEmbedding,technicalRetries:0});await fiber;assert.equal(fiber.state,2);
   const status=JSON.parse(await readFile(join(root,'runtime-status.json'),'utf8'));assert.equal(status.phase,'ready');assert.equal(status.chapterContext.enabled,true);assert.equal(status.chapterContext.embeddingConfigured,false);assert.equal(status.chapterContext.configurationFailure,'EMBEDDING_CONFIGURATION_MISSING');assert.equal(status.memory.embeddingConfigured,false);assert.equal(status.memory.retrieval,'bm25');assert.equal(status.memory.configurationFailure,enableExistingEmbedding?'EMBEDDING_CONFIGURATION_MISSING':null);
   const saved={id:'synthetic-no-key',revision:1,type:'card',sha256:'synthetic',card:{data:{name:'Synthetic old RP',first_mes:'Public opening.',extensions:{scean:{characters:[{id:'keeper',name:'Keeper',description:'Synthetic.'}]}}}}};
-  const start=await ctx.scean.startFromStudio({snapshot:buildSavedSnapshot(saved),authoringSessionId:'no-key-session',generation:'no-key-generation'}),read=await ctx.scean.inspectFromStudio({...start,authoringSessionId:'no-key-session',generation:'no-key-generation'});
+  const start=await ctx.scean.startFromStudio({playerName:'Synthetic player',snapshot:buildSavedSnapshot(saved),authoringSessionId:'no-key-session',generation:'no-key-generation'}),read=await ctx.scean.inspectFromStudio({...start,authoringSessionId:'no-key-session',generation:'no-key-generation'});
   assert.equal(read.snapshot.opening.text,'Public opening.');assert.equal(calls,0);
  }finally{await ctx.fiber.dispose();if(previousKey===undefined)delete process.env['OpenRouter API Key'];else process.env['OpenRouter API Key']=previousKey;}
 });
@@ -33,7 +33,7 @@ test('formal configured hybrid boots without payment and legacy Studio admission
    initialState:{schemaVersion:1,blueprintId:'charge',blueprintVersion:1,values:[{scope:'world',category:'resources',key:'charge',value:3,source:{id:'synthetic-formal',version:1}}]},
   };
   const saved={id:'synthetic-formal',revision:1,type:'card',sha256:'synthetic',card:{data:{name:'Synthetic formal fixture',first_mes:'Saved main opening.',extensions:{scean}}}};
-  const snapshot=buildSavedSnapshot(saved),start=await ctx.scean.startFromStudio({snapshot,authoringSessionId:'synthetic-session',generation:'lease-generation'});
+  const snapshot=buildSavedSnapshot(saved),start=await ctx.scean.startFromStudio({playerName:'Synthetic player',snapshot,authoringSessionId:'synthetic-session',generation:'lease-generation'});
   const inspected=await ctx.scean.inspectFromStudio({...start,authoringSessionId:'synthetic-session',generation:'lease-generation'});
   assert.equal(inspected.snapshot.opening.text,'Saved main opening.');assert.equal(inspected.state.world.resources.charge,3);
   const status=JSON.parse(await readFile(join(root,'runtime-status.json'),'utf8'));assert.equal(status.phase,'ready');assert.equal(status.memory.retrieval,'embedding_bm25_rrf');assert.equal(status.memory.providerConnectivity,'not_probed');assert.equal(status.memory.rerankConfigured,false);assert.equal(status.modelSelectionSource,'dsh_current_selection');assert.equal(status.localDollarLimit,null);assert.equal(status.localGenerationLimit,null);assert.deepEqual(status.backgroundModels,{rollingSummary:false,chapters:false});assert.equal(generationCalls,0);assert.equal(networkCalls,0);

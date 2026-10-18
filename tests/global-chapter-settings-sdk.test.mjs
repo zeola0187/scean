@@ -31,7 +31,7 @@ test('global real SDK late credential service, strict operator RPC, two Runs, li
   const runtime=JSON.parse(await readFile(join(root,'data/runtime-status.json'),'utf8'));assert.equal(runtime.chapterContext.enabled,true);assert.equal(runtime.chapterContext.embeddingConfigured,true);assert.equal(runtime.backgroundModels.chapters,true);
   const snapshot=buildSavedSnapshot({id:'global-synthetic-card',revision:1,type:'card',sha256:'synthetic',card:{data:{name:'Synthetic global test',first_mes:'Synthetic opening.',extensions:{scean:{characters:[{id:'keeper',name:'Keeper',description:'Synthetic.'}]}}}}});
   for(const id of ['one','two']){
-   const start=await ctx.scean.startFromStudio({snapshot,authoringSessionId:'synthetic-'+id,generation:'synthetic-generation-'+id});
+   const start=await ctx.scean.startFromStudio({playerName:'Synthetic player',snapshot,authoringSessionId:'synthetic-'+id,generation:'synthetic-generation-'+id});
    const inspected=await ctx.scean.inspectFromStudio({...start,authoringSessionId:'synthetic-'+id,generation:'synthetic-generation-'+id});assert(!JSON.stringify(inspected).includes('SYNTHETIC_SDK_KEY_NOT_REAL'));assert(!JSON.stringify(inspected).includes('sealedKeys'));
    assert.equal((await invoke({action:'chapterProviderSettings'})).value.value.embeddingKey.stored,true);
   }

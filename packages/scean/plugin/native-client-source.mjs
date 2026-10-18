@@ -43,7 +43,11 @@ export function nativeClientFactory(React,sharedHTML,createNativeBridge,createNo
         };
         return h('iframe',{ref:frame,title:'SCEAN 玩家介面','data-scean-native-player':true,sandbox:'allow-scripts allow-downloads allow-forms',srcDoc:sharedHTML,onLoad:connect,style:{width:'100%',height:'100%',minHeight:0,border:0,display:'block',background:'transparent'}});
       }
-      const disposers=[child.slots.inject('main',()=>child.slots.register({name:'main',key:'local-scean'},Panel)),child.slots.inject('conversation.input.dock',()=>child.slots.register({name:'conversation.input.dock',id:'local-scean-entry',order:18},()=>h('button',{onClick:()=>{sync();reset();child.layout.selectPanel('local-scean');}},'SCEAN 舞台')))];
+      function Entry(){
+        // Match Studio's dock and the host composer, including resized columns.
+        return h('button',{type:'button','data-scean-stage-entry':true,style:{display:'block',boxSizing:'border-box',width:'calc(100% - var(--dsh-composer-side-clearance,16px) - var(--dsh-composer-side-clearance,16px))',maxWidth:'var(--dsh-composer-card-max-width,952px)',margin:'0 auto',flex:'none',minWidth:0,minHeight:44,whiteSpace:'normal',overflowWrap:'anywhere'},onClick:()=>{sync();reset();child.layout.selectPanel('local-scean');}},'SCEAN 舞台');
+      }
+      const disposers=[child.slots.inject('main',()=>child.slots.register({name:'main',key:'local-scean'},Panel)),child.slots.inject('conversation.input.dock',()=>child.slots.register({name:'conversation.input.dock',id:'local-scean-entry',order:18},Entry))];
       child.effect(()=>()=>{notifications?.dispose();unsubscribe();window.removeEventListener('scean:open',open);window.removeEventListener('scean:context',context);for(const panel of panels){panel.stopPresentation?.();panel.port.onmessage=null;panel.port.close();void panel.bridge.dispose();}panels.clear();selections.clear();disposers.reverse().forEach(fn=>fn());},'scean shared player cleanup');
     });
   });}};

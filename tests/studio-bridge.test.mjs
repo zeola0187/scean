@@ -21,7 +21,7 @@ async function fixture(t,{absent=false,clock}={}){
   t.after(async()=>{await bridge.close();host.close();assert.equal(calls,0);});
   const acquired=await bridge.request({action:'studio.acquire',pageId:'studio-test-page-0001'});assert(acquired.ok,JSON.stringify(acquired));
   const claim=acquired.value.claim;
-  const request=(action,args={})=>bridge.request({action:'studio.'+action,claim,...args});
+  const request=(action,args={})=>bridge.request({action:'studio.'+action,claim,...(action==='handoff'?{playerName:'Synthetic player'}:{}),...args});
   const imported=await request('import',{fileName:'synthetic.json',type:'card',base64:b64(card())});assert(imported.ok,JSON.stringify(imported));
   return {root,bridge,host,claim,request,id:imported.value.id};
 }

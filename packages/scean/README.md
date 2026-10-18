@@ -1,4 +1,4 @@
-# SCEAN 1.4.0
+# SCEAN 1.4.1
 
 SCEAN combines native Card Studio authoring with saved story openings, dynamic
 card fronts, durable story operations, independent reading sidebars and chapter
@@ -6,7 +6,7 @@ memory. Original SCEAN material is **AGPL-3.0-only**; the existing
 advanced-tavern-card-authoring Skill retains its MIT grant. See [LICENSE](LICENSE),
 [scope](LICENSE-SCOPE.md) and [third-party notices](THIRD-PARTY-NOTICES.md).
 
-**完整對應原碼／Source:** https://github.com/zeola0187/scean/tree/v1.4.0
+**完整對應原碼／Source:** https://github.com/zeola0187/scean/tree/v1.4.1
 
 ## 安裝與更新
 
@@ -16,7 +16,7 @@ advanced-tavern-card-authoring Skill retains its MIT grant. See [LICENSE](LICENS
 
 無需分支、私有 GitHub token 或 runtime build。套件身分保留為
 `@local/dsh-scean-suite`、`@local/dsh-scean`、
-`@local/dsh-card-studio-scean-test`，三者版本同步為 1.4.0。
+`@local/dsh-card-studio-scean-test`，三者版本同步為 1.4.1。
 最後一個歷史名稱保留以維持既有工作區及升級相容性。
 從先前 1.3.0 使用 DSH 更新操作；舊鎖檔固定的私人 commit 不屬於新的
 公開歷史，不能把重建舊鎖檔當成取得本公開版本的方法。
@@ -55,3 +55,10 @@ node --require ./scripts/w19-offline-network.cjs --test authoring/tests/*.test.m
 [3＋8 召回](docs/CHAPTER-CONTEXT-RELEASE.zh-TW.md)、
 [原碼取得](SOURCE-AVAILABILITY.md)。原生 Desktop、實體手機／WAN、
 真模型文學品質未因合成測試通過而宣稱完成。原八項主機限制仍保留。
+
+## 1.4.1
+
+主角名稱可設通用預設並在每局覆寫；舊局可補名一次，僅影響後續生成。
+本版亦整合舞臺入口對齊及可還原的素材回收。
+有姓名的故事使用 v4 備份；降版須配對還原升級前 runtime 與資料，
+不可讓舊版寫入較新的姓名／v4 資料。詳見 [姓名與升級說明](docs/PLAYER-NAME.zh-TW.md)。

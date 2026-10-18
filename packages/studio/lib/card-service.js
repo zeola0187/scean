@@ -44,12 +44,12 @@ export async function contained(root, relative, { existing = false } = {}) {
   if (!within(real)) fail('PATH', 'Symlink or junction leaves workspace.');
   return target;
 }
-export async function atomicReplace(filename, bytes, signal) {
+export async function atomicReplace(filename, bytes, signal, beforeRename=()=>{}) {
   const temp = filename + '.' + randomUUID() + '.tmp'; let file;
   try {
     file = await fs.open(temp,'wx'); await file.writeFile(bytes); await file.sync(); await file.close(); file = undefined;
     for(let attempt=0;;attempt++){
-      aborted(signal);
+      aborted(signal);await beforeRename();aborted(signal);
       try{await fs.rename(temp,filename);break;}
       catch(error){if(process.platform!=='win32'||!['EPERM','EBUSY','EACCES'].includes(error.code)||attempt>=2)throw error;await new Promise(resolve=>setTimeout(resolve,25*(attempt+1)));}
     }

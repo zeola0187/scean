@@ -33,6 +33,7 @@ const topFields = {
   prose_repair: ['bodyHash', 'ranges', 'bannedTerms'],
   post_stat: ['finalBody', 'previousState', 'characters', 'stateBlueprint', 'outputContract'],
 };
+for(const stage of ['director','character','adjudicate','draft','prose','prose_repair','post_stat'])topFields[stage].push('playerIdentity');
 const assemblyFields = new Set(['playerInput', 'writingGuidance', 'sources', 'chapterSummary', 'rollingSummary', 'chapterContext', 'recentDialogue', 'worldState', 'memory', 'characters', 'characterIdentities', 'stateBlueprint', 'derivedFacts']);
 const sourceFields = new Set(['snapshot', 'card', 'worldbook', 'preset', 'selectedOpening']);
 const escapePath = value => String(value).replaceAll('~', '~0').replaceAll('/', '~1');
@@ -49,6 +50,7 @@ const compare = (a, b) => a < b ? -1 : a > b ? 1 : 0;
  */
 export function budgetStage(stage, prompt, options = {}) {
   if (!topFields[stage] || !object(prompt) || typeof prompt.system !== 'string' || !object(prompt.input)) throw new SceanError('INVALID_CONTEXT_PACKET');
+  if(prompt.input.playerIdentity!==undefined){const p=prompt.input.playerIdentity;if(!object(p)||Object.keys(p).length!==4||p.actorId!=='player'||typeof p.name!=='string'||!p.name.trim()||p.name.length>80||!Number.isSafeInteger(p.boundVersion)||p.boundVersion<0||p.meaning!=='Display name of reserved actor player; never an NPC ID, state key or memory knower.')throw new SceanError('INVALID_PLAYER_IDENTITY');}
   const original = clone(prompt);
   const candidates = [];
   const metadata = options.sourceMetadata ?? {};

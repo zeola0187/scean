@@ -28,7 +28,7 @@ async function fixture(t){
  const make=(id,cwd)=>({id,status:'idle',session:{header:{cwd},snapshotEvents:()=>[],append:(type,data)=>{events.push(type);return events.length;}},cancel(){},async whenIdle(){},prompt(){assert.fail('No actual model invocation authorized');}});
  const a=make('synthetic-native-agent',dir),other=make('synthetic-other',root);for(const x of [a,other]){x.ctx=createScope(ctx,x).ctx;agents.set(x.id,x);}
  const store=new DurableStore({root:join(dir,'scean-store')}),host=await new SceanHost({engine:new SceanEngine({store,model:{generate(){assert.fail('No RP model authorized for Studio handoff');}},memory:new Memory()}),root:join(dir,'scean-host')}).init();
- ctx.provide('scean',{startFromStudio:r=>host.startFromStudio(r),inspectFromStudio:r=>host.inspectFromStudio(r),attachInspection:r=>host.attachInspection(r)});
+ ctx.provide('scean',{startFromStudio:r=>host.startFromStudio({...r,playerName:'Synthetic player'}),inspectFromStudio:r=>host.inspectFromStudio(r),attachInspection:r=>host.attachInspection(r)});
  const fiber=ctx.plugin(plugin,{projectRoot:dir});await fiber;
  t.after(async()=>{await fiber.dispose();await ctx.fiber.dispose();host.close();});
  const invoke=async request=>JSON.parse((await ctx.commands.execute(a,'/cardstudio-scean '+JSON.stringify(request),[],new AbortController().signal)).result.text);

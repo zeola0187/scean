@@ -1,3 +1,4 @@
+import {validatePlayerIdentity} from './player-identity.mjs';
 import { SceanError, clone, hash, json, safeId, validateSnapshot, validateState } from './contracts.mjs';
 import { validateMemoryPolicy } from './memory-policy.mjs';
 import { validateBlueprint, materializeInitialState, validateBlueprintState, validateBlueprintStateChanges } from './state-blueprint.mjs';
@@ -86,9 +87,10 @@ function checkSources(records, turns, run, kind) {
   if(owned.size!==records.length)fail('SAVE_RECORD_IDS');return byId;
 }
 
-function validateRun(run, { narrative=false }={}) {
-  fields(run,narrative?ROOT_D:ROOT,['schemaVersion','runId','version','head','snapshot','state','memories','playerHistory','turns','receipts','operationReceipts','retired','banList','createdAt','updatedAt']);
+function validateRun(run, { narrative=false, player=false }={}) {
+  fields(run,[...(narrative?ROOT_D:ROOT),...(player?['playerIdentity']:[])],['schemaVersion','runId','version','head','snapshot','state','memories','playerHistory','turns','receipts','operationReceipts','retired','banList','createdAt','updatedAt']);
   if(run.schemaVersion!==1)fail('SAVE_RUN_VERSION');safeId(run.runId);if(!integer(run.version))fail('SAVE_RUN_VERSION');
+  if(player){if(!Object.hasOwn(run,'playerIdentity'))fail('INVALID_PLAYER_IDENTITY');validatePlayerIdentity(run.playerIdentity,run);}
   if(run.openingId!==undefined)safeId(run.openingId);
   if(!digest(run.snapshot?.hash))fail('SAVE_SNAPSHOT_HASH');const snap=validateSnapshot(run.snapshot);
   const bp=validateBlueprint(snap.stateBlueprint,snap.characters), initial=materializeInitialState(bp,snap.initialState,snap.characters);
@@ -200,20 +202,20 @@ function portableReceipt(receipt) {
 }
 export function encodeRunBundle(run) {
   // Never copy Host/provider fields or raw attempt traces into the portable domain.
-  const hasNarrative=Object.hasOwn(run,'narrative');
-  const portable=Object.fromEntries((hasNarrative?ROOT_D:ROOT).filter(k=>Object.hasOwn(run,k)).map(k=>{const d=Object.getOwnPropertyDescriptor(run,k);if(!Object.hasOwn(d,'value'))fail('SAVE_JSON');bounded(d.value,{portability:false});return[k,clone(d.value)];}));
+  const hasNarrative=Object.hasOwn(run,'narrative'),hasPlayer=Object.hasOwn(run,'playerIdentity');
+  const portable=Object.fromEntries([...(hasNarrative?ROOT_D:ROOT),...(hasPlayer?['playerIdentity']:[])].filter(k=>Object.hasOwn(run,k)).map(k=>{const d=Object.getOwnPropertyDescriptor(run,k);if(!Object.hasOwn(d,'value'))fail('SAVE_JSON');bounded(d.value,{portability:false});return[k,clone(d.value)];}));
   if(portable.head===undefined)portable.head=portable.turns?.at(-1)?.commitId??null;portable.operationReceipts??={};portable.retired??=[];portable.playerHistory??=[];
   portable.receipts=Object.fromEntries(Object.entries(portable.receipts??{}).map(([key,value])=>[key,portableReceipt(value)]));
   portable.operationReceipts=Object.fromEntries(Object.entries(portable.operationReceipts).map(([key,value])=>[key,portableReceipt(value)]));
-  bounded(portable);validateRun(portable,{narrative:hasNarrative});
-  const bundle={format:SAVE_FORMAT,schemaVersion:hasNarrative?(portable.narrative.schemaVersion===2?3:2):1,manifest:{runId:portable.runId,version:portable.version,head:portable.head,snapshotHash:portable.snapshot.hash,sha256:hash(portable)},run:portable};
+  bounded(portable);validateRun(portable,{narrative:hasNarrative,player:hasPlayer});
+  const bundle={format:SAVE_FORMAT,schemaVersion:hasPlayer?4:hasNarrative?(portable.narrative.schemaVersion===2?3:2):1,manifest:{runId:portable.runId,version:portable.version,head:portable.head,snapshotHash:portable.snapshot.hash,sha256:hash(portable)},run:portable};
   bounded(bundle);return bundle;
 }
 export function validateRunBundle(value) {
   const bundle=typeof value==='string'?parseRunBundle(value):value;bounded(bundle);
-  fields(bundle,['format','schemaVersion','manifest','run'],['format','schemaVersion','manifest','run']);if(bundle.format!==SAVE_FORMAT||![1,2,3].includes(bundle.schemaVersion)||(bundle.schemaVersion===2&&bundle.run?.narrative?.schemaVersion!==1)||(bundle.schemaVersion===3&&bundle.run?.narrative?.schemaVersion!==2))fail('SAVE_FORMAT_VERSION');
+  fields(bundle,['format','schemaVersion','manifest','run'],['format','schemaVersion','manifest','run']);if(bundle.format!==SAVE_FORMAT||![1,2,3,4].includes(bundle.schemaVersion)||(bundle.schemaVersion===2&&bundle.run?.narrative?.schemaVersion!==1)||(bundle.schemaVersion===3&&bundle.run?.narrative?.schemaVersion!==2))fail('SAVE_FORMAT_VERSION');
   const m=bundle.manifest;fields(m,['runId','version','head','snapshotHash','sha256'],['runId','version','head','snapshotHash','sha256']);
   if(!digest(m.sha256)||m.sha256!==hash(bundle.run))fail('SAVE_DIGEST');
   if(m.runId!==bundle.run.runId||m.version!==bundle.run.version||m.head!==bundle.run.head||m.snapshotHash!==bundle.run.snapshot.hash)fail('SAVE_MANIFEST');
-  return validateRun(bundle.run,{narrative:bundle.schemaVersion>=2});
+  return validateRun(bundle.run,{narrative:bundle.schemaVersion===4?Object.hasOwn(bundle.run,'narrative'):bundle.schemaVersion>=2,player:bundle.schemaVersion===4});
 }

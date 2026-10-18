@@ -1,3 +1,4 @@
+import {mountPlayerIdentity} from '../isolated/web/player-identity-ui.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
@@ -22,13 +23,14 @@ function fixture({secure=true,crypto=webcrypto,navigationType='navigate',priorVi
     return elements.get(id);
   };
   const context={...model,crypto,isSecureContext:secure,performance:{getEntriesByType:()=>[{type:navigationType}]},AbortController,DOMException,console,setTimeout,clearTimeout,setInterval(){},URL,Blob,
-    document:{getElementById:element,createElement:tag=>element('generated-'+elements.size+'-'+tag),querySelectorAll(){return [];},visibilityState:'visible',addEventListener(event,fn){listeners.set(event,fn);}},
+    document:{getElementById:element,createElement:tag=>element('generated-'+elements.size+'-'+tag),querySelector(){return element('queried-label');},querySelectorAll(){return [];},visibilityState:'visible',addEventListener(event,fn){listeners.set(event,fn);}},
     window:{addEventListener(event,fn){windowListeners.set(event,fn);}},
     sessionStorage:{getItem:key=>storage.get(key)??null,setItem:(key,value)=>storage.set(key,value)},
     createNotificationClient:()=>({watch:async()=>{},refresh(){},dispose(){},target:eventId=>targetResolver(eventId)}),mountNotificationControls:()=>({render(){}}),showNotificationToast(){},
     mountPlayerShell:()=>({show(){},committed(){},atEnd:()=>false,reading:{scrollTop:0,scrollHeight:100},scrollEnd(){}}),mountStudio(){}};
   context.mountCardFrontend=()=>mountCardFrontend({document:context.document,setTimer:()=>0,clearTimer(){}});
   context.mountChapterSettings=options=>mountChapterSettings({...options,document:context.document});
+  context.mountPlayerIdentity=options=>mountPlayerIdentity({...options,document:context.document,makeId:()=>webcrypto.randomUUID()});
   context.mountOpeningSelection=options=>mountOpeningSelection({...options,document:context.document});
   vm.createContext(context);
   const executable=source.replace(/^import .*;\r?\n/gm,'').replace(/^init\(\);\s*$/m,'');

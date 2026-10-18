@@ -62,7 +62,7 @@ export class DurableStore {
     for (const entry of entries.filter(e => e.isDirectory())) {
       try {
         const run = await this.read(entry.name);
-        summaries.push({ runId: run.runId, version: run.version, cardId: run.snapshot.cardId, revision: run.snapshot.revision, createdAt: run.createdAt, updatedAt: run.updatedAt, turnCount: run.turns.length });
+        summaries.push({ runId: run.runId, version: run.version, cardId: run.snapshot.cardId, revision: run.snapshot.revision, ...(run.playerIdentity?{playerName:run.playerIdentity.name}:{}), createdAt: run.createdAt, updatedAt: run.updatedAt, turnCount: run.turns.length });
       } catch (error) { if (error.code !== 'RUN_NOT_FOUND') throw error; }
     }
     return summaries.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));

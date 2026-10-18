@@ -20,7 +20,7 @@ export function resolveSyntheticCreate(request) {
   const snapshot=structuredClone(revision.snapshot);
   snapshot.opening={id:opening.id,title:opening.title,text:opening.text};
   snapshot.card.data.first_mes=opening.text;
-  return {action:'create',snapshot,initialState:structuredClone(opening.initialState),openingId:opening.id};
+  return {action:'create',...(request.playerName!==undefined?{playerName:request.playerName}:{}),snapshot,initialState:structuredClone(opening.initialState),openingId:opening.id};
 }
 
 export function createScriptedModel({delayMs=50}={}) {

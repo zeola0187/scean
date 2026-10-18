@@ -1,3 +1,10 @@
+# Current save compatibility: SCEAN 1.4.1
+
+Named or adopted Runs use bundle v4. Unnamed v1/v2/v3 saves remain readable;
+Run/Snapshot/Memory schema versions are unchanged. Old runtimes must not write
+newer named/v4 data. See [player names and rollback](PLAYER-NAME.zh-TW.md).
+The original v1 contract below remains historical background.
+
 # Milestone C portable Run save contract
 
 Status: implemented save v1 contract. Exact engineering evidence is recorded in

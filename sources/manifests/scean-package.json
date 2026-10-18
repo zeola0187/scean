@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-scean",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "private": true,
   "type": "module",
   "description": "SCEAN Runtime: automatic chapters, 3+8 hybrid chapter context and complete authorized packets",

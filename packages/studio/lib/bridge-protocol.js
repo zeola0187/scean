@@ -42,7 +42,8 @@ cardstudioRemote.descriptors.push({
   ...cardstudioRemote.descriptors[0],id:'@local/dsh-card-studio-scean-test#cardstudioScean/reviewMaterials',method:'reviewMaterials',
   parameters:[cardstudioRemote.descriptors[0].parameters[0],{
     name:'request',wire:'request',source:'json',codec:{mode:'strict',typeSymbol:'@local/dsh-card-studio-scean-test#HumanMaterialReview',create:()=>({parse(value){
-      if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).some(k=>!['mode','extraction_id','expected_revision','candidate_sha256','accepted_ids','edits','expected_epoch','claim'].includes(k))||!['edit','confirm'].includes(value.mode)||!value.claim||!Number.isSafeInteger(value.expected_epoch))throw new TypeError('Expected a bound human material review.');return value;
+      const fields=['recycle','restore'].includes(value?.mode)?['mode','material_id','record_sha256','expected_recycle_revision','operation_id','expected_epoch','claim']:['mode','extraction_id','expected_revision','candidate_sha256','accepted_ids','edits','expected_epoch','claim'];
+      if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).some(k=>!fields.includes(k))||!['edit','confirm','recycle','restore'].includes(value.mode)||!value.claim||!Number.isSafeInteger(value.expected_epoch))throw new TypeError('Expected a bound human material review.');return value;
     }})}
   }]
 });

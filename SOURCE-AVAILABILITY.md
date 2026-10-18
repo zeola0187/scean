@@ -1,9 +1,9 @@
-# Corresponding source — SCEAN 1.4.0
+# Corresponding source — SCEAN 1.4.1
 
-Source and license: https://github.com/zeola0187/scean/tree/v1.4.0
+Source and license: https://github.com/zeola0187/scean/tree/v1.4.1
 Installation/update homepage: https://github.com/zeola0187/scean
 Release packages and the detached exact-commit/source-hash descriptor:
-https://github.com/zeola0187/scean/releases/tag/v1.4.0
+https://github.com/zeola0187/scean/releases/tag/v1.4.1
 
 The same source address is visibly offered in SCEAN and Studio. A restricted
 host frame may prevent opening a new tab; copy the displayed address instead.

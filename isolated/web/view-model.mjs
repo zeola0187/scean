@@ -23,6 +23,7 @@ export function progressText(value) {
 }
 export function titleOf(snapshot) { return snapshot?.card?.data?.name ?? snapshot?.card?.name ?? snapshot?.cardId ?? '未命名故事'; }
 export function openingOf(run) {
+  if(typeof run?.openingDisplay==='string')return run.openingDisplay;
   const opening = run?.snapshot?.opening;
   if (opening?.text) return opening.text;
   return run?.snapshot?.card?.data?.first_mes ?? run?.snapshot?.card?.first_mes ?? '';

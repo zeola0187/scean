@@ -1,6 +1,6 @@
 // Authenticated RPC adapter only. No file access, HTTP proxy, or Studio database access.
 export function createNativeBridge({call,selectPanel,getSessionId=()=>null,getViewerId=()=>null,notifications,enableNotifications}){
-  const allowed=new Set(['capabilities','list','openingPrepare','openingOffer','openingStart','openingCancel','progress','draftSave','draftGet','turn','rollback','regenerate','operationSubmit','operationStatus','exportRun','importRun','cancel','runView','historySearch','historyRead','historyPage','summaryStatus','summaryStart','summaryCancel','chapterStatus','chapterSettings','chapterSummarize','chapterAuto','chapterCancel','chapterClose','inspect','diagnosticsGrant','diagnosticsRead','diagnosticsRevoke','banList','models']);
+  const allowed=new Set(['playerBind','capabilities','list','openingPrepare','openingOffer','openingStart','openingCancel','progress','draftSave','draftGet','turn','rollback','regenerate','operationSubmit','operationStatus','exportRun','importRun','cancel','runView','historySearch','historyRead','historyPage','summaryStatus','summaryStart','summaryCancel','chapterStatus','chapterSettings','chapterSummarize','chapterAuto','chapterCancel','chapterClose','inspect','diagnosticsGrant','diagnosticsRead','diagnosticsRevoke','banList','models']);
   const grants=new Map();let disposed=false,privacyEpoch=0,contextEpoch=0,cardScope=null;
   const denied=code=>Object.assign(new Error(code),{code});
   const revoke=grant=>call({action:'diagnosticsRevoke',...grant}).catch(()=>{});
@@ -42,7 +42,7 @@ export function createNativeBridge({call,selectPanel,getSessionId=()=>null,getVi
       let models;try{models=await call({action:'models'});}catch{models={mode:'native',source:'DSH authenticated host',status:'unavailable'};}
       return {mode:'native',dataRootLabel:'SCEAN 插件獨立資料目錄',models,studio:{available:false},native:true,...viewer()};
     }
-    if(['chapterProviderSettings','chapterProviderSave','chapterProviderClear'].includes(action)){
+    if(['playerDefaults','playerDefaultsSave','chapterProviderSettings','chapterProviderSave','chapterProviderClear'].includes(action)){
       const value=await call({...payload,action});if(disposed)throw denied('NATIVE_PANEL_CLOSED');return value;
     }
     if(!allowed.has(action))throw denied('NATIVE_ACTION_DENIED');

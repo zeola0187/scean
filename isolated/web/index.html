@@ -13,10 +13,15 @@
 </head>
 <body>
   <header class="topbar"><div><h1>SCEAN <span>舞台</span></h1><p>里程碑 D · 隔離試玩</p></div><button id="global-chapter-open" type="button" class="quiet">舞臺全域設定</button><div id="connection" role="status">連線中…</div></header>
-  <p class="hint" id="scean-source-offer" aria-label="原碼與授權">原碼與授權（AGPL-3.0-only）：<a href="https://github.com/zeola0187/scean/tree/v1.4.0" target="_blank" rel="noopener noreferrer">https://github.com/zeola0187/scean/tree/v1.4.0</a>；受限視窗可複製網址開啟。</p>
+  <p class="hint" id="scean-source-offer" aria-label="原碼與授權">原碼與授權（AGPL-3.0-only）：<a href="https://github.com/zeola0187/scean/tree/v1.4.1" target="_blank" rel="noopener noreferrer">https://github.com/zeola0187/scean/tree/v1.4.1</a>；受限視窗可複製網址開啟。</p>
   <div id="mode-banner" class="mode-banner" role="note">正在確認執行環境</div>
   <dialog id="global-chapter-dialog" aria-labelledby="global-chapter-dialog-title">
     <div class="section-heading"><h2 id="global-chapter-dialog-title">舞臺全域設定</h2><button id="global-chapter-close" type="button" class="quiet">關閉設定</button></div>
+  <section aria-label="預設主角名稱"><h3>預設主角名稱</h3>
+    <form id="player-default-form"><label for="player-default-name">之後新局預填的名稱（可留空）</label><input id="player-default-name" maxlength="80" autocomplete="off"><button id="player-default-save" type="submit" disabled>保存預設主角名稱</button></form>
+    <p id="player-default-status" class="hint" role="status"></p>
+    <p class="hint">每局可另填姓名；舊局不隨預設變更。只支援故事文字中的 {{user}}，未知宏與 W01 自訂前端宏保持原樣。</p>
+  </section>
   <details id="global-chapter-settings" class="global-chapter-settings" open>
     <summary>舞臺全域設定：章節、模型與金鑰</summary>
     <p class="hint">本舞臺所有故事共用，重啟後仍保留。保存設定不會發出模型請求；每個故事的自動工作仍須明確啟用。</p>
@@ -61,6 +66,7 @@
         <p id="opening-revision" class="hint"></p>
         <label for="opening-choice">本次選用的已保存開場</label>
         <select id="opening-choice" disabled></select>
+        <label for="opening-player-name">本局主角名稱</label><input id="opening-player-name" maxlength="80" autocomplete="off" required><p class="hint">隨本局保存；不會更動原始卡片、固定版本或其他故事。</p>
         <pre id="saved-opening-preview" class="opening-preview" tabindex="0" aria-label="所選開場預覽"></pre>
         <button id="opening-start" type="button" disabled>以此開場建立新故事</button>
         <button id="opening-dismiss" type="button" class="quiet" disabled>取消開新局</button>
@@ -73,6 +79,7 @@
           <label for="card">角色卡</label><select id="card" required></select>
           <label for="revision">已保存版本</label><select id="revision" required></select>
           <label for="opening">開場</label><select id="opening" required></select>
+          <label for="create-player-name">本局主角名稱</label><input id="create-player-name" maxlength="80" required autocomplete="off">
           <p id="opening-preview" class="opening-preview"></p>
           <button id="create" type="submit" disabled>以此版本開新局</button>
           <p class="hint">開局固定卡片、世界書、Preset 與名冊。新版另開 Run，舊局保留原版本。</p>
@@ -99,6 +106,11 @@
       <section class="run-header" aria-label="目前 Run">
         <div><h2 id="run-title">故事，從這裡開始</h2><p id="run-version">選一張卡與開場，或繼續已有的 Run。</p></div>
         <span id="save-status" class="badge">尚未開局</span>
+      </section>
+      <section id="player-identity-panel" hidden aria-label="本局主角名稱">
+        <p id="player-identity-status" role="status"></p>
+        <div id="player-bind-form"><label for="player-bind-name">補設本局主角名稱</label><input id="player-bind-name" maxlength="80" autocomplete="off"><button id="player-bind" type="button" disabled>保存本局主角名稱（僅一次）</button><p class="hint">從後續生成生效，原開場及已寫出的歷史不改寫。請等目前工作完成或取消後再保存。</p></div>
+        <p id="player-bind-status" role="status"></p>
       </section>
       <details id="longform-panel" class="longform-panel">
         <summary>長篇摘要、章節與原文查回</summary>

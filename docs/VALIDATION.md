@@ -1,20 +1,24 @@
 # Validation and known limits
 
-This release preserves all 87 original main test source files plus the newer
-opening-authoring and release-support tests. Run commands from the full source
-root as documented in README.md; component installation packages do not carry
-developer-only tests or historical packaging scripts.
+The 1.4.1 release preserves the existing source and synthetic regression assertions,
+and adds player identity / UI coverage. The release's actual results, sealed hashes,
+anonymous downloads and official isolated homepage installation are recorded in
+the detached verification receipt and Release notes; this document does not certify
+a future modified rebuild.
 
-The prior complete suite recorded 758/766 passing with exactly eight
-PRIMARY_MACHINE_REQUIRED environment cases. The licensing round recorded 133
-related Node checks, 28 Native Authoring checks and six distribution checks
-passing. These are prior observations, not a claim that every release rebuild
-was rerun. The Release notes and detached verification receipt report this
-release's actual tests, hashes and anonymous install readback separately.
+The candidate before release version alignment recorded Runtime 777/777 and
+Native Authoring 28/28. Studio recorded 333 PASS / 6 FAIL, with the same six missing
+historical SDK / SillyTavern fixtures reproduced on its unchanged baseline. These
+failures remain failures; none are removed or converted to skip/pass. Re-run
+applicable suites after source/version changes and retain the actual output.
 
-Original primary-machine checks remain in source and must not be removed or
-reclassified as passing. No SDK binaries or paid model/embedding calls are
-needed or authorized by a release test. Physical phone/WAN/private HTTPS,
-older native Desktop shells, macOS/Linux and true-model literary quality remain
-unverified unless separately observed. Synthetic protocol tests establish data
-and permission boundaries, not all semantic or deployment outcomes.
+Public source excludes separately licensed SDK binaries, historical extracted
+application trees, user data and private traces. Obtain and verify a supported
+DSH app.asar as described in README.md for offline SDK-dependent tests. The main
+machine guard remains fail-closed; no paid model or external embedding is needed.
+
+Synthetic Chrome checks cover the generated UI at desktop and 390px, independent
+top-level tabs, name/default persistence and Host restart. They do not establish
+physical phone/WAN/private HTTPS, native Desktop login flows, macOS/Linux or
+real-provider literary quality. A successful TLS or authentication-required probe
+does not establish authenticated application functionality.

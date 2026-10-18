@@ -1,3 +1,4 @@
+import {playerName,bindPlayerIdentity} from '../core/player-identity.mjs';
 import {headOf} from '../core/history.mjs';
 import {VERSION} from './version.mjs';
 import {normalizeStudioHandoffSnapshot} from './studio-handoff.mjs';
@@ -56,6 +57,9 @@ export class SceanHost {
     catch(e){if(e.code!=='ENOENT')throw e;}
     if(this.metadata.schemaVersion!==1||!Array.isArray(this.metadata.runs)||!Array.isArray(this.metadata.bindings))fail('HOST_METADATA','Invalid SCEAN host metadata.');
     this.metadata.drafts??={};this.metadata.pageDrafts??={};
+    this.metadata.playerDefaults??={schemaVersion:1,revision:0,name:null};
+    const defaults=this.metadata.playerDefaults;if(defaults.schemaVersion!==1||!Number.isSafeInteger(defaults.revision)||defaults.revision<0||defaults.name!==null&&playerName(defaults.name)!==defaults.name)fail('PLAYER_SETTINGS_INVALID','主角預設設定格式不正確。');
+    if(Object.keys(defaults).some(k=>!['schemaVersion','revision','name','operationId','fingerprint'].includes(k))||defaults.revision===0&&(defaults.operationId!==undefined||defaults.fingerprint!==undefined)||defaults.revision>0&&(!defaults.operationId||defaults.fingerprint!==hash({name:defaults.name,expectedRevision:defaults.revision-1,operationId:defaults.operationId})))fail('PLAYER_SETTINGS_INVALID','主角預設設定格式不正確。');
     // Canonical store is authoritative: restore runs after a crash between create and host-index publication.
     if(this.engine.store?.listRuns){
       this.metadata.runs=await this.engine.store.listRuns();
@@ -91,7 +95,7 @@ export class SceanHost {
       let dir;try{dir=await open(this.root,'r');await dir.sync();}catch(error){if(!['EPERM','EISDIR','EINVAL','EACCES','ENOTSUP','EBADF'].includes(error.code))throw error;}finally{await dir?.close();}
     });this.writeQueue=op;await op;
   }
-  capabilities(){return {schemaVersion:1,plugin:'@local/dsh-scean',version:VERSION,hotReload:false,cardFrontend:{apiMajor:1,profiles:[FRONTEND_PROFILE],cardScripts:false,worldActions:false,derivedDisplays:false},independentRunLifecycle:true,hostOwnedOperations:true,operationJournalVersion:1,notificationVersion:1,maxConcurrentOperations:this.maxConcurrentOperations,pageDrafts:true,inspectionReadOnly:true,traceCoverage:'public_projection_with_authorized_private_diagnostics',availability:['not_recorded','not_called','accepted','running','pending','failed','cancelled','committed','completed','interrupted','unknown']};}
+  capabilities(){return {schemaVersion:1,plugin:'@local/dsh-scean',version:VERSION,hotReload:false,cardFrontend:{apiMajor:1,profiles:[FRONTEND_PROFILE],cardScripts:false,worldActions:false,derivedDisplays:false},independentRunLifecycle:true,hostOwnedOperations:true,operationJournalVersion:1,notificationVersion:1,maxConcurrentOperations:this.maxConcurrentOperations,pageDrafts:true,playerIdentity:{schemaVersion:1,saveBundleVersion:4,macro:'{{user}}',frontendMacros:false},inspectionReadOnly:true,traceCoverage:'public_projection_with_authorized_private_diagnostics',availability:['not_recorded','not_called','accepted','running','pending','failed','cancelled','committed','completed','interrupted','unknown']};}
   mutationBusy(runId,job){return this.running.has(runId)||this.summaryRunning.has(runId)||this.chapterRunning.has(runId)||this.auxRunning.has(runId)||this.jobs.active.has(runId)&&this.jobs.active.get(runId)!==job;}
   assertMutationAvailable(runId,job){
     if(this.closing)fail('HOST_CLOSING','Host is closing.');
@@ -132,9 +136,28 @@ export class SceanHost {
       throw error;
     }finally{this.globalSettingsUpdating=false;}
   }
-  async createRun({snapshot,initialState,runId,openingId,modelSelection,stageModelSelections}={}){
+  async playerDefaultsAction(request,signal,authority){
+    if(!authority.principal||authority.allowGlobalSettings!==true)fail('PLAYER_SETTINGS_DENIED','只有已驗證的舞臺操作者可設定預設主角名稱。');
+    const current=this.metadata.playerDefaults;
+    if(request.action==='playerDefaults')return plain(current);
+    if(this.closing)fail('HOST_CLOSING','Host 正在關閉。');
+    const name=request.name===null?null:playerName(request.name);safeId(request.operationId);
+    const fingerprint=hash({name,expectedRevision:request.expectedRevision,operationId:request.operationId});
+    if(current.operationId===request.operationId){if(current.fingerprint!==fingerprint)fail('IDEMPOTENCY_CONFLICT','請保留原設定重試。');return plain(current);}
+    if(this.playerDefaultsBusy)fail('PLAYER_SETTINGS_BUSY','主角設定正在保存。');
+    if(request.expectedRevision!==current.revision)fail('VERSION_CONFLICT','主角預設已更新，請重新讀取。');
+    signal?.throwIfAborted();this.playerDefaultsBusy=true;
+    const next={schemaVersion:1,revision:current.revision+1,name,operationId:request.operationId,fingerprint};
+    this.metadata.playerDefaults=next;
+    try{await this.persist();return plain(next);}
+    catch(error){let actual;try{actual=JSON.parse(await readFile(join(this.root,'host.json'),'utf8')).playerDefaults;}catch{}
+      if(actual?.fingerprint===fingerprint)return plain(next);
+      this.metadata.playerDefaults=current;throw error;
+    }finally{this.playerDefaultsBusy=false;}
+  }
+  async createRun({snapshot,initialState,runId,openingId,modelSelection,stageModelSelections,playerName}={}){
     if(!snapshot||snapshot.schemaVersion!==1)fail('SNAPSHOT','A saved schemaVersion 1 snapshot is required.');
-    const run=await this.engine.createRun({snapshot:plain(snapshot),initialState:initialState??{world:{},characters:{}},...(runId?{runId}:{}),...(openingId!==undefined?{openingId}:{}),...(modelSelection!==undefined?{modelSelection}:{}),...(stageModelSelections!==undefined?{stageModelSelections}:{})});
+    const run=await this.engine.createRun({snapshot:plain(snapshot),initialState:initialState??{world:{},characters:{}},...(runId?{runId}:{}),...(openingId!==undefined?{openingId}:{}),...(modelSelection!==undefined?{modelSelection}:{}),...(stageModelSelections!==undefined?{stageModelSelections}:{}),...(playerName!==undefined?{playerName}:{})});
     const id=run.runId??run.id;
     if(!id)fail('CORE_CONTRACT','Core did not return a run identity.');
     if(!this.metadata.runs.some(r=>r.runId===id))this.metadata.runs.push({runId:id,cardId:snapshot.cardId,revision:snapshot.revision,createdAt:new Date(this.now()).toISOString()});
@@ -461,12 +484,11 @@ export class SceanHost {
     return {...run,playerHistoryView:playerHistoryForView(run.playerHistory??[],{runId:run.runId,audience:'player-history'}),diagnostics:{scope:'operator-private',expiresAt:row.expiresAt,sharedExportAllowed:false}};
   }
   diagnosticsRevoke(request,authority){this.diagnosticGrantRow(request,authority);this.diagnosticGrants.delete(request.grantToken);return {runId:request.runId,revoked:true};}
-  async startFromStudio({snapshot,authoringSessionId,generation,initialState,signal}){
+  async startFromStudio({snapshot,authoringSessionId,generation,initialState,playerName,signal}){
     signal?.throwIfAborted();this.validateOwner(authoringSessionId,generation);
-    const selected=Object.hasOwn(snapshot,'opening');
     snapshot=normalizeStudioHandoffSnapshot(snapshot);
-    if(!selected&&snapshot.card?.data&&snapshotCardScope(snapshot))return this.openings.prepare({snapshot,authoringSessionId,generation,initialState,signal});
-    const created=await this.createRun({snapshot,initialState});
+    if(playerName===undefined&&snapshot.card?.data&&snapshotCardScope(snapshot))return this.openings.prepare({snapshot,authoringSessionId,generation,initialState,signal});
+    const created=await this.createRun({snapshot,initialState,...(playerName!==undefined?{playerName}:{})});
     const binding=this.issueBinding(created.runId,authoringSessionId,generation);
     await this.persist();return {runId:created.runId,binding};
   }
@@ -490,6 +512,7 @@ export class SceanHost {
   async request(request,signal,authority={}){
     try{
       signal?.throwIfAborted();
+      if(['playerDefaults','playerDefaultsSave'].includes(request.action))return {ok:true,value:await this.playerDefaultsAction(request,signal,authority)};
       if(CHAPTER_SETTINGS_ACTIONS.has(request.action))return {ok:true,value:await this.chapterProviderAction(request,signal,authority)};
       let value;
       let scope;
@@ -518,6 +541,7 @@ export class SceanHost {
         case 'openingPrepare':case 'openingOffer':case 'openingStart':case 'openingCancel':
           if(!authority.requireCardScope||!scope)fail('CARD_CONTEXT_REQUIRED','選開場需要目前對話已選取的 Studio 卡片。');
           value=request.action==='openingPrepare'?await this.openings.reopen(request,scope,()=>authority.resolveCardScope(request.sessionId),signal):request.action==='openingOffer'?this.openings.get(scope):request.action==='openingCancel'?this.openings.cancel(request,scope):await this.openings.start(request,scope,()=>authority.resolveCardScope(request.sessionId),signal);break;
+        case 'playerBind':value=await this.auxiliaryMutation(request,()=>bindPlayerIdentity(this.engine,{...request,signal}));await this.refreshRuns();break;
         case 'progress':value=await this.progress(request.runId);break;
         case 'operationSubmit':value=await this.jobs.submit(request,signal);break;
         case 'operationStatus':value=await this.jobs.status(request);break;

@@ -14,7 +14,8 @@ test('W01 official rc2 SDK discovers dynamic tool, executes two themes, saves re
  host.ctx.provide('agentDefaultModel',{currentSelection:()=>({provider:'synthetic',model:'offline'})});
  host.ctx.provide('llm',{async resolveModelInfo(){return {};},async *stream(){calls++;throw Error('MODEL_FORBIDDEN');}});
  const runtime=join(home,'synthetic-scean');await host.ctx.plugin(sceanPlugin,{dataRoot:runtime,enableExistingEmbedding:false});
- const workspace=host.registry.list()[0].path,agent=host.agent('w01-sdk-session',workspace),bridge=host.ctx.get('cardstudioSceanBridge');
+ const originalStart=host.ctx.scean.startFromStudio.bind(host.ctx.scean);host.ctx.scean.startFromStudio=r=>originalStart({...r,playerName:'Synthetic player'});
+  const workspace=host.registry.list()[0].path,agent=host.agent('w01-sdk-session',workspace),bridge=host.ctx.get('cardstudioSceanBridge');
  const request=r=>bridge.request(agent,r,new AbortController().signal);const claim=(await request({action:'acquire',page_id:'w01-sdk-human-page'})).value;
  const tool=host.ctx.tools.get('cardstudio_scean_frontend',agent);assert(tool,'registered official tool');
  const execute=async args=>{const r=await tool.execute(args,{agent,signal:new AbortController().signal});assert(r.ok,JSON.stringify(r));return r.value;};

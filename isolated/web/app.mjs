@@ -1,3 +1,4 @@
+import {mountPlayerIdentity} from './player-identity-ui.mjs';
 import {mountCardFrontend} from './card-frontend.mjs';
 import { SelectionEpoch, OperationOwnership, PrivateDiagnosticsSession, generationAvailability, interactiveEnableRequest, progressText, titleOf, requestForInput, shouldSubmit, committedMessages, worldLabels, valueText, blueprintStateRows, activeDraftReceipt } from './view-model.mjs';
 import { mountStudio } from './studio.mjs';
@@ -40,6 +41,7 @@ const state = { token:null, mode:null, generationBlocked:false, interactive:null
 const globalChapterSettings=mountChapterSettings({secureContext:secureClient,request:(action,payload,signal)=>api(action,payload,signal),onSaved:()=>{if(view.runId)void refreshChapters();}});
 const openingSelection=mountOpeningSelection({enabled:!!native,request:(action,payload)=>api(action,payload),onCreated:async result=>{await refreshRuns();await selectRun(result.runId);shell.committed();},onOffer:()=>shell.show('library'),openStudio:()=>native.openStudio()});
 
+const playerIdentity=mountPlayerIdentity({request:(action,payload)=>api(action,payload),onBound:async()=>{await reconcile();await refreshRuns();}});
 function node(tag, text, className) { const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(className)e.className=className;return e; }
 function setError(id,error) { const el=$(id);el.textContent=error ? `${error.message ?? '操作未完成。'}${error.code ? `（${error.category ? error.category+' / ':''}${error.code}）` : ''}` : '';el.hidden=!error; }
 function connection(ok){if(!ok)cardFrontend.heartbeat(false);state.disconnected=!ok;$('connection').textContent=ok?(native?'舞台已連線':'本機隔離環境已連線'):'連線中斷 · 可重新查詢';}
@@ -130,6 +132,7 @@ async function refreshRuns(){
   for(const row of [...rows].reverse()) {
     const button=node('button',state.catalog.find(c=>c.id===row.cardId)?.title??row.title??row.cardId??row.runId);
     button.type='button';button.dataset.runId=row.runId;button.setAttribute('aria-current',String(view.runId===row.runId));
+    if(row.playerName)button.append(node('small','主角：'+row.playerName));
     button.append(node('small',`${row.revision??'—'} · ${row.runId}`));
     button.addEventListener('click',()=>selectRun(row.runId).catch(e=>setError('turn-error',e)));$('runs').append(button);
   }
@@ -165,7 +168,8 @@ async function syncNativeContext(runId){
   if(scope&&await openingSelection.refresh()&&serial===nativeContextSerial)shell.show('library');
 }
 function controls(){
-  const hasRun=!!state.run, busy=state.pending||state.submitting||historyBusy||backupBusy;
+  const hasRun=!!state.run, busy=state.pending||state.submitting||historyBusy||backupBusy||playerIdentity.isBusy();
+  playerIdentity.update(state.run,state.pending||state.submitting||historyBusy||backupBusy);
   $('input').disabled=!hasRun||busy;
   $('send').disabled=!hasRun||busy||state.generationBlocked||!$('input').value.trim();
   $('cancel').hidden=!state.pending;$('cancel').disabled=!operations.target(view.runId);
@@ -767,7 +771,7 @@ $('interactive-enable').addEventListener('click',async()=>{
 $('create-form').addEventListener('submit',async e=>{
   e.preventDefault();$('create').disabled=true;setError('create-error',null);
   try{
-    const created=await api('create',{cardId:card().id,revisionId:revision().id??revision().revision,openingId:opening().id});
+    const created=await api('create',{cardId:card().id,revisionId:revision().id??revision().revision,openingId:opening().id,playerName:$('create-player-name').value});
     await refreshRuns();await selectRun(created.runId);
     if(matchMedia('(max-width:650px)').matches)$('setup').open=false;
     shell.committed();
@@ -805,7 +809,7 @@ async function init(){
     else{const response=await fetch('/api/bootstrap',{credentials:'same-origin'});if(!response.ok)throw new Error('無法讀取隔離環境。');boot=await response.json();}
     adoptNativeViewer(boot.viewerId);state.token=boot.csrfToken;if(!native&&!state.token)throw new Error('缺少本機連線授權。');
     state.mode=String(boot.mode??'unknown');updateModels({...boot.models,interactive:boot.models?.interactive??boot.interactive});
-    void globalChapterSettings.refresh();
+    void globalChapterSettings.refresh();void playerIdentity.refreshDefaults();
     $('data-source').textContent=`資料：${boot.dataRootLabel??'隔離資料目錄'}。`;
     const catalog=await api('catalog');state.catalog=catalog.cards??[];renderCards();
     try{await refreshModels();}
@@ -821,7 +825,7 @@ async function init(){
     connection(true);void notifications?.refresh();setInterval(()=>void poll(),650);
   }catch(error){connection(false);setError('create-error',error);$('mode-banner').textContent='環境尚未就緒，請確認隔離啟動視窗中的狀態，再重新整理。';}
 }
-if(native){$('studio-open').textContent='從 Studio 交接已保存卡片';$('studio-open').addEventListener('click',()=>native.openStudio());}
+if(native){$('create-player-name').hidden=true;document.querySelector('label[for="create-player-name"]').hidden=true;$('studio-open').textContent='從 Studio 交接已保存卡片';$('studio-open').addEventListener('click',()=>native.openStudio());}
 else mountStudio({api,onRunCreated:async result=>{await refreshRuns();await selectRun(result.runId);shell.committed();}});
 $('banlist-input').addEventListener('input',()=>{banListDirty=true;});
 $('banlist-form').addEventListener('submit',async event=>{event.preventDefault();if($('banlist-save').disabled||!state.run)return;const selected=view.capture();banListBusy=true;controls();$('banlist-status').textContent='正在保存…';try{await api('banList',{runId:selected.runId,expectedVersion:state.run.version,banList:$('banlist-input').value.split('\n').map(s=>s.trim()).filter(Boolean)});if(view.current(selected)){banListDirty=false;await reconcile();$('banlist-status').textContent='已保存；往後回合使用目前 BanList。';}}catch(error){if(view.current(selected))$('banlist-status').textContent='未保存：'+error.message;}finally{banListBusy=false;controls();}});

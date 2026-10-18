@@ -39,6 +39,7 @@ test('W01 Studio real tools: Blueprint + frontend same revision, preview, local 
  const preview=await f.ok('frontend',{action:'dynamic_preview',document_id:id});assert(preview.html.includes('scean-true'));assert.equal(preview.source,'authoring-initial-state-not-runtime');
  const saved2=await f.ok('frontend',{action:'dynamic_patch',document_id:id,expected_revision:1,expected_source_hash:current.frontend.hash,field:'html',old_text:'四條件合成觀測站',new_text:'作者確認的觀測站'});assert.equal(saved2.revision,2);
  const stale=await f.call('frontend',{action:'dynamic_save',document_id:id,expected_revision:1,frontend:fixtureCard.frontend});assert.equal(stale.error.code,'REVISION_CONFLICT');
+ const originalStart=f.host.startFromStudio.bind(f.host);f.host.startFromStudio=r=>originalStart({...r,playerName:'Synthetic player'});
  const start=createSceanControl(f.loader,()=>f.host),result=await start(f.agent,{claim:f.claim,mode:'start',document_id:id,expected_revision:2});
  const runId=result.runId??result.value?.runId;assert(runId,JSON.stringify(result));
  const scope=await resolveSceanCardContext(f.loader,f.agent.id),authority={requireCardScope:true,resolveCardScope:()=>resolveSceanCardContext(f.loader,f.agent.id),principal:'synthetic'};
