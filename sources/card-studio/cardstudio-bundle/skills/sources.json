@@ -1,0 +1,238 @@
+[
+  {
+    "skill": "advanced-tavern-card-authoring",
+    "destination": "references/authoring-workflows.md",
+    "originalSha256": "20b1d8db34eed14f49c9282668efe441c2fc9465280c38e4e555ca50e8c73775",
+    "role": "independently-authored",
+    "source": "CardStudio v0.1.4-alpha.1; primary citations in references/primary-sources.md",
+    "license": "MIT (this skill only)"
+  },
+  {
+    "skill": "advanced-tavern-card-authoring",
+    "destination": "references/frontend-and-fixtures.md",
+    "originalSha256": "19bb6f54e1968d1146160ab2b073898f6e54a2e29e6ffcfcccf2d0b4f042aa99",
+    "role": "independently-authored",
+    "source": "CardStudio v0.1.4-alpha.1; primary citations in references/primary-sources.md",
+    "license": "MIT (this skill only)"
+  },
+  {
+    "skill": "advanced-tavern-card-authoring",
+    "destination": "references/primary-sources.md",
+    "originalSha256": "28df181eee6cc5a2e1ecdc7c386474c29e3f77cdaf447509b5dac01d5991d2bb",
+    "role": "independently-authored",
+    "source": "CardStudio v0.1.4-alpha.1; primary citations in references/primary-sources.md",
+    "license": "MIT (this skill only)"
+  },
+  {
+    "skill": "advanced-tavern-card-authoring",
+    "destination": "references/runtime-and-dependencies.md",
+    "originalSha256": "b89fa4a9f02a01540030f44f384381f8f6e7af5c305aae1f4ab71acf9ec4df7b",
+    "role": "independently-authored",
+    "source": "CardStudio v0.1.4-alpha.1; primary citations in references/primary-sources.md",
+    "license": "MIT (this skill only)"
+  },
+  {
+    "skill": "advanced-tavern-card-authoring",
+    "destination": "references/validation-and-lifecycle.md",
+    "originalSha256": "a035f66bf93b57336543bd8ecb5351dd17c6a62534e98e5f3876d6669a9ab92b",
+    "role": "independently-authored",
+    "source": "CardStudio 0.1.8 creative diagnostics; preserved primary citations",
+    "license": "MIT (this skill only)"
+  },
+  {
+    "skill": "advanced-tavern-card-authoring",
+    "destination": "references/visual-state-and-assets.md",
+    "originalSha256": "60b8296fbfffde23145060d6ae777c80756f7fca80f68c9abe0ed09ba22907c0",
+    "role": "independently-authored",
+    "source": "CardStudio v0.1.4-alpha.1; primary citations in references/primary-sources.md",
+    "license": "MIT (this skill only)"
+  },
+  {
+    "skill": "advanced-tavern-card-authoring",
+    "destination": "SKILL.md",
+    "originalSha256": "fdf1b7e82c961d3959c014cbe0503308f38ce0814c95d97322768cb0d179b78a",
+    "role": "independently-authored",
+    "source": "CardStudio 0.1.8 creative diagnostics; preserved primary citations",
+    "license": "MIT (this skill only)",
+    "currentSha256": "85aef56a4683e5cebf33f6573cab83f283de28ddf2e68979883b5ba090c24638",
+    "adaptation": "Native Skill routing only; original source hash retained."
+  },
+  {
+    "skill": "advanced-tavern-card-authoring",
+    "destination": "SOURCE.txt",
+    "originalSha256": "3520ff0e4de48a960b4505285107db22eb1824353658aad3107d941f39862b46",
+    "role": "independently-authored",
+    "source": "CardStudio v0.1.4-alpha.1; primary citations in references/primary-sources.md",
+    "license": "MIT (this skill only)"
+  },
+  {
+    "skill": "advanced-tavern-card-authoring",
+    "destination": "references/tauritavern-target.md",
+    "originalSha256": "3ab859b77f578b9ac88e85f33222be3cd863b9033d4711e40c6590891d96e553",
+    "role": "independently-authored",
+    "source": "CardStudio 0.1.6-library.1 authoring-r4; preserved primary citations",
+    "license": "MIT (this skill only)"
+  },
+  {
+    "skill": "advanced-tavern-card-authoring",
+    "destination": "references/worldbook-conditions.md",
+    "role": "independently-authored",
+    "source": "CardStudio 0.1.6-library.1 authoring-r4; preserved primary citations",
+    "license": "MIT (this skill only)",
+    "originalSha256": "854ccb7613c8baad0db07eb7a97dbc25c3b781d5cdfd367afeeae41589532fa6"
+  },
+  {
+    "skill": "character-authoring",
+    "role": "source",
+    "destination": "ORIGINAL-SKILL.md",
+    "originalSha256": "64a36965d4bf19dd258f4d9b254ebc3cbece9f46e78a6e20ab4cbb30300a3eae",
+    "source": "user upload: character-authoring-alpha1.zip"
+  },
+  {
+    "skill": "character-authoring",
+    "role": "reference",
+    "destination": "references/person-design.md",
+    "originalSha256": "aabee204819dc074f22a0e870a70dd89e987552eb378daf5b64f0961d42c7e4a",
+    "source": "user upload: character-authoring-alpha1.zip"
+  },
+  {
+    "skill": "character-authoring",
+    "role": "reference",
+    "destination": "references/review-and-delivery.md",
+    "originalSha256": "4d7c0f1ad2f42e59a6b7f2b743ee99a1e1a76c4dade1a504a28ed60627ed856d",
+    "source": "user upload: character-authoring-alpha1.zip"
+  },
+  {
+    "skill": "character-authoring",
+    "role": "reference",
+    "destination": "references/social-and-situational.md",
+    "originalSha256": "5f701eab809dd18beb1205caf4de1ca26b2cf6a769912fd520bd2a6d91de431a",
+    "source": "user upload: character-authoring-alpha1.zip"
+  },
+  {
+    "skill": "scean-worldbook-authoring",
+    "destination": "references/runtime-contract.md",
+    "originalSha256": "07e37cb2ddc3b2cb337206d5a8df443438dddc23c27fbdb2b17d452f981da3fc",
+    "role": "independently-authored",
+    "status": "active",
+    "source": "SCEAN implementation contracts at 32f8630fbb0f3ecfa0a393bd9be8004ac3759082; see scean-worldbook-authoring/SOURCE.json",
+    "authorship": "Original instructions, examples and organization; no retired foreign text ported."
+  },
+  {
+    "skill": "scean-worldbook-authoring",
+    "destination": "references/studio-workflow.md",
+    "originalSha256": "37257cff085ea9c656c70831725deda4462fefa1054ed6ade1e71d2ae8c5a881",
+    "role": "independently-authored",
+    "status": "active",
+    "source": "SCEAN implementation contracts at 32f8630fbb0f3ecfa0a393bd9be8004ac3759082; see scean-worldbook-authoring/SOURCE.json",
+    "authorship": "Original instructions, examples and organization; no retired foreign text ported."
+  },
+  {
+    "skill": "scean-worldbook-authoring",
+    "destination": "SKILL.md",
+    "originalSha256": "6c4a4fc11f52dde62c39349bb64c3c2192b29f68752c4ff1c0e2dd310dda5978",
+    "role": "independently-authored",
+    "status": "active",
+    "source": "SCEAN implementation contracts at 32f8630fbb0f3ecfa0a393bd9be8004ac3759082; see scean-worldbook-authoring/SOURCE.json",
+    "authorship": "Original instructions, examples and organization; no retired foreign text ported."
+  },
+  {
+    "skill": "scean-worldbook-authoring",
+    "destination": "SOURCE.json",
+    "originalSha256": "b3f62e3af0e5552ed6ab426af4d77d22fcde5dc32ff07a66a822f83a2aa1559d",
+    "role": "independently-authored",
+    "status": "active",
+    "source": "SCEAN implementation contracts at 32f8630fbb0f3ecfa0a393bd9be8004ac3759082; see scean-worldbook-authoring/SOURCE.json",
+    "authorship": "Original instructions, examples and organization; no retired foreign text ported."
+  },
+  {
+    "skill": "scean-dialogue-authoring",
+    "destination": "references/editing-workflow.md",
+    "originalSha256": "b2167936c4144239c067f6022fb0dd9250259ba6e8da4d307c950b92c60794ac",
+    "role": "independently-authored",
+    "status": "active",
+    "source": "SCEAN implementation contracts at 32f8630fbb0f3ecfa0a393bd9be8004ac3759082; see scean-dialogue-authoring/SOURCE.json",
+    "authorship": "Original instructions, examples and organization; no retired foreign text ported."
+  },
+  {
+    "skill": "scean-dialogue-authoring",
+    "destination": "references/prompt-contracts.md",
+    "originalSha256": "1ef8493f39dd1751af0af102fb15c7cbc89835fdddde4c3c10e72d5883982670",
+    "role": "independently-authored",
+    "status": "active",
+    "source": "SCEAN implementation contracts at 32f8630fbb0f3ecfa0a393bd9be8004ac3759082; see scean-dialogue-authoring/SOURCE.json",
+    "authorship": "Original instructions, examples and organization; no retired foreign text ported."
+  },
+  {
+    "skill": "scean-dialogue-authoring",
+    "destination": "SKILL.md",
+    "originalSha256": "ad11f844cb306d64411436295ff040fd2593dd43919108d8eca53debe7b99824",
+    "role": "independently-authored",
+    "status": "active",
+    "source": "SCEAN implementation contracts at 32f8630fbb0f3ecfa0a393bd9be8004ac3759082; see scean-dialogue-authoring/SOURCE.json",
+    "authorship": "Original instructions, examples and organization; no retired foreign text ported."
+  },
+  {
+    "skill": "scean-dialogue-authoring",
+    "destination": "SOURCE.json",
+    "originalSha256": "2a3f7674fa36d70f624fd43f3aad27e22deabd58324fde8dab925e6b56eeeba1",
+    "role": "independently-authored",
+    "status": "active",
+    "source": "SCEAN implementation contracts at 32f8630fbb0f3ecfa0a393bd9be8004ac3759082; see scean-dialogue-authoring/SOURCE.json",
+    "authorship": "Original instructions, examples and organization; no retired foreign text ported."
+  },
+  {
+    "skill": "scean-frontend-authoring",
+    "destination": "references/contracts.md",
+    "originalSha256": "39adef43457d636d7112e371768a67c2a41c9615af2f170213caa5f48ea59401",
+    "role": "independently-authored",
+    "status": "active",
+    "source": "SCEAN implementation contracts at 32f8630fbb0f3ecfa0a393bd9be8004ac3759082; see scean-frontend-authoring/SOURCE.json",
+    "authorship": "Original instructions, examples and organization; no retired foreign text ported."
+  },
+  {
+    "skill": "scean-frontend-authoring",
+    "destination": "references/synthetic-acceptance.md",
+    "originalSha256": "ba42fea934e0ba38c2fbb3b275168d2773589bc5b517e65ebf5e70438580a8d8",
+    "role": "independently-authored",
+    "status": "active",
+    "source": "SCEAN implementation contracts at 32f8630fbb0f3ecfa0a393bd9be8004ac3759082; see scean-frontend-authoring/SOURCE.json",
+    "authorship": "Original instructions, examples and organization; no retired foreign text ported."
+  },
+  {
+    "skill": "scean-frontend-authoring",
+    "destination": "references/tools-and-lifecycle.md",
+    "originalSha256": "40e25127af9582718d406681b484f106538361e756bee7daa5f23cc5f40e33fc",
+    "role": "independently-authored",
+    "status": "active",
+    "source": "SCEAN implementation contracts at 32f8630fbb0f3ecfa0a393bd9be8004ac3759082; see scean-frontend-authoring/SOURCE.json",
+    "authorship": "Original instructions, examples and organization; no retired foreign text ported."
+  },
+  {
+    "skill": "scean-frontend-authoring",
+    "destination": "SKILL.md",
+    "originalSha256": "0b003dea18b0cc6ae5756490ba6fae2583e4126f26d975a08c75de9609e19534",
+    "role": "independently-authored",
+    "status": "active",
+    "source": "SCEAN implementation contracts at 32f8630fbb0f3ecfa0a393bd9be8004ac3759082; see scean-frontend-authoring/SOURCE.json",
+    "authorship": "Original instructions, examples and organization; no retired foreign text ported."
+  },
+  {
+    "skill": "scean-frontend-authoring",
+    "destination": "SOURCE.json",
+    "originalSha256": "36611dcb93f91a7c1015b601eb0448787dbf0efd8abb467ee14b1409f2315001",
+    "role": "independently-authored",
+    "status": "active",
+    "source": "SCEAN implementation contracts at 32f8630fbb0f3ecfa0a393bd9be8004ac3759082; see scean-frontend-authoring/SOURCE.json",
+    "authorship": "Original instructions, examples and organization; no retired foreign text ported."
+  },
+  {
+    "skill": "scean-opening-authoring",
+    "destination": "SKILL.md",
+    "role": "native-guidance",
+    "source": "User-provided opening-authoring specification",
+    "specificationSha256": "f08bf582c42483e6d0883a6df13f635afdc6d7fe4479e436478c9a7da9ac9e23",
+    "status": "active-native",
+    "version": "1.0.0"
+  }
+]

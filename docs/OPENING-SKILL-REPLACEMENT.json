@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 2,
+  "status": "integrated-user-provided-specification",
+  "active": true,
+  "skill": "scean-opening-authoring",
+  "version": "1.0.0",
+  "sourceSha256": "f08bf582c42483e6d0883a6df13f635afdc6d7fe4479e436478c9a7da9ac9e23",
+  "sourceBytes": 23528,
+  "oldWithheldSkill": "opening-narrative-crafter",
+  "oldSkillStillBlocked": true,
+  "savedOpeningSelection": "retained",
+  "runtimeSemanticQuality": "NOT_TESTED",
+  "projectLicenseSelected": true,
+  "projectLicense": "AGPL-3.0-only"
+}

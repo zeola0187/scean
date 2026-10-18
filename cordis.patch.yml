@@ -1,0 +1,7 @@
+- insert:
+    - id: local-scean-host
+      name: ./packages/scean/plugin/index.js
+      config: {}
+    - id: local-cardstudio-scean-workspace-loader
+      name: ./packages/studio/index.js
+      config: {}

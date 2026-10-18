@@ -1,0 +1,73 @@
+{
+  "name": "@local/dsh-scean",
+  "version": "1.4.0",
+  "private": true,
+  "type": "module",
+  "description": "SCEAN Runtime: automatic chapters, 3+8 hybrid chapter context and complete authorized packets",
+  "exports": {
+    ".": "./plugin/index.js",
+    "./client": "./plugin/client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "authoring/compatibility-audit.mjs",
+    "authoring/frontend-*.mjs",
+    "authoring/skills/scean-compatibility-audit",
+    "plugin",
+    "core",
+    "adapters",
+    "licenses",
+    "isolated",
+    "fixtures/synthetic-*",
+    "README.md",
+    "LICENSE",
+    "COPYRIGHT",
+    "LICENSE-SCOPE.md",
+    "THIRD-PARTY-LICENSES.json",
+    "SOURCE-AVAILABILITY.md",
+    "release-source.json",
+    "THIRD-PARTY-NOTICES.md"
+  ],
+  "engines": {
+    "node": ">=24",
+    "dsh": "0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2"
+  },
+  "os": [
+    "win32"
+  ],
+  "peerDependencies": {
+    "@deepseek-ai/dsh-typert-protocol": "0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2",
+    "@deepseek-ai/dsh-home-paths": "0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-typert-protocol": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-home-paths": {
+      "optional": true
+    }
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./plugin/cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-workspace",
+        "@deepseek-ai/dsh-client-ui-commands"
+      ]
+    }
+  },
+  "license": "AGPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zeola0187/scean.git"
+  },
+  "homepage": "https://github.com/zeola0187/scean",
+  "bugs": {
+    "url": "https://github.com/zeola0187/scean/issues"
+  }
+}

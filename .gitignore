@@ -1,0 +1,26 @@
+node_modules/
+build-suite-source/
+build-suite-source-*/
+.test-runtime/
+.test-data/
+evidence/
+dist/
+*.log
+.env*
+.credentials*
+profiles/
+profile-data/
+.playable-data/
+.playable-sdk/
+.isolated-data/
+playwright-report/
+test-results/
+temp/
+__pycache__/
+*.pyc
+*.pid
+!docs/character-agent-v1/evidence/
+
+# Regenerated compatibility imports for offline tests
+authoring/.integration/
+studio/

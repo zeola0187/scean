@@ -1,0 +1,551 @@
+{
+  "schemaVersion": 1,
+  "skillVersion": "1.0.0",
+  "runtimeVersion": "0.8.2-poststat-scope",
+  "runtimeCommit": "45ff63fd8c75f05c010cf4092d08e94dd3cf7ee4",
+  "studioVersion": "1.2.0-scean.2",
+  "desktopVersion": "0.2.0-rc.2",
+  "claimsScope": "structure/data-path proof; no true-model semantic acceptance",
+  "capabilities": [
+    {
+      "id": "snapshot",
+      "classification": "runtime_executable",
+      "contract": "固定 revision/hash；新 Run 凍結，舊 Run 不熱更新",
+      "source": {
+        "path": "core/contracts.mjs",
+        "line": 41,
+        "symbol": "validateSnapshot",
+        "sha256": "72cb04dc3009765a97ade2b99fabaff1f8c9811bd0fda68e8f5000d1ec24b487"
+      },
+      "tests": [
+        {
+          "path": "tests/studio-bridge.test.mjs",
+          "case": "real Studio saved revisions",
+          "layer": "L2"
+        }
+      ]
+    },
+    {
+      "id": "pipeline",
+      "classification": "runtime_executable",
+      "contract": "Director→Draft→Prose→Post-Stat 單一提交；CR/前 Stat 按需",
+      "source": {
+        "path": "core/engine.mjs",
+        "line": 184,
+        "symbol": "async turn",
+        "sha256": "252b762256bad48095759e6bd076980b50c517248e653ee40a8d5cae2e107124"
+      },
+      "tests": [
+        {
+          "path": "tests/core.test.mjs",
+          "case": "existing regression file; see evidence/regression.tap",
+          "layer": "L2"
+        }
+      ]
+    },
+    {
+      "id": "owner-context",
+      "classification": "runtime_executable",
+      "contract": "本人完整背景、ownState、owner recall；其他人僅身分",
+      "source": {
+        "path": "core/engine.mjs",
+        "line": 330,
+        "symbol": "ownerPacket",
+        "sha256": "252b762256bad48095759e6bd076980b50c517248e653ee40a8d5cae2e107124"
+      },
+      "tests": [
+        {
+          "path": "tests/a1-character-context.test.mjs",
+          "case": "existing regression file; see evidence/regression.tap",
+          "layer": "L2"
+        }
+      ]
+    },
+    {
+      "id": "cr-projection",
+      "classification": "runtime_executable",
+      "contract": "刪除 withheld/internal，保留公開意圖與發言；非語義防洩密",
+      "source": {
+        "path": "core/character-advice.mjs",
+        "line": 22,
+        "symbol": "projectCharacterAdvice",
+        "sha256": "57855fbdaa74187474ec7fb3fb6a87d8df1b3a78805ad5ca5ed2533c5148d066"
+      },
+      "tests": [
+        {
+          "path": "tests/a1-character-context.test.mjs",
+          "case": "existing regression file; see evidence/regression.tap",
+          "layer": "L2"
+        }
+      ]
+    },
+    {
+      "id": "memory-acl",
+      "classification": "runtime_executable",
+      "contract": "ACL 先於 embedding/DF/ranking；known_event/private 僅 owner",
+      "source": {
+        "path": "core/memory.mjs",
+        "line": 197,
+        "symbol": "function scopedRecords",
+        "sha256": "b891e609a721181a01f318dddee4cb90e0c0cca06f20e677fdd1b64a285a5097"
+      },
+      "tests": [
+        {
+          "path": "tests/a1-memory.test.mjs",
+          "case": "existing regression file; see evidence/regression.tap",
+          "layer": "L2"
+        }
+      ]
+    },
+    {
+      "id": "memory-policy",
+      "classification": "runtime_executable",
+      "contract": "knowers、權限與真假分開；playerHistory 不注入 NPC",
+      "source": {
+        "path": "core/memory-policy.mjs",
+        "line": 14,
+        "symbol": "validateMemoryPolicy",
+        "sha256": "ef814c26b9e3353c1d89892947a75ff9eb1bb8f70d669f964b019820ef0d819d"
+      },
+      "tests": [
+        {
+          "path": "tests/a1-integration.test.mjs",
+          "case": "existing regression file; see evidence/regression.tap",
+          "layer": "L2"
+        }
+      ]
+    },
+    {
+      "id": "typed-state",
+      "classification": "runtime_executable",
+      "contract": "Blueprint型別、範圍、enum、visibility、readOnly；缺值未知",
+      "source": {
+        "path": "core/state-blueprint.mjs",
+        "line": 47,
+        "symbol": "validateBlueprint",
+        "sha256": "1686bc3e2c950ce9895b73023088c3ba33bae7ec41d2dbba3533290cfb592e90"
+      },
+      "tests": [
+        {
+          "path": "tests/b-state-blueprint.test.mjs",
+          "case": "existing regression file; see evidence/regression.tap",
+          "layer": "L2"
+        }
+      ]
+    },
+    {
+      "id": "initial-state",
+      "classification": "runtime_executable",
+      "contract": "來源版本化 InitialState 物化，restricted wrapper",
+      "source": {
+        "path": "core/state-blueprint.mjs",
+        "line": 110,
+        "symbol": "materializeInitialState",
+        "sha256": "1686bc3e2c950ce9895b73023088c3ba33bae7ec41d2dbba3533290cfb592e90"
+      },
+      "tests": [
+        {
+          "path": "tests/b-blueprint-integration.test.mjs",
+          "case": "existing regression file; see evidence/regression.tap",
+          "layer": "L2"
+        }
+      ]
+    },
+    {
+      "id": "stat-delta",
+      "classification": "runtime_executable",
+      "contract": "合法 scope/全key替換/未指定保留/公開delta不能改private",
+      "source": {
+        "path": "core/stat-contract.mjs",
+        "line": 59,
+        "symbol": "applyStatProposal",
+        "sha256": "6dccf809bfce83df3b37f37f31a30e8a53ac6eabf12d8527b38ef4e5fd24709b"
+      },
+      "tests": [
+        {
+          "path": "tests/stat-contract-r3.test.mjs",
+          "case": "existing regression file; see evidence/regression.tap",
+          "layer": "L2"
+        }
+      ]
+    },
+    {
+      "id": "atomic-commit",
+      "classification": "runtime_executable",
+      "contract": "正文/State/Memory/playerHistory/來源/receipt 一次原子提交",
+      "source": {
+        "path": "adapters/store.mjs",
+        "line": 77,
+        "symbol": "async commit",
+        "sha256": "48b888d37ac8a760f9955037091792cab9674522afba9bb8e19b502c34244e2e"
+      },
+      "tests": [
+        {
+          "path": "tests/core.test.mjs",
+          "case": "existing regression file; see evidence/regression.tap",
+          "layer": "L2"
+        }
+      ]
+    },
+    {
+      "id": "worldbook-literal",
+      "classification": "runtime_executable",
+      "contract": "literal/keyword/constant/scan 選擇；不執行正則或腳本",
+      "source": {
+        "path": "core/worldbook.mjs",
+        "line": 130,
+        "symbol": "selectWorldbooks",
+        "sha256": "9c65ec0d1574f5edb320e80bd090c49bfe19fb3c2d5709abe9b53558df5fe4b9"
+      },
+      "tests": [
+        {
+          "path": "tests/b-worldbook.test.mjs",
+          "case": "existing regression file; see evidence/regression.tap",
+          "layer": "L2"
+        }
+      ]
+    },
+    {
+      "id": "context-capacity",
+      "classification": "runtime_executable",
+      "contract": "按階段有界容量；必要核心超限拒絕",
+      "source": {
+        "path": "core/context-budget.mjs",
+        "line": 48,
+        "symbol": "budgetStage",
+        "sha256": "72f49a78a104e2ce396da38b032ca331fd59a413377992196612b2f0b07933ad"
+      },
+      "tests": [
+        {
+          "path": "tests/b-context-budget.test.mjs",
+          "case": "existing regression file; see evidence/regression.tap",
+          "layer": "L2"
+        }
+      ]
+    },
+    {
+      "id": "studio-handoff",
+      "classification": "runtime_executable",
+      "contract": "人類有效 lease/saved revision；nested state 欄位驗hash後提升",
+      "source": {
+        "path": "plugin/studio-handoff.mjs",
+        "line": 10,
+        "symbol": "normalizeStudioHandoffSnapshot",
+        "sha256": "773550c0ac4f81998e86335f17b588277a7ab26491180f56114775b67ebde17d"
+      },
+      "tests": [
+        {
+          "path": "tests/formal-handoff.test.mjs",
+          "case": "existing regression file; see evidence/regression.tap",
+          "layer": "L2"
+        }
+      ]
+    },
+    {
+      "id": "public-ui",
+      "classification": "runtime_executable",
+      "contract": "通用UI/Inspector公開投影，未知呈現；不是任意HTML runtime",
+      "source": {
+        "path": "core/inspection.mjs",
+        "line": 97,
+        "symbol": "publicInspection",
+        "sha256": "e6be0c1210c5f25606b698af4f21641bdfed34a00dfd4928fa5ee53ab6a2d402"
+      },
+      "tests": [
+        {
+          "path": "tests/b-inspector-privacy.test.mjs",
+          "case": "existing regression file; see evidence/regression.tap",
+          "layer": "L2"
+        }
+      ]
+    },
+    {
+      "id": "rollback-regen",
+      "classification": "runtime_executable",
+      "contract": "expectedVersion/head/operationId，候選成功才替換，失敗保留",
+      "source": {
+        "path": "core/regenerate.mjs",
+        "line": 5,
+        "symbol": "regenerateLast",
+        "sha256": "9d34cfbf02cc39dd7427cd30ebebb45219818ffd6a2099f00b54a69999aa9636"
+      },
+      "tests": [
+        {
+          "path": "tests/c-regenerate.test.mjs",
+          "case": "existing regression file; see evidence/regression.tap",
+          "layer": "L2"
+        }
+      ]
+    },
+    {
+      "id": "save",
+      "classification": "runtime_executable",
+      "contract": "有來源鏈及hash的保存／新Run匯入；私密資料需既有grant",
+      "source": {
+        "path": "core/save-bundle.mjs",
+        "line": 8,
+        "symbol": "export",
+        "sha256": "844896a425489603e0c4a8ddbffa5e439671fb035d70724baf0fee0ec1b01813"
+      },
+      "tests": [
+        {
+          "path": "tests/c-save.test.mjs",
+          "case": "existing regression file; see evidence/regression.tap",
+          "layer": "L2"
+        }
+      ]
+    },
+    {
+      "id": "derived-history",
+      "classification": "runtime_executable",
+      "contract": "章節/rollingSummary衍生；rollback失效，原文優先",
+      "source": {
+        "path": "core/narrative.mjs",
+        "line": 29,
+        "symbol": "invalidateNarrative",
+        "sha256": "6b57286f1536adf1508e6b2a02acbc7aa8579817273549a0204ef1677f210dd6"
+      },
+      "tests": [
+        {
+          "path": "tests/df-save.test.mjs",
+          "case": "existing regression file; see evidence/regression.tap",
+          "layer": "L2"
+        }
+      ]
+    },
+    {
+      "id": "story-rules",
+      "classification": "model_guidance",
+      "contract": "人物演繹、文風、因果、事件知情判斷靠模型",
+      "source": {
+        "path": "core/prompt-r3.mjs",
+        "line": 3,
+        "symbol": "withR3Prompts",
+        "sha256": "1495014716ff5e1a50a0e8ba26fa90df72fa91b863d6c979696aa542dc23e0bd"
+      },
+      "tests": [
+        {
+          "path": "tests/r3-handoffs.test.mjs",
+          "case": "existing regression file; see evidence/regression.tap",
+          "layer": "L2"
+        }
+      ]
+    },
+    {
+      "id": "semantic-secrecy",
+      "classification": "model_guidance",
+      "contract": "自由文字披露無語義保密保證，作者分域＋模型遵循",
+      "source": {
+        "path": "core/character-advice.mjs",
+        "line": 20,
+        "symbol": "Free text can paraphrase",
+        "sha256": "57855fbdaa74187474ec7fb3fb6a87d8df1b3a78805ad5ca5ed2533c5148d066"
+      },
+      "tests": [
+        {
+          "path": "authoring/tests/acceptance.test.mjs",
+          "case": "semantic disclosure remains a documented limitation",
+          "layer": "L1/L2"
+        }
+      ]
+    },
+    {
+      "id": "arbitrary-scripts",
+      "classification": "requires_host_ui",
+      "contract": "不執行任意 JS/EJS/MVU/TavernHelper/regex replacement",
+      "source": {
+        "path": "studio/cardstudio-bundle/lib/scean-integration.js",
+        "line": 30,
+        "symbol": "Card JavaScript",
+        "sha256": "4edefedf97cbfdeda4b251b9811912398bfcf08aff5a43172a279d870eb85400"
+      },
+      "tests": [
+        {
+          "path": "authoring/tests/acceptance.test.mjs",
+          "case": "script cannot become Host capability",
+          "layer": "L1/L2"
+        }
+      ]
+    },
+    {
+      "id": "deterministic-rules",
+      "classification": "requires_host_ui",
+      "contract": "沒有確定性骰子/消耗公式/時間排程/任意事件predicate",
+      "source": {
+        "path": "core/engine.mjs",
+        "line": 106,
+        "symbol": "no configured numerical dice runner",
+        "sha256": "252b762256bad48095759e6bd076980b50c517248e653ee40a8d5cae2e107124"
+      },
+      "tests": [
+        {
+          "path": "authoring/tests/acceptance.test.mjs",
+          "case": "script cannot become Host capability",
+          "layer": "L1/L2"
+        }
+      ]
+    },
+    {
+      "id": "custom-ui",
+      "classification": "requires_host_ui",
+      "contract": "專屬控制臺/地圖/操作按鈕需另實作Host/UI；本輪不做",
+      "source": {
+        "path": "plugin/player-native-bridge.mjs",
+        "line": 2,
+        "symbol": "export",
+        "sha256": "d3b890dccd81f954368ad04120a6c3510a764522cda132222d7c4bf2a3215f7d"
+      },
+      "tests": [
+        {
+          "path": "tests/milestone-a-ui.test.mjs",
+          "case": "existing regression file; see evidence/regression.tap",
+          "layer": "L2"
+        }
+      ]
+    },
+    {
+      "id": "owner-summary-writer",
+      "classification": "requires_host_ui",
+      "contract": "只有ownerSummaryContext契約，無產生及儲存流程",
+      "source": {
+        "path": "core/memory-policy.mjs",
+        "line": 136,
+        "symbol": "ownerSummaryContext",
+        "sha256": "ef814c26b9e3353c1d89892947a75ff9eb1bb8f70d669f964b019820ef0d819d"
+      },
+      "tests": [
+        {
+          "path": "tests/a1-memory.test.mjs",
+          "case": "existing regression file; see evidence/regression.tap",
+          "layer": "L2"
+        }
+      ]
+    },
+    {
+      "id": "missing-author-choice",
+      "classification": "author_decision",
+      "contract": "未定初值/公式/披露/性別等不可杜撰；ready必須解決",
+      "source": {
+        "path": "core/contracts.mjs",
+        "line": 44,
+        "symbol": "validateRoster",
+        "sha256": "72cb04dc3009765a97ade2b99fabaff1f8c9811bd0fda68e8f5000d1ec24b487"
+      },
+      "tests": [
+        {
+          "path": "authoring/tests/acceptance.test.mjs",
+          "case": "missing author decision blocks readiness",
+          "layer": "L1/L2"
+        }
+      ]
+    },
+    {
+      "id": "studio-agent-discovery",
+      "classification": "runtime_executable",
+      "contract": "catalog/readSkill/loadSkills→Session addon skills.register；真SDK發現/載入/釋放已驗證；非真模型語義",
+      "source": {
+        "path": "authoring/.integration/cardstudio/lib/workspace-setup.js",
+        "line": 70,
+        "symbol": "export async function loadSkills",
+        "sha256": "1e9fcd99513f7e0cf70827cb6e34ef94e859ab9ac992964921c438eaf07d77a4"
+      },
+      "tests": [
+        {
+          "path": "authoring/tests/agent-integration.test.mjs",
+          "case": "actual data path regression; see evidence",
+          "layer": "L2"
+        }
+      ]
+    },
+    {
+      "id": "studio-agent-save",
+      "classification": "runtime_executable",
+      "contract": "真Agent工具create/card_patch_fields保存原生extensions；Content拒絕，不自動handoff",
+      "source": {
+        "path": "authoring/.integration/cardstudio/index.js",
+        "line": 51,
+        "symbol": "addonCtx.tools.register",
+        "sha256": "97690693b7f503af5669ce314c9caadcf5f6b83f0781bfc3e849468268d21554"
+      },
+      "tests": [
+        {
+          "path": "authoring/tests/agent-integration.test.mjs",
+          "case": "actual data path regression; see evidence",
+          "layer": "L2"
+        }
+      ]
+    },
+    {
+      "id": "host-operator",
+      "classification": "runtime_executable",
+      "contract": "正式一般控制需authenticated operator；Studio獨立lease/identity契約",
+      "source": {
+        "path": "plugin/index.js",
+        "line": 41,
+        "symbol": "TRUSTED_CLIENT_REQUIRED",
+        "sha256": "c147be085f45389c7687bfebda4cff106e5ca3997f6ebd891baa6c94f067cd7e"
+      },
+      "tests": [
+        {
+          "path": "tests/formal-runtime.test.mjs",
+          "case": "actual data path regression; see evidence",
+          "layer": "L2"
+        }
+      ]
+    },
+    {
+      "id": "player-history",
+      "classification": "runtime_executable",
+      "contract": "與NPC記憶分離，Host提供來源；不自動進NPC/Writer",
+      "source": {
+        "path": "core/memory-policy.mjs",
+        "line": 123,
+        "symbol": "playerHistoryForView",
+        "sha256": "ef814c26b9e3353c1d89892947a75ff9eb1bb8f70d669f964b019820ef0d819d"
+      },
+      "tests": [
+        {
+          "path": "tests/a1-integration.test.mjs",
+          "case": "actual data path regression; see evidence",
+          "layer": "L2"
+        }
+      ]
+    },
+    {
+      "id": "poststat-output-contract",
+      "classification": "runtime_executable",
+      "contract": "具體npcStateIds供模型；仍是prompt_contract_only；Host全輪拒絕非法scope",
+      "source": {
+        "path": "core/post-stat-output.mjs",
+        "line": 6,
+        "symbol": "export",
+        "sha256": "4340d643f4438c80e44f9c6a60f47da80d3ac7ea145b0da9d6ec286ea0bd56b3"
+      },
+      "tests": [
+        {
+          "path": "tests/post-stat-scope.test.mjs",
+          "case": "actual data path regression; see evidence",
+          "layer": "L2"
+        }
+      ]
+    },
+    {
+      "id": "player-shared-shell",
+      "classification": "runtime_executable",
+      "contract": "既有responsive共用前端、native bridge；本輪無專屬frontend",
+      "source": {
+        "path": "isolated/web/player-shell.mjs",
+        "line": 4,
+        "symbol": "export",
+        "sha256": "58b26e8cf1b1366bfcc974cb28b30ae3173003fdba2df8c6bc44cc4389a53cca"
+      },
+      "tests": [
+        {
+          "path": "tests/milestone-a-ui.test.mjs",
+          "case": "actual data path regression; see evidence",
+          "layer": "L2"
+        }
+      ]
+    }
+  ]
+}

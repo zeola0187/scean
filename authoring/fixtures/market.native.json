@@ -1,0 +1,204 @@
+{
+  "spec": "chara_card_v2",
+  "spec_version": "2.0",
+  "data": {
+    "name": "合成紙鳶市集",
+    "description": "僅供驗收的古代市集委託；付款和傳聞歸屬分開。",
+    "personality": "角色保有不同視角，不替玩家決定。",
+    "scenario": "午后市集交付。",
+    "first_mes": "眾人整理當日工作，等待你的選擇。",
+    "mes_example": "",
+    "creator_notes": "原創合成 fixture；非私人卡或真模型生成。",
+    "system_prompt": "事件已發生才結算，未定義規則保留未知。",
+    "post_history_instructions": "保持作者給定條件及玩家選擇。",
+    "alternate_greetings": [],
+    "tags": [
+      "synthetic",
+      "native-authoring"
+    ],
+    "creator": "SCEAN authoring acceptance",
+    "character_version": "1",
+    "extensions": {
+      "scean": {
+        "characters": [
+          {
+            "id": "weaver",
+            "name": "織匠",
+            "description": "織匠的原創合成背景。MARKET_OWNER_OLD_DEBT",
+            "publicDescription": "織匠在此負責市集工作。",
+            "relationships": {
+              "contextScope": {
+                "kind": "character",
+                "characterId": "weaver"
+              },
+              "note": "只屬本人視角；不推定他人知情。"
+            }
+          },
+          {
+            "id": "courier",
+            "name": "信差",
+            "description": "信差的原創合成背景。不知其他人的私人約定。",
+            "publicDescription": "信差在此負責市集工作。",
+            "relationships": {
+              "contextScope": {
+                "kind": "character",
+                "characterId": "courier"
+              },
+              "note": "只屬本人視角；不推定他人知情。"
+            }
+          }
+        ],
+        "stateBlueprint": {
+          "schemaVersion": 1,
+          "id": "market-blueprint",
+          "version": 1,
+          "extensionPolicy": "deny",
+          "variables": [
+            {
+              "key": "coins",
+              "displayName": "coins",
+              "scope": "world",
+              "category": "resources",
+              "type": "number",
+              "visibility": "public",
+              "min": 0,
+              "max": 100,
+              "unit": "枚"
+            },
+            {
+              "key": "mode",
+              "displayName": "mode",
+              "scope": "world",
+              "category": "facts",
+              "type": "enum",
+              "visibility": "public",
+              "enumValues": [
+                "open",
+                "closed"
+              ]
+            },
+            {
+              "key": "weather",
+              "displayName": "weather",
+              "scope": "world",
+              "category": "facts",
+              "type": "string",
+              "visibility": "public"
+            },
+            {
+              "key": "lantern",
+              "displayName": "lantern",
+              "scope": "world",
+              "category": "facts",
+              "type": "boolean",
+              "visibility": "public"
+            },
+            {
+              "key": "commission",
+              "displayName": "commission",
+              "scope": "world",
+              "category": "tasks",
+              "type": "json",
+              "visibility": "public",
+              "requiredFields": [
+                "status",
+                "assignees",
+                "progress"
+              ]
+            },
+            {
+              "key": "promise",
+              "displayName": "PRIVATE_LABEL_market",
+              "scope": "character",
+              "characterId": "weaver",
+              "category": "facts",
+              "type": "string",
+              "visibility": "restricted"
+            }
+          ]
+        },
+        "initialState": {
+          "schemaVersion": 1,
+          "blueprintId": "market-blueprint",
+          "blueprintVersion": 1,
+          "values": [
+            {
+              "scope": "world",
+              "category": "resources",
+              "key": "coins",
+              "value": 0,
+              "source": {
+                "id": "market-author-fixture",
+                "version": 1
+              }
+            },
+            {
+              "scope": "world",
+              "category": "facts",
+              "key": "mode",
+              "value": "open",
+              "source": {
+                "id": "market-author-fixture",
+                "version": 1
+              }
+            },
+            {
+              "scope": "world",
+              "category": "facts",
+              "key": "lantern",
+              "value": false,
+              "source": {
+                "id": "market-author-fixture",
+                "version": 1
+              }
+            },
+            {
+              "scope": "world",
+              "category": "tasks",
+              "key": "commission",
+              "value": {
+                "status": "pending",
+                "assignees": [
+                  "courier"
+                ],
+                "progress": 0
+              },
+              "source": {
+                "id": "market-author-fixture",
+                "version": 1
+              }
+            },
+            {
+              "scope": "character",
+              "characterId": "weaver",
+              "category": "facts",
+              "key": "promise",
+              "value": "MARKET_OWNER_OLD_DEBT",
+              "source": {
+                "id": "market-author-fixture",
+                "version": 1
+              }
+            }
+          ]
+        }
+      },
+      "unrelated": {
+        "keep": "synthetic-preservation"
+      }
+    },
+    "character_book": {
+      "entries": [
+        {
+          "id": 1,
+          "keys": [
+            "市集"
+          ],
+          "content": "工作只有完成後才改任務進度；未完工不得宣稱交付。",
+          "enabled": true,
+          "insertion_order": 0,
+          "extensions": {}
+        }
+      ]
+    }
+  }
+}

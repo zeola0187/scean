@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <title>SCEAN 舞台 · 你的故事</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/player.css">
+  <link rel="stylesheet" href="/presentation.css">
+  <script type="module" src="/app.mjs"></script>
+<link rel="stylesheet" href="/opening-selection.css">
+</head>
+<body>
+  <header class="topbar"><div><h1>SCEAN <span>舞台</span></h1><p>里程碑 D · 隔離試玩</p></div><button id="global-chapter-open" type="button" class="quiet">舞臺全域設定</button><div id="connection" role="status">連線中…</div></header>
+  <p class="hint" id="scean-source-offer" aria-label="原碼與授權">原碼與授權（AGPL-3.0-only）：<a href="https://github.com/zeola0187/scean/tree/v1.4.0" target="_blank" rel="noopener noreferrer">https://github.com/zeola0187/scean/tree/v1.4.0</a>；受限視窗可複製網址開啟。</p>
+  <div id="mode-banner" class="mode-banner" role="note">正在確認執行環境</div>
+  <dialog id="global-chapter-dialog" aria-labelledby="global-chapter-dialog-title">
+    <div class="section-heading"><h2 id="global-chapter-dialog-title">舞臺全域設定</h2><button id="global-chapter-close" type="button" class="quiet">關閉設定</button></div>
+  <details id="global-chapter-settings" class="global-chapter-settings" open>
+    <summary>舞臺全域設定：章節、模型與金鑰</summary>
+    <p class="hint">本舞臺所有故事共用，重啟後仍保留。保存設定不會發出模型請求；每個故事的自動工作仍須明確啟用。</p>
+    <form id="global-chapter-form" autocomplete="off" novalidate>
+      <fieldset><legend>共用功能開關</legend>
+        <label class="consent"><input id="global-chapter-models" type="checkbox"><span>啟用章節分析與摘要：達門檻後可分析自然章界並生成摘要，執行時可能產生模型費用。</span></label>
+        <label class="consent"><input id="global-chapter-retrieval" type="checkbox"><span>啟用章節記憶召回：使用最近三章與最多八章相關舊章；需要章節分析與摘要及向量搜尋。</span></label>
+        <label class="consent"><input id="global-chapter-embedding" type="checkbox"><span>啟用向量搜尋：將章節與查詢送至選定服務；舊章存在時可能產生向量與排序費用。</span></label>
+      </fieldset>
+      <div class="global-provider-grid">
+        <fieldset><legend>章節向量服務</legend>
+          <label for="global-embedding-provider">供應商</label><select id="global-embedding-provider"><option value="openrouter">OpenRouter</option><option value="openai">OpenAI</option><option value="compatible">OpenAI 相容服務（自訂網址）</option></select>
+          <label for="global-embedding-model">向量模型</label><input id="global-embedding-model" maxlength="160" list="global-embedding-models"><datalist id="global-embedding-models"><option value="qwen/qwen3-embedding-8b"></option><option value="text-embedding-3-small"></option><option value="text-embedding-3-large"></option></datalist>
+          <label for="global-embedding-url">服務基底網址</label><input id="global-embedding-url" type="url" maxlength="500" spellcheck="false">
+          <label class="consent"><input id="global-embedding-nebius" type="checkbox"><span>OpenRouter 限定由 Nebius 提供，不切換其他路由。</span></label>
+          <label id="global-embedding-key-row" for="global-embedding-key">服務金鑰（留空保留）</label><input id="global-embedding-key" type="password" maxlength="4096" autocomplete="new-password" spellcheck="false" autocapitalize="none">
+          <p id="global-embedding-key-status" class="hint" role="status">尚未讀取金鑰來源。</p>
+          <label class="consent"><input id="global-embedding-env" type="checkbox"><span>選用環境變數備援；已保存的金鑰優先，不會搬移環境變數的值。</span></label>
+        </fieldset>
+        <fieldset><legend>舊章相關性排序</legend>
+          <label for="global-rerank-mode">模型來源</label><select id="global-rerank-mode"><option value="dsh_current">沿用舞臺目前模型</option><option value="dsh_model">指定舞臺已註冊模型</option><option value="openrouter">OpenRouter</option><option value="openai">OpenAI</option><option value="compatible">OpenAI 相容服務（自訂網址）</option></select>
+          <div id="global-rerank-provider-row"><label for="global-rerank-provider">舞臺供應商代號</label><input id="global-rerank-provider" maxlength="160" spellcheck="false"></div>
+          <div id="global-rerank-model-row"><label for="global-rerank-model">排序模型</label><input id="global-rerank-model" maxlength="160" spellcheck="false"><p class="hint">使用可回傳結構化文字的生成模型，並非專用排序介面。模型是否可用仍以服務回應為準。</p></div>
+          <div id="global-rerank-url-row"><label for="global-rerank-url">服務基底網址</label><input id="global-rerank-url" type="url" maxlength="500" spellcheck="false"></div>
+          <div id="global-rerank-key-row"><label for="global-rerank-key">排序服務金鑰（留空保留）</label><input id="global-rerank-key" type="password" maxlength="4096" autocomplete="new-password" spellcheck="false" autocapitalize="none"></div>
+          <p id="global-rerank-key-status" class="hint" role="status">尚未讀取金鑰來源。</p>
+          <label id="global-rerank-env-row" class="consent"><input id="global-rerank-env" type="checkbox"><span>選用環境變數備援；已保存的金鑰優先。</span></label>
+        </fieldset>
+      </div>
+      <p class="hint">金鑰以遮罩輸入，不回填原值，保存於 DSH 原生憑證儲存；不會寫入卡片、故事備份或瀏覽器儲存。更換供應商或網址時需重新輸入該服務金鑰。模型清單僅提供可編輯的設定範例，尚未連線驗證。</p>
+      <div class="longform-actions"><button id="global-chapter-save" type="submit" disabled>保存並套用全域設定</button><button id="global-chapter-cancel" type="button" class="quiet">取消未保存變更／等待</button><button id="global-chapter-refresh" type="button" class="quiet">重新讀取設定</button></div>
+      <label class="consent"><input id="global-chapter-clear-confirm" type="checkbox"><span>確認清除此舞臺共用設定及本頁保存的金鑰，並停用上述功能與環境變數備援；不刪除故事。</span></label><button id="global-chapter-clear" type="button" class="quiet" disabled>清除共用設定與金鑰</button>
+    </form>
+    <p id="global-chapter-status" class="hint" role="status">尚未讀取全域設定。</p><p id="global-chapter-error" class="error" role="alert"></p>
+  </details>
+  </dialog>
+  <div class="layout">
+    <aside class="library" aria-label="選卡與遊玩紀錄">
+      <button id="opening-new" class="quiet" type="button" hidden>用目前故事的保存版本另開新局</button>
+      <section id="opening-selection" class="opening-selection" aria-label="選擇新故事開場" hidden>
+        <h2>選擇新故事的開場</h2>
+        <p id="opening-revision" class="hint"></p>
+        <label for="opening-choice">本次選用的已保存開場</label>
+        <select id="opening-choice" disabled></select>
+        <pre id="saved-opening-preview" class="opening-preview" tabindex="0" aria-label="所選開場預覽"></pre>
+        <button id="opening-start" type="button" disabled>以此開場建立新故事</button>
+        <button id="opening-dismiss" type="button" class="quiet" disabled>取消開新局</button>
+        <button id="opening-return" type="button" class="quiet">回 Studio 交接保存版本</button>
+        <p id="opening-error" class="error" role="alert" hidden></p>
+      </section>
+      <details id="setup" open>
+        <summary>選卡開新局</summary>
+        <form id="create-form">
+          <label for="card">角色卡</label><select id="card" required></select>
+          <label for="revision">已保存版本</label><select id="revision" required></select>
+          <label for="opening">開場</label><select id="opening" required></select>
+          <p id="opening-preview" class="opening-preview"></p>
+          <button id="create" type="submit" disabled>以此版本開新局</button>
+          <p class="hint">開局固定卡片、世界書、Preset 與名冊。新版另開 Run，舊局保留原版本。</p>
+          <p id="create-error" class="error" role="alert"></p>
+        </form>
+      </details>
+      <div class="section-heading"><h2>繼續遊玩</h2><button id="refresh" type="button" class="quiet">重新整理</button></div>
+      <nav id="runs" aria-label="既有 Run"><p class="hint">尚未讀取紀錄</p></nav>
+      <button id="studio-open" type="button" class="quiet studio-entry">Studio 工作副本</button>
+      <details class="help"><summary>資料與模型來源</summary><p id="model-source"></p><p id="data-source"></p><p>可直接使用安全合成卡。自己的卡請先由 Studio 官方匯出，再透過「Studio 工作副本」匯入、保存版本與交接。工作副本使用獨立資料，不讀取或修改正式 Studio 私有資料庫。</p><p>關閉分頁不代表取消生成。請按「取消本輪」並確認狀態，再關閉隔離環境。</p></details>
+    </aside>
+    <main id="player">
+      <section class="history-actions" aria-label="最後回合與完整存檔">
+        <div class="history-buttons"><button id="rollback-open" type="button" class="quiet" disabled>回退最後回合</button><button id="regenerate-open" type="button" class="quiet" disabled>重生成最後回合</button></div>
+        <p id="history-status" class="hint" role="status">僅可操作最後有效已提交回合。</p><p id="history-error" class="error" role="alert" hidden></p>
+        <details id="backup-panel"><summary>完整 Run 備份與匯入</summary>
+          <p class="backup-warning">完整備份包含本局所有角色的私人記憶、私人 State 與固定卡片。請只儲存在可信任的位置，勿公開分享。此功能與普通 Inspector 分開授權。</p>
+          <label class="consent"><input id="export-consent" type="checkbox"> <span>我允許匯出目前 Run 的完整私人資料</span></label><button id="run-export" type="button" disabled>下載完整 Run JSON</button>
+          <label for="run-import-file">完整 Run 備份檔案（JSON，上限 16 MiB）</label><input id="run-import-file" type="file" accept=".json,application/json">
+          <label class="consent"><input id="import-consent" type="checkbox"> <span>我允許將此檔案的完整私人資料匯入目前隔離資料根</span></label><button id="run-import" type="button" disabled>驗證並匯入 Run</button>
+          <p class="hint">全部驗證通過後才建立 Run；相同 Run ID 拒絕覆蓋。檔案中的程式與模板只當資料保存，不執行。</p><p id="backup-status" role="status"></p><p id="backup-error" class="error" role="alert" hidden></p>
+        </details>
+      </section>
+      <section class="run-header" aria-label="目前 Run">
+        <div><h2 id="run-title">故事，從這裡開始</h2><p id="run-version">選一張卡與開場，或繼續已有的 Run。</p></div>
+        <span id="save-status" class="badge">尚未開局</span>
+      </section>
+      <details id="longform-panel" class="longform-panel">
+        <summary>長篇摘要、章節與原文查回</summary>
+        <p class="hint">摘要是有來源的敘事壓縮，可能不準確；原文與已提交的世界狀態仍為準。滾動摘要僅手動更新；逐章自動分章預設停用，需在下方設定明確啟用。</p>
+        <div class="longform-actions"><label for="recent-window">摘要暫不壓縮的近期回合數</label><input id="recent-window" type="number" min="1" max="50" value="6"><button id="summary-start" type="button" class="quiet" disabled>更新滾動摘要</button><button id="summary-refresh" type="button" class="quiet" disabled>查詢摘要狀態</button></div>
+        <button id="summary-cancel" type="button" class="quiet" hidden>取消本次摘要</button>
+        <p id="summary-status" class="hint" role="status">尚未開局。</p><p id="summary-error" class="error" role="alert" hidden></p>
+        <div id="summary-content"></div>
+        <label for="chapter-title">本章標題</label><input id="chapter-title" maxlength="120" placeholder="例如：抵達研究站">
+        <button id="chapter-close" type="button" class="quiet" disabled>結束並歸檔本章</button>
+        <nav id="chapters" aria-label="章節原文導覽"></nav>
+        <section id="chapter-summary-panel" aria-label="逐章摘要與自動分章設定">
+          <h3>逐章摘要</h3>
+          <p class="hint">每章摘要獨立保存；缺少摘要的舊章可補建。標題、關鍵詞與情緒基調是敘事參考，不是世界狀態或角色知識。</p>
+          <details id="chapter-settings-panel"><summary>分章設定與啟用狀態</summary>
+            <form id="chapter-settings-form">
+              <label class="consent"><input id="chapter-auto-enabled" type="checkbox"> <span>本次啟動自動分章及 3＋8 章節上下文：固定最近3章，舊章經 BM25、向量與 rerank 選最多8章，完整保留未摘要正文。每輪可能產生向量／rerank 費用；重啟後需重新啟用</span></label>
+              <label for="chapter-token-threshold">未歸檔原文門檻（估算 tokens）</label><input id="chapter-token-threshold" type="number" min="4000" max="32000" step="1000" value="16000" required>
+              <label for="chapter-buffer-turns">保護近期完整回合數</label><input id="chapter-buffer-turns" type="number" min="0" max="50" step="1" value="6" required>
+              <label for="chapter-detail">章節摘要詳細程度</label><select id="chapter-detail"><option value="concise">精簡 concise</option><option value="auto" selected>自動 auto</option><option value="precise">詳細 precise</option></select>
+              <button id="chapter-settings-save" type="submit" class="quiet" disabled>保存本局分章設定</button>
+            </form>
+            <p class="hint">預設停用。匯入保存的啟用旗標不代表已授權此次啟動；模型未啟用時不會生成。門檻只決定是否檢查章界，不保證每次都建立章節。</p>
+          </details>
+          <p id="chapter-config-status" class="hint" role="status">尚未讀取分章設定。</p>
+          <button id="chapter-auto-check" type="button" class="quiet" disabled>立即檢查可歸檔章界</button><button id="chapter-summary-refresh" type="button" class="quiet" disabled>查詢逐章摘要狀態</button><button id="chapter-operation-cancel" type="button" class="quiet" hidden>取消章節操作</button>
+          <p id="chapter-operation-status" class="hint" role="status"></p><p id="chapter-error" class="error" role="alert" hidden></p>
+          <div id="chapter-summary-list"></div><section id="chapter-summary-detail" hidden></section>
+        </section>
+        <form id="history-search-form"><label for="history-query">搜尋有效歷史原文</label><input id="history-query" maxlength="200" placeholder="輸入曾說過的字詞"><button id="history-search" type="submit" class="quiet" disabled>搜尋原文</button></form>
+        <p class="hint">Historical reference — not a current event。搜尋及回讀只包含有效已提交的玩家輸入與正文，不是角色私人記憶。</p>
+        <p id="history-search-status" class="hint" role="status"></p><div id="history-hits"></div><pre id="history-read" hidden></pre>
+      </details>
+      <div class="history-pagination"><button id="history-earlier" type="button" class="quiet" disabled>載入更早原文</button><button id="history-latest" type="button" class="quiet" disabled>回到近期原文</button><span id="history-page-status" class="hint" role="status">尚未開局。</span></div>
+      <p id="history-page-error" class="error" role="alert" hidden></p>
+      <div id="chat" class="chat" role="log" aria-label="已保存對話" aria-live="polite" aria-relevant="additions"></div>
+      <div id="provisional" class="provisional" hidden><strong>本輪輸入 · 尚未提交</strong><p id="pending-input"></p></div>
+      <section class="composer" aria-label="本輪輸入">
+        <section id="interactive-activation" class="activation" aria-label="本次啟動的模型使用授權" hidden>
+          <p>使用者互動模式每次啟動都先鎖定。此模式使用獨立資料與用量紀錄；供應商費用未知，啟用後不套用本次工程驗收的 24 次上限。</p>
+          <label class="consent"><input id="interactive-consent" type="checkbox"> <span>啟用我的既有模型連線；後續每次送出會使用供應商額度</span></label>
+          <button id="interactive-enable" type="button" disabled>啟用模型連線</button>
+          <p id="interactive-error" class="error" role="alert" hidden></p>
+        </section>
+        <div id="progress" role="status" aria-live="polite"></div>
+        <form id="turn-form">
+          <label for="input">你的行動或對話</label>
+          <textarea id="input" rows="4" maxlength="20000" placeholder="例如：我走進休息室，向大家打聲招呼。" disabled></textarea>
+          <div class="composer-actions"><span id="draft-status" class="hint">開局後即可輸入。Enter 換行；Ctrl / ⌘ + Enter 送出。</span><button id="cancel" type="button" class="quiet" hidden>取消本輪</button><button id="send" type="submit" disabled>送出</button></div>
+        </form>
+        <div id="turn-error" class="error" role="alert" hidden></div>
+        <div class="recovery"><button id="retry" type="button" hidden>重試同一輸入</button><button id="recheck" type="button" class="quiet" hidden>查詢儲存結果</button></div>
+      </section>
+      <section class="state-panel" aria-label="已保存世界狀態"><h2>此刻的世界 <span>已提交</span></h2><div id="state-summary"><p class="hint">開局後顯示世界狀態。</p></div></section>
+      <details id="inspector" class="inspector"><summary>進階 Inspector · 版本、記憶、工具與提交</summary><p>一般 Inspector 只顯示公開投影。restricted 表示內容受限而非未記錄；CR 建議不等於已發生事件。</p><pre id="inspection">尚未開局</pre>
+        <section class="private-diagnostics" aria-label="僅本機的詳細診斷授權">
+          <h3>詳細診斷 · 可能包含角色秘密</h3>
+          <p>詳細內容可包含完整角色背景、角色私密上下文與玩家歷史。只在此分頁顯示，不會自動混入一般 Inspector、共享匯出或送回 NPC。授權限此 Run，最長 10 分鐘。</p>
+          <label class="consent"><input id="diagnostics-consent" type="checkbox"> <span>我允許在本機查看此 Run 的角色私密上下文與詳細診斷</span></label>
+          <button id="diagnostics-grant" type="button" class="quiet" disabled>查看詳細診斷</button>
+          <button id="diagnostics-revoke" type="button" class="quiet" hidden>撤銷並清除詳細內容</button>
+          <p id="diagnostics-status" role="status">尚未授權；未讀取私密診斷。</p>
+          <p id="diagnostics-error" role="alert" class="error" hidden></p>
+          <pre id="private-inspection" hidden></pre>
+        </section>
+      </details>
+    </main>
+  </div>
+  <dialog id="history-dialog" aria-labelledby="history-title">
+    <h2 id="history-title">最後有效回合</h2><p id="history-target"></p><p id="history-warning"></p>
+    <details><summary>該輪原始玩家輸入</summary><pre id="history-input"></pre></details>
+    <label id="regen-guidance-label" for="regen-guidance">本輪額外寫作指引（選填，不改固定 Snapshot）</label><textarea id="regen-guidance" rows="3" maxlength="2000"></textarea>
+    <p id="history-dialog-error" class="error" role="alert" hidden></p>
+    <div class="history-buttons"><button id="history-dismiss" type="button" class="quiet">保留原回合</button><button id="history-confirm" type="button">確認</button></div>
+  </dialog>
+  <dialog id="studio-dialog" aria-labelledby="studio-title">
+    <header class="studio-heading"><div><h2 id="studio-title">Studio 工作副本</h2><p class="hint">官方匯出檔 → 獨立保存版本 → 固定快照 → 新 Run</p></div><button id="studio-close" type="button" class="quiet">返回遊玩</button></header>
+    <p class="studio-scope">此處使用獨立 Studio 服務與資料，手動編輯不啟動製卡 Agent。匯入的是工作副本，不會修改原始檔案、正式卡片或既有遊玩紀錄。無須貼入 JSON；每個匯入檔案限 512 KiB。</p>
+    <div class="studio-columns">
+      <section><h3>1. 匯入與選卡</h3>
+        <label for="studio-card-file">Studio 官方匯出的角色卡（JSON／PNG）</label><input id="studio-card-file" type="file" accept=".json,.png,application/json,image/png"><button id="studio-import-card" type="button" class="quiet" disabled>匯入角色卡</button>
+        <label for="studio-card">工作副本中的角色卡</label><select id="studio-card"><option value="">尚未選卡</option></select><button id="studio-refresh" type="button" class="quiet">重新讀取清單</button>
+        <label for="studio-book-file">另外匯入世界書（選填，JSON）</label><input id="studio-book-file" type="file" accept=".json,application/json"><button id="studio-import-book" type="button" class="quiet" disabled>匯入世界書</button>
+        <label for="studio-book">交接的世界書</label><select id="studio-book"><option value="">使用卡片內嵌世界書（若無則為空）</option></select>
+      </section>
+      <section><h3>2. 確認已保存版本</h3><p id="studio-version" class="hint">選擇一張已匯入角色卡。</p>
+        <label for="studio-description">角色描述</label><textarea id="studio-description" rows="5" disabled></textarea>
+        <label for="studio-opening">開場文字</label><textarea id="studio-opening" rows="4" disabled></textarea>
+        <button id="studio-save" type="button" class="quiet" disabled>保存修改為新版本</button>
+        <button id="studio-export" type="button" class="quiet" disabled>下載已保存版本 JSON</button>
+        <p class="hint">手動修改必須先保存，再交接。已開局的 Run 保留原快照。</p>
+        <label for="studio-opening-choice">本次選用的已保存開場</label><select id="studio-opening-choice" disabled><option value="0">主開場</option></select>
+        <p id="studio-opening-preview" class="opening-preview"></p>
+        <details id="studio-roster-section" open><summary>角色名冊與專屬背景</summary>
+          <p id="studio-roster-source" class="hint">尚未選卡。</p>
+          <p class="hint">每位角色使用固定 ID 與完整背景。姓名、性別、代詞與關係不會自動猜測；未指定身份可留白。修改須先保存到卡片新版本，已開局的 Run 不受影響。</p>
+          <div id="studio-roster"></div>
+          <button id="studio-roster-add" type="button" class="quiet" disabled>新增一位角色</button>
+          <label class="consent"><input id="studio-single-role" type="checkbox"> <span>我明確將此卡解讀為單一角色，以已保存卡片的名稱與背景建立名冊草稿。</span></label>
+          <button id="studio-roster-single" type="button" class="quiet" disabled>建立單一角色名冊草稿</button>
+          <p id="studio-roster-error" class="error" role="alert" hidden></p>
+          <button id="studio-roster-save" type="button" disabled>保存名冊與卡片為新版本</button>
+          <p class="hint">此按鈕明確授權把名冊保存到工作副本卡片的 extensions.scean.characters；同時保存上方未保存的卡片文字。只影響這份新版本。</p>
+        </details>
+        <details id="studio-blueprint-section"><summary>狀態藍圖與開局初值</summary>
+          <p class="hint">穩定 key 與顯示名稱分開。初值留白表示未知，不會自動設為 0。僅新保存版本與新 Run 採用修改。</p>
+          <label for="studio-blueprint-id">藍圖 ID</label><input id="studio-blueprint-id" value="studio-state">
+          <label for="studio-blueprint-version">藍圖版本</label><input id="studio-blueprint-version" type="number" min="1" step="1" value="1">
+          <label for="studio-blueprint-policy">未宣告狀態</label><select id="studio-blueprint-policy"><option value="allow">允許有來源的動態項目</option><option value="deny">只接受宣告項目</option></select>
+          <div id="studio-blueprint-variables"></div>
+          <button id="studio-blueprint-add" type="button" class="quiet" disabled>新增狀態變數</button>
+          <p id="studio-blueprint-error" class="error" role="alert" hidden></p>
+          <details><summary>開局初值預覽（製卡工作副本，含受限資料）</summary><pre id="studio-blueprint-preview"></pre></details>
+          <button id="studio-blueprint-save" type="button" disabled>保存狀態藍圖與卡片為新版本</button>
+          <p class="hint">此按鈕明確授權保存 extensions.scean.stateBlueprint 與 initialState；名冊若也有修改將共同保存。受限初值只在製卡編輯與授權診斷中顯示。</p>
+        </details>
+        <p class="hint">本介面使用明示的 SCEAN 預設 Preset，不宣稱還原來源 Studio 的私人 Preset。</p>
+        <button id="studio-handoff" type="button" disabled>送往舞台，另開新 Run</button>
+      </section>
+    </div>
+    <p id="studio-status" role="status" class="hint"></p><p id="studio-error" class="error" role="alert" hidden></p>
+    <button id="studio-reacquire" type="button" class="quiet" hidden>恢復操作租約，保留未保存的文字</button>
+    <section id="studio-run-section" hidden><h3>此次交接的 Run</h3><p id="studio-run-label"></p><button id="studio-inspect-run" type="button" class="quiet">查閱 Run 狀態與記憶</button><details><summary>合法唯讀 Inspector</summary><pre id="studio-inspection"></pre></details></section>
+    <button id="studio-release" type="button" class="quiet">結束此工作副本的操作租約</button>
+  </dialog>
+  <noscript>本機遊玩介面需要啟用 JavaScript。</noscript>
+</body>
+</html>

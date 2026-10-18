@@ -1,0 +1,814 @@
+{
+  "schemaVersion": 1,
+  "scope": "canonical current inputs; historical overlays excluded",
+  "runtime": [
+    {
+      "path": "packages/scean/COPYRIGHT",
+      "source": "COPYRIGHT"
+    },
+    {
+      "path": "packages/scean/LICENSE",
+      "source": "LICENSE"
+    },
+    {
+      "path": "packages/scean/LICENSE-SCOPE.md",
+      "source": "LICENSE-SCOPE.md"
+    },
+    {
+      "path": "packages/scean/README.md",
+      "source": "README.md"
+    },
+    {
+      "path": "packages/scean/SOURCE-AVAILABILITY.md",
+      "source": "SOURCE-AVAILABILITY.md"
+    },
+    {
+      "path": "packages/scean/THIRD-PARTY-LICENSES.json",
+      "source": "THIRD-PARTY-LICENSES.json"
+    },
+    {
+      "path": "packages/scean/THIRD-PARTY-NOTICES.md",
+      "source": "THIRD-PARTY-NOTICES.md"
+    },
+    {
+      "path": "packages/scean/adapters/budget.mjs",
+      "source": "adapters/budget.mjs"
+    },
+    {
+      "path": "packages/scean/adapters/chapter-providers.mjs",
+      "source": "adapters/chapter-providers.mjs"
+    },
+    {
+      "path": "packages/scean/adapters/model.mjs",
+      "source": "adapters/model.mjs"
+    },
+    {
+      "path": "packages/scean/adapters/store.mjs",
+      "source": "adapters/store.mjs"
+    },
+    {
+      "path": "packages/scean/authoring/NOTICE.md",
+      "source": "authoring/NOTICE.md"
+    },
+    {
+      "path": "packages/scean/authoring/compatibility-audit.mjs",
+      "source": "authoring/compatibility-audit.mjs"
+    },
+    {
+      "path": "packages/scean/authoring/frontend-css.mjs",
+      "source": "authoring/frontend-css.mjs"
+    },
+    {
+      "path": "packages/scean/authoring/frontend-html.mjs",
+      "source": "authoring/frontend-html.mjs"
+    },
+    {
+      "path": "packages/scean/authoring/skills/scean-compatibility-audit/SKILL.md",
+      "source": "authoring/skills/scean-compatibility-audit/SKILL.md"
+    },
+    {
+      "path": "packages/scean/authoring/skills/scean-compatibility-audit/references/contracts.md",
+      "source": "authoring/skills/scean-compatibility-audit/references/contracts.md"
+    },
+    {
+      "path": "packages/scean/authoring/skills/scean-compatibility-audit/references/tool-and-results.md",
+      "source": "authoring/skills/scean-compatibility-audit/references/tool-and-results.md"
+    },
+    {
+      "path": "packages/scean/core/banlist.mjs",
+      "source": "core/banlist.mjs"
+    },
+    {
+      "path": "packages/scean/core/chapter-recall.mjs",
+      "source": "core/chapter-recall.mjs"
+    },
+    {
+      "path": "packages/scean/core/chapter-summary.mjs",
+      "source": "core/chapter-summary.mjs"
+    },
+    {
+      "path": "packages/scean/core/character-advice.mjs",
+      "source": "core/character-advice.mjs"
+    },
+    {
+      "path": "packages/scean/core/character-sources.mjs",
+      "source": "core/character-sources.mjs"
+    },
+    {
+      "path": "packages/scean/core/condition-ast.mjs",
+      "source": "core/condition-ast.mjs"
+    },
+    {
+      "path": "packages/scean/core/context-budget.mjs",
+      "source": "core/context-budget.mjs"
+    },
+    {
+      "path": "packages/scean/core/contracts.mjs",
+      "source": "core/contracts.mjs"
+    },
+    {
+      "path": "packages/scean/core/derived-facts.mjs",
+      "source": "core/derived-facts.mjs"
+    },
+    {
+      "path": "packages/scean/core/engine.mjs",
+      "source": "core/engine.mjs"
+    },
+    {
+      "path": "packages/scean/core/frontend.mjs",
+      "source": "core/frontend.mjs"
+    },
+    {
+      "path": "packages/scean/core/history-recall.mjs",
+      "source": "core/history-recall.mjs"
+    },
+    {
+      "path": "packages/scean/core/history.mjs",
+      "source": "core/history.mjs"
+    },
+    {
+      "path": "packages/scean/core/inspection.mjs",
+      "source": "core/inspection.mjs"
+    },
+    {
+      "path": "packages/scean/core/memory-policy.mjs",
+      "source": "core/memory-policy.mjs"
+    },
+    {
+      "path": "packages/scean/core/memory.mjs",
+      "source": "core/memory.mjs"
+    },
+    {
+      "path": "packages/scean/core/narrative.mjs",
+      "source": "core/narrative.mjs"
+    },
+    {
+      "path": "packages/scean/core/post-stat-output.mjs",
+      "source": "core/post-stat-output.mjs"
+    },
+    {
+      "path": "packages/scean/core/prompt-r3.mjs",
+      "source": "core/prompt-r3.mjs"
+    },
+    {
+      "path": "packages/scean/core/public-state-bindings.mjs",
+      "source": "core/public-state-bindings.mjs"
+    },
+    {
+      "path": "packages/scean/core/regenerate.mjs",
+      "source": "core/regenerate.mjs"
+    },
+    {
+      "path": "packages/scean/core/save-bundle.mjs",
+      "source": "core/save-bundle.mjs"
+    },
+    {
+      "path": "packages/scean/core/stat-contract.mjs",
+      "source": "core/stat-contract.mjs"
+    },
+    {
+      "path": "packages/scean/core/state-blueprint.mjs",
+      "source": "core/state-blueprint.mjs"
+    },
+    {
+      "path": "packages/scean/core/worldbook.mjs",
+      "source": "core/worldbook.mjs"
+    },
+    {
+      "path": "packages/scean/isolated/web/card-frontend.mjs",
+      "source": "isolated/web/card-frontend.mjs"
+    },
+    {
+      "path": "packages/scean/isolated/web/chapter-settings-ui.mjs",
+      "source": "isolated/web/chapter-settings-ui.mjs"
+    },
+    {
+      "path": "packages/scean/isolated/web/condition-ast.mjs",
+      "source": "isolated/web/condition-ast.mjs"
+    },
+    {
+      "path": "packages/scean/isolated/web/frontend-runtime.mjs",
+      "source": "isolated/web/frontend-runtime.mjs"
+    },
+    {
+      "path": "packages/scean/licenses/aventuras-chapter-provenance.json",
+      "source": "licenses/aventuras-chapter-provenance.json"
+    },
+    {
+      "path": "packages/scean/licenses/aventuras-d7f58-AGPL-3.0.md",
+      "source": "licenses/aventuras-d7f58-AGPL-3.0.md"
+    },
+    {
+      "path": "packages/scean/licenses/zeolas-AGPL-3.0.md",
+      "source": "licenses/zeolas-AGPL-3.0.md"
+    },
+    {
+      "path": "packages/scean/licenses/zeolas-source-snippets.json",
+      "source": "licenses/zeolas-source-snippets.json"
+    },
+    {
+      "path": "packages/scean/package.json",
+      "source": "sources/manifests/scean-package.json"
+    },
+    {
+      "path": "packages/scean/plugin/README.md",
+      "source": "plugin/README.md"
+    },
+    {
+      "path": "packages/scean/plugin/card-scope.mjs",
+      "source": "plugin/card-scope.mjs"
+    },
+    {
+      "path": "packages/scean/plugin/chapter-runtime.mjs",
+      "source": "plugin/chapter-runtime.mjs"
+    },
+    {
+      "path": "packages/scean/plugin/chapter-settings.mjs",
+      "source": "plugin/chapter-settings.mjs"
+    },
+    {
+      "path": "packages/scean/plugin/client.js",
+      "source": "plugin/client.js"
+    },
+    {
+      "path": "packages/scean/plugin/cordis.patch.yml",
+      "source": "plugin/cordis.patch.yml"
+    },
+    {
+      "path": "packages/scean/plugin/host.mjs",
+      "source": "plugin/host.mjs"
+    },
+    {
+      "path": "packages/scean/plugin/index.js",
+      "source": "plugin/index.js"
+    },
+    {
+      "path": "packages/scean/plugin/job-host.mjs",
+      "source": "plugin/job-host.mjs"
+    },
+    {
+      "path": "packages/scean/plugin/job-ledger.mjs",
+      "source": "plugin/job-ledger.mjs"
+    },
+    {
+      "path": "packages/scean/plugin/native-client-source.mjs",
+      "source": "plugin/native-client-source.mjs"
+    },
+    {
+      "path": "packages/scean/plugin/native-frame-source.mjs",
+      "source": "plugin/native-frame-source.mjs"
+    },
+    {
+      "path": "packages/scean/plugin/native-model.mjs",
+      "source": "plugin/native-model.mjs"
+    },
+    {
+      "path": "packages/scean/plugin/notification-host.mjs",
+      "source": "plugin/notification-host.mjs"
+    },
+    {
+      "path": "packages/scean/plugin/notification-ledger.mjs",
+      "source": "plugin/notification-ledger.mjs"
+    },
+    {
+      "path": "packages/scean/plugin/opening-selection.mjs",
+      "source": "plugin/opening-selection.mjs"
+    },
+    {
+      "path": "packages/scean/plugin/player-native-bridge.mjs",
+      "source": "plugin/player-native-bridge.mjs"
+    },
+    {
+      "path": "packages/scean/plugin/protocol.mjs",
+      "source": "plugin/protocol.mjs"
+    },
+    {
+      "path": "packages/scean/plugin/studio-handoff.mjs",
+      "source": "plugin/studio-handoff.mjs"
+    },
+    {
+      "path": "packages/scean/plugin/version.mjs",
+      "source": "plugin/version.mjs"
+    },
+    {
+      "path": "packages/scean/release-source.json",
+      "source": "release-source.json"
+    },
+    {
+      "path": "packages/studio/COPYRIGHT",
+      "source": "sources/card-studio/cardstudio-bundle/COPYRIGHT"
+    },
+    {
+      "path": "packages/studio/LICENSE",
+      "source": "sources/card-studio/cardstudio-bundle/LICENSE"
+    },
+    {
+      "path": "packages/studio/LICENSE-SCOPE.md",
+      "source": "sources/card-studio/cardstudio-bundle/LICENSE-SCOPE.md"
+    },
+    {
+      "path": "packages/studio/README.md",
+      "source": "sources/card-studio/cardstudio-bundle/README.md"
+    },
+    {
+      "path": "packages/studio/SOURCE-AVAILABILITY.md",
+      "source": "sources/card-studio/cardstudio-bundle/SOURCE-AVAILABILITY.md"
+    },
+    {
+      "path": "packages/studio/THIRD-PARTY-LICENSES.json",
+      "source": "sources/card-studio/cardstudio-bundle/THIRD-PARTY-LICENSES.json"
+    },
+    {
+      "path": "packages/studio/THIRD-PARTY-NOTICES.txt",
+      "source": "sources/card-studio/cardstudio-bundle/THIRD-PARTY-NOTICES.txt"
+    },
+    {
+      "path": "packages/studio/client-template.js",
+      "source": "sources/card-studio/cardstudio-bundle/client-template.js"
+    },
+    {
+      "path": "packages/studio/client.js",
+      "source": "sources/card-studio/cardstudio-bundle/client.js"
+    },
+    {
+      "path": "packages/studio/cordis.patch.yml",
+      "source": "sources/card-studio/cardstudio-bundle/cordis.patch.yml"
+    },
+    {
+      "path": "packages/studio/index.js",
+      "source": "sources/card-studio/cardstudio-bundle/index.js"
+    },
+    {
+      "path": "packages/studio/lib/archive-lifecycle.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/archive-lifecycle.js"
+    },
+    {
+      "path": "packages/studio/lib/archive-observer.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/archive-observer.js"
+    },
+    {
+      "path": "packages/studio/lib/asset-raster.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/asset-raster.js"
+    },
+    {
+      "path": "packages/studio/lib/asset-upload.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/asset-upload.js"
+    },
+    {
+      "path": "packages/studio/lib/authoring-fixture.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/authoring-fixture.js"
+    },
+    {
+      "path": "packages/studio/lib/authoring-scope.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/authoring-scope.js"
+    },
+    {
+      "path": "packages/studio/lib/authoring-service.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/authoring-service.js"
+    },
+    {
+      "path": "packages/studio/lib/bridge-protocol.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/bridge-protocol.js"
+    },
+    {
+      "path": "packages/studio/lib/bridge.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/bridge.js"
+    },
+    {
+      "path": "packages/studio/lib/card-service.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/card-service.js"
+    },
+    {
+      "path": "packages/studio/lib/character-method.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/character-method.js"
+    },
+    {
+      "path": "packages/studio/lib/character-sources.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/character-sources.js"
+    },
+    {
+      "path": "packages/studio/lib/client-controller.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/client-controller.js"
+    },
+    {
+      "path": "packages/studio/lib/client-library.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/client-library.js"
+    },
+    {
+      "path": "packages/studio/lib/client-materials.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/client-materials.js"
+    },
+    {
+      "path": "packages/studio/lib/codec.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/codec.js"
+    },
+    {
+      "path": "packages/studio/lib/document-projection.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/document-projection.js"
+    },
+    {
+      "path": "packages/studio/lib/export-download.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/export-download.js"
+    },
+    {
+      "path": "packages/studio/lib/frontend-authoring.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/frontend-authoring.js"
+    },
+    {
+      "path": "packages/studio/lib/generated-assets.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/generated-assets.js"
+    },
+    {
+      "path": "packages/studio/lib/host-diagnostics.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/host-diagnostics.js"
+    },
+    {
+      "path": "packages/studio/lib/library-image.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/library-image.js"
+    },
+    {
+      "path": "packages/studio/lib/library-index.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/library-index.js"
+    },
+    {
+      "path": "packages/studio/lib/library-retrieval.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/library-retrieval.js"
+    },
+    {
+      "path": "packages/studio/lib/library-service.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/library-service.js"
+    },
+    {
+      "path": "packages/studio/lib/loader.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/loader.js"
+    },
+    {
+      "path": "packages/studio/lib/material-service.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/material-service.js"
+    },
+    {
+      "path": "packages/studio/lib/material-store.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/material-store.js"
+    },
+    {
+      "path": "packages/studio/lib/preflight-check.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/preflight-check.js"
+    },
+    {
+      "path": "packages/studio/lib/presentation-base.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/presentation-base.js"
+    },
+    {
+      "path": "packages/studio/lib/preview-css.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/preview-css.js"
+    },
+    {
+      "path": "packages/studio/lib/preview-projection.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/preview-projection.js"
+    },
+    {
+      "path": "packages/studio/lib/scean-audit-control.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/scean-audit-control.js"
+    },
+    {
+      "path": "packages/studio/lib/scean-integration.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/scean-integration.js"
+    },
+    {
+      "path": "packages/studio/lib/target-content.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/target-content.js"
+    },
+    {
+      "path": "packages/studio/lib/target-delivery.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/target-delivery.js"
+    },
+    {
+      "path": "packages/studio/lib/target-dryrun.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/target-dryrun.js"
+    },
+    {
+      "path": "packages/studio/lib/target-profile.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/target-profile.js"
+    },
+    {
+      "path": "packages/studio/lib/target-state.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/target-state.js"
+    },
+    {
+      "path": "packages/studio/lib/tavern-compatibility.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/tavern-compatibility.js"
+    },
+    {
+      "path": "packages/studio/lib/tool-definitions.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/tool-definitions.js"
+    },
+    {
+      "path": "packages/studio/lib/upload-buffer.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/upload-buffer.js"
+    },
+    {
+      "path": "packages/studio/lib/visual-state.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/visual-state.js"
+    },
+    {
+      "path": "packages/studio/lib/w01/authoring/frontend-css.mjs",
+      "source": "sources/card-studio/cardstudio-bundle/lib/w01/authoring/frontend-css.mjs"
+    },
+    {
+      "path": "packages/studio/lib/w01/authoring/frontend-html.mjs",
+      "source": "sources/card-studio/cardstudio-bundle/lib/w01/authoring/frontend-html.mjs"
+    },
+    {
+      "path": "packages/studio/lib/w01/core/character-sources.mjs",
+      "source": "sources/card-studio/cardstudio-bundle/lib/w01/core/character-sources.mjs"
+    },
+    {
+      "path": "packages/studio/lib/w01/core/condition-ast.mjs",
+      "source": "sources/card-studio/cardstudio-bundle/lib/w01/core/condition-ast.mjs"
+    },
+    {
+      "path": "packages/studio/lib/w01/core/contracts.mjs",
+      "source": "sources/card-studio/cardstudio-bundle/lib/w01/core/contracts.mjs"
+    },
+    {
+      "path": "packages/studio/lib/w01/core/derived-facts.mjs",
+      "source": "sources/card-studio/cardstudio-bundle/lib/w01/core/derived-facts.mjs"
+    },
+    {
+      "path": "packages/studio/lib/w01/core/frontend.mjs",
+      "source": "sources/card-studio/cardstudio-bundle/lib/w01/core/frontend.mjs"
+    },
+    {
+      "path": "packages/studio/lib/w01/core/memory-policy.mjs",
+      "source": "sources/card-studio/cardstudio-bundle/lib/w01/core/memory-policy.mjs"
+    },
+    {
+      "path": "packages/studio/lib/w01/core/public-state-bindings.mjs",
+      "source": "sources/card-studio/cardstudio-bundle/lib/w01/core/public-state-bindings.mjs"
+    },
+    {
+      "path": "packages/studio/lib/w01/core/state-blueprint.mjs",
+      "source": "sources/card-studio/cardstudio-bundle/lib/w01/core/state-blueprint.mjs"
+    },
+    {
+      "path": "packages/studio/lib/w01/isolated/web/condition-ast.mjs",
+      "source": "sources/card-studio/cardstudio-bundle/lib/w01/isolated/web/condition-ast.mjs"
+    },
+    {
+      "path": "packages/studio/lib/w01/isolated/web/frontend-runtime.mjs",
+      "source": "sources/card-studio/cardstudio-bundle/lib/w01/isolated/web/frontend-runtime.mjs"
+    },
+    {
+      "path": "packages/studio/lib/workspace-setup.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/workspace-setup.js"
+    },
+    {
+      "path": "packages/studio/lib/worldbook-gating.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/worldbook-gating.js"
+    },
+    {
+      "path": "packages/studio/lib/write-receipt.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/write-receipt.js"
+    },
+    {
+      "path": "packages/studio/locale/en.json",
+      "source": "sources/card-studio/cardstudio-bundle/locale/en.json"
+    },
+    {
+      "path": "packages/studio/locale/zh.json",
+      "source": "sources/card-studio/cardstudio-bundle/locale/zh.json"
+    },
+    {
+      "path": "packages/studio/package.json",
+      "source": "sources/card-studio/cardstudio-bundle/package.json"
+    },
+    {
+      "path": "packages/studio/release-source.json",
+      "source": "sources/card-studio/cardstudio-bundle/release-source.json"
+    },
+    {
+      "path": "packages/studio/rollback-recycle.js",
+      "source": "sources/card-studio/cardstudio-bundle/rollback-recycle.js"
+    },
+    {
+      "path": "packages/studio/skills/advanced-tavern-card-authoring/SKILL.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/advanced-tavern-card-authoring/SKILL.md"
+    },
+    {
+      "path": "packages/studio/skills/advanced-tavern-card-authoring/SOURCE.txt",
+      "source": "sources/card-studio/cardstudio-bundle/skills/advanced-tavern-card-authoring/SOURCE.txt"
+    },
+    {
+      "path": "packages/studio/skills/advanced-tavern-card-authoring/references/authoring-workflows.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/advanced-tavern-card-authoring/references/authoring-workflows.md"
+    },
+    {
+      "path": "packages/studio/skills/advanced-tavern-card-authoring/references/frontend-and-fixtures.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/advanced-tavern-card-authoring/references/frontend-and-fixtures.md"
+    },
+    {
+      "path": "packages/studio/skills/advanced-tavern-card-authoring/references/primary-sources.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/advanced-tavern-card-authoring/references/primary-sources.md"
+    },
+    {
+      "path": "packages/studio/skills/advanced-tavern-card-authoring/references/runtime-and-dependencies.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/advanced-tavern-card-authoring/references/runtime-and-dependencies.md"
+    },
+    {
+      "path": "packages/studio/skills/advanced-tavern-card-authoring/references/tauritavern-target.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/advanced-tavern-card-authoring/references/tauritavern-target.md"
+    },
+    {
+      "path": "packages/studio/skills/advanced-tavern-card-authoring/references/validation-and-lifecycle.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/advanced-tavern-card-authoring/references/validation-and-lifecycle.md"
+    },
+    {
+      "path": "packages/studio/skills/advanced-tavern-card-authoring/references/visual-state-and-assets.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/advanced-tavern-card-authoring/references/visual-state-and-assets.md"
+    },
+    {
+      "path": "packages/studio/skills/advanced-tavern-card-authoring/references/worldbook-conditions.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/advanced-tavern-card-authoring/references/worldbook-conditions.md"
+    },
+    {
+      "path": "packages/studio/skills/catalog.json",
+      "source": "sources/card-studio/cardstudio-bundle/skills/catalog.json"
+    },
+    {
+      "path": "packages/studio/skills/character-authoring/CODEX-INTEGRATION.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/character-authoring/CODEX-INTEGRATION.md"
+    },
+    {
+      "path": "packages/studio/skills/character-authoring/ORIGINAL-SKILL.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/character-authoring/ORIGINAL-SKILL.md"
+    },
+    {
+      "path": "packages/studio/skills/character-authoring/SKILL.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/character-authoring/SKILL.md"
+    },
+    {
+      "path": "packages/studio/skills/character-authoring/SOURCE.json",
+      "source": "sources/card-studio/cardstudio-bundle/skills/character-authoring/SOURCE.json"
+    },
+    {
+      "path": "packages/studio/skills/character-authoring/TRIAL-GUIDE.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/character-authoring/TRIAL-GUIDE.md"
+    },
+    {
+      "path": "packages/studio/skills/character-authoring/references/person-design.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/character-authoring/references/person-design.md"
+    },
+    {
+      "path": "packages/studio/skills/character-authoring/references/review-and-delivery.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/character-authoring/references/review-and-delivery.md"
+    },
+    {
+      "path": "packages/studio/skills/character-authoring/references/social-and-situational.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/character-authoring/references/social-and-situational.md"
+    },
+    {
+      "path": "packages/studio/skills/scean-compatibility-audit/SKILL.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/scean-compatibility-audit/SKILL.md"
+    },
+    {
+      "path": "packages/studio/skills/scean-compatibility-audit/references/contracts.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/scean-compatibility-audit/references/contracts.md"
+    },
+    {
+      "path": "packages/studio/skills/scean-compatibility-audit/references/tool-and-results.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/scean-compatibility-audit/references/tool-and-results.md"
+    },
+    {
+      "path": "packages/studio/skills/scean-dialogue-authoring/SKILL.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/scean-dialogue-authoring/SKILL.md"
+    },
+    {
+      "path": "packages/studio/skills/scean-dialogue-authoring/SOURCE.json",
+      "source": "sources/card-studio/cardstudio-bundle/skills/scean-dialogue-authoring/SOURCE.json"
+    },
+    {
+      "path": "packages/studio/skills/scean-dialogue-authoring/references/editing-workflow.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/scean-dialogue-authoring/references/editing-workflow.md"
+    },
+    {
+      "path": "packages/studio/skills/scean-dialogue-authoring/references/prompt-contracts.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/scean-dialogue-authoring/references/prompt-contracts.md"
+    },
+    {
+      "path": "packages/studio/skills/scean-frontend-authoring/SKILL.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/scean-frontend-authoring/SKILL.md"
+    },
+    {
+      "path": "packages/studio/skills/scean-frontend-authoring/SOURCE.json",
+      "source": "sources/card-studio/cardstudio-bundle/skills/scean-frontend-authoring/SOURCE.json"
+    },
+    {
+      "path": "packages/studio/skills/scean-frontend-authoring/references/contracts.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/scean-frontend-authoring/references/contracts.md"
+    },
+    {
+      "path": "packages/studio/skills/scean-frontend-authoring/references/synthetic-acceptance.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/scean-frontend-authoring/references/synthetic-acceptance.md"
+    },
+    {
+      "path": "packages/studio/skills/scean-frontend-authoring/references/tools-and-lifecycle.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/scean-frontend-authoring/references/tools-and-lifecycle.md"
+    },
+    {
+      "path": "packages/studio/skills/scean-native-authoring/SKILL.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/scean-native-authoring/SKILL.md"
+    },
+    {
+      "path": "packages/studio/skills/scean-native-authoring/agents/openai.yaml",
+      "source": "sources/card-studio/cardstudio-bundle/skills/scean-native-authoring/agents/openai.yaml"
+    },
+    {
+      "path": "packages/studio/skills/scean-native-authoring/capability-manifest.json",
+      "source": "sources/card-studio/cardstudio-bundle/skills/scean-native-authoring/capability-manifest.json"
+    },
+    {
+      "path": "packages/studio/skills/scean-native-authoring/references/authoring-method.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/scean-native-authoring/references/authoring-method.md"
+    },
+    {
+      "path": "packages/studio/skills/scean-native-authoring/references/capabilities.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/scean-native-authoring/references/capabilities.md"
+    },
+    {
+      "path": "packages/studio/skills/scean-native-authoring/references/character-workspace.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/scean-native-authoring/references/character-workspace.md"
+    },
+    {
+      "path": "packages/studio/skills/scean-native-authoring/references/native-contracts.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/scean-native-authoring/references/native-contracts.md"
+    },
+    {
+      "path": "packages/studio/skills/scean-native-authoring/references/studio-integration.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/scean-native-authoring/references/studio-integration.md"
+    },
+    {
+      "path": "packages/studio/skills/scean-native-authoring/references/validation.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/scean-native-authoring/references/validation.md"
+    },
+    {
+      "path": "packages/studio/skills/scean-opening-authoring/SKILL.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/scean-opening-authoring/SKILL.md"
+    },
+    {
+      "path": "packages/studio/skills/scean-opening-authoring/SOURCE.json",
+      "source": "sources/card-studio/cardstudio-bundle/skills/scean-opening-authoring/SOURCE.json"
+    },
+    {
+      "path": "packages/studio/skills/scean-opening-authoring/references/authoring-workflow.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/scean-opening-authoring/references/authoring-workflow.md"
+    },
+    {
+      "path": "packages/studio/skills/scean-opening-authoring/references/creative-guide.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/scean-opening-authoring/references/creative-guide.md"
+    },
+    {
+      "path": "packages/studio/skills/scean-opening-authoring/references/studio-contract.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/scean-opening-authoring/references/studio-contract.md"
+    },
+    {
+      "path": "packages/studio/skills/scean-worldbook-authoring/SKILL.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/scean-worldbook-authoring/SKILL.md"
+    },
+    {
+      "path": "packages/studio/skills/scean-worldbook-authoring/SOURCE.json",
+      "source": "sources/card-studio/cardstudio-bundle/skills/scean-worldbook-authoring/SOURCE.json"
+    },
+    {
+      "path": "packages/studio/skills/scean-worldbook-authoring/references/runtime-contract.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/scean-worldbook-authoring/references/runtime-contract.md"
+    },
+    {
+      "path": "packages/studio/skills/scean-worldbook-authoring/references/studio-workflow.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/scean-worldbook-authoring/references/studio-workflow.md"
+    },
+    {
+      "path": "packages/studio/skills/sources.json",
+      "source": "sources/card-studio/cardstudio-bundle/skills/sources.json"
+    },
+    {
+      "path": "packages/studio/skills/tavern-card-format-preservation/SKILL.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/tavern-card-format-preservation/SKILL.md"
+    },
+    {
+      "path": "packages/studio/skills/tavern-card-format-preservation/SOURCE.txt",
+      "source": "sources/card-studio/cardstudio-bundle/skills/tavern-card-format-preservation/SOURCE.txt"
+    },
+    {
+      "path": "packages/studio/skills/tavern-card-format-preservation/references/card-fields.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/tavern-card-format-preservation/references/card-fields.md"
+    },
+    {
+      "path": "packages/studio/skills/tavern-card-format-preservation/references/png-preservation.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/tavern-card-format-preservation/references/png-preservation.md"
+    },
+    {
+      "path": "packages/studio/skills/tavern-card-format-preservation/references/worldbook-and-edits.md",
+      "source": "sources/card-studio/cardstudio-bundle/skills/tavern-card-format-preservation/references/worldbook-and-edits.md"
+    }
+  ]
+}

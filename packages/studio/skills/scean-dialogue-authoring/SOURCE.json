@@ -1,0 +1,134 @@
+{
+  "schemaVersion": 1,
+  "skill": "scean-dialogue-authoring",
+  "version": "1.0.0",
+  "authorship": "SCEAN-native original instructions authored for this repository from implemented contracts and tests",
+  "baselineCommit": "32f8630fbb0f3ecfa0a393bd9be8004ac3759082",
+  "authoringRecord": {
+    "language": "zh-TW",
+    "method": "Read effective source-level stage assembly, public/owner projection, source binding, editing and snapshot contracts; write purpose-specific workflow and references independently.",
+    "legacyBodyOrReferencesRead": false,
+    "legacyTextExamplesOrMethodOrganizationReused": false,
+    "note": "Historical provenance of retired skills remains a repository-level record. This manifest neither changes that history nor declares all project licensing cleared."
+  },
+  "files": [
+    "SKILL.md",
+    "references/prompt-contracts.md",
+    "references/editing-workflow.md"
+  ],
+  "implementationEvidence": [
+    {
+      "path": "packages/scean/core/engine.mjs",
+      "symbols": [
+        "assembleSources",
+        "publicSources",
+        "SYSTEMS",
+        "characterIdentities",
+        "SceanEngine.turn"
+      ],
+      "purpose": "Effective assembly and four-stage data paths"
+    },
+    {
+      "path": "packages/scean/core/prompt-r3.mjs",
+      "symbols": [
+        "withR3Prompts"
+      ],
+      "purpose": "Effective stage instructions, agency, adviser and canonical-event boundaries"
+    },
+    {
+      "path": "packages/scean/core/context-budget.mjs",
+      "symbols": [
+        "topFields",
+        "assemblyFields",
+        "budgetStage"
+      ],
+      "purpose": "Stage allowlists, pruning and required-core rejection"
+    },
+    {
+      "path": "packages/scean/core/memory-policy.mjs",
+      "symbols": [
+        "publicData",
+        "publicCharacter",
+        "ownerCharacterContext",
+        "ownerStateForModel",
+        "eligibleMemory"
+      ],
+      "purpose": "Structural public/owner projections and independent knowledge/truth dimensions"
+    },
+    {
+      "path": "packages/scean/core/character-advice.mjs",
+      "symbols": [
+        "projectCharacterAdvice"
+      ],
+      "purpose": "Public advice projection; structural rather than semantic review"
+    },
+    {
+      "path": "packages/scean/core/derived-facts.mjs",
+      "symbols": [
+        "projectDerivedFacts"
+      ],
+      "purpose": "Committed public State-derived Writer context without memory/state mutation"
+    },
+    {
+      "path": "packages/scean/plugin/native-model.mjs",
+      "symbols": [
+        "createNativeModelPort"
+      ],
+      "purpose": "Separate system input and JSON user packet; no tavern example-message parser"
+    },
+    {
+      "path": "packages/studio/lib/tool-definitions.js",
+      "symbols": [
+        "toolSpecs"
+      ],
+      "purpose": "Actual registered tool names and parameters"
+    },
+    {
+      "path": "packages/studio/lib/card-service.js",
+      "symbols": [
+        "commit",
+        "patchText",
+        "patch",
+        "bindSceanCharacter"
+      ],
+      "purpose": "Revision CAS, local card changes and controlled source binding"
+    },
+    {
+      "path": "packages/studio/lib/authoring-scope.js",
+      "symbols": [
+        "CONTENT_FIELDS",
+        "assertScopeOperation"
+      ],
+      "purpose": "Human-owned authoring scope boundaries"
+    },
+    {
+      "path": "packages/studio/lib/character-sources.js",
+      "symbols": [
+        "bindCharacterSources",
+        "validateCharacterSources"
+      ],
+      "purpose": "Explicit source selectors and hash drift"
+    },
+    {
+      "path": "packages/studio/lib/scean-integration.js",
+      "symbols": [
+        "buildSavedSnapshot",
+        "createSceanControl"
+      ],
+      "purpose": "Frozen saved data and human-only handoff"
+    }
+  ],
+  "testEvidenceSources": [
+    "tests/a1-character-context.test.mjs",
+    "tests/character-workspace-v1.test.mjs",
+    "tests/r3-handoffs.test.mjs",
+    "tests/b-context-budget.test.mjs"
+  ],
+  "responsibilityReferences": [
+    "packages/studio/skills/scean-native-authoring/SKILL.md",
+    "packages/studio/skills/scean-compatibility-audit/SKILL.md"
+  ],
+  "validationBoundary": "Static and Scripted Model checks can establish schema/data paths only. Live model semantic behavior, GUI and deployment require separate observed evidence; no paid model call is required or authorized by this skill.",
+  "license": "AGPL-3.0-only",
+  "licenseDecision": "2026-10-18 author decision for original SCEAN materials; full text in package LICENSE; original content hashes retained."
+}

@@ -1,0 +1,193 @@
+{
+  "schemaVersion": 1,
+  "sourcePackage": "@local/dsh-card-studio-scean-test",
+  "sourceVersion": "1.2.0-scean.2",
+  "baselineVersion": "1.2.0",
+  "baselineCommitRecorded": "e2747ab0059f18ecdd910d80bc13c0dfa31d36c7",
+  "provenance": "Authorized r3 isolated Studio integration source; not the [historical local source path omitted] historical 0.1.2-rc.6 workspace bundle.",
+  "entries": [
+    "lib/loader.js",
+    "lib/scean-integration.js"
+  ],
+  "dependencies": "Node builtins only; recursive static relative import closure",
+  "files": [
+    {
+      "path": "lib/archive-lifecycle.js",
+      "bytes": 9950,
+      "sha256": "9ef0f40542b35a6816532763df7e8e0e445b0cc2de154f7ba8804bc66efe8b8e"
+    },
+    {
+      "path": "lib/asset-raster.js",
+      "bytes": 15701,
+      "sha256": "0059665d9f0495692fe145cd8169c160d3855e88a3b6fbbcff2b756ea211627d"
+    },
+    {
+      "path": "lib/asset-upload.js",
+      "bytes": 700,
+      "sha256": "3c9d1e5044863cbe26521921b02ae193feb7d7af61fd5c217a763cb9ad14fccf"
+    },
+    {
+      "path": "lib/authoring-fixture.js",
+      "bytes": 4447,
+      "sha256": "f076cc6ff88c66cc93ef4b69adc6f770e864f1d40dd53fa4400d3b57c7c87b14"
+    },
+    {
+      "path": "lib/authoring-scope.js",
+      "bytes": 8396,
+      "sha256": "0fa49f1bfc1ed73add532e0183ea79c7f69f26f3e089c7500fa41269d107d67b"
+    },
+    {
+      "path": "lib/authoring-service.js",
+      "bytes": 42494,
+      "sha256": "d8662790ce7336704715cfa75031eb6c335350d5fbd61a93982b253fa2d5fe46"
+    },
+    {
+      "path": "lib/card-service.js",
+      "bytes": 36088,
+      "sha256": "7303d6e1a9dbfb20d93c853ef958a7c4ebac58c1866377124371f17cda44bd36"
+    },
+    {
+      "path": "lib/character-method.js",
+      "bytes": 3416,
+      "sha256": "4cc8448eee559182c10f56a853616c6c981fe7376fbb727900ddb1994329dcc8",
+      "priorSha256": "6ef8cb35bfc7f481e94251b7bd18687f245d61f0840afe25f4e777606175874e",
+      "modification": "2026-10-18: Palette method retirement from verified source branch; provenance retained."
+    },
+    {
+      "path": "lib/codec.js",
+      "bytes": 15805,
+      "sha256": "949cd5305430a935dacf88b2d49d5d83860925ea110ba7f6ff96093a1a16fd88"
+    },
+    {
+      "path": "lib/document-projection.js",
+      "bytes": 5264,
+      "sha256": "b5d9788d00f786e647ec3b33f7ac3c4b1885cbb80dc2b45d12661201d5213f73"
+    },
+    {
+      "path": "lib/frontend-authoring.js",
+      "bytes": 15397,
+      "sha256": "3fc19205b63aca752e052ce03dce6426f31db5ac749633e14e0e2802173a3b9f"
+    },
+    {
+      "path": "lib/library-image.js",
+      "bytes": 3990,
+      "sha256": "806b5ded216a9b46d30be7d1236e10db25aee3ccf80bc93b36e3a01260697711"
+    },
+    {
+      "path": "lib/library-index.js",
+      "bytes": 16857,
+      "sha256": "c4a2b64521320cfbeab72f22fb754f776ae4142a918368760ffd8ebb635a7121"
+    },
+    {
+      "path": "lib/library-retrieval.js",
+      "bytes": 2816,
+      "sha256": "78cd04a1544daf58905911d1628802d0e07c4e4fa8dfb0e3f11b6a22b117380d"
+    },
+    {
+      "path": "lib/library-service.js",
+      "bytes": 6752,
+      "sha256": "0ac8e02abc7b938c265c8724bc1c9d4bf6eeee499e463f2703f8e3e4d656339c"
+    },
+    {
+      "path": "lib/loader.js",
+      "bytes": 16959,
+      "sha256": "fec5cf9e1c69d11713bccc39c8620e3950948d3aca4ccf9c3c8e1dab71d1d7c2"
+    },
+    {
+      "path": "lib/material-service.js",
+      "bytes": 23349,
+      "sha256": "e69a62d99e84a96191221164a3b4313b0f82a3a16d7ad9777ebb1e4bff0ea48c"
+    },
+    {
+      "path": "lib/material-store.js",
+      "bytes": 11948,
+      "sha256": "59f11289b0335f72c2b5788b1176722f45256eeaf5ce6790ab890f28ccb2a16a"
+    },
+    {
+      "path": "lib/preflight-check.js",
+      "bytes": 10677,
+      "sha256": "08dbe90b049bb61d2e7c48429a91a14b06a23ab19c5976a2f406a22a1b342b14"
+    },
+    {
+      "path": "lib/presentation-base.js",
+      "bytes": 575,
+      "sha256": "55ab3ed108a7a5e5814bf4457d904ffb33cc790f566d696780a2a34cfb7b9779"
+    },
+    {
+      "path": "lib/preview-css.js",
+      "bytes": 7951,
+      "sha256": "9091b9fccaf408e9c5d9cc7682aaf1eed56075fc3c45c0c0ce81d723818db57d"
+    },
+    {
+      "path": "lib/preview-projection.js",
+      "bytes": 10231,
+      "sha256": "a753489434904edd5c53e5214c45f8d2092d3bd1944f1fcdbf786a7b2ad01dc8"
+    },
+    {
+      "path": "lib/scean-integration.js",
+      "bytes": 6318,
+      "sha256": "4edefedf97cbfdeda4b251b9811912398bfcf08aff5a43172a279d870eb85400"
+    },
+    {
+      "path": "lib/target-content.js",
+      "bytes": 3745,
+      "sha256": "08ce1b5ff65d0cb094d7d6d7df5a0627ff039ddb70d75d2b85fd9e698278a4b4"
+    },
+    {
+      "path": "lib/target-delivery.js",
+      "bytes": 5263,
+      "sha256": "4b6256133ac4c014fbfeecdb6de3388bf045253ababebe1935e8dc047cd7d7a9"
+    },
+    {
+      "path": "lib/target-dryrun.js",
+      "bytes": 3239,
+      "sha256": "ff597b2f31163045c0d54823d60f7911510320c1a141e9210d45e0bdd2963509"
+    },
+    {
+      "path": "lib/target-profile.js",
+      "bytes": 17092,
+      "sha256": "0c96bcee64fc7ff0e6277acc8efeab439164085077a6cd412ed4794f6e7f5c1b"
+    },
+    {
+      "path": "lib/target-state.js",
+      "bytes": 12854,
+      "sha256": "957fc1edca3759f0406ded4e5d4dd949a16a4efda1b4990be2e5e88998678be1"
+    },
+    {
+      "path": "lib/tavern-compatibility.js",
+      "bytes": 2006,
+      "sha256": "262d0a4fb6b408c737e7c75e6fb63a09d772e7233a0f2ab6c64d3a6f454ca6c1"
+    },
+    {
+      "path": "lib/upload-buffer.js",
+      "bytes": 2670,
+      "sha256": "03e833ace6b4b29168a28840fc69564c730c62f578e9aca6785441c3530154bd"
+    },
+    {
+      "path": "lib/visual-state.js",
+      "bytes": 10345,
+      "sha256": "50d4e63c3b7eb92b9130ec79018d41d5bdf3600d91a864aca4b796e323c15bb0"
+    },
+    {
+      "path": "lib/worldbook-gating.js",
+      "bytes": 17710,
+      "sha256": "10902c4a0565a710772f78757c9c2f55d66fe39e5a181c67a45ec7235cbf4cd0"
+    },
+    {
+      "path": "lib/write-receipt.js",
+      "bytes": 4150,
+      "sha256": "4c1eb5d31b6d4fc23f8d7ccddb97143f67148bc0f9fafa1a7822f21ed3cea512"
+    }
+  ],
+  "excluded": [
+    "skills",
+    "original methodology",
+    "client bundle",
+    "DSH SDK",
+    "workspace",
+    "cards",
+    "sessions",
+    "credentials",
+    "logs"
+  ]
+}

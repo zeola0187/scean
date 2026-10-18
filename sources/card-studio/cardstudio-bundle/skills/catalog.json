@@ -1,0 +1,38 @@
+[
+  {
+    "name": "scean-opening-authoring",
+    "description": "為 SCEAN 角色卡創作、修訂及管理開場白。以世界情境、人物活動與文學風格建立第一段遊戲體驗；支援文風試寫、多開場、一致性檢查及作者確認後的受控保存，不處理 Runtime／Preset 改寫。"
+  },
+  {
+    "name": "tavern-card-format-preservation",
+    "description": "酒館卡格式與資料保留｜CCv2/v3 JSON/PNG、世界書、未知 metadata、圖片與局部修改規範。"
+  },
+  {
+    "name": "advanced-tavern-card-authoring",
+    "description": "進階酒館卡共同創作：從概念建卡、局部前端修改、typed fixture、六表情與多角色素材契約、靜態安全預覽、聯合回退與可攜匯出。"
+  },
+  {
+    "name": "character-authoring",
+    "description": "角色塑造（試用草稿 α1）｜以七階段流程塑造能獨立成立、互相影響並支持自由 RP 的人物；由人類選用，與原版角色方法互斥。"
+  },
+  {
+    "name": "scean-native-authoring",
+    "description": "依實裝 SCEAN 契約分析完整酒館卡，製作原生角色、StateBlueprint／InitialState、知情範圍與固定 revision 驗證；不執行腳本或製作專屬前端。"
+  },
+  {
+    "name": "scean-compatibility-audit",
+    "description": "SCEAN 已保存卡片工程相容性：真 selector、Blueprint 初值／邊界、角色來源綁定、前端與 Snapshot 交接；非作品品質或玩法審查。"
+  },
+  {
+    "name": "scean-worldbook-authoring",
+    "description": "依 SCEAN 實際世界書 selector 與 Card Studio 受控工具建立、編輯及維護世界設定條目，區分靜態背景、正式 State、Memory 與角色資料；用於世界書製作，不取代工程相容性稽核。"
+  },
+  {
+    "name": "scean-dialogue-authoring",
+    "description": "依 SCEAN 實際 Prompt Assembly 與 Character Agent 契約，編修角色對話風格、互動習慣、示例及敘事指引，並用 Card Studio 保存可追溯版本。適用於製卡時的對話與 Prompt 設計，不改 Writer Runtime 或代寫開場白方法。"
+  },
+  {
+    "name": "scean-frontend-authoring",
+    "description": "依 SCEAN W01 實作製作及維護卡片的 HTML/CSS 動態前端，使用公開 Blueprint 綁定、顯示條件與 Host 衍生事實，透過 Card Studio 驗證、預覽、保存及讀回。適用前端製作要求；不負責角色創作方法或整體相容性稽核。"
+  }
+]

@@ -1,0 +1,60 @@
+{
+  "name": "@local/dsh-card-studio-scean-test",
+  "version": "1.2.0-scean.2",
+  "private": true,
+  "type": "module",
+  "description": "Isolated Card Studio 1.2.0 integration test copy for SCEAN",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "lib",
+    "locale",
+    "cordis.patch.yml",
+    "README.md",
+    "skills",
+    "THIRD-PARTY-NOTICES.txt"
+  ],
+  "peerDependencies": {
+    "@deepseek-ai/dsh-tools": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-typert-protocol": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-home-paths": "0.2.0-rc.2"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-tools": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-typert-protocol": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-home-paths": {
+      "optional": true
+    }
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-workspace",
+        "@deepseek-ai/dsh-client-ui-commands"
+      ]
+    }
+  },
+  "engines": {
+    "dsh": "0.2.0-rc.2"
+  },
+  "os": [
+    "win32"
+  ],
+  "cardstudioBuild": "scean-isolated-integration"
+}

@@ -1,0 +1,149 @@
+{
+  "schemaVersion": 1,
+  "runtimeCommit": "45ff63fd8c75f05c010cf4092d08e94dd3cf7ee4",
+  "status": "ready",
+  "sourceFile": "ship.source.json",
+  "sourceHash": "6e3d63d2fe8f9699c33f6e2c9a5dc0cbd6c2ae0d88a5046fb0e36aa5f192d95d",
+  "inventory": [
+    {
+      "domain": "characters",
+      "sourcePointer": "/characters",
+      "coverage": "complete",
+      "hash": "3b35a01b31a74ee4f0b5b28d6c1ab8381fcf5f8de64d8eb3b00f96c5c9575487"
+    },
+    {
+      "domain": "worldbook",
+      "sourcePointer": "/worldbook",
+      "coverage": "complete",
+      "hash": "b08b099f83511a907607570917da84307f895dbaf04f44840ca2ce09f7cbc6ff"
+    },
+    {
+      "domain": "variables",
+      "sourcePointer": "/variables",
+      "coverage": "complete",
+      "hash": "f8560c84195733055d557a3b7bdd492ce03970f8179ea308bdb99d33e0d842d7"
+    },
+    {
+      "domain": "prompt",
+      "sourcePointer": "/prompt",
+      "coverage": "complete",
+      "hash": "6aa1da544706c0e62f71711a899398ffaccd6c14a60ac7b47aa14df500777da7"
+    },
+    {
+      "domain": "scripts",
+      "sourcePointer": "/scripts",
+      "coverage": "absent",
+      "hash": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+    },
+    {
+      "domain": "frontend",
+      "sourcePointer": "/frontend",
+      "coverage": "complete",
+      "hash": "72de236f2c34b8ff06f96aaf8e82ebd75d9f491a6614df0ff58020762c346933"
+    },
+    {
+      "domain": "hostRules",
+      "sourcePointer": "/hostRules",
+      "coverage": "complete",
+      "hash": "b1ea824c6918d02023f5466601a0301a5bb13ea41d10560b1e251c0e414e566a"
+    }
+  ],
+  "mechanisms": [
+    {
+      "id": "roster",
+      "sourceDomain": "characters",
+      "intent": "每人保有本人背景與私人約定",
+      "classification": "runtime_executable",
+      "capability": "owner-context",
+      "implementation": "native-data",
+      "responsibility": "本人完整背景、ownState、owner recall；其他人僅身分",
+      "dataPath": "/data/extensions/scean/characters",
+      "tests": [
+        "ship:roster"
+      ]
+    },
+    {
+      "id": "values",
+      "sourceDomain": "variables",
+      "intent": "型別、範圍、缺值與可見性不可改義",
+      "classification": "runtime_executable",
+      "capability": "typed-state",
+      "implementation": "native-data",
+      "responsibility": "Blueprint型別、範圍、enum、visibility、readOnly；缺值未知",
+      "dataPath": "/data/extensions/scean/stateBlueprint",
+      "tests": [
+        "ship:values"
+      ]
+    },
+    {
+      "id": "start",
+      "sourceDomain": "variables",
+      "intent": "明示初值，weather未知，false及0不是缺值",
+      "classification": "runtime_executable",
+      "capability": "initial-state",
+      "implementation": "native-data",
+      "responsibility": "來源版本化 InitialState 物化，restricted wrapper",
+      "dataPath": "/data/extensions/scean/initialState",
+      "tests": [
+        "ship:start"
+      ]
+    },
+    {
+      "id": "lore",
+      "sourceDomain": "worldbook",
+      "intent": "literal命中才選公開條目",
+      "classification": "runtime_executable",
+      "capability": "worldbook-literal",
+      "implementation": "native-data",
+      "responsibility": "literal/keyword/constant/scan 選擇；不執行正則或腳本",
+      "dataPath": "/data/character_book",
+      "tests": [
+        "ship:lore"
+      ]
+    },
+    {
+      "id": "events",
+      "sourceDomain": "prompt",
+      "intent": "完成才結算，不剝奪玩家選擇",
+      "classification": "model_guidance",
+      "capability": "story-rules",
+      "implementation": "model-prompt",
+      "responsibility": "人物演繹、文風、因果、事件知情判斷靠模型",
+      "dataPath": "/data/system_prompt",
+      "tests": [
+        "ship:events"
+      ]
+    },
+    {
+      "id": "display",
+      "sourceDomain": "frontend",
+      "intent": "公開資源與未知；私人約定不顯示",
+      "classification": "runtime_executable",
+      "capability": "public-ui",
+      "implementation": "native-data",
+      "responsibility": "通用UI/Inspector公開投影，未知呈現；不是任意HTML runtime",
+      "dataPath": "publicBlueprintState",
+      "tests": [
+        "ship:display"
+      ]
+    },
+    {
+      "id": "law",
+      "sourceDomain": "hostRules",
+      "intent": "非法scope與越界型別拒絕",
+      "classification": "runtime_executable",
+      "capability": "stat-delta",
+      "implementation": "native-data",
+      "responsibility": "合法 scope/全key替換/未指定保留/公開delta不能改private",
+      "dataPath": "stateChanges",
+      "tests": [
+        "ship:law"
+      ]
+    }
+  ],
+  "decisions": [],
+  "classifiedPrivateLiterals": [
+    "SHIP_OWNER_COPPER_PROMISE",
+    "PRIVATE_LABEL_ship"
+  ]
+}

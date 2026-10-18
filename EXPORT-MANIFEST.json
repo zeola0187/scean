@@ -1,0 +1,3187 @@
+{
+  "schemaVersion": 2,
+  "title": "SCEAN 1.4.0 public source",
+  "publicReleaseStatus": "AUTHOR_AUTHORIZED_PUBLIC_RELEASE",
+  "skill": {
+    "name": "scean-opening-authoring",
+    "version": "1.0.0",
+    "sourceSha256": "f08bf582c42483e6d0883a6df13f635afdc6d7fe4479e436478c9a7da9ac9e23"
+  },
+  "exportPolicy": "exact allowlist only; extra files never copied",
+  "files": [
+    {
+      "path": ".gitattributes",
+      "bytes": 86,
+      "sha256": "a843071a892b55314e713050cf7456236ffc3d8f341b66694085371b3d12f2e2"
+    },
+    {
+      "path": ".gitignore",
+      "bytes": 382,
+      "sha256": "053da258c2733bfc4e2a106116473aefbabe6318afb31c0f858d754caaab2cdf"
+    },
+    {
+      "path": "BUILD-MAP.json",
+      "bytes": 31910,
+      "sha256": "20078e89524375298b26c23c4da188d83eea57b6e2f8535544acb7fee6bb01c5"
+    },
+    {
+      "path": "COPYRIGHT",
+      "bytes": 152,
+      "sha256": "5b413ef2f35abc19a5dab7d635f6658cb7f4c90946b77f55363743cc3a56e009"
+    },
+    {
+      "path": "DEPENDENCIES.json",
+      "bytes": 105492,
+      "sha256": "ccbcac81c63e1ff6a70337ce55282e911a874677e6779ff4c58a4847ddefb97c"
+    },
+    {
+      "path": "LICENSE",
+      "bytes": 34523,
+      "sha256": "0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0"
+    },
+    {
+      "path": "LICENSE-SCOPE.md",
+      "bytes": 2230,
+      "sha256": "861c3fd735a29341dcb76b7e87358550aa8c2e18e61977a97f5011e36d0d25c3"
+    },
+    {
+      "path": "README.md",
+      "bytes": 2846,
+      "sha256": "a48a1538304b08bb3e15a33fa2ac2d7c3b10232ad4898f84ccf4b83be2f7dbe1"
+    },
+    {
+      "path": "SOURCE-AVAILABILITY.md",
+      "bytes": 1593,
+      "sha256": "3446d38e4619533e38bacb90b3b1be0abfe9ff64c84682e42009760c09967a03"
+    },
+    {
+      "path": "THIRD-PARTY-LICENSES.json",
+      "bytes": 2102,
+      "sha256": "22002d5bc9c61d6d4fccf9e69e1f0fa1448b225e5504ea74a0d019b0b2e2e06c"
+    },
+    {
+      "path": "THIRD-PARTY-NOTICES.md",
+      "bytes": 4599,
+      "sha256": "d1a85fd4e90405750c5bfd6f6198e7e1b7ad43283b368678b7389c2259789483"
+    },
+    {
+      "path": "adapters/budget.mjs",
+      "bytes": 5132,
+      "sha256": "9f45bb2801b60e453af04238c6392c9bf87f777368538323309ea53dfc913f79"
+    },
+    {
+      "path": "adapters/chapter-providers.mjs",
+      "bytes": 5024,
+      "sha256": "391c52a7a4b9d1406ece32863f605d27b05f35e16949c728625783e6f7913eec"
+    },
+    {
+      "path": "adapters/model.mjs",
+      "bytes": 9541,
+      "sha256": "17d8c060a99005ea9fd29c2bf8e4ff15de005a66b1316a55313c750cd1aba224"
+    },
+    {
+      "path": "adapters/store.mjs",
+      "bytes": 10130,
+      "sha256": "48b888d37ac8a760f9955037091792cab9674522afba9bb8e19b502c34244e2e"
+    },
+    {
+      "path": "authoring/NOTICE.md",
+      "bytes": 2076,
+      "sha256": "6932c562cf5078246aafbb02d7deebf07ec5570dbd99dba6a80167e3642a0554"
+    },
+    {
+      "path": "authoring/compatibility-audit.mjs",
+      "bytes": 18890,
+      "sha256": "f775ee2353876d2224603dbe1a417521b710cb984612e0dfc5c39bfd8597cda8"
+    },
+    {
+      "path": "authoring/contracts/plan-v1-capabilities.json",
+      "bytes": 17911,
+      "sha256": "12403a4bc2cdbdefbfc2ac39b2046018aa0ad7fafce4c42955d4acd59b5db9d7"
+    },
+    {
+      "path": "authoring/fixtures/market.native.json",
+      "bytes": 6031,
+      "sha256": "e14f5d280faaa4786672d50b43e3780c15604ef2f2527913aef435de709ae146"
+    },
+    {
+      "path": "authoring/fixtures/market.plan.json",
+      "bytes": 4776,
+      "sha256": "b11867fdb5f6cddf0963e1c1dd3dd34d8af181774c5af15249be054335b063c4"
+    },
+    {
+      "path": "authoring/fixtures/market.source.json",
+      "bytes": 4968,
+      "sha256": "5b246555eb740c82f5784de48896077c1265cf97334f7fa4b93988da2bd743a0"
+    },
+    {
+      "path": "authoring/fixtures/ship.native.json",
+      "bytes": 6548,
+      "sha256": "204468d34999da327156d58e9fe3eb2404cadf46226f06a94907cbd3d6231742"
+    },
+    {
+      "path": "authoring/fixtures/ship.plan.json",
+      "bytes": 4762,
+      "sha256": "5fcc831d5aed682d3c53b0afbd6c7838ae02e5386692ea8b9978209d32d07703"
+    },
+    {
+      "path": "authoring/fixtures/ship.source.json",
+      "bytes": 5392,
+      "sha256": "a5af6db32a9d5232e6811983c7e4a1a063a46eb32e6577e0cc572dd28aa84c71"
+    },
+    {
+      "path": "authoring/frontend-css.mjs",
+      "bytes": 7830,
+      "sha256": "f37989b827ddd0dc53ad27eae1104ea2330e974b2a59f348ce0ecb21bf36cee7"
+    },
+    {
+      "path": "authoring/frontend-html.mjs",
+      "bytes": 3655,
+      "sha256": "584d59f4b64ad48ed4560d775f36f7df37a02bbcfb5edec549515aab734ad697"
+    },
+    {
+      "path": "authoring/scripts/validate-plan-v1.0.0.mjs",
+      "bytes": 4461,
+      "sha256": "861a753af1952d049d37c8a80475d41d7a67fdd66c8624a11e2b0d64a3da9445"
+    },
+    {
+      "path": "authoring/scripts/validate-plan.mjs",
+      "bytes": 4475,
+      "sha256": "0df59c1a9c100edbc68f4b3776949426d4a108c065e18a35124db5f66c4f1f2d"
+    },
+    {
+      "path": "authoring/skills/catalog.json",
+      "bytes": 250,
+      "sha256": "f521bf27a852e2fd6411877f9e78066ae4980262a2559dc2656c7c73423dedf5"
+    },
+    {
+      "path": "authoring/skills/scean-compatibility-audit/SKILL.md",
+      "bytes": 2671,
+      "sha256": "ddd428d6f23e628f92dd036349749a56805352864c511587bfa6217800610b45"
+    },
+    {
+      "path": "authoring/skills/scean-compatibility-audit/references/contracts.md",
+      "bytes": 3462,
+      "sha256": "d188161e78496984319b0ab6aab47ced625a0f3004ecb5f4f19d1b9373decd57"
+    },
+    {
+      "path": "authoring/skills/scean-compatibility-audit/references/tool-and-results.md",
+      "bytes": 1786,
+      "sha256": "567e75fbc0f9624ce925741b864dfef91894fa90966cb4e045acefcaaa46ba39"
+    },
+    {
+      "path": "authoring/skills/scean-native-authoring/SKILL.md",
+      "bytes": 3561,
+      "sha256": "7679677e63051a6a7f8013888425bdc473e5999fbfb52de163be5ddd02bd5e30"
+    },
+    {
+      "path": "authoring/skills/scean-native-authoring/agents/openai.yaml",
+      "bytes": 286,
+      "sha256": "ecd435f975ed601470d6614d2065743f8410b55be7394a56da90f60e3d059c81"
+    },
+    {
+      "path": "authoring/skills/scean-native-authoring/capability-manifest.json",
+      "bytes": 23315,
+      "sha256": "b0f003794cc0fe23f2107634bfd50b680b1abc68f0f60aa0e5efd4ea84f4d45b"
+    },
+    {
+      "path": "authoring/skills/scean-native-authoring/references/authoring-method.md",
+      "bytes": 2868,
+      "sha256": "47b0814ef7495e67a220eef04459f5d43b514ebfd63c9a1ccde1cc3e7b9a982b"
+    },
+    {
+      "path": "authoring/skills/scean-native-authoring/references/capabilities.md",
+      "bytes": 5757,
+      "sha256": "ede7795a64f9ba6f32decbda302f6eb9e136bc1ff4fb8fa99114ebbff334e21f"
+    },
+    {
+      "path": "authoring/skills/scean-native-authoring/references/character-workspace.md",
+      "bytes": 3285,
+      "sha256": "17962e0b743ba46f20d4262749bea280c6ec850fb7a5df9bc5dd0d13ea530160"
+    },
+    {
+      "path": "authoring/skills/scean-native-authoring/references/native-contracts.md",
+      "bytes": 5560,
+      "sha256": "8f8c680165a419196a6a5411c1f9a01b9919bb1bc7b916d18d8002a2482b8617"
+    },
+    {
+      "path": "authoring/skills/scean-native-authoring/references/studio-integration.md",
+      "bytes": 2932,
+      "sha256": "1ab91e483ee818829f43a4741032603c98e985dfd61e34c39e35424c8d55503e"
+    },
+    {
+      "path": "authoring/skills/scean-native-authoring/references/validation.md",
+      "bytes": 1574,
+      "sha256": "b5772c73a911196c565b1349e0d6fc1fffa9c3714472768e1feba0fe217bf8e3"
+    },
+    {
+      "path": "authoring/tests/acceptance.test.mjs",
+      "bytes": 12842,
+      "sha256": "00dc3d786d0a47f00eb6fcd07584d973101b327886617f04a5878e6c65c6fbc6"
+    },
+    {
+      "path": "authoring/tests/agent-integration.test.mjs",
+      "bytes": 12082,
+      "sha256": "69480112949bc89c419a9aa56cbf3f2bbccda83efb8b346acb1506a54de32bb9"
+    },
+    {
+      "path": "authoring/tests/workspace-plan.test.mjs",
+      "bytes": 1440,
+      "sha256": "89348ed717adc4c52d768bea62ffeb0da59feb8643aeb996c9e2c2204398868f"
+    },
+    {
+      "path": "cordis.patch.yml",
+      "bytes": 205,
+      "sha256": "c7d6089a28f19668ae51f4b30a0b2b4b4040063a064de6dca929ecd2de3aacad"
+    },
+    {
+      "path": "core/banlist.mjs",
+      "bytes": 2808,
+      "sha256": "6705129ffa95f2d93bc157e9db9a8a1ffa9166661b6f16607ede7948f291688b"
+    },
+    {
+      "path": "core/chapter-recall.mjs",
+      "bytes": 12207,
+      "sha256": "2b3f66bbca4c3b4d46e8df35fdd5d69ec275bfc1c7a96d30b76787d267ac4d46"
+    },
+    {
+      "path": "core/chapter-summary.mjs",
+      "bytes": 36725,
+      "sha256": "f71a60fe6a76c8c2bd07819bc3a469cf72d1ece773de514865cbbe0681243dbf"
+    },
+    {
+      "path": "core/character-advice.mjs",
+      "bytes": 2307,
+      "sha256": "57855fbdaa74187474ec7fb3fb6a87d8df1b3a78805ad5ca5ed2533c5148d066"
+    },
+    {
+      "path": "core/character-sources.mjs",
+      "bytes": 3537,
+      "sha256": "b29e660c0df42969dceb1e57eab535d6ff89b18a4fc569828c7519a35a6796af"
+    },
+    {
+      "path": "core/condition-ast.mjs",
+      "bytes": 4227,
+      "sha256": "ac293b8d64a089b19d7bac9d87b0e7a3e2e28daea3cfc8989585b856012b2bfc"
+    },
+    {
+      "path": "core/context-budget.mjs",
+      "bytes": 9008,
+      "sha256": "f8e2ecd322373fbb4c64ed9248b098a6124e8484f1d7e2a64eb023605a7f2434"
+    },
+    {
+      "path": "core/contracts.mjs",
+      "bytes": 6515,
+      "sha256": "4966526b5c6ce7311f0aefee3e7daa726e196fb0094c49c01ea7b61940a7cba4"
+    },
+    {
+      "path": "core/derived-facts.mjs",
+      "bytes": 3108,
+      "sha256": "0bc2db6a367124e8f1ff16be35233e2822fca7728ab29d09483a782a413af15a"
+    },
+    {
+      "path": "core/engine.mjs",
+      "bytes": 51076,
+      "sha256": "23686d04b743925c5c94bbb21fd1418984db7cea17ca75580243ee6321ba21e7"
+    },
+    {
+      "path": "core/frontend.mjs",
+      "bytes": 7619,
+      "sha256": "3342940421f492bc4d893b53e8a8d99c4f5aff0c59dc9b4cab4720549fce0ed3"
+    },
+    {
+      "path": "core/history-recall.mjs",
+      "bytes": 8022,
+      "sha256": "aca52bf93dcc8293cf597f9e6966de4309abd439f0a232436c915bde4298c5b0"
+    },
+    {
+      "path": "core/history.mjs",
+      "bytes": 6321,
+      "sha256": "93bbd64fe3bd4f7da7d5be0c8d809b1ba2bc3bf18008061abcf188fcb3e901cc"
+    },
+    {
+      "path": "core/inspection.mjs",
+      "bytes": 12487,
+      "sha256": "74072c433c818b474e968fca156486cc4c6fb8e409ddf9dde5015614a7fcc219"
+    },
+    {
+      "path": "core/memory-policy.mjs",
+      "bytes": 9522,
+      "sha256": "ef814c26b9e3353c1d89892947a75ff9eb1bb8f70d669f964b019820ef0d819d"
+    },
+    {
+      "path": "core/memory.mjs",
+      "bytes": 19092,
+      "sha256": "c37496b912e1ee2ae8b98501d00cc16947cf391c2b8d679d32347162d27d571b"
+    },
+    {
+      "path": "core/narrative.mjs",
+      "bytes": 26925,
+      "sha256": "84d9cedd29f1c149e44efbae26f462005237fb343c38fb1dbc00a58978439c03"
+    },
+    {
+      "path": "core/post-stat-output.mjs",
+      "bytes": 4237,
+      "sha256": "4340d643f4438c80e44f9c6a60f47da80d3ac7ea145b0da9d6ec286ea0bd56b3"
+    },
+    {
+      "path": "core/prompt-r3.mjs",
+      "bytes": 15036,
+      "sha256": "169c63fc6f9cf033d7fe0599dfba0f08fe53cd8afff7d6857b5dcbb13a3964f7"
+    },
+    {
+      "path": "core/public-state-bindings.mjs",
+      "bytes": 1674,
+      "sha256": "8a8db1d5346f148dbb3e06f9168e8ee8f780248b79adfc7730a0b80372eddf0b"
+    },
+    {
+      "path": "core/regenerate.mjs",
+      "bytes": 3442,
+      "sha256": "134717dfca1d7aa2c4867d7759f469d537b0ce0b0c79cf2195cf62f7f82413c4"
+    },
+    {
+      "path": "core/save-bundle.mjs",
+      "bytes": 23754,
+      "sha256": "844896a425489603e0c4a8ddbffa5e439671fb035d70724baf0fee0ec1b01813"
+    },
+    {
+      "path": "core/stat-contract.mjs",
+      "bytes": 9768,
+      "sha256": "6dccf809bfce83df3b37f37f31a30e8a53ac6eabf12d8527b38ef4e5fd24709b"
+    },
+    {
+      "path": "core/state-blueprint.mjs",
+      "bytes": 13506,
+      "sha256": "1686bc3e2c950ce9895b73023088c3ba33bae7ec41d2dbba3533290cfb592e90"
+    },
+    {
+      "path": "core/worldbook.mjs",
+      "bytes": 16403,
+      "sha256": "9c65ec0d1574f5edb320e80bd090c49bfe19fb3c2d5709abe9b53558df5fe4b9"
+    },
+    {
+      "path": "docs/ARCHITECTURE.md",
+      "bytes": 3407,
+      "sha256": "d527d5675eefecccaa024e2209c7d6a56b8ca1aea30fa40041609bd5cdbec3d5"
+    },
+    {
+      "path": "docs/C-HISTORY-CONTRACT.md",
+      "bytes": 9486,
+      "sha256": "76af5c5d9ba421e4fd2f7a03d8e9c334c09087625db4b5b4823505d480547506"
+    },
+    {
+      "path": "docs/C-SAVE-FORMAT.md",
+      "bytes": 8499,
+      "sha256": "955d494cf2bd06f448c4adc9e65e3c385a95fa9072148757178103a7bcfa93ce"
+    },
+    {
+      "path": "docs/CARD-SCOPE-V1.md",
+      "bytes": 3094,
+      "sha256": "ecaad2dda48651205cc044de4ff66c3f1857b016dbfb99eaad87b9cffd1adc75"
+    },
+    {
+      "path": "docs/CHAPTER-CONTEXT-RELEASE.zh-TW.md",
+      "bytes": 7546,
+      "sha256": "8d3ae5f87f5b6e82f1d4436d2ea8888ea0b8c104b2cd141da1bf8ad8adc360fb"
+    },
+    {
+      "path": "docs/D-CHAPTER-ARCHIVE.md",
+      "bytes": 5271,
+      "sha256": "f5346027a73e3c2b575d060b42cab060e963132d5aa4a11855ed324adacc4448"
+    },
+    {
+      "path": "docs/D-HISTORY-RECALL.md",
+      "bytes": 9094,
+      "sha256": "c2550910695d7e9468915b125f3a6c74d370f87a5572fda5f895497579ed9aff"
+    },
+    {
+      "path": "docs/D-SAVE-COMPATIBILITY.md",
+      "bytes": 7642,
+      "sha256": "cf4a80e6190ab64ddc34e4b8cde060f90bd95c199ffa3cc598b2c93c08875673"
+    },
+    {
+      "path": "docs/D-SUMMARY-CONTRACT.md",
+      "bytes": 9411,
+      "sha256": "65c1b0a77e1cf62dc18450e51876919c690ee0750878473b2d6d208d6b6e4f3d"
+    },
+    {
+      "path": "docs/DSH-0.2.1-COMPATIBILITY.md",
+      "bytes": 5864,
+      "sha256": "8ce9dd443e8daffe7b7bf2c0d40c3aa7f59fc9b09eaeae1ce881d26b744b16ad"
+    },
+    {
+      "path": "docs/DSH-0.2.1-RC2-COMPATIBILITY.md",
+      "bytes": 5934,
+      "sha256": "1952270dcb8eaf159a8048fc6290a06f594feb7fa7915ea4e824236c2611cd2b"
+    },
+    {
+      "path": "docs/GLOBAL-CHAPTER-SETTINGS.zh-TW.md",
+      "bytes": 6028,
+      "sha256": "0ab3e6ce947f6c7d50c5af1a495b1195ab37ed93e6227937452f68a286f86ff5"
+    },
+    {
+      "path": "docs/NOTIFICATIONS-V1.md",
+      "bytes": 2455,
+      "sha256": "65d6562b0e7c84b7620f952a99a2352c8ef01d0e912692ab9047bb40260de4fe"
+    },
+    {
+      "path": "docs/OPENING-AUTHORING.zh-TW.md",
+      "bytes": 1796,
+      "sha256": "4865050ad0ef4b589d6547be1e5059118cdbcaef8d56b4823fdebcb7128a5f65"
+    },
+    {
+      "path": "docs/OPENING-SELECTION.zh-TW.md",
+      "bytes": 3800,
+      "sha256": "688b7de6816b00e2fdd843f73208a6e7533fed53c8c5d3fbdfb5e98964831f0b"
+    },
+    {
+      "path": "docs/OPENING-SKILL-REPLACEMENT.json",
+      "bytes": 517,
+      "sha256": "89e8f3344f467b01521115d2af96c66ec4beb77e8197c5b4f964516bff4f9d8b"
+    },
+    {
+      "path": "docs/PALETTE-REMOVAL.zh-TW.md",
+      "bytes": 1722,
+      "sha256": "2dd8da3ba40e796631c97735c019a3b67e2555a2f48e2aff7aa2d9cfeb1f53f0"
+    },
+    {
+      "path": "docs/RELEASE-BLOCKERS.md",
+      "bytes": 1320,
+      "sha256": "b8f8c6708ec6ad264b6ee57a761bdbd629e54366fd21dca16cde0692d4bce57b"
+    },
+    {
+      "path": "docs/UI-APPEARANCE.zh-TW.md",
+      "bytes": 3637,
+      "sha256": "aed239679d994f19e2fbd19a0a1f881bc5e4a43f7e5de93f05c1e0ce1ce12406"
+    },
+    {
+      "path": "docs/VALIDATION.md",
+      "bytes": 1242,
+      "sha256": "1c01ffff502ba0d4b08e75793019dfde8b214e4da0567ad7e7e8a65de6c09357"
+    },
+    {
+      "path": "docs/W01-CONTRACT.md",
+      "bytes": 7258,
+      "sha256": "5a72174faa75d604d212894e718613a901d691778c1f8e12eddf882722fa384f"
+    },
+    {
+      "path": "docs/W01-HOST-DERIVED-CONTRACT.md",
+      "bytes": 3498,
+      "sha256": "e533cf21318f2cb3cd4a3672c65963f81f9920ae286d5bd9e44673fd353041cc"
+    },
+    {
+      "path": "docs/W01-USER-GUIDE.zh-TW.md",
+      "bytes": 5994,
+      "sha256": "844350564fd602db63db5478a0491f468fc3326948798af0ce2e75643058b7ef"
+    },
+    {
+      "path": "docs/W19-SECURITY.md",
+      "bytes": 1520,
+      "sha256": "9242dca11f2f0c44685e2c7e8c07b68fcb65ee0e280acb296176815b144df6a1"
+    },
+    {
+      "path": "docs/W19-VALIDATION.md",
+      "bytes": 961,
+      "sha256": "a34da1c6b95d977122dac462827d3e436b0e244f2e212238937c51a2483a15b9"
+    },
+    {
+      "path": "docs/config.example.json",
+      "bytes": 455,
+      "sha256": "05b07a91627661fe8a86dd4b64a7acb5f9148053bb77f9c0464ab56334c7025e"
+    },
+    {
+      "path": "docs/native-skills-evidence/retirement-and-preservation.json",
+      "bytes": 1979,
+      "sha256": "c1447284ca63ee698f37875d4fa1f60292cbd4ae110789135c4d75b3d83066ad"
+    },
+    {
+      "path": "dsh-compatibility.json",
+      "bytes": 509,
+      "sha256": "c315399e751a858db8ed43bcbc9623764d3e30601e74e9a9e02ad8b093c427b2"
+    },
+    {
+      "path": "fixtures/player-ui-synthetic.mjs",
+      "bytes": 2447,
+      "sha256": "13ed927fde7be689aeffbccc24ae40365b057e583be3ecbf71c2ef8a31a9fa1f"
+    },
+    {
+      "path": "fixtures/synthetic-catalog.mjs",
+      "bytes": 6171,
+      "sha256": "2a3e2971c668d807b7da99e14fa06be920fa06e59509aa022d64de67a9b10a9e"
+    },
+    {
+      "path": "fixtures/synthetic-chapter-recall.mjs",
+      "bytes": 2963,
+      "sha256": "21fbe972a4db4fdaf4e3ea25c7c25a1c88f2ddac569f2201851c610d945e0707"
+    },
+    {
+      "path": "fixtures/synthetic-df-prompt-source.mjs",
+      "bytes": 8773,
+      "sha256": "9eda989fe9d05a45e2e57c0a5ae32d9e31342a51c2d433570acbabc5d9084298"
+    },
+    {
+      "path": "fixtures/synthetic-history-c.mjs",
+      "bytes": 5209,
+      "sha256": "94fc0cbb719da43e99e9223d5124fcda584bc5792a05aec8c3a6be2bb1ba0ed7"
+    },
+    {
+      "path": "fixtures/synthetic-longrun-d.mjs",
+      "bytes": 6265,
+      "sha256": "744eb3c55b0e6e77ff1ef3f147840ac1e08ac1efb459e54b166e6420157fe3d9"
+    },
+    {
+      "path": "fixtures/w01-derived-facts.mjs",
+      "bytes": 1471,
+      "sha256": "f4e9bc20bddb4fffc537e2f8e922fde7c886554dc78608af62c064d0304a7ad7"
+    },
+    {
+      "path": "fixtures/w01-frontends.mjs",
+      "bytes": 4176,
+      "sha256": "7f5ea3996912259492375b7234554dce722217c3f07dc723e15949b0052aee81"
+    },
+    {
+      "path": "isolated/dsh-runtime.mjs",
+      "bytes": 3227,
+      "sha256": "055b63f531c00d27b302dae78c24e94e687e0ee4585de9aff729a3b6aa9ac8ff"
+    },
+    {
+      "path": "isolated/generation-gate.mjs",
+      "bytes": 1767,
+      "sha256": "a8ffe86495b00c5aa1a8826d6e4314717ad75deffbb25743548c272179dc1793"
+    },
+    {
+      "path": "isolated/server.mjs",
+      "bytes": 17390,
+      "sha256": "122f8f5871c6dabde6875bb6f0a146f74f4b56de3233a3113d51bc6c09889baa"
+    },
+    {
+      "path": "isolated/studio-bridge.mjs",
+      "bytes": 17653,
+      "sha256": "f9acb2ebeeab0226028c83706c9c089022cbd029ec360a4e5972e059e11f43c5"
+    },
+    {
+      "path": "isolated/web/app.mjs",
+      "bytes": 74984,
+      "sha256": "892a868e3a5b197d371229759373842ee4218865faf42c993a69763f2fa7c284"
+    },
+    {
+      "path": "isolated/web/card-frontend.mjs",
+      "bytes": 3697,
+      "sha256": "ceecf0bb189685226c66ac535b38163c20fe1eb87b370b5f8567362abb38626d"
+    },
+    {
+      "path": "isolated/web/chapter-settings-ui.mjs",
+      "bytes": 14045,
+      "sha256": "b11a88e41bc13c8d1ba2c02b097186c7483248122bbcb97f798304a4263bd603"
+    },
+    {
+      "path": "isolated/web/condition-ast.mjs",
+      "bytes": 4227,
+      "sha256": "ac293b8d64a089b19d7bac9d87b0e7a3e2e28daea3cfc8989585b856012b2bfc"
+    },
+    {
+      "path": "isolated/web/frontend-runtime.mjs",
+      "bytes": 3275,
+      "sha256": "8bba8b774899b52710a8bd51b26322b7026c26de64f30a47a690d71d6fd43859"
+    },
+    {
+      "path": "isolated/web/index.html",
+      "bytes": 26920,
+      "sha256": "43a8e1fb4be1c2818f69a9e6af2abd3979efda6e2c7924d0b6bdd33a5b461821"
+    },
+    {
+      "path": "isolated/web/notifications.mjs",
+      "bytes": 11484,
+      "sha256": "5fe0e83648fb2a169ff2fac673759a7c4a1fdf4b8987ead6b43ade6e34a2a382"
+    },
+    {
+      "path": "isolated/web/opening-selection-ui.mjs",
+      "bytes": 3555,
+      "sha256": "4f6db4a378966db2c216ab329a698b51b18c33a778f490833dbed6b4c4961eef"
+    },
+    {
+      "path": "isolated/web/opening-selection.css",
+      "bytes": 443,
+      "sha256": "78a00743ea3ebc621263108520233c7c190e0d036d5826b254781d7624660f87"
+    },
+    {
+      "path": "isolated/web/player-shell.mjs",
+      "bytes": 10936,
+      "sha256": "ab3bfe7e1552fb5ad9ff8e971059603b9f706e9ef4774d4c4cbb30161c9b5f07"
+    },
+    {
+      "path": "isolated/web/player.css",
+      "bytes": 14522,
+      "sha256": "20377bbfdb89207527ca93d6a9dde359452a5d509e73eae0d9fd290f6509888e"
+    },
+    {
+      "path": "isolated/web/presentation.css",
+      "bytes": 8738,
+      "sha256": "9a4c4ab3a664d56fa10f4d0b1185fb4b0c3b17bb6bdebd5d31260cee950d8c60"
+    },
+    {
+      "path": "isolated/web/presentation.mjs",
+      "bytes": 5220,
+      "sha256": "0b1b3f1c712b5aad44bfea831c23b66da20c8b40c46688ac97905f234f2f2eec"
+    },
+    {
+      "path": "isolated/web/reading-layout.mjs",
+      "bytes": 3319,
+      "sha256": "905a3187c57ae020bbdd181673a37c8c90cadb3647c28f2dc2b1290272508cdf"
+    },
+    {
+      "path": "isolated/web/studio-view-model.mjs",
+      "bytes": 9319,
+      "sha256": "c5f50c7afe8572db65979af8c207fd163895b776fdfda23b7faff57ea5380b3b"
+    },
+    {
+      "path": "isolated/web/studio.mjs",
+      "bytes": 24630,
+      "sha256": "2e047f64f7cbcbb23c4dff72e0060ead3b2ab5f8fe5b894d3b2040590112b428"
+    },
+    {
+      "path": "isolated/web/style.css",
+      "bytes": 14643,
+      "sha256": "78073831d49ec1637c5ebe3a57281917538f7cbb2b4bb7c39cca74dd1a24746e"
+    },
+    {
+      "path": "isolated/web/view-model.mjs",
+      "bytes": 9021,
+      "sha256": "ef96806e187c8f97503227b39bea7209ad4dab9d1bb95bc94867c1b3d0af67a0"
+    },
+    {
+      "path": "licenses/aventuras-chapter-provenance.json",
+      "bytes": 4007,
+      "sha256": "4f2c296e9bb651e12e35316060be12db05ddb92af05277621631e7f0daec8bad"
+    },
+    {
+      "path": "licenses/aventuras-d7f58-AGPL-3.0.md",
+      "bytes": 34273,
+      "sha256": "db52e3daad9260a1cc638efaf3f6b7a6bdead236365586a60078a9a287613037"
+    },
+    {
+      "path": "licenses/zeolas-AGPL-3.0.md",
+      "bytes": 34273,
+      "sha256": "db52e3daad9260a1cc638efaf3f6b7a6bdead236365586a60078a9a287613037"
+    },
+    {
+      "path": "licenses/zeolas-source-snippets.json",
+      "bytes": 8744,
+      "sha256": "aa38ebcd58662b66dae0f31b9fff9552fe927c91bc729aa66245e4aaeaa7c9ab"
+    },
+    {
+      "path": "package.json",
+      "bytes": 1581,
+      "sha256": "e5ba4974efebc78abc5e9af6bd46f694a0f64b8138e544f7c708cbff55346b5d"
+    },
+    {
+      "path": "packages/scean/COPYRIGHT",
+      "bytes": 152,
+      "sha256": "5b413ef2f35abc19a5dab7d635f6658cb7f4c90946b77f55363743cc3a56e009"
+    },
+    {
+      "path": "packages/scean/LICENSE",
+      "bytes": 34523,
+      "sha256": "0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0"
+    },
+    {
+      "path": "packages/scean/LICENSE-SCOPE.md",
+      "bytes": 2230,
+      "sha256": "861c3fd735a29341dcb76b7e87358550aa8c2e18e61977a97f5011e36d0d25c3"
+    },
+    {
+      "path": "packages/scean/README.md",
+      "bytes": 2846,
+      "sha256": "a48a1538304b08bb3e15a33fa2ac2d7c3b10232ad4898f84ccf4b83be2f7dbe1"
+    },
+    {
+      "path": "packages/scean/SOURCE-AVAILABILITY.md",
+      "bytes": 1593,
+      "sha256": "3446d38e4619533e38bacb90b3b1be0abfe9ff64c84682e42009760c09967a03"
+    },
+    {
+      "path": "packages/scean/THIRD-PARTY-LICENSES.json",
+      "bytes": 2102,
+      "sha256": "22002d5bc9c61d6d4fccf9e69e1f0fa1448b225e5504ea74a0d019b0b2e2e06c"
+    },
+    {
+      "path": "packages/scean/THIRD-PARTY-NOTICES.md",
+      "bytes": 4599,
+      "sha256": "d1a85fd4e90405750c5bfd6f6198e7e1b7ad43283b368678b7389c2259789483"
+    },
+    {
+      "path": "packages/scean/adapters/budget.mjs",
+      "bytes": 5132,
+      "sha256": "9f45bb2801b60e453af04238c6392c9bf87f777368538323309ea53dfc913f79"
+    },
+    {
+      "path": "packages/scean/adapters/chapter-providers.mjs",
+      "bytes": 5024,
+      "sha256": "391c52a7a4b9d1406ece32863f605d27b05f35e16949c728625783e6f7913eec"
+    },
+    {
+      "path": "packages/scean/adapters/model.mjs",
+      "bytes": 9541,
+      "sha256": "17d8c060a99005ea9fd29c2bf8e4ff15de005a66b1316a55313c750cd1aba224"
+    },
+    {
+      "path": "packages/scean/adapters/store.mjs",
+      "bytes": 10130,
+      "sha256": "48b888d37ac8a760f9955037091792cab9674522afba9bb8e19b502c34244e2e"
+    },
+    {
+      "path": "packages/scean/authoring/NOTICE.md",
+      "bytes": 2076,
+      "sha256": "6932c562cf5078246aafbb02d7deebf07ec5570dbd99dba6a80167e3642a0554"
+    },
+    {
+      "path": "packages/scean/authoring/compatibility-audit.mjs",
+      "bytes": 18890,
+      "sha256": "f775ee2353876d2224603dbe1a417521b710cb984612e0dfc5c39bfd8597cda8"
+    },
+    {
+      "path": "packages/scean/authoring/frontend-css.mjs",
+      "bytes": 7830,
+      "sha256": "f37989b827ddd0dc53ad27eae1104ea2330e974b2a59f348ce0ecb21bf36cee7"
+    },
+    {
+      "path": "packages/scean/authoring/frontend-html.mjs",
+      "bytes": 3655,
+      "sha256": "584d59f4b64ad48ed4560d775f36f7df37a02bbcfb5edec549515aab734ad697"
+    },
+    {
+      "path": "packages/scean/authoring/skills/scean-compatibility-audit/SKILL.md",
+      "bytes": 2671,
+      "sha256": "ddd428d6f23e628f92dd036349749a56805352864c511587bfa6217800610b45"
+    },
+    {
+      "path": "packages/scean/authoring/skills/scean-compatibility-audit/references/contracts.md",
+      "bytes": 3462,
+      "sha256": "d188161e78496984319b0ab6aab47ced625a0f3004ecb5f4f19d1b9373decd57"
+    },
+    {
+      "path": "packages/scean/authoring/skills/scean-compatibility-audit/references/tool-and-results.md",
+      "bytes": 1786,
+      "sha256": "567e75fbc0f9624ce925741b864dfef91894fa90966cb4e045acefcaaa46ba39"
+    },
+    {
+      "path": "packages/scean/core/banlist.mjs",
+      "bytes": 2808,
+      "sha256": "6705129ffa95f2d93bc157e9db9a8a1ffa9166661b6f16607ede7948f291688b"
+    },
+    {
+      "path": "packages/scean/core/chapter-recall.mjs",
+      "bytes": 12207,
+      "sha256": "2b3f66bbca4c3b4d46e8df35fdd5d69ec275bfc1c7a96d30b76787d267ac4d46"
+    },
+    {
+      "path": "packages/scean/core/chapter-summary.mjs",
+      "bytes": 36725,
+      "sha256": "f71a60fe6a76c8c2bd07819bc3a469cf72d1ece773de514865cbbe0681243dbf"
+    },
+    {
+      "path": "packages/scean/core/character-advice.mjs",
+      "bytes": 2307,
+      "sha256": "57855fbdaa74187474ec7fb3fb6a87d8df1b3a78805ad5ca5ed2533c5148d066"
+    },
+    {
+      "path": "packages/scean/core/character-sources.mjs",
+      "bytes": 3537,
+      "sha256": "b29e660c0df42969dceb1e57eab535d6ff89b18a4fc569828c7519a35a6796af"
+    },
+    {
+      "path": "packages/scean/core/condition-ast.mjs",
+      "bytes": 4227,
+      "sha256": "ac293b8d64a089b19d7bac9d87b0e7a3e2e28daea3cfc8989585b856012b2bfc"
+    },
+    {
+      "path": "packages/scean/core/context-budget.mjs",
+      "bytes": 9008,
+      "sha256": "f8e2ecd322373fbb4c64ed9248b098a6124e8484f1d7e2a64eb023605a7f2434"
+    },
+    {
+      "path": "packages/scean/core/contracts.mjs",
+      "bytes": 6515,
+      "sha256": "4966526b5c6ce7311f0aefee3e7daa726e196fb0094c49c01ea7b61940a7cba4"
+    },
+    {
+      "path": "packages/scean/core/derived-facts.mjs",
+      "bytes": 3108,
+      "sha256": "0bc2db6a367124e8f1ff16be35233e2822fca7728ab29d09483a782a413af15a"
+    },
+    {
+      "path": "packages/scean/core/engine.mjs",
+      "bytes": 51076,
+      "sha256": "23686d04b743925c5c94bbb21fd1418984db7cea17ca75580243ee6321ba21e7"
+    },
+    {
+      "path": "packages/scean/core/frontend.mjs",
+      "bytes": 7619,
+      "sha256": "3342940421f492bc4d893b53e8a8d99c4f5aff0c59dc9b4cab4720549fce0ed3"
+    },
+    {
+      "path": "packages/scean/core/history-recall.mjs",
+      "bytes": 8022,
+      "sha256": "aca52bf93dcc8293cf597f9e6966de4309abd439f0a232436c915bde4298c5b0"
+    },
+    {
+      "path": "packages/scean/core/history.mjs",
+      "bytes": 6321,
+      "sha256": "93bbd64fe3bd4f7da7d5be0c8d809b1ba2bc3bf18008061abcf188fcb3e901cc"
+    },
+    {
+      "path": "packages/scean/core/inspection.mjs",
+      "bytes": 12487,
+      "sha256": "74072c433c818b474e968fca156486cc4c6fb8e409ddf9dde5015614a7fcc219"
+    },
+    {
+      "path": "packages/scean/core/memory-policy.mjs",
+      "bytes": 9522,
+      "sha256": "ef814c26b9e3353c1d89892947a75ff9eb1bb8f70d669f964b019820ef0d819d"
+    },
+    {
+      "path": "packages/scean/core/memory.mjs",
+      "bytes": 19092,
+      "sha256": "c37496b912e1ee2ae8b98501d00cc16947cf391c2b8d679d32347162d27d571b"
+    },
+    {
+      "path": "packages/scean/core/narrative.mjs",
+      "bytes": 26925,
+      "sha256": "84d9cedd29f1c149e44efbae26f462005237fb343c38fb1dbc00a58978439c03"
+    },
+    {
+      "path": "packages/scean/core/post-stat-output.mjs",
+      "bytes": 4237,
+      "sha256": "4340d643f4438c80e44f9c6a60f47da80d3ac7ea145b0da9d6ec286ea0bd56b3"
+    },
+    {
+      "path": "packages/scean/core/prompt-r3.mjs",
+      "bytes": 15036,
+      "sha256": "169c63fc6f9cf033d7fe0599dfba0f08fe53cd8afff7d6857b5dcbb13a3964f7"
+    },
+    {
+      "path": "packages/scean/core/public-state-bindings.mjs",
+      "bytes": 1674,
+      "sha256": "8a8db1d5346f148dbb3e06f9168e8ee8f780248b79adfc7730a0b80372eddf0b"
+    },
+    {
+      "path": "packages/scean/core/regenerate.mjs",
+      "bytes": 3442,
+      "sha256": "134717dfca1d7aa2c4867d7759f469d537b0ce0b0c79cf2195cf62f7f82413c4"
+    },
+    {
+      "path": "packages/scean/core/save-bundle.mjs",
+      "bytes": 23754,
+      "sha256": "844896a425489603e0c4a8ddbffa5e439671fb035d70724baf0fee0ec1b01813"
+    },
+    {
+      "path": "packages/scean/core/stat-contract.mjs",
+      "bytes": 9768,
+      "sha256": "6dccf809bfce83df3b37f37f31a30e8a53ac6eabf12d8527b38ef4e5fd24709b"
+    },
+    {
+      "path": "packages/scean/core/state-blueprint.mjs",
+      "bytes": 13506,
+      "sha256": "1686bc3e2c950ce9895b73023088c3ba33bae7ec41d2dbba3533290cfb592e90"
+    },
+    {
+      "path": "packages/scean/core/worldbook.mjs",
+      "bytes": 16403,
+      "sha256": "9c65ec0d1574f5edb320e80bd090c49bfe19fb3c2d5709abe9b53558df5fe4b9"
+    },
+    {
+      "path": "packages/scean/isolated/web/card-frontend.mjs",
+      "bytes": 3697,
+      "sha256": "ceecf0bb189685226c66ac535b38163c20fe1eb87b370b5f8567362abb38626d"
+    },
+    {
+      "path": "packages/scean/isolated/web/chapter-settings-ui.mjs",
+      "bytes": 14045,
+      "sha256": "b11a88e41bc13c8d1ba2c02b097186c7483248122bbcb97f798304a4263bd603"
+    },
+    {
+      "path": "packages/scean/isolated/web/condition-ast.mjs",
+      "bytes": 4227,
+      "sha256": "ac293b8d64a089b19d7bac9d87b0e7a3e2e28daea3cfc8989585b856012b2bfc"
+    },
+    {
+      "path": "packages/scean/isolated/web/frontend-runtime.mjs",
+      "bytes": 3275,
+      "sha256": "8bba8b774899b52710a8bd51b26322b7026c26de64f30a47a690d71d6fd43859"
+    },
+    {
+      "path": "packages/scean/licenses/aventuras-chapter-provenance.json",
+      "bytes": 4007,
+      "sha256": "4f2c296e9bb651e12e35316060be12db05ddb92af05277621631e7f0daec8bad"
+    },
+    {
+      "path": "packages/scean/licenses/aventuras-d7f58-AGPL-3.0.md",
+      "bytes": 34273,
+      "sha256": "db52e3daad9260a1cc638efaf3f6b7a6bdead236365586a60078a9a287613037"
+    },
+    {
+      "path": "packages/scean/licenses/zeolas-AGPL-3.0.md",
+      "bytes": 34273,
+      "sha256": "db52e3daad9260a1cc638efaf3f6b7a6bdead236365586a60078a9a287613037"
+    },
+    {
+      "path": "packages/scean/licenses/zeolas-source-snippets.json",
+      "bytes": 8744,
+      "sha256": "aa38ebcd58662b66dae0f31b9fff9552fe927c91bc729aa66245e4aaeaa7c9ab"
+    },
+    {
+      "path": "packages/scean/package.json",
+      "bytes": 1899,
+      "sha256": "057e7a0f37d9dfcb0fe523cfb94c3eb9aff5b137f355070b5927047f2dc81637"
+    },
+    {
+      "path": "packages/scean/plugin/README.md",
+      "bytes": 6359,
+      "sha256": "b9be66c7a1692d4b84068d4150290391a8dac1ec270d2b01262f6f3e5254937b"
+    },
+    {
+      "path": "packages/scean/plugin/card-scope.mjs",
+      "bytes": 891,
+      "sha256": "c5b469f95e2ac343f5f30ed552eebbe4b0da8923464abe28ef99e6edb42a3b32"
+    },
+    {
+      "path": "packages/scean/plugin/chapter-runtime.mjs",
+      "bytes": 1567,
+      "sha256": "90b78acf1d976e9c13e998b312458b70c1111bea15fbaa2f9d55f11665132e4c"
+    },
+    {
+      "path": "packages/scean/plugin/chapter-settings.mjs",
+      "bytes": 14028,
+      "sha256": "c0e6c6eb740c091ba767eab70f834a56baf4c593f0f57f0f422cc696dae97f50"
+    },
+    {
+      "path": "packages/scean/plugin/client.js",
+      "bytes": 273640,
+      "sha256": "8510973c92ac3c3a1770c40d385ee090844e1015279725558a9c0826685dbc4a"
+    },
+    {
+      "path": "packages/scean/plugin/cordis.patch.yml",
+      "bytes": 85,
+      "sha256": "8e0d9850c6c6079f094274a98743c0752462f575cc99ffb3ccabf8d190b9c0dd"
+    },
+    {
+      "path": "packages/scean/plugin/host.mjs",
+      "bytes": 50405,
+      "sha256": "605d26828f892fda5a3754642cb389ffd8f94837362b2ecdec6adfcee98c0e92"
+    },
+    {
+      "path": "packages/scean/plugin/index.js",
+      "bytes": 7214,
+      "sha256": "e45b22a157fea0d12942f0ab18a14acee6cabaa00f538d73f7bcebf639f4edad"
+    },
+    {
+      "path": "packages/scean/plugin/job-host.mjs",
+      "bytes": 18018,
+      "sha256": "bdc42e02d7310fd57b9dcb053cc20b5b0267c42a20e261bab4c8914b9045af11"
+    },
+    {
+      "path": "packages/scean/plugin/job-ledger.mjs",
+      "bytes": 2716,
+      "sha256": "2d518cc440c876e20ec56761b32a1b97f24da71dd588c3cc8ce2455dd0cfbbc0"
+    },
+    {
+      "path": "packages/scean/plugin/native-client-source.mjs",
+      "bytes": 7506,
+      "sha256": "dc7f5a995c133705cf5679a8dca11d7a64273fbd6445c71e7b3e9b80bdcc85f6"
+    },
+    {
+      "path": "packages/scean/plugin/native-frame-source.mjs",
+      "bytes": 2514,
+      "sha256": "df2b4a793db8cd51c96b47f2062e2b9aea4c4b7483d5df5f6002a4ee85f5fb4b"
+    },
+    {
+      "path": "packages/scean/plugin/native-model.mjs",
+      "bytes": 12540,
+      "sha256": "3dd46bd3f4b2084b19c18f9455114595d5cd212f1ce0e03b02d993801b90596e"
+    },
+    {
+      "path": "packages/scean/plugin/notification-host.mjs",
+      "bytes": 10442,
+      "sha256": "582a7c76c51fb3030b6a1a835759be09aee5e5dd2ccaf4d097380e7f722ae3a8"
+    },
+    {
+      "path": "packages/scean/plugin/notification-ledger.mjs",
+      "bytes": 4115,
+      "sha256": "fcf99d7063356006b403be2be63d9dc5794c1c75871210c5f276bb049e736b70"
+    },
+    {
+      "path": "packages/scean/plugin/opening-selection.mjs",
+      "bytes": 6348,
+      "sha256": "45e6c9cbfafb52696294f5240417e7b9bb79c3eea2ae82c1a9c5f5616285718c"
+    },
+    {
+      "path": "packages/scean/plugin/player-native-bridge.mjs",
+      "bytes": 7585,
+      "sha256": "44ba5afdea62fe9638fc29fe45350d9bee53af16c705555a4ec61d7d05fa458b"
+    },
+    {
+      "path": "packages/scean/plugin/protocol.mjs",
+      "bytes": 709,
+      "sha256": "bda7fc68e4b3386bc36c674071d4b5f4e90c533ec6ca08a15d61b12abd9e94c3"
+    },
+    {
+      "path": "packages/scean/plugin/studio-handoff.mjs",
+      "bytes": 2886,
+      "sha256": "773550c0ac4f81998e86335f17b588277a7ab26491180f56114775b67ebde17d"
+    },
+    {
+      "path": "packages/scean/plugin/version.mjs",
+      "bytes": 148,
+      "sha256": "f589e2c73373acbfeb99e5f15a38e5d82b5b5d28aabde3a1a3a2e8914d7ce41b"
+    },
+    {
+      "path": "packages/scean/release-source.json",
+      "bytes": 530,
+      "sha256": "75d3d0dd787100cf90bf3a139c790437a11e70a356d5b6b3defe7d2e29a970a2"
+    },
+    {
+      "path": "packages/studio/COPYRIGHT",
+      "bytes": 152,
+      "sha256": "5b413ef2f35abc19a5dab7d635f6658cb7f4c90946b77f55363743cc3a56e009"
+    },
+    {
+      "path": "packages/studio/LICENSE",
+      "bytes": 34523,
+      "sha256": "0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0"
+    },
+    {
+      "path": "packages/studio/LICENSE-SCOPE.md",
+      "bytes": 2230,
+      "sha256": "861c3fd735a29341dcb76b7e87358550aa8c2e18e61977a97f5011e36d0d25c3"
+    },
+    {
+      "path": "packages/studio/README.md",
+      "bytes": 1011,
+      "sha256": "e958b172ac4b14cd86334771dbd3073d3cf7850ae8246ff943f0a8d85d0a3e88"
+    },
+    {
+      "path": "packages/studio/SOURCE-AVAILABILITY.md",
+      "bytes": 1593,
+      "sha256": "3446d38e4619533e38bacb90b3b1be0abfe9ff64c84682e42009760c09967a03"
+    },
+    {
+      "path": "packages/studio/THIRD-PARTY-LICENSES.json",
+      "bytes": 2102,
+      "sha256": "22002d5bc9c61d6d4fccf9e69e1f0fa1448b225e5504ea74a0d019b0b2e2e06c"
+    },
+    {
+      "path": "packages/studio/THIRD-PARTY-NOTICES.txt",
+      "bytes": 5735,
+      "sha256": "c1360cbaf07af6e4210476f27102c50eb7065c8cb626349774aec219c7b82e1e"
+    },
+    {
+      "path": "packages/studio/client-template.js",
+      "bytes": 122252,
+      "sha256": "12a9894d13e1795e8a6dfeeb7e691653c3b65992831cafe9e989cdbf43d51933"
+    },
+    {
+      "path": "packages/studio/client.js",
+      "bytes": 168772,
+      "sha256": "28a45ab3cce125799eac29d3c30e24ca90ebf772a3e77680da070799cc4b22a5"
+    },
+    {
+      "path": "packages/studio/cordis.patch.yml",
+      "bytes": 129,
+      "sha256": "f65d02e2e23e3de23a2e8372eabfdf70d40ff2af88835415eb583fae6a4b11c8"
+    },
+    {
+      "path": "packages/studio/index.js",
+      "bytes": 18436,
+      "sha256": "52cca31811a8f32ff2231edd54ea7927f7bda008cf3626218d3367169aa945a8"
+    },
+    {
+      "path": "packages/studio/lib/archive-lifecycle.js",
+      "bytes": 9950,
+      "sha256": "9ef0f40542b35a6816532763df7e8e0e445b0cc2de154f7ba8804bc66efe8b8e"
+    },
+    {
+      "path": "packages/studio/lib/archive-observer.js",
+      "bytes": 2108,
+      "sha256": "9efb18e9ac1804694175cb223a57d1c72adad340c391e8dc146fec66df974285"
+    },
+    {
+      "path": "packages/studio/lib/asset-raster.js",
+      "bytes": 15521,
+      "sha256": "fa96115e3058197911a9770674884822a2ce06170f780a5b88390b274a34f10b"
+    },
+    {
+      "path": "packages/studio/lib/asset-upload.js",
+      "bytes": 690,
+      "sha256": "80b166150562ea70a2ab1031b5dcfade97d9fa2d216d5fa652b2977efa6d2ca9"
+    },
+    {
+      "path": "packages/studio/lib/authoring-fixture.js",
+      "bytes": 4408,
+      "sha256": "8e2714f08b7041075f237b43b3aad0885eeed3449277e7aeb6ca98a62a7c23f4"
+    },
+    {
+      "path": "packages/studio/lib/authoring-scope.js",
+      "bytes": 8482,
+      "sha256": "f69380a620443cb955e6d8174ec3f4eb821dde49ea6ec0e98b7e6b1f7a117c54"
+    },
+    {
+      "path": "packages/studio/lib/authoring-service.js",
+      "bytes": 48238,
+      "sha256": "7d0e202b7204b485fa98d93e1836cc02987e06a7b47a072748c9f27122eba67b"
+    },
+    {
+      "path": "packages/studio/lib/bridge-protocol.js",
+      "bytes": 6995,
+      "sha256": "9841ecff2545de935aebc168e1e6abf08d2ba3fdf9743e06635de25cf53504d9"
+    },
+    {
+      "path": "packages/studio/lib/bridge.js",
+      "bytes": 1333,
+      "sha256": "58b6e4f0bd187a8fd5f55a264ba7cc6f71d62756c749b4326a24466b13e366b3"
+    },
+    {
+      "path": "packages/studio/lib/card-service.js",
+      "bytes": 37503,
+      "sha256": "9c42e3fd7a601a6702bbff7d8ada583720bb7df0d465457306ff4eed856d123c"
+    },
+    {
+      "path": "packages/studio/lib/character-method.js",
+      "bytes": 3337,
+      "sha256": "35a716c53f617023d304f5bb9911c7736537ed69ebda2b9a2001f8d2a37a4d8b"
+    },
+    {
+      "path": "packages/studio/lib/character-sources.js",
+      "bytes": 3537,
+      "sha256": "b29e660c0df42969dceb1e57eab535d6ff89b18a4fc569828c7519a35a6796af"
+    },
+    {
+      "path": "packages/studio/lib/client-controller.js",
+      "bytes": 12156,
+      "sha256": "934a236a3c09433932b80133026888803fbd640c74cd16cea0cf8420cf3036dc"
+    },
+    {
+      "path": "packages/studio/lib/client-library.js",
+      "bytes": 16845,
+      "sha256": "d362ded3f436ae30cff5a63de0654e9933b2bb6ecbd4cd0dbff7af57016dc258"
+    },
+    {
+      "path": "packages/studio/lib/client-materials.js",
+      "bytes": 10638,
+      "sha256": "2b975b7da31c689a570e5283a3d72fad0d701bf831353d0d3de8d662607915c9"
+    },
+    {
+      "path": "packages/studio/lib/codec.js",
+      "bytes": 15589,
+      "sha256": "0a23fdc13a890b4e83ae3d9b57ce84ecff81b0be57bb57c56743d015c06c2a1f"
+    },
+    {
+      "path": "packages/studio/lib/document-projection.js",
+      "bytes": 5253,
+      "sha256": "ea3f2a40bbe4a56d00e4f356a2d65bfedaa36d33d0bab29f0d8ce05a9f4eb40a"
+    },
+    {
+      "path": "packages/studio/lib/export-download.js",
+      "bytes": 8521,
+      "sha256": "98b3d4e90bc202d18e22b5281ca4d094e80f2480709ed778b072f6b9972c14a7"
+    },
+    {
+      "path": "packages/studio/lib/frontend-authoring.js",
+      "bytes": 15397,
+      "sha256": "3fc19205b63aca752e052ce03dce6426f31db5ac749633e14e0e2802173a3b9f"
+    },
+    {
+      "path": "packages/studio/lib/generated-assets.js",
+      "bytes": 3275,
+      "sha256": "488cb1f0bd442226790294941ee360db0239bd4b206d056f84909f4a087711c2"
+    },
+    {
+      "path": "packages/studio/lib/host-diagnostics.js",
+      "bytes": 2142,
+      "sha256": "9ee6c6567509f01315ce975d5285b4d079b1799fd2ac491f0e9b96c68a5ae4db"
+    },
+    {
+      "path": "packages/studio/lib/library-image.js",
+      "bytes": 3990,
+      "sha256": "806b5ded216a9b46d30be7d1236e10db25aee3ccf80bc93b36e3a01260697711"
+    },
+    {
+      "path": "packages/studio/lib/library-index.js",
+      "bytes": 16857,
+      "sha256": "c4a2b64521320cfbeab72f22fb754f776ae4142a918368760ffd8ebb635a7121"
+    },
+    {
+      "path": "packages/studio/lib/library-retrieval.js",
+      "bytes": 2780,
+      "sha256": "f75c827babe244449b08e5ae8dc8d3bde43e9683171e2f767d3320e6da945d57"
+    },
+    {
+      "path": "packages/studio/lib/library-service.js",
+      "bytes": 7137,
+      "sha256": "3c86b8fd5e17f295092f0bf61cf24bba37a0cf1f33167846f9fa51013b4e62f6"
+    },
+    {
+      "path": "packages/studio/lib/loader.js",
+      "bytes": 27005,
+      "sha256": "86dde58f7b852ff2502b5e1ccd5a0c723b3a7541aa5675010823d43c5bc3ccf2"
+    },
+    {
+      "path": "packages/studio/lib/material-service.js",
+      "bytes": 23349,
+      "sha256": "e69a62d99e84a96191221164a3b4313b0f82a3a16d7ad9777ebb1e4bff0ea48c"
+    },
+    {
+      "path": "packages/studio/lib/material-store.js",
+      "bytes": 11948,
+      "sha256": "59f11289b0335f72c2b5788b1176722f45256eeaf5ce6790ab890f28ccb2a16a"
+    },
+    {
+      "path": "packages/studio/lib/preflight-check.js",
+      "bytes": 10677,
+      "sha256": "08dbe90b049bb61d2e7c48429a91a14b06a23ab19c5976a2f406a22a1b342b14"
+    },
+    {
+      "path": "packages/studio/lib/presentation-base.js",
+      "bytes": 575,
+      "sha256": "55ab3ed108a7a5e5814bf4457d904ffb33cc790f566d696780a2a34cfb7b9779"
+    },
+    {
+      "path": "packages/studio/lib/preview-css.js",
+      "bytes": 7830,
+      "sha256": "f37989b827ddd0dc53ad27eae1104ea2330e974b2a59f348ce0ecb21bf36cee7"
+    },
+    {
+      "path": "packages/studio/lib/preview-projection.js",
+      "bytes": 10231,
+      "sha256": "a753489434904edd5c53e5214c45f8d2092d3bd1944f1fcdbf786a7b2ad01dc8"
+    },
+    {
+      "path": "packages/studio/lib/scean-audit-control.js",
+      "bytes": 4565,
+      "sha256": "2a7f40fd4f5fc163fb33968c7a0029b5ce35b8b3ad97625bf62896a8d4faeeb7"
+    },
+    {
+      "path": "packages/studio/lib/scean-integration.js",
+      "bytes": 8980,
+      "sha256": "8fd40b5d0b1206cfb415bdd202b2748569b91c88dd150e9d8d959d0c410d6809"
+    },
+    {
+      "path": "packages/studio/lib/target-content.js",
+      "bytes": 3704,
+      "sha256": "1fea497f3507b2b8131a993400acc9262724fbb1bbc73a9c105682827bf5839b"
+    },
+    {
+      "path": "packages/studio/lib/target-delivery.js",
+      "bytes": 5185,
+      "sha256": "3ff53c1a1636f74b6d1a6d7d07a47a32d3f8128fa50555f9da2771384a5f3d7a"
+    },
+    {
+      "path": "packages/studio/lib/target-dryrun.js",
+      "bytes": 3211,
+      "sha256": "21a199b290f2eaedd7d061c0909daf21b194ed5d11f95b903fdd4b43969cf923"
+    },
+    {
+      "path": "packages/studio/lib/target-profile.js",
+      "bytes": 17092,
+      "sha256": "0c96bcee64fc7ff0e6277acc8efeab439164085077a6cd412ed4794f6e7f5c1b"
+    },
+    {
+      "path": "packages/studio/lib/target-state.js",
+      "bytes": 12687,
+      "sha256": "668cef19b6099bda8ec9588fc13fe261a808b61cb2370cd965e5c286bc6826b5"
+    },
+    {
+      "path": "packages/studio/lib/tavern-compatibility.js",
+      "bytes": 1965,
+      "sha256": "b5b3c6ae633ec08375383f46eeba51788506f6a0f04ca6553f00732b2bc57c67"
+    },
+    {
+      "path": "packages/studio/lib/tool-definitions.js",
+      "bytes": 15849,
+      "sha256": "41b6ce8e83f52c7d21b35b68765da1739c30b08bada300e124e7e336f70eb2b7"
+    },
+    {
+      "path": "packages/studio/lib/upload-buffer.js",
+      "bytes": 3341,
+      "sha256": "3e2d6361f3b1aeff9c66ae1b4844c271b1b8d4363c45092b2f93f18bd9a3c32e"
+    },
+    {
+      "path": "packages/studio/lib/visual-state.js",
+      "bytes": 10224,
+      "sha256": "8d976c654215e861879e914e19dcc5ae3d3b711a79357fd99b926673009c7fe2"
+    },
+    {
+      "path": "packages/studio/lib/w01/authoring/frontend-css.mjs",
+      "bytes": 7830,
+      "sha256": "f37989b827ddd0dc53ad27eae1104ea2330e974b2a59f348ce0ecb21bf36cee7"
+    },
+    {
+      "path": "packages/studio/lib/w01/authoring/frontend-html.mjs",
+      "bytes": 3655,
+      "sha256": "584d59f4b64ad48ed4560d775f36f7df37a02bbcfb5edec549515aab734ad697"
+    },
+    {
+      "path": "packages/studio/lib/w01/core/character-sources.mjs",
+      "bytes": 3537,
+      "sha256": "b29e660c0df42969dceb1e57eab535d6ff89b18a4fc569828c7519a35a6796af"
+    },
+    {
+      "path": "packages/studio/lib/w01/core/condition-ast.mjs",
+      "bytes": 4227,
+      "sha256": "ac293b8d64a089b19d7bac9d87b0e7a3e2e28daea3cfc8989585b856012b2bfc"
+    },
+    {
+      "path": "packages/studio/lib/w01/core/contracts.mjs",
+      "bytes": 6515,
+      "sha256": "4966526b5c6ce7311f0aefee3e7daa726e196fb0094c49c01ea7b61940a7cba4"
+    },
+    {
+      "path": "packages/studio/lib/w01/core/derived-facts.mjs",
+      "bytes": 3108,
+      "sha256": "0bc2db6a367124e8f1ff16be35233e2822fca7728ab29d09483a782a413af15a"
+    },
+    {
+      "path": "packages/studio/lib/w01/core/frontend.mjs",
+      "bytes": 7619,
+      "sha256": "3342940421f492bc4d893b53e8a8d99c4f5aff0c59dc9b4cab4720549fce0ed3"
+    },
+    {
+      "path": "packages/studio/lib/w01/core/memory-policy.mjs",
+      "bytes": 9522,
+      "sha256": "ef814c26b9e3353c1d89892947a75ff9eb1bb8f70d669f964b019820ef0d819d"
+    },
+    {
+      "path": "packages/studio/lib/w01/core/public-state-bindings.mjs",
+      "bytes": 1674,
+      "sha256": "8a8db1d5346f148dbb3e06f9168e8ee8f780248b79adfc7730a0b80372eddf0b"
+    },
+    {
+      "path": "packages/studio/lib/w01/core/state-blueprint.mjs",
+      "bytes": 13506,
+      "sha256": "1686bc3e2c950ce9895b73023088c3ba33bae7ec41d2dbba3533290cfb592e90"
+    },
+    {
+      "path": "packages/studio/lib/w01/isolated/web/condition-ast.mjs",
+      "bytes": 4227,
+      "sha256": "ac293b8d64a089b19d7bac9d87b0e7a3e2e28daea3cfc8989585b856012b2bfc"
+    },
+    {
+      "path": "packages/studio/lib/w01/isolated/web/frontend-runtime.mjs",
+      "bytes": 3275,
+      "sha256": "8bba8b774899b52710a8bd51b26322b7026c26de64f30a47a690d71d6fd43859"
+    },
+    {
+      "path": "packages/studio/lib/workspace-setup.js",
+      "bytes": 6725,
+      "sha256": "5ebe59b516b7f7746e282795135c0380d5508ab918ced8097bc63a3da1918259"
+    },
+    {
+      "path": "packages/studio/lib/worldbook-gating.js",
+      "bytes": 17498,
+      "sha256": "550d7d5ae383ee9286a213ba82d5f2957241b77b92b9a8f55600b4c2b5958084"
+    },
+    {
+      "path": "packages/studio/lib/write-receipt.js",
+      "bytes": 4068,
+      "sha256": "0ee9ab2f6092ed2ae23d6f2e6e83fb5bebbddcc748ea87c27b2fc81ea6f7da72"
+    },
+    {
+      "path": "packages/studio/locale/en.json",
+      "bytes": 129,
+      "sha256": "c0ab29f1e92e8901a3437166c88b7ad7a86f6a01e05abf901f3833481fbfe454"
+    },
+    {
+      "path": "packages/studio/locale/zh.json",
+      "bytes": 170,
+      "sha256": "427c0d98a993d205db0b51fc56d722f90be501fed4944e4d0a8f8a036b50e3b8"
+    },
+    {
+      "path": "packages/studio/package.json",
+      "bytes": 1941,
+      "sha256": "c3a1069615642c48b038eb5ceef6fe611729e85203388dc39ddc421940aa0d3b"
+    },
+    {
+      "path": "packages/studio/release-source.json",
+      "bytes": 530,
+      "sha256": "75d3d0dd787100cf90bf3a139c790437a11e70a356d5b6b3defe7d2e29a970a2"
+    },
+    {
+      "path": "packages/studio/rollback-recycle.js",
+      "bytes": 2385,
+      "sha256": "b50a6862ccababea69af9c119c76fa56686004ce8d86eaa55ff02ce744fe8b71"
+    },
+    {
+      "path": "packages/studio/skills/advanced-tavern-card-authoring/SKILL.md",
+      "bytes": 11806,
+      "sha256": "85aef56a4683e5cebf33f6573cab83f283de28ddf2e68979883b5ba090c24638"
+    },
+    {
+      "path": "packages/studio/skills/advanced-tavern-card-authoring/SOURCE.txt",
+      "bytes": 1800,
+      "sha256": "3520ff0e4de48a960b4505285107db22eb1824353658aad3107d941f39862b46"
+    },
+    {
+      "path": "packages/studio/skills/advanced-tavern-card-authoring/references/authoring-workflows.md",
+      "bytes": 5262,
+      "sha256": "20b1d8db34eed14f49c9282668efe441c2fc9465280c38e4e555ca50e8c73775"
+    },
+    {
+      "path": "packages/studio/skills/advanced-tavern-card-authoring/references/frontend-and-fixtures.md",
+      "bytes": 7249,
+      "sha256": "19bb6f54e1968d1146160ab2b073898f6e54a2e29e6ffcfcccf2d0b4f042aa99"
+    },
+    {
+      "path": "packages/studio/skills/advanced-tavern-card-authoring/references/primary-sources.md",
+      "bytes": 8515,
+      "sha256": "28df181eee6cc5a2e1ecdc7c386474c29e3f77cdaf447509b5dac01d5991d2bb"
+    },
+    {
+      "path": "packages/studio/skills/advanced-tavern-card-authoring/references/runtime-and-dependencies.md",
+      "bytes": 3639,
+      "sha256": "b89fa4a9f02a01540030f44f384381f8f6e7af5c305aae1f4ab71acf9ec4df7b"
+    },
+    {
+      "path": "packages/studio/skills/advanced-tavern-card-authoring/references/tauritavern-target.md",
+      "bytes": 10832,
+      "sha256": "3ab859b77f578b9ac88e85f33222be3cd863b9033d4711e40c6590891d96e553"
+    },
+    {
+      "path": "packages/studio/skills/advanced-tavern-card-authoring/references/validation-and-lifecycle.md",
+      "bytes": 6485,
+      "sha256": "a035f66bf93b57336543bd8ecb5351dd17c6a62534e98e5f3876d6669a9ab92b"
+    },
+    {
+      "path": "packages/studio/skills/advanced-tavern-card-authoring/references/visual-state-and-assets.md",
+      "bytes": 6532,
+      "sha256": "6392de911c195c230ed2cddeae787075dc2c0a754818fbc4cad988235e3e2e98"
+    },
+    {
+      "path": "packages/studio/skills/advanced-tavern-card-authoring/references/worldbook-conditions.md",
+      "bytes": 8053,
+      "sha256": "854ccb7613c8baad0db07eb7a97dbc25c3b781d5cdfd367afeeae41589532fa6"
+    },
+    {
+      "path": "packages/studio/skills/catalog.json",
+      "bytes": 2461,
+      "sha256": "a2a4d61a6562177b018229599c839d51c03a97fc5e754b1d146d0409ae4d8732"
+    },
+    {
+      "path": "packages/studio/skills/character-authoring/CODEX-INTEGRATION.md",
+      "bytes": 2425,
+      "sha256": "2bc0c34a59eee3b45e0590dc52716a565c3574fb1a33815cde47052af55618d8"
+    },
+    {
+      "path": "packages/studio/skills/character-authoring/ORIGINAL-SKILL.md",
+      "bytes": 7302,
+      "sha256": "64a36965d4bf19dd258f4d9b254ebc3cbece9f46e78a6e20ab4cbb30300a3eae"
+    },
+    {
+      "path": "packages/studio/skills/character-authoring/SKILL.md",
+      "bytes": 7302,
+      "sha256": "64a36965d4bf19dd258f4d9b254ebc3cbece9f46e78a6e20ab4cbb30300a3eae"
+    },
+    {
+      "path": "packages/studio/skills/character-authoring/SOURCE.json",
+      "bytes": 540,
+      "sha256": "ecfd210e7bc98919c73b819e84e96792c4cf4af8916826ba7586f63271d03d4d"
+    },
+    {
+      "path": "packages/studio/skills/character-authoring/TRIAL-GUIDE.md",
+      "bytes": 2804,
+      "sha256": "4f9b5f07cc5163fc0e71f1b0f187ece773da0b150f4ce53c00b9b7c5d7a8921a"
+    },
+    {
+      "path": "packages/studio/skills/character-authoring/references/person-design.md",
+      "bytes": 3355,
+      "sha256": "aabee204819dc074f22a0e870a70dd89e987552eb378daf5b64f0961d42c7e4a"
+    },
+    {
+      "path": "packages/studio/skills/character-authoring/references/review-and-delivery.md",
+      "bytes": 3976,
+      "sha256": "4d7c0f1ad2f42e59a6b7f2b743ee99a1e1a76c4dade1a504a28ed60627ed856d"
+    },
+    {
+      "path": "packages/studio/skills/character-authoring/references/social-and-situational.md",
+      "bytes": 3475,
+      "sha256": "5f701eab809dd18beb1205caf4de1ca26b2cf6a769912fd520bd2a6d91de431a"
+    },
+    {
+      "path": "packages/studio/skills/scean-compatibility-audit/SKILL.md",
+      "bytes": 2671,
+      "sha256": "ddd428d6f23e628f92dd036349749a56805352864c511587bfa6217800610b45"
+    },
+    {
+      "path": "packages/studio/skills/scean-compatibility-audit/references/contracts.md",
+      "bytes": 3462,
+      "sha256": "d188161e78496984319b0ab6aab47ced625a0f3004ecb5f4f19d1b9373decd57"
+    },
+    {
+      "path": "packages/studio/skills/scean-compatibility-audit/references/tool-and-results.md",
+      "bytes": 1786,
+      "sha256": "567e75fbc0f9624ce925741b864dfef91894fa90966cb4e045acefcaaa46ba39"
+    },
+    {
+      "path": "packages/studio/skills/scean-dialogue-authoring/SKILL.md",
+      "bytes": 4981,
+      "sha256": "ad11f844cb306d64411436295ff040fd2593dd43919108d8eca53debe7b99824"
+    },
+    {
+      "path": "packages/studio/skills/scean-dialogue-authoring/SOURCE.json",
+      "bytes": 4669,
+      "sha256": "ba3eda32d5650aa97bbe760468ae753cca375aa1eea125b12ac5a27f38b043bf"
+    },
+    {
+      "path": "packages/studio/skills/scean-dialogue-authoring/references/editing-workflow.md",
+      "bytes": 5239,
+      "sha256": "b2167936c4144239c067f6022fb0dd9250259ba6e8da4d307c950b92c60794ac"
+    },
+    {
+      "path": "packages/studio/skills/scean-dialogue-authoring/references/prompt-contracts.md",
+      "bytes": 7800,
+      "sha256": "1ef8493f39dd1751af0af102fb15c7cbc89835fdddde4c3c10e72d5883982670"
+    },
+    {
+      "path": "packages/studio/skills/scean-frontend-authoring/SKILL.md",
+      "bytes": 5446,
+      "sha256": "0b003dea18b0cc6ae5756490ba6fae2583e4126f26d975a08c75de9609e19534"
+    },
+    {
+      "path": "packages/studio/skills/scean-frontend-authoring/SOURCE.json",
+      "bytes": 5276,
+      "sha256": "376e576c8e7b12724ab8bd5421b91d29fe0589a08a0a7fabcc812a9ba7ae26d4"
+    },
+    {
+      "path": "packages/studio/skills/scean-frontend-authoring/references/contracts.md",
+      "bytes": 10352,
+      "sha256": "39adef43457d636d7112e371768a67c2a41c9615af2f170213caa5f48ea59401"
+    },
+    {
+      "path": "packages/studio/skills/scean-frontend-authoring/references/synthetic-acceptance.md",
+      "bytes": 7658,
+      "sha256": "ba42fea934e0ba38c2fbb3b275168d2773589bc5b517e65ebf5e70438580a8d8"
+    },
+    {
+      "path": "packages/studio/skills/scean-frontend-authoring/references/tools-and-lifecycle.md",
+      "bytes": 7417,
+      "sha256": "40e25127af9582718d406681b484f106538361e756bee7daa5f23cc5f40e33fc"
+    },
+    {
+      "path": "packages/studio/skills/scean-native-authoring/SKILL.md",
+      "bytes": 5342,
+      "sha256": "e1bea69521f31e352a80e32e8c24ea2123dec65d97b455083f74fbdb70d08195"
+    },
+    {
+      "path": "packages/studio/skills/scean-native-authoring/agents/openai.yaml",
+      "bytes": 286,
+      "sha256": "ecd435f975ed601470d6614d2065743f8410b55be7394a56da90f60e3d059c81"
+    },
+    {
+      "path": "packages/studio/skills/scean-native-authoring/capability-manifest.json",
+      "bytes": 23315,
+      "sha256": "b0f003794cc0fe23f2107634bfd50b680b1abc68f0f60aa0e5efd4ea84f4d45b"
+    },
+    {
+      "path": "packages/studio/skills/scean-native-authoring/references/authoring-method.md",
+      "bytes": 2883,
+      "sha256": "764d140e5e5d969de7884fa052838b05bb7f10df7f7fc8db2ef7c909e4c943c1"
+    },
+    {
+      "path": "packages/studio/skills/scean-native-authoring/references/capabilities.md",
+      "bytes": 5757,
+      "sha256": "ede7795a64f9ba6f32decbda302f6eb9e136bc1ff4fb8fa99114ebbff334e21f"
+    },
+    {
+      "path": "packages/studio/skills/scean-native-authoring/references/character-workspace.md",
+      "bytes": 3285,
+      "sha256": "17962e0b743ba46f20d4262749bea280c6ec850fb7a5df9bc5dd0d13ea530160"
+    },
+    {
+      "path": "packages/studio/skills/scean-native-authoring/references/native-contracts.md",
+      "bytes": 5560,
+      "sha256": "8f8c680165a419196a6a5411c1f9a01b9919bb1bc7b916d18d8002a2482b8617"
+    },
+    {
+      "path": "packages/studio/skills/scean-native-authoring/references/studio-integration.md",
+      "bytes": 2932,
+      "sha256": "1ab91e483ee818829f43a4741032603c98e985dfd61e34c39e35424c8d55503e"
+    },
+    {
+      "path": "packages/studio/skills/scean-native-authoring/references/validation.md",
+      "bytes": 1574,
+      "sha256": "b5772c73a911196c565b1349e0d6fc1fffa9c3714472768e1feba0fe217bf8e3"
+    },
+    {
+      "path": "packages/studio/skills/scean-opening-authoring/SKILL.md",
+      "bytes": 3820,
+      "sha256": "e24823b7cdffa5cd69646e9faf80dc07a0ab3735bb31b6e5cd3a03c1cefc0144"
+    },
+    {
+      "path": "packages/studio/skills/scean-opening-authoring/SOURCE.json",
+      "bytes": 1511,
+      "sha256": "b949306c92c81cd0789e89aad53e151a18a27d9ff6f49ef8d73028cad506b2c8"
+    },
+    {
+      "path": "packages/studio/skills/scean-opening-authoring/references/authoring-workflow.md",
+      "bytes": 6449,
+      "sha256": "b654e6710c79bccc391482ba94464c4105f5c3b3272212c8255491be5afb669a"
+    },
+    {
+      "path": "packages/studio/skills/scean-opening-authoring/references/creative-guide.md",
+      "bytes": 16163,
+      "sha256": "4da5d980f29aca692def39e3fd5fa932c0e785b958bbecda8804d0c7700add94"
+    },
+    {
+      "path": "packages/studio/skills/scean-opening-authoring/references/studio-contract.md",
+      "bytes": 4837,
+      "sha256": "41bb7545df60f824e1f3e824635e7b2b8e657189b4289b8e033ace775b982a84"
+    },
+    {
+      "path": "packages/studio/skills/scean-worldbook-authoring/SKILL.md",
+      "bytes": 4527,
+      "sha256": "6c4a4fc11f52dde62c39349bb64c3c2192b29f68752c4ff1c0e2dd310dda5978"
+    },
+    {
+      "path": "packages/studio/skills/scean-worldbook-authoring/SOURCE.json",
+      "bytes": 4459,
+      "sha256": "49e1d2dac047c989c40996e9d7027e12405a750e7d5bf4d2ed01fa9b0f7c1dde"
+    },
+    {
+      "path": "packages/studio/skills/scean-worldbook-authoring/references/runtime-contract.md",
+      "bytes": 7766,
+      "sha256": "07e37cb2ddc3b2cb337206d5a8df443438dddc23c27fbdb2b17d452f981da3fc"
+    },
+    {
+      "path": "packages/studio/skills/scean-worldbook-authoring/references/studio-workflow.md",
+      "bytes": 6549,
+      "sha256": "37257cff085ea9c656c70831725deda4462fefa1054ed6ade1e71d2ae8c5a881"
+    },
+    {
+      "path": "packages/studio/skills/sources.json",
+      "bytes": 11507,
+      "sha256": "783349f67ca9a6f2d64d6f011cb4b6f939848be39ac9796705e53e4c169976b9"
+    },
+    {
+      "path": "packages/studio/skills/tavern-card-format-preservation/SKILL.md",
+      "bytes": 5769,
+      "sha256": "a3fe41a09bd2c13bb68d7044228053be49f0dd8cc2fe421859422428d6b96ed4"
+    },
+    {
+      "path": "packages/studio/skills/tavern-card-format-preservation/SOURCE.txt",
+      "bytes": 393,
+      "sha256": "f2161f4762c42622cf66996c108f4a18d06259853d0fab05b7c6f193a9f84c98"
+    },
+    {
+      "path": "packages/studio/skills/tavern-card-format-preservation/references/card-fields.md",
+      "bytes": 2210,
+      "sha256": "edf5ad6e9985d619f4f506815dd3d5afc5d4db4599ec289a288ea7e461856232"
+    },
+    {
+      "path": "packages/studio/skills/tavern-card-format-preservation/references/png-preservation.md",
+      "bytes": 2027,
+      "sha256": "be75660ae9186384004ca897517aa23a1335182b11939554e313600e299e37a3"
+    },
+    {
+      "path": "packages/studio/skills/tavern-card-format-preservation/references/worldbook-and-edits.md",
+      "bytes": 1354,
+      "sha256": "9c7a1a26493d167dae5630e829762387d9962d66379eb134403a051db3047c5b"
+    },
+    {
+      "path": "plugin/README.md",
+      "bytes": 6359,
+      "sha256": "b9be66c7a1692d4b84068d4150290391a8dac1ec270d2b01262f6f3e5254937b"
+    },
+    {
+      "path": "plugin/card-scope.mjs",
+      "bytes": 891,
+      "sha256": "c5b469f95e2ac343f5f30ed552eebbe4b0da8923464abe28ef99e6edb42a3b32"
+    },
+    {
+      "path": "plugin/chapter-runtime.mjs",
+      "bytes": 1567,
+      "sha256": "90b78acf1d976e9c13e998b312458b70c1111bea15fbaa2f9d55f11665132e4c"
+    },
+    {
+      "path": "plugin/chapter-settings.mjs",
+      "bytes": 14028,
+      "sha256": "c0e6c6eb740c091ba767eab70f834a56baf4c593f0f57f0f422cc696dae97f50"
+    },
+    {
+      "path": "plugin/client.js",
+      "bytes": 273640,
+      "sha256": "8510973c92ac3c3a1770c40d385ee090844e1015279725558a9c0826685dbc4a"
+    },
+    {
+      "path": "plugin/cordis.patch.yml",
+      "bytes": 85,
+      "sha256": "8e0d9850c6c6079f094274a98743c0752462f575cc99ffb3ccabf8d190b9c0dd"
+    },
+    {
+      "path": "plugin/host.mjs",
+      "bytes": 50405,
+      "sha256": "605d26828f892fda5a3754642cb389ffd8f94837362b2ecdec6adfcee98c0e92"
+    },
+    {
+      "path": "plugin/index.js",
+      "bytes": 7214,
+      "sha256": "e45b22a157fea0d12942f0ab18a14acee6cabaa00f538d73f7bcebf639f4edad"
+    },
+    {
+      "path": "plugin/job-host.mjs",
+      "bytes": 18018,
+      "sha256": "bdc42e02d7310fd57b9dcb053cc20b5b0267c42a20e261bab4c8914b9045af11"
+    },
+    {
+      "path": "plugin/job-ledger.mjs",
+      "bytes": 2716,
+      "sha256": "2d518cc440c876e20ec56761b32a1b97f24da71dd588c3cc8ce2455dd0cfbbc0"
+    },
+    {
+      "path": "plugin/native-client-source.mjs",
+      "bytes": 7506,
+      "sha256": "dc7f5a995c133705cf5679a8dca11d7a64273fbd6445c71e7b3e9b80bdcc85f6"
+    },
+    {
+      "path": "plugin/native-frame-source.mjs",
+      "bytes": 2514,
+      "sha256": "df2b4a793db8cd51c96b47f2062e2b9aea4c4b7483d5df5f6002a4ee85f5fb4b"
+    },
+    {
+      "path": "plugin/native-model.mjs",
+      "bytes": 12540,
+      "sha256": "3dd46bd3f4b2084b19c18f9455114595d5cd212f1ce0e03b02d993801b90596e"
+    },
+    {
+      "path": "plugin/notification-host.mjs",
+      "bytes": 10442,
+      "sha256": "582a7c76c51fb3030b6a1a835759be09aee5e5dd2ccaf4d097380e7f722ae3a8"
+    },
+    {
+      "path": "plugin/notification-ledger.mjs",
+      "bytes": 4115,
+      "sha256": "fcf99d7063356006b403be2be63d9dc5794c1c75871210c5f276bb049e736b70"
+    },
+    {
+      "path": "plugin/opening-selection.mjs",
+      "bytes": 6348,
+      "sha256": "45e6c9cbfafb52696294f5240417e7b9bb79c3eea2ae82c1a9c5f5616285718c"
+    },
+    {
+      "path": "plugin/player-native-bridge.mjs",
+      "bytes": 7585,
+      "sha256": "44ba5afdea62fe9638fc29fe45350d9bee53af16c705555a4ec61d7d05fa458b"
+    },
+    {
+      "path": "plugin/protocol.mjs",
+      "bytes": 709,
+      "sha256": "bda7fc68e4b3386bc36c674071d4b5f4e90c533ec6ca08a15d61b12abd9e94c3"
+    },
+    {
+      "path": "plugin/studio-handoff.mjs",
+      "bytes": 2886,
+      "sha256": "773550c0ac4f81998e86335f17b588277a7ab26491180f56114775b67ebde17d"
+    },
+    {
+      "path": "plugin/version.mjs",
+      "bytes": 148,
+      "sha256": "f589e2c73373acbfeb99e5f15a38e5d82b5b5d28aabde3a1a3a2e8914d7ce41b"
+    },
+    {
+      "path": "release-source.json",
+      "bytes": 530,
+      "sha256": "75d3d0dd787100cf90bf3a139c790437a11e70a356d5b6b3defe7d2e29a970a2"
+    },
+    {
+      "path": "scripts/build-candidate.py",
+      "bytes": 3103,
+      "sha256": "66aca9f3ccc3444de3958b1463d32457540641e7dc111496887165b5a50048d4"
+    },
+    {
+      "path": "scripts/build-player-native.mjs",
+      "bytes": 3848,
+      "sha256": "32a6395d070d6bdf15da06ee104bbc4ecc52e57d17b133ba5da28dbdbcc511f4"
+    },
+    {
+      "path": "scripts/check-release.py",
+      "bytes": 2190,
+      "sha256": "405a1e8c7556b88d2d18c71a1e60ee1f35b2c4d9322ed94844d34b51a4af897e"
+    },
+    {
+      "path": "scripts/formal-deploy.mjs",
+      "bytes": 11650,
+      "sha256": "f0c052475f07d85bfac3997d89f0f8a297e9db7507d3d6359cc5f78ccdaecd65"
+    },
+    {
+      "path": "scripts/opening-selection-gui-host.mjs",
+      "bytes": 9246,
+      "sha256": "9cb9e988da1697889ec1f0df278585b7d4c86e4467269b6bffcb4596e96575f1"
+    },
+    {
+      "path": "scripts/package-candidate.py",
+      "bytes": 3069,
+      "sha256": "ef6cb2fabb58cf14daf60e16ff12ad3713d99f00cded7513b2a04ccfad407c90"
+    },
+    {
+      "path": "scripts/package-player-ui.mjs",
+      "bytes": 865,
+      "sha256": "d82f3eae6e0940a14021bd2dbf580f6b9694fa82ebd04e9857377306eb0d4145"
+    },
+    {
+      "path": "scripts/prepare-test-sdk.py",
+      "bytes": 2272,
+      "sha256": "019264e0d5f8e54e9e09d2c2405b6fe9d45942f8d657db43e70f61a32f4cb25f"
+    },
+    {
+      "path": "scripts/test-opening-candidate-gui.mjs",
+      "bytes": 8351,
+      "sha256": "455c1c313e1f74bcf069bd8a27cfaf39cb46e0c32701570cb3fd3ed69e8b79dc"
+    },
+    {
+      "path": "scripts/test-ui-layout-gui.mjs",
+      "bytes": 20692,
+      "sha256": "a65481171da9628b8ba7ca9aec8192b2c4b8825a47a245a7a3db335e9c73f2ff"
+    },
+    {
+      "path": "scripts/test-ui-official-gui.mjs",
+      "bytes": 4195,
+      "sha256": "0aa6f32aadaad5dc468f134e3006bc7e92b6f0592f92d89ddebf5d81baa2fddd"
+    },
+    {
+      "path": "scripts/test-ui-official-host.mjs",
+      "bytes": 8836,
+      "sha256": "f0ed3ca98a6f96fcb970c0316f85393573639753adfbd749cad1d3a9d53805f2"
+    },
+    {
+      "path": "scripts/ui-cdp-browser.mjs",
+      "bytes": 6214,
+      "sha256": "30342060a90cd75f824f8eb07e1278294702ac0caa2398464e696ca59b3dc8a6"
+    },
+    {
+      "path": "scripts/ui-official-offline-adapter.mjs",
+      "bytes": 1001,
+      "sha256": "9cfbcc173bd8dc3d2580e0904196a2268a0a1a223ec0d265757530acd6131bad"
+    },
+    {
+      "path": "scripts/upgrade-coexist.mjs",
+      "bytes": 9077,
+      "sha256": "0521a70c29ec7e2e540c82ac52c8c5e1e53006c36f231edee12ce4dfec3e18a7"
+    },
+    {
+      "path": "scripts/w19-offline-network.cjs",
+      "bytes": 1343,
+      "sha256": "02bccdf5fe2d2785b69b7e582bd33258001f38cc497c78cbf8a992c59075b390"
+    },
+    {
+      "path": "sources/card-studio/build_cardstudio.py",
+      "bytes": 1120,
+      "sha256": "26f1d94f5f3fc3ff78c8f1acb93bf8be470287375f86c0fe68292f043e4455d9"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/COPYRIGHT",
+      "bytes": 152,
+      "sha256": "5b413ef2f35abc19a5dab7d635f6658cb7f4c90946b77f55363743cc3a56e009"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/LICENSE",
+      "bytes": 34523,
+      "sha256": "0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/LICENSE-SCOPE.md",
+      "bytes": 2230,
+      "sha256": "861c3fd735a29341dcb76b7e87358550aa8c2e18e61977a97f5011e36d0d25c3"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/README.md",
+      "bytes": 1011,
+      "sha256": "e958b172ac4b14cd86334771dbd3073d3cf7850ae8246ff943f0a8d85d0a3e88"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/SOURCE-AVAILABILITY.md",
+      "bytes": 1593,
+      "sha256": "3446d38e4619533e38bacb90b3b1be0abfe9ff64c84682e42009760c09967a03"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/THIRD-PARTY-LICENSES.json",
+      "bytes": 2102,
+      "sha256": "22002d5bc9c61d6d4fccf9e69e1f0fa1448b225e5504ea74a0d019b0b2e2e06c"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/THIRD-PARTY-NOTICES.txt",
+      "bytes": 5735,
+      "sha256": "c1360cbaf07af6e4210476f27102c50eb7065c8cb626349774aec219c7b82e1e"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/client-template.js",
+      "bytes": 122252,
+      "sha256": "12a9894d13e1795e8a6dfeeb7e691653c3b65992831cafe9e989cdbf43d51933"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/client.js",
+      "bytes": 168772,
+      "sha256": "28a45ab3cce125799eac29d3c30e24ca90ebf772a3e77680da070799cc4b22a5"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/cordis.patch.yml",
+      "bytes": 129,
+      "sha256": "f65d02e2e23e3de23a2e8372eabfdf70d40ff2af88835415eb583fae6a4b11c8"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/index.js",
+      "bytes": 18436,
+      "sha256": "52cca31811a8f32ff2231edd54ea7927f7bda008cf3626218d3367169aa945a8"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/archive-lifecycle.js",
+      "bytes": 9950,
+      "sha256": "9ef0f40542b35a6816532763df7e8e0e445b0cc2de154f7ba8804bc66efe8b8e"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/archive-observer.js",
+      "bytes": 2108,
+      "sha256": "9efb18e9ac1804694175cb223a57d1c72adad340c391e8dc146fec66df974285"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/asset-raster.js",
+      "bytes": 15521,
+      "sha256": "fa96115e3058197911a9770674884822a2ce06170f780a5b88390b274a34f10b"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/asset-upload.js",
+      "bytes": 690,
+      "sha256": "80b166150562ea70a2ab1031b5dcfade97d9fa2d216d5fa652b2977efa6d2ca9"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/authoring-fixture.js",
+      "bytes": 4408,
+      "sha256": "8e2714f08b7041075f237b43b3aad0885eeed3449277e7aeb6ca98a62a7c23f4"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/authoring-scope.js",
+      "bytes": 8482,
+      "sha256": "f69380a620443cb955e6d8174ec3f4eb821dde49ea6ec0e98b7e6b1f7a117c54"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/authoring-service.js",
+      "bytes": 48238,
+      "sha256": "7d0e202b7204b485fa98d93e1836cc02987e06a7b47a072748c9f27122eba67b"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/bridge-protocol.js",
+      "bytes": 6995,
+      "sha256": "9841ecff2545de935aebc168e1e6abf08d2ba3fdf9743e06635de25cf53504d9"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/bridge.js",
+      "bytes": 1333,
+      "sha256": "58b6e4f0bd187a8fd5f55a264ba7cc6f71d62756c749b4326a24466b13e366b3"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/card-service.js",
+      "bytes": 37503,
+      "sha256": "9c42e3fd7a601a6702bbff7d8ada583720bb7df0d465457306ff4eed856d123c"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/character-method.js",
+      "bytes": 3337,
+      "sha256": "35a716c53f617023d304f5bb9911c7736537ed69ebda2b9a2001f8d2a37a4d8b"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/character-sources.js",
+      "bytes": 3537,
+      "sha256": "b29e660c0df42969dceb1e57eab535d6ff89b18a4fc569828c7519a35a6796af"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/client-controller.js",
+      "bytes": 12156,
+      "sha256": "934a236a3c09433932b80133026888803fbd640c74cd16cea0cf8420cf3036dc"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/client-library.js",
+      "bytes": 16845,
+      "sha256": "d362ded3f436ae30cff5a63de0654e9933b2bb6ecbd4cd0dbff7af57016dc258"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/client-materials.js",
+      "bytes": 10638,
+      "sha256": "2b975b7da31c689a570e5283a3d72fad0d701bf831353d0d3de8d662607915c9"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/codec.js",
+      "bytes": 15589,
+      "sha256": "0a23fdc13a890b4e83ae3d9b57ce84ecff81b0be57bb57c56743d015c06c2a1f"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/document-projection.js",
+      "bytes": 5253,
+      "sha256": "ea3f2a40bbe4a56d00e4f356a2d65bfedaa36d33d0bab29f0d8ce05a9f4eb40a"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/export-download.js",
+      "bytes": 8521,
+      "sha256": "98b3d4e90bc202d18e22b5281ca4d094e80f2480709ed778b072f6b9972c14a7"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/frontend-authoring.js",
+      "bytes": 15397,
+      "sha256": "3fc19205b63aca752e052ce03dce6426f31db5ac749633e14e0e2802173a3b9f"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/generated-assets.js",
+      "bytes": 3275,
+      "sha256": "488cb1f0bd442226790294941ee360db0239bd4b206d056f84909f4a087711c2"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/host-diagnostics.js",
+      "bytes": 2142,
+      "sha256": "9ee6c6567509f01315ce975d5285b4d079b1799fd2ac491f0e9b96c68a5ae4db"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/library-image.js",
+      "bytes": 3990,
+      "sha256": "806b5ded216a9b46d30be7d1236e10db25aee3ccf80bc93b36e3a01260697711"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/library-index.js",
+      "bytes": 16857,
+      "sha256": "c4a2b64521320cfbeab72f22fb754f776ae4142a918368760ffd8ebb635a7121"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/library-retrieval.js",
+      "bytes": 2780,
+      "sha256": "f75c827babe244449b08e5ae8dc8d3bde43e9683171e2f767d3320e6da945d57"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/library-service.js",
+      "bytes": 7137,
+      "sha256": "3c86b8fd5e17f295092f0bf61cf24bba37a0cf1f33167846f9fa51013b4e62f6"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/loader.js",
+      "bytes": 27005,
+      "sha256": "86dde58f7b852ff2502b5e1ccd5a0c723b3a7541aa5675010823d43c5bc3ccf2"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/material-service.js",
+      "bytes": 23349,
+      "sha256": "e69a62d99e84a96191221164a3b4313b0f82a3a16d7ad9777ebb1e4bff0ea48c"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/material-store.js",
+      "bytes": 11948,
+      "sha256": "59f11289b0335f72c2b5788b1176722f45256eeaf5ce6790ab890f28ccb2a16a"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/preflight-check.js",
+      "bytes": 10677,
+      "sha256": "08dbe90b049bb61d2e7c48429a91a14b06a23ab19c5976a2f406a22a1b342b14"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/presentation-base.js",
+      "bytes": 575,
+      "sha256": "55ab3ed108a7a5e5814bf4457d904ffb33cc790f566d696780a2a34cfb7b9779"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/preview-css.js",
+      "bytes": 7830,
+      "sha256": "f37989b827ddd0dc53ad27eae1104ea2330e974b2a59f348ce0ecb21bf36cee7"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/preview-projection.js",
+      "bytes": 10231,
+      "sha256": "a753489434904edd5c53e5214c45f8d2092d3bd1944f1fcdbf786a7b2ad01dc8"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/scean-audit-control.js",
+      "bytes": 4565,
+      "sha256": "2a7f40fd4f5fc163fb33968c7a0029b5ce35b8b3ad97625bf62896a8d4faeeb7"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/scean-integration.js",
+      "bytes": 8980,
+      "sha256": "8fd40b5d0b1206cfb415bdd202b2748569b91c88dd150e9d8d959d0c410d6809"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/target-content.js",
+      "bytes": 3704,
+      "sha256": "1fea497f3507b2b8131a993400acc9262724fbb1bbc73a9c105682827bf5839b"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/target-delivery.js",
+      "bytes": 5185,
+      "sha256": "3ff53c1a1636f74b6d1a6d7d07a47a32d3f8128fa50555f9da2771384a5f3d7a"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/target-dryrun.js",
+      "bytes": 3211,
+      "sha256": "21a199b290f2eaedd7d061c0909daf21b194ed5d11f95b903fdd4b43969cf923"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/target-profile.js",
+      "bytes": 17092,
+      "sha256": "0c96bcee64fc7ff0e6277acc8efeab439164085077a6cd412ed4794f6e7f5c1b"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/target-state.js",
+      "bytes": 12687,
+      "sha256": "668cef19b6099bda8ec9588fc13fe261a808b61cb2370cd965e5c286bc6826b5"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/tavern-compatibility.js",
+      "bytes": 1965,
+      "sha256": "b5b3c6ae633ec08375383f46eeba51788506f6a0f04ca6553f00732b2bc57c67"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/tool-definitions.js",
+      "bytes": 15849,
+      "sha256": "41b6ce8e83f52c7d21b35b68765da1739c30b08bada300e124e7e336f70eb2b7"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/upload-buffer.js",
+      "bytes": 3341,
+      "sha256": "3e2d6361f3b1aeff9c66ae1b4844c271b1b8d4363c45092b2f93f18bd9a3c32e"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/visual-state.js",
+      "bytes": 10224,
+      "sha256": "8d976c654215e861879e914e19dcc5ae3d3b711a79357fd99b926673009c7fe2"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/w01/authoring/frontend-css.mjs",
+      "bytes": 7830,
+      "sha256": "f37989b827ddd0dc53ad27eae1104ea2330e974b2a59f348ce0ecb21bf36cee7"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/w01/authoring/frontend-html.mjs",
+      "bytes": 3655,
+      "sha256": "584d59f4b64ad48ed4560d775f36f7df37a02bbcfb5edec549515aab734ad697"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/w01/core/character-sources.mjs",
+      "bytes": 3537,
+      "sha256": "b29e660c0df42969dceb1e57eab535d6ff89b18a4fc569828c7519a35a6796af"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/w01/core/condition-ast.mjs",
+      "bytes": 4227,
+      "sha256": "ac293b8d64a089b19d7bac9d87b0e7a3e2e28daea3cfc8989585b856012b2bfc"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/w01/core/contracts.mjs",
+      "bytes": 6515,
+      "sha256": "4966526b5c6ce7311f0aefee3e7daa726e196fb0094c49c01ea7b61940a7cba4"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/w01/core/derived-facts.mjs",
+      "bytes": 3108,
+      "sha256": "0bc2db6a367124e8f1ff16be35233e2822fca7728ab29d09483a782a413af15a"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/w01/core/frontend.mjs",
+      "bytes": 7619,
+      "sha256": "3342940421f492bc4d893b53e8a8d99c4f5aff0c59dc9b4cab4720549fce0ed3"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/w01/core/memory-policy.mjs",
+      "bytes": 9522,
+      "sha256": "ef814c26b9e3353c1d89892947a75ff9eb1bb8f70d669f964b019820ef0d819d"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/w01/core/public-state-bindings.mjs",
+      "bytes": 1674,
+      "sha256": "8a8db1d5346f148dbb3e06f9168e8ee8f780248b79adfc7730a0b80372eddf0b"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/w01/core/state-blueprint.mjs",
+      "bytes": 13506,
+      "sha256": "1686bc3e2c950ce9895b73023088c3ba33bae7ec41d2dbba3533290cfb592e90"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/w01/isolated/web/condition-ast.mjs",
+      "bytes": 4227,
+      "sha256": "ac293b8d64a089b19d7bac9d87b0e7a3e2e28daea3cfc8989585b856012b2bfc"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/w01/isolated/web/frontend-runtime.mjs",
+      "bytes": 3275,
+      "sha256": "8bba8b774899b52710a8bd51b26322b7026c26de64f30a47a690d71d6fd43859"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/workspace-setup.js",
+      "bytes": 6725,
+      "sha256": "5ebe59b516b7f7746e282795135c0380d5508ab918ced8097bc63a3da1918259"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/worldbook-gating.js",
+      "bytes": 17498,
+      "sha256": "550d7d5ae383ee9286a213ba82d5f2957241b77b92b9a8f55600b4c2b5958084"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/lib/write-receipt.js",
+      "bytes": 4068,
+      "sha256": "0ee9ab2f6092ed2ae23d6f2e6e83fb5bebbddcc748ea87c27b2fc81ea6f7da72"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/locale/en.json",
+      "bytes": 129,
+      "sha256": "c0ab29f1e92e8901a3437166c88b7ad7a86f6a01e05abf901f3833481fbfe454"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/locale/zh.json",
+      "bytes": 170,
+      "sha256": "427c0d98a993d205db0b51fc56d722f90be501fed4944e4d0a8f8a036b50e3b8"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/package.json",
+      "bytes": 1941,
+      "sha256": "c3a1069615642c48b038eb5ceef6fe611729e85203388dc39ddc421940aa0d3b"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/release-source.json",
+      "bytes": 530,
+      "sha256": "75d3d0dd787100cf90bf3a139c790437a11e70a356d5b6b3defe7d2e29a970a2"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/rollback-recycle.js",
+      "bytes": 2385,
+      "sha256": "b50a6862ccababea69af9c119c76fa56686004ce8d86eaa55ff02ce744fe8b71"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/advanced-tavern-card-authoring/SKILL.md",
+      "bytes": 11806,
+      "sha256": "85aef56a4683e5cebf33f6573cab83f283de28ddf2e68979883b5ba090c24638"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/advanced-tavern-card-authoring/SOURCE.txt",
+      "bytes": 1800,
+      "sha256": "3520ff0e4de48a960b4505285107db22eb1824353658aad3107d941f39862b46"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/advanced-tavern-card-authoring/references/authoring-workflows.md",
+      "bytes": 5262,
+      "sha256": "20b1d8db34eed14f49c9282668efe441c2fc9465280c38e4e555ca50e8c73775"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/advanced-tavern-card-authoring/references/frontend-and-fixtures.md",
+      "bytes": 7249,
+      "sha256": "19bb6f54e1968d1146160ab2b073898f6e54a2e29e6ffcfcccf2d0b4f042aa99"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/advanced-tavern-card-authoring/references/primary-sources.md",
+      "bytes": 8515,
+      "sha256": "28df181eee6cc5a2e1ecdc7c386474c29e3f77cdaf447509b5dac01d5991d2bb"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/advanced-tavern-card-authoring/references/runtime-and-dependencies.md",
+      "bytes": 3639,
+      "sha256": "b89fa4a9f02a01540030f44f384381f8f6e7af5c305aae1f4ab71acf9ec4df7b"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/advanced-tavern-card-authoring/references/tauritavern-target.md",
+      "bytes": 10832,
+      "sha256": "3ab859b77f578b9ac88e85f33222be3cd863b9033d4711e40c6590891d96e553"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/advanced-tavern-card-authoring/references/validation-and-lifecycle.md",
+      "bytes": 6485,
+      "sha256": "a035f66bf93b57336543bd8ecb5351dd17c6a62534e98e5f3876d6669a9ab92b"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/advanced-tavern-card-authoring/references/visual-state-and-assets.md",
+      "bytes": 6532,
+      "sha256": "6392de911c195c230ed2cddeae787075dc2c0a754818fbc4cad988235e3e2e98"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/advanced-tavern-card-authoring/references/worldbook-conditions.md",
+      "bytes": 8053,
+      "sha256": "854ccb7613c8baad0db07eb7a97dbc25c3b781d5cdfd367afeeae41589532fa6"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/catalog.json",
+      "bytes": 2461,
+      "sha256": "a2a4d61a6562177b018229599c839d51c03a97fc5e754b1d146d0409ae4d8732"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/character-authoring/CODEX-INTEGRATION.md",
+      "bytes": 2425,
+      "sha256": "2bc0c34a59eee3b45e0590dc52716a565c3574fb1a33815cde47052af55618d8"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/character-authoring/ORIGINAL-SKILL.md",
+      "bytes": 7302,
+      "sha256": "64a36965d4bf19dd258f4d9b254ebc3cbece9f46e78a6e20ab4cbb30300a3eae"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/character-authoring/SKILL.md",
+      "bytes": 7302,
+      "sha256": "64a36965d4bf19dd258f4d9b254ebc3cbece9f46e78a6e20ab4cbb30300a3eae"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/character-authoring/SOURCE.json",
+      "bytes": 540,
+      "sha256": "ecfd210e7bc98919c73b819e84e96792c4cf4af8916826ba7586f63271d03d4d"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/character-authoring/TRIAL-GUIDE.md",
+      "bytes": 2804,
+      "sha256": "4f9b5f07cc5163fc0e71f1b0f187ece773da0b150f4ce53c00b9b7c5d7a8921a"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/character-authoring/references/person-design.md",
+      "bytes": 3355,
+      "sha256": "aabee204819dc074f22a0e870a70dd89e987552eb378daf5b64f0961d42c7e4a"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/character-authoring/references/review-and-delivery.md",
+      "bytes": 3976,
+      "sha256": "4d7c0f1ad2f42e59a6b7f2b743ee99a1e1a76c4dade1a504a28ed60627ed856d"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/character-authoring/references/social-and-situational.md",
+      "bytes": 3475,
+      "sha256": "5f701eab809dd18beb1205caf4de1ca26b2cf6a769912fd520bd2a6d91de431a"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/scean-compatibility-audit/SKILL.md",
+      "bytes": 2671,
+      "sha256": "ddd428d6f23e628f92dd036349749a56805352864c511587bfa6217800610b45"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/scean-compatibility-audit/references/contracts.md",
+      "bytes": 3462,
+      "sha256": "d188161e78496984319b0ab6aab47ced625a0f3004ecb5f4f19d1b9373decd57"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/scean-compatibility-audit/references/tool-and-results.md",
+      "bytes": 1786,
+      "sha256": "567e75fbc0f9624ce925741b864dfef91894fa90966cb4e045acefcaaa46ba39"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/scean-dialogue-authoring/SKILL.md",
+      "bytes": 4981,
+      "sha256": "ad11f844cb306d64411436295ff040fd2593dd43919108d8eca53debe7b99824"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/scean-dialogue-authoring/SOURCE.json",
+      "bytes": 4669,
+      "sha256": "ba3eda32d5650aa97bbe760468ae753cca375aa1eea125b12ac5a27f38b043bf"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/scean-dialogue-authoring/references/editing-workflow.md",
+      "bytes": 5239,
+      "sha256": "b2167936c4144239c067f6022fb0dd9250259ba6e8da4d307c950b92c60794ac"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/scean-dialogue-authoring/references/prompt-contracts.md",
+      "bytes": 7800,
+      "sha256": "1ef8493f39dd1751af0af102fb15c7cbc89835fdddde4c3c10e72d5883982670"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/scean-frontend-authoring/SKILL.md",
+      "bytes": 5446,
+      "sha256": "0b003dea18b0cc6ae5756490ba6fae2583e4126f26d975a08c75de9609e19534"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/scean-frontend-authoring/SOURCE.json",
+      "bytes": 5276,
+      "sha256": "376e576c8e7b12724ab8bd5421b91d29fe0589a08a0a7fabcc812a9ba7ae26d4"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/scean-frontend-authoring/references/contracts.md",
+      "bytes": 10352,
+      "sha256": "39adef43457d636d7112e371768a67c2a41c9615af2f170213caa5f48ea59401"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/scean-frontend-authoring/references/synthetic-acceptance.md",
+      "bytes": 7658,
+      "sha256": "ba42fea934e0ba38c2fbb3b275168d2773589bc5b517e65ebf5e70438580a8d8"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/scean-frontend-authoring/references/tools-and-lifecycle.md",
+      "bytes": 7417,
+      "sha256": "40e25127af9582718d406681b484f106538361e756bee7daa5f23cc5f40e33fc"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/scean-native-authoring/SKILL.md",
+      "bytes": 5342,
+      "sha256": "e1bea69521f31e352a80e32e8c24ea2123dec65d97b455083f74fbdb70d08195"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/scean-native-authoring/agents/openai.yaml",
+      "bytes": 286,
+      "sha256": "ecd435f975ed601470d6614d2065743f8410b55be7394a56da90f60e3d059c81"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/scean-native-authoring/capability-manifest.json",
+      "bytes": 23315,
+      "sha256": "b0f003794cc0fe23f2107634bfd50b680b1abc68f0f60aa0e5efd4ea84f4d45b"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/scean-native-authoring/references/authoring-method.md",
+      "bytes": 2883,
+      "sha256": "764d140e5e5d969de7884fa052838b05bb7f10df7f7fc8db2ef7c909e4c943c1"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/scean-native-authoring/references/capabilities.md",
+      "bytes": 5757,
+      "sha256": "ede7795a64f9ba6f32decbda302f6eb9e136bc1ff4fb8fa99114ebbff334e21f"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/scean-native-authoring/references/character-workspace.md",
+      "bytes": 3285,
+      "sha256": "17962e0b743ba46f20d4262749bea280c6ec850fb7a5df9bc5dd0d13ea530160"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/scean-native-authoring/references/native-contracts.md",
+      "bytes": 5560,
+      "sha256": "8f8c680165a419196a6a5411c1f9a01b9919bb1bc7b916d18d8002a2482b8617"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/scean-native-authoring/references/studio-integration.md",
+      "bytes": 2932,
+      "sha256": "1ab91e483ee818829f43a4741032603c98e985dfd61e34c39e35424c8d55503e"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/scean-native-authoring/references/validation.md",
+      "bytes": 1574,
+      "sha256": "b5772c73a911196c565b1349e0d6fc1fffa9c3714472768e1feba0fe217bf8e3"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/scean-opening-authoring/SKILL.md",
+      "bytes": 3820,
+      "sha256": "e24823b7cdffa5cd69646e9faf80dc07a0ab3735bb31b6e5cd3a03c1cefc0144"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/scean-opening-authoring/SOURCE.json",
+      "bytes": 1511,
+      "sha256": "b949306c92c81cd0789e89aad53e151a18a27d9ff6f49ef8d73028cad506b2c8"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/scean-opening-authoring/references/authoring-workflow.md",
+      "bytes": 6449,
+      "sha256": "b654e6710c79bccc391482ba94464c4105f5c3b3272212c8255491be5afb669a"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/scean-opening-authoring/references/creative-guide.md",
+      "bytes": 16163,
+      "sha256": "4da5d980f29aca692def39e3fd5fa932c0e785b958bbecda8804d0c7700add94"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/scean-opening-authoring/references/studio-contract.md",
+      "bytes": 4837,
+      "sha256": "41bb7545df60f824e1f3e824635e7b2b8e657189b4289b8e033ace775b982a84"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/scean-worldbook-authoring/SKILL.md",
+      "bytes": 4527,
+      "sha256": "6c4a4fc11f52dde62c39349bb64c3c2192b29f68752c4ff1c0e2dd310dda5978"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/scean-worldbook-authoring/SOURCE.json",
+      "bytes": 4459,
+      "sha256": "49e1d2dac047c989c40996e9d7027e12405a750e7d5bf4d2ed01fa9b0f7c1dde"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/scean-worldbook-authoring/references/runtime-contract.md",
+      "bytes": 7766,
+      "sha256": "07e37cb2ddc3b2cb337206d5a8df443438dddc23c27fbdb2b17d452f981da3fc"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/scean-worldbook-authoring/references/studio-workflow.md",
+      "bytes": 6549,
+      "sha256": "37257cff085ea9c656c70831725deda4462fefa1054ed6ade1e71d2ae8c5a881"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/sources.json",
+      "bytes": 11507,
+      "sha256": "783349f67ca9a6f2d64d6f011cb4b6f939848be39ac9796705e53e4c169976b9"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/tavern-card-format-preservation/SKILL.md",
+      "bytes": 5769,
+      "sha256": "a3fe41a09bd2c13bb68d7044228053be49f0dd8cc2fe421859422428d6b96ed4"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/tavern-card-format-preservation/SOURCE.txt",
+      "bytes": 393,
+      "sha256": "f2161f4762c42622cf66996c108f4a18d06259853d0fab05b7c6f193a9f84c98"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/tavern-card-format-preservation/references/card-fields.md",
+      "bytes": 2210,
+      "sha256": "edf5ad6e9985d619f4f506815dd3d5afc5d4db4599ec289a288ea7e461856232"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/tavern-card-format-preservation/references/png-preservation.md",
+      "bytes": 2027,
+      "sha256": "be75660ae9186384004ca897517aa23a1335182b11939554e313600e299e37a3"
+    },
+    {
+      "path": "sources/card-studio/cardstudio-bundle/skills/tavern-card-format-preservation/references/worldbook-and-edits.md",
+      "bytes": 1354,
+      "sha256": "9c7a1a26493d167dae5630e829762387d9962d66379eb134403a051db3047c5b"
+    },
+    {
+      "path": "sources/card-studio/tests/helpers/portable-host.js",
+      "bytes": 4184,
+      "sha256": "9c917954007690e202abf6bdf7b7ccf64851fe345622b544f240912b986867bb"
+    },
+    {
+      "path": "sources/manifests/scean-package.json",
+      "bytes": 1899,
+      "sha256": "057e7a0f37d9dfcb0fe523cfb94c3eb9aff5b137f355070b5927047f2dc81637"
+    },
+    {
+      "path": "tests/a-lifecycle.test.mjs",
+      "bytes": 21472,
+      "sha256": "43355f526f877d1bb149770f24408a226b02a0244871114d65730a73fbb2aad3"
+    },
+    {
+      "path": "tests/a-model.test.mjs",
+      "bytes": 10714,
+      "sha256": "3c6628ed7c309d12b7fbae0c2052519460bea77419e602e4dfbd2d52c9c75dcd"
+    },
+    {
+      "path": "tests/a1-character-context.test.mjs",
+      "bytes": 10463,
+      "sha256": "d9b33a2e5bd96166dbac6edcef458378428b50412d450bebd5ff95d11b41282e"
+    },
+    {
+      "path": "tests/a1-formal-client.test.mjs",
+      "bytes": 4032,
+      "sha256": "531e381835a098caf87722e377bdad4507dc669334a5a5ae02f74ea514ea13ca"
+    },
+    {
+      "path": "tests/a1-inspection.test.mjs",
+      "bytes": 8988,
+      "sha256": "fcbbc1537a954ec25f3c13f291bed3fdcbe3c61b1ca18210debd8037f67f22cb"
+    },
+    {
+      "path": "tests/a1-integration.test.mjs",
+      "bytes": 14580,
+      "sha256": "38b44ddf342175e7166527d56b38fa2bf4411733be2ef86dd3ab6e40917a912c"
+    },
+    {
+      "path": "tests/a1-memory.test.mjs",
+      "bytes": 12854,
+      "sha256": "b40cb7dd2c5b0fd265228a3fd6561b490a56bf174a0b9d4398cefaa5d8decfd4"
+    },
+    {
+      "path": "tests/auto-long-summary.test.mjs",
+      "bytes": 22606,
+      "sha256": "35e2bbecba5a16c0b709b10ca09256b9a2923afb1369c630f985d4d4c05b3809"
+    },
+    {
+      "path": "tests/b-blueprint-integration.test.mjs",
+      "bytes": 13188,
+      "sha256": "2f655dc0b29f061737db643507319b5a2c3d16e17aad1f5746f03c55bb244527"
+    },
+    {
+      "path": "tests/b-context-budget.test.mjs",
+      "bytes": 10203,
+      "sha256": "d9709ac5df90e7973ddd9f1bfb9e1e66ab618ed4e51c6e6e900bc4e1e5d61bea"
+    },
+    {
+      "path": "tests/b-direct-capacity.test.mjs",
+      "bytes": 1075,
+      "sha256": "a323fdb05fba6aecf7c512074fedbc272a120fd969f4a46eb8c0337c1bfb5022"
+    },
+    {
+      "path": "tests/b-inspector-privacy.test.mjs",
+      "bytes": 8648,
+      "sha256": "a623d83b4d6ccab748aee4c54545fbab08296d59905cf298ce930019d13a0905"
+    },
+    {
+      "path": "tests/b-integration.test.mjs",
+      "bytes": 7318,
+      "sha256": "61e53ca9040ab45c1ac0cb1cd6641d87479feba630326e3dd45d4114e4b8e5b7"
+    },
+    {
+      "path": "tests/b-native-capacity.test.mjs",
+      "bytes": 6913,
+      "sha256": "e34e4c5775affcc10a7fc72adb57a3ca3c6fdc71f7d387d1b52ddb32e8865226"
+    },
+    {
+      "path": "tests/b-state-blueprint.test.mjs",
+      "bytes": 9969,
+      "sha256": "8f2321117ed11047d0ed79e7d9a88ae5e28854e0e433b0a8ab1d4673556390ce"
+    },
+    {
+      "path": "tests/b-studio.test.mjs",
+      "bytes": 14213,
+      "sha256": "76130027942a015b997bb3b5f5c525d7e0629ed01408420936210925f029a72f"
+    },
+    {
+      "path": "tests/b-worldbook-integration.test.mjs",
+      "bytes": 6765,
+      "sha256": "844612f32f4087cc994b30bfe4d4426fc305189b7228691da048f7a1bd82eb76"
+    },
+    {
+      "path": "tests/b-worldbook.test.mjs",
+      "bytes": 11627,
+      "sha256": "4afd29106ba54ba6eb44d65d06a667517a66dba1bd87d551e77653739105862f"
+    },
+    {
+      "path": "tests/c-history.test.mjs",
+      "bytes": 9582,
+      "sha256": "e20a4bd68d285fcf5da89d03db3c7bc3351b736f0c40ef14b19f65bd8d8e1611"
+    },
+    {
+      "path": "tests/c-regenerate.test.mjs",
+      "bytes": 10970,
+      "sha256": "f70197a21797b7e65e201d6bad342b9c11368da6f605d9919420ecc5a822283a"
+    },
+    {
+      "path": "tests/c-replay.test.mjs",
+      "bytes": 13016,
+      "sha256": "3a0efd53682f715ebf8026e805a97d899e6914cdd183951bd445586b45fb45bc"
+    },
+    {
+      "path": "tests/c-review.test.mjs",
+      "bytes": 4686,
+      "sha256": "df8c1291997a0d1b079250a127c79241ddfb6a9db4da7e0efb181efe0d040d65"
+    },
+    {
+      "path": "tests/c-save.test.mjs",
+      "bytes": 19648,
+      "sha256": "41ea193a8e67c674c4bd01d7c144455ca9ab039bf4e9923502aabbadc9ef89dd"
+    },
+    {
+      "path": "tests/candidate-scope.test.mjs",
+      "bytes": 1729,
+      "sha256": "1b197b7d67c84af21f5b49c20cc5b85ec6d11fe23f5bb9b378cd7c09f8f42df0"
+    },
+    {
+      "path": "tests/card-scope.test.mjs",
+      "bytes": 6499,
+      "sha256": "b895920c03d382de1217987a7d1ea020af72121b9fea882f2b05c08bc540a33e"
+    },
+    {
+      "path": "tests/chapter-native-ports.test.mjs",
+      "bytes": 3252,
+      "sha256": "76bf620ba91a49acafafec12a7491059eb5a4f313f73af0acc9194b35d6b7e87"
+    },
+    {
+      "path": "tests/chapter-recall.test.mjs",
+      "bytes": 18376,
+      "sha256": "318dd26ca046cecfbd6d7f08de973be252b23d0622f759a88fd4f490c7b88367"
+    },
+    {
+      "path": "tests/character-workspace-v1.test.mjs",
+      "bytes": 8048,
+      "sha256": "98c957783b89806cc8aeb0ea016c8197aae464f3307e2cf56a34f91aaebb995e"
+    },
+    {
+      "path": "tests/compatibility-audit.test.mjs",
+      "bytes": 3221,
+      "sha256": "5d1a4eafc8dcbd1869383b0f2baf6904b364d056df27b92ef1493d1964e2db54"
+    },
+    {
+      "path": "tests/core.test.mjs",
+      "bytes": 31011,
+      "sha256": "0d159d95e210a998a3511a09d2553cf0db8aa19b8f289fd06d3d1ad8215af532"
+    },
+    {
+      "path": "tests/d-engine.test.mjs",
+      "bytes": 14430,
+      "sha256": "ad7c84f4ecbaaedfac5d8a8a91d730514c47dafe276ce4d9d2c815ce8dec272e"
+    },
+    {
+      "path": "tests/d-history-recall.test.mjs",
+      "bytes": 9459,
+      "sha256": "9ff336bdb412bedc9d2b2969cdf7f07ef2d123ca1c193a862cd8088965b60591"
+    },
+    {
+      "path": "tests/d-host.test.mjs",
+      "bytes": 4491,
+      "sha256": "14c0b49f6b19ea110d3d4a75517bbd58d76bf66b7399eec644dfb8d7c0860adf"
+    },
+    {
+      "path": "tests/d-integration.test.mjs",
+      "bytes": 11322,
+      "sha256": "d5469b5aa7d6eb36485e61f86cb5f883d38e9ceee0f174b12eadf6dd82344720"
+    },
+    {
+      "path": "tests/d-review.test.mjs",
+      "bytes": 5118,
+      "sha256": "ed85aacfe1db2013a8f5a4814e8f3f73d853f1062d2b30881414581abbc6c04b"
+    },
+    {
+      "path": "tests/d-save.test.mjs",
+      "bytes": 12799,
+      "sha256": "98a5bd09ab8a61df65d9ff83c54489aa791eeddb8e5a42103dabbf509bfe47f7"
+    },
+    {
+      "path": "tests/d-summary.test.mjs",
+      "bytes": 15081,
+      "sha256": "2336f537446d49dff9ff25d03be5480a770d377deb4eabce9b40ecfa9928d8a4"
+    },
+    {
+      "path": "tests/d0-drafts.test.mjs",
+      "bytes": 7262,
+      "sha256": "bfdb63b8764d408ed5e78f8249fedd6518e7ed0dcef5c1f7209f5bcc33d6a66a"
+    },
+    {
+      "path": "tests/deepseek-flash-compatibility.test.mjs",
+      "bytes": 4638,
+      "sha256": "7988c7f28987b036f7867c74ccf7419cfc5dba40b75618bf6ae13d89028aa8d4"
+    },
+    {
+      "path": "tests/df-adversarial.test.mjs",
+      "bytes": 10592,
+      "sha256": "5b86a6e1a40983d7249b5018e597ba9406fef89bae3cb65c06252e3d55ff2486"
+    },
+    {
+      "path": "tests/df-chapters.test.mjs",
+      "bytes": 14106,
+      "sha256": "2abafd25a347bbdbe726545633ac5882ac7d731db4ad69e4febe4f0e9c88a8e7"
+    },
+    {
+      "path": "tests/df-context.test.mjs",
+      "bytes": 838,
+      "sha256": "24d36956d22bd927a1a57757c055187bbc7e63a1e8000e49a36f76110653e64a"
+    },
+    {
+      "path": "tests/df-host.test.mjs",
+      "bytes": 14993,
+      "sha256": "dffe695cdb8b0d2131ec03db4e38e4e2e73447969938c2996eaed1a8284c358d"
+    },
+    {
+      "path": "tests/df-prompt-cost.test.mjs",
+      "bytes": 3227,
+      "sha256": "dd2ea791909cbf32a1fc8df4d38575300b0c658c7265aaa5e3b0a09f0f6600dc"
+    },
+    {
+      "path": "tests/df-save.test.mjs",
+      "bytes": 15792,
+      "sha256": "10e5a3a70e609485aba56773cb7000a7d6050915c3cb67a597ffb4e9beb820a6"
+    },
+    {
+      "path": "tests/dsh-version-compatibility.test.mjs",
+      "bytes": 3865,
+      "sha256": "cd45df86402ee66ca0b080a16fe160c744f4467eb496c3648f09dcb03d317711"
+    },
+    {
+      "path": "tests/formal-deploy.test.mjs",
+      "bytes": 4187,
+      "sha256": "b143713eab2778ab5a8dfd968e69ff32977db851245b4622e13cdf3bee1c377f"
+    },
+    {
+      "path": "tests/formal-handoff.test.mjs",
+      "bytes": 6049,
+      "sha256": "eedd1c1d948e68e2778aa7661a53cb2931940f59b2b0fb17a0d2fcfd024553a4"
+    },
+    {
+      "path": "tests/formal-runtime.test.mjs",
+      "bytes": 5378,
+      "sha256": "318cf90c8e275489e088c0609d9eefc5cd2cefd00aa990d18ccb925b549a7dbd"
+    },
+    {
+      "path": "tests/global-chapter-settings-runtime.test.mjs",
+      "bytes": 5415,
+      "sha256": "c3677817c629fdd8d44f319668d8e425166fc0575166e244f18b15ebbfaa0d1c"
+    },
+    {
+      "path": "tests/global-chapter-settings-sdk.test.mjs",
+      "bytes": 4478,
+      "sha256": "3e821f0625c732a92cc313e71d0afd30c46e190677674e3d6dac62b088a541af"
+    },
+    {
+      "path": "tests/global-chapter-settings.test.mjs",
+      "bytes": 18295,
+      "sha256": "f5f724a5b7e420e290cc8a4377a8af735e567518c407b7fcecabaa7c333126b5"
+    },
+    {
+      "path": "tests/installer.test.mjs",
+      "bytes": 3923,
+      "sha256": "42bec2ff0a61b5f711f40333c2e8f1d1841a1077ff42dac768a131e64d1d7c9e"
+    },
+    {
+      "path": "tests/isolated-server.test.mjs",
+      "bytes": 14116,
+      "sha256": "126b8d7fb3dd598ba4be2b73bd026f4bffb2925c79fd918902c0e970ab1ef05d"
+    },
+    {
+      "path": "tests/license-distribution.test.py",
+      "bytes": 2992,
+      "sha256": "8185aae99b1b92e942cdc7187b032bffff75326abd2843af271d08bdf311c7b2"
+    },
+    {
+      "path": "tests/memory-milestone-a.test.mjs",
+      "bytes": 12497,
+      "sha256": "3b3ef7257f41cc8470893179eab2877a6d1cc00801c0d9a3bed7ab4c446edaab"
+    },
+    {
+      "path": "tests/memory.test.mjs",
+      "bytes": 14393,
+      "sha256": "c17e05137a9d0d6046f9b0742ec3d312914e1abb7409e4e4a762938ec66d584c"
+    },
+    {
+      "path": "tests/milestone-a-studio-ui.test.mjs",
+      "bytes": 4785,
+      "sha256": "e880b1e46832dc991fd99c67d11292ec2c1c26daaca0304927b8afffc7d64f9e"
+    },
+    {
+      "path": "tests/milestone-a-ui.test.mjs",
+      "bytes": 8620,
+      "sha256": "be88853b7d40764bd7aaf51ed9422f7e81d405afdd91c87f809d033f4c6d0133"
+    },
+    {
+      "path": "tests/model.test.mjs",
+      "bytes": 6894,
+      "sha256": "ab66a22b014a6cdea0cf8668e729dc0d95aa5569d9cfbc3ac83abacef164f52d"
+    },
+    {
+      "path": "tests/native-card-skills.test.mjs",
+      "bytes": 13585,
+      "sha256": "31db91e676c4f606c72205feb0076dca063c0a185d7582c309eff394a1346e9d"
+    },
+    {
+      "path": "tests/native-dialogue-contract.test.mjs",
+      "bytes": 10097,
+      "sha256": "57de2381e32e0e348cf11cf7f073f64cfe75eb54cbecd17bea036be6d223c9dc"
+    },
+    {
+      "path": "tests/notifications.test.mjs",
+      "bytes": 22061,
+      "sha256": "b849d40f26cfc0d76636d22bbf5dc3c83aab4966202b1acceea43921e28a1f24"
+    },
+    {
+      "path": "tests/opening-authoring-native.test.mjs",
+      "bytes": 14182,
+      "sha256": "66714b2aebe9f19a76a1baf36ddfd324b32312ff2de5ecc8cf47dccbb7162a3c"
+    },
+    {
+      "path": "tests/opening-render.test.mjs",
+      "bytes": 2110,
+      "sha256": "9205f213acae8a4530a800607f7e2feb7614b96dc774030165d08e56f9a6f1de"
+    },
+    {
+      "path": "tests/opening-selection-ui.test.mjs",
+      "bytes": 5736,
+      "sha256": "90484330cc36781d5c070f8869d3388a4455cd803245f752f088a954ce6fb441"
+    },
+    {
+      "path": "tests/opening-selection.test.mjs",
+      "bytes": 14143,
+      "sha256": "346398aefdde3dba4571981c3518524b1da78ff8db07c3590b020c7119c031c4"
+    },
+    {
+      "path": "tests/plugin-client.test.mjs",
+      "bytes": 3152,
+      "sha256": "ba2a7c312248888ceb8bc33c89c6cbdb5931b30e5197f40ca87be964a377f3bc"
+    },
+    {
+      "path": "tests/plugin-home-isolation.test.mjs",
+      "bytes": 1547,
+      "sha256": "1574aa8f80ca5642467a1ca8ffab8f8679413a07bdfeface5b6626be637bda3d"
+    },
+    {
+      "path": "tests/plugin-host.test.mjs",
+      "bytes": 8841,
+      "sha256": "88c7a50746f28c3e7bbb34389e281481f6a4e681e11ad03d25d55510401c710f"
+    },
+    {
+      "path": "tests/plugin-native-sdk.test.mjs",
+      "bytes": 8523,
+      "sha256": "f05253cda4cb29660680831e8043cdd38eea9bcc7ab8ab990f12c1cce1bd45a2"
+    },
+    {
+      "path": "tests/plugin-native.test.mjs",
+      "bytes": 5305,
+      "sha256": "1765429c89d69c3b97b075b53b236c04c517f2076f8b694c19521aaaceefe500"
+    },
+    {
+      "path": "tests/post-stat-scope.test.mjs",
+      "bytes": 12213,
+      "sha256": "62d2bcb020e7b681a593d14f31d80f22cca396d691c307f0aa1d7db9a0a3b2cf"
+    },
+    {
+      "path": "tests/r3-handoffs.test.mjs",
+      "bytes": 12510,
+      "sha256": "59229605f9d1449cbf5519f7de2d68a9af91786d34af12f341c10bc3f15bfc66"
+    },
+    {
+      "path": "tests/release-support.test.py",
+      "bytes": 4225,
+      "sha256": "d2666c5275523eeb3bec8a9cc279d5975294b6d85176f18c009e79e096afc98e"
+    },
+    {
+      "path": "tests/stat-contract-r3.test.mjs",
+      "bytes": 11399,
+      "sha256": "fe8c79f42f8af719eb5b8adc40de98cc79e6eed484871fc4af2df093a982b179"
+    },
+    {
+      "path": "tests/studio-bridge.test.mjs",
+      "bytes": 20670,
+      "sha256": "2fbcf2ba163d1bbf1a63783904e9b68bb79b753e3e6bedb38660f63ffa27c895"
+    },
+    {
+      "path": "tests/terminal-progress.test.mjs",
+      "bytes": 935,
+      "sha256": "68eb7b03eec108c8b0922743c08cd3ca5e9f8cb7f4ed675426b3bd5e58c7b9b3"
+    },
+    {
+      "path": "tests/ui-layout-preferences.test.mjs",
+      "bytes": 5126,
+      "sha256": "5d02415a506e66366fe13fb6d9c4146221c2a67f9c3d292f687201c309a99729"
+    },
+    {
+      "path": "tests/w01-derived-facts.test.mjs",
+      "bytes": 11388,
+      "sha256": "67c20985b5ce39777fadd1dcb585081150ef714f202ea7b03e86551206de564e"
+    },
+    {
+      "path": "tests/w01-derived-sdk.test.mjs",
+      "bytes": 2865,
+      "sha256": "38e10745fe3ddee0cfbee2fde9fc18f5e433fe2b7b2723eb4592526dcdaa07a1"
+    },
+    {
+      "path": "tests/w01-derived-studio.test.mjs",
+      "bytes": 4296,
+      "sha256": "05839ae916b03ecadaeaf118e4518cfbbec127969e3809fe1be3c6696c81c7d6"
+    },
+    {
+      "path": "tests/w01-frontend.test.mjs",
+      "bytes": 8666,
+      "sha256": "5257ae2778b4aac8f19b2ff35c55c7f6ea71a5c39c9a9dc3422a991a031bb9f4"
+    },
+    {
+      "path": "tests/w01-renderer.test.mjs",
+      "bytes": 2887,
+      "sha256": "5c05f791ba7d60b6887be8f94e90d0be5100b13d3eeec256a4430d5558b6e2a9"
+    },
+    {
+      "path": "tests/w01-sdk.test.mjs",
+      "bytes": 3794,
+      "sha256": "797d2a1161c89a6bbab89546236b348d0b82fcef82170e3de55e0f8733262071"
+    },
+    {
+      "path": "tests/w01-studio-authoring-ui.test.mjs",
+      "bytes": 1542,
+      "sha256": "390ef88182e64cd4aa50a1877b6b3b756420f1525ecb05070bf091e4d82f98d0"
+    },
+    {
+      "path": "tests/w01-studio.test.mjs",
+      "bytes": 6768,
+      "sha256": "aba80f848596e607e72e90792971c7888607aa44242bd81f21dd5216863953fe"
+    },
+    {
+      "path": "tests/w19-client.test.mjs",
+      "bytes": 31325,
+      "sha256": "846c23840bcc62e675c89d222295f7fdb009c91eea266e3aa5bc2c44bf464dbe"
+    },
+    {
+      "path": "tests/w19-host.test.mjs",
+      "bytes": 28245,
+      "sha256": "dc96cadf03e699e82e8a4dd98e4226c33687ac713929a19b177d39a1bda87779"
+    },
+    {
+      "path": "tests/w19-presentation.test.mjs",
+      "bytes": 5215,
+      "sha256": "8c96fb6ece103850b985ffdb0b4ee8d85aeea752c8b9e21a54a7f0c6051b0a44"
+    },
+    {
+      "path": "tests/w19-security.test.mjs",
+      "bytes": 6020,
+      "sha256": "7fec5ca7106702d302b479f15c39952b50c0df1e6cbc8f8a6159061dd586f72a"
+    },
+    {
+      "path": "tools/export-clean.py",
+      "bytes": 2731,
+      "sha256": "85c7127e1eff6854bcf25ffce9fbc11cf054ce348358369a89e5beb960c5e35b"
+    },
+    {
+      "path": "vendor/cardstudio-scean/NOTICE.md",
+      "bytes": 2279,
+      "sha256": "143db801c578d5c110873fd980c2da7250103949d2b97388447179cd714bd157"
+    },
+    {
+      "path": "vendor/cardstudio-scean/SOURCE-PACKAGE.json",
+      "bytes": 1424,
+      "sha256": "60d330de9c3dfa503985ca1d2d55ce4701532f1937a3500a67b0a18a3a835399"
+    },
+    {
+      "path": "vendor/cardstudio-scean/THIRD-PARTY-NOTICES.txt",
+      "bytes": 4220,
+      "sha256": "042b850ea811d53d672724c76cafb420e3e22ea1703e218f378027a7861ea9e8"
+    },
+    {
+      "path": "vendor/cardstudio-scean/lib/archive-lifecycle.js",
+      "bytes": 9950,
+      "sha256": "9ef0f40542b35a6816532763df7e8e0e445b0cc2de154f7ba8804bc66efe8b8e"
+    },
+    {
+      "path": "vendor/cardstudio-scean/lib/asset-raster.js",
+      "bytes": 15701,
+      "sha256": "0059665d9f0495692fe145cd8169c160d3855e88a3b6fbbcff2b756ea211627d"
+    },
+    {
+      "path": "vendor/cardstudio-scean/lib/asset-upload.js",
+      "bytes": 700,
+      "sha256": "3c9d1e5044863cbe26521921b02ae193feb7d7af61fd5c217a763cb9ad14fccf"
+    },
+    {
+      "path": "vendor/cardstudio-scean/lib/authoring-fixture.js",
+      "bytes": 4447,
+      "sha256": "f076cc6ff88c66cc93ef4b69adc6f770e864f1d40dd53fa4400d3b57c7c87b14"
+    },
+    {
+      "path": "vendor/cardstudio-scean/lib/authoring-scope.js",
+      "bytes": 8396,
+      "sha256": "0fa49f1bfc1ed73add532e0183ea79c7f69f26f3e089c7500fa41269d107d67b"
+    },
+    {
+      "path": "vendor/cardstudio-scean/lib/authoring-service.js",
+      "bytes": 42494,
+      "sha256": "d8662790ce7336704715cfa75031eb6c335350d5fbd61a93982b253fa2d5fe46"
+    },
+    {
+      "path": "vendor/cardstudio-scean/lib/card-service.js",
+      "bytes": 36088,
+      "sha256": "7303d6e1a9dbfb20d93c853ef958a7c4ebac58c1866377124371f17cda44bd36"
+    },
+    {
+      "path": "vendor/cardstudio-scean/lib/character-method.js",
+      "bytes": 3416,
+      "sha256": "4cc8448eee559182c10f56a853616c6c981fe7376fbb727900ddb1994329dcc8"
+    },
+    {
+      "path": "vendor/cardstudio-scean/lib/codec.js",
+      "bytes": 15805,
+      "sha256": "949cd5305430a935dacf88b2d49d5d83860925ea110ba7f6ff96093a1a16fd88"
+    },
+    {
+      "path": "vendor/cardstudio-scean/lib/document-projection.js",
+      "bytes": 5264,
+      "sha256": "b5d9788d00f786e647ec3b33f7ac3c4b1885cbb80dc2b45d12661201d5213f73"
+    },
+    {
+      "path": "vendor/cardstudio-scean/lib/frontend-authoring.js",
+      "bytes": 15397,
+      "sha256": "3fc19205b63aca752e052ce03dce6426f31db5ac749633e14e0e2802173a3b9f"
+    },
+    {
+      "path": "vendor/cardstudio-scean/lib/library-image.js",
+      "bytes": 3990,
+      "sha256": "806b5ded216a9b46d30be7d1236e10db25aee3ccf80bc93b36e3a01260697711"
+    },
+    {
+      "path": "vendor/cardstudio-scean/lib/library-index.js",
+      "bytes": 16857,
+      "sha256": "c4a2b64521320cfbeab72f22fb754f776ae4142a918368760ffd8ebb635a7121"
+    },
+    {
+      "path": "vendor/cardstudio-scean/lib/library-retrieval.js",
+      "bytes": 2816,
+      "sha256": "78cd04a1544daf58905911d1628802d0e07c4e4fa8dfb0e3f11b6a22b117380d"
+    },
+    {
+      "path": "vendor/cardstudio-scean/lib/library-service.js",
+      "bytes": 6752,
+      "sha256": "0ac8e02abc7b938c265c8724bc1c9d4bf6eeee499e463f2703f8e3e4d656339c"
+    },
+    {
+      "path": "vendor/cardstudio-scean/lib/loader.js",
+      "bytes": 16959,
+      "sha256": "fec5cf9e1c69d11713bccc39c8620e3950948d3aca4ccf9c3c8e1dab71d1d7c2"
+    },
+    {
+      "path": "vendor/cardstudio-scean/lib/material-service.js",
+      "bytes": 23349,
+      "sha256": "e69a62d99e84a96191221164a3b4313b0f82a3a16d7ad9777ebb1e4bff0ea48c"
+    },
+    {
+      "path": "vendor/cardstudio-scean/lib/material-store.js",
+      "bytes": 11948,
+      "sha256": "59f11289b0335f72c2b5788b1176722f45256eeaf5ce6790ab890f28ccb2a16a"
+    },
+    {
+      "path": "vendor/cardstudio-scean/lib/preflight-check.js",
+      "bytes": 10677,
+      "sha256": "08dbe90b049bb61d2e7c48429a91a14b06a23ab19c5976a2f406a22a1b342b14"
+    },
+    {
+      "path": "vendor/cardstudio-scean/lib/presentation-base.js",
+      "bytes": 575,
+      "sha256": "55ab3ed108a7a5e5814bf4457d904ffb33cc790f566d696780a2a34cfb7b9779"
+    },
+    {
+      "path": "vendor/cardstudio-scean/lib/preview-css.js",
+      "bytes": 7951,
+      "sha256": "9091b9fccaf408e9c5d9cc7682aaf1eed56075fc3c45c0c0ce81d723818db57d"
+    },
+    {
+      "path": "vendor/cardstudio-scean/lib/preview-projection.js",
+      "bytes": 10231,
+      "sha256": "a753489434904edd5c53e5214c45f8d2092d3bd1944f1fcdbf786a7b2ad01dc8"
+    },
+    {
+      "path": "vendor/cardstudio-scean/lib/scean-integration.js",
+      "bytes": 6318,
+      "sha256": "4edefedf97cbfdeda4b251b9811912398bfcf08aff5a43172a279d870eb85400"
+    },
+    {
+      "path": "vendor/cardstudio-scean/lib/target-content.js",
+      "bytes": 3745,
+      "sha256": "08ce1b5ff65d0cb094d7d6d7df5a0627ff039ddb70d75d2b85fd9e698278a4b4"
+    },
+    {
+      "path": "vendor/cardstudio-scean/lib/target-delivery.js",
+      "bytes": 5263,
+      "sha256": "4b6256133ac4c014fbfeecdb6de3388bf045253ababebe1935e8dc047cd7d7a9"
+    },
+    {
+      "path": "vendor/cardstudio-scean/lib/target-dryrun.js",
+      "bytes": 3239,
+      "sha256": "ff597b2f31163045c0d54823d60f7911510320c1a141e9210d45e0bdd2963509"
+    },
+    {
+      "path": "vendor/cardstudio-scean/lib/target-profile.js",
+      "bytes": 17092,
+      "sha256": "0c96bcee64fc7ff0e6277acc8efeab439164085077a6cd412ed4794f6e7f5c1b"
+    },
+    {
+      "path": "vendor/cardstudio-scean/lib/target-state.js",
+      "bytes": 12854,
+      "sha256": "957fc1edca3759f0406ded4e5d4dd949a16a4efda1b4990be2e5e88998678be1"
+    },
+    {
+      "path": "vendor/cardstudio-scean/lib/tavern-compatibility.js",
+      "bytes": 2006,
+      "sha256": "262d0a4fb6b408c737e7c75e6fb63a09d772e7233a0f2ab6c64d3a6f454ca6c1"
+    },
+    {
+      "path": "vendor/cardstudio-scean/lib/upload-buffer.js",
+      "bytes": 2670,
+      "sha256": "03e833ace6b4b29168a28840fc69564c730c62f578e9aca6785441c3530154bd"
+    },
+    {
+      "path": "vendor/cardstudio-scean/lib/visual-state.js",
+      "bytes": 10345,
+      "sha256": "50d4e63c3b7eb92b9130ec79018d41d5bdf3600d91a864aca4b796e323c15bb0"
+    },
+    {
+      "path": "vendor/cardstudio-scean/lib/worldbook-gating.js",
+      "bytes": 17710,
+      "sha256": "10902c4a0565a710772f78757c9c2f55d66fe39e5a181c67a45ec7235cbf4cd0"
+    },
+    {
+      "path": "vendor/cardstudio-scean/lib/write-receipt.js",
+      "bytes": 4150,
+      "sha256": "4c1eb5d31b6d4fc23f8d7ccddb97143f67148bc0f9fafa1a7822f21ed3cea512"
+    },
+    {
+      "path": "vendor/cardstudio-scean/package.json",
+      "bytes": 301,
+      "sha256": "67e09f4cf2e7da7e19560a9f7536313479650ce66edd520fb3d06d70279848f0"
+    },
+    {
+      "path": "vendor/cardstudio-scean/source-manifest.json",
+      "bytes": 6289,
+      "sha256": "45bfdb60751e260f6b34f9c393280559bf477f46d46fc9d7a68c46e2db17307e"
+    }
+  ],
+  "license": "AGPL-3.0-only",
+  "licenseExceptions": "THIRD-PARTY-LICENSES.json",
+  "version": "1.4.0",
+  "sourceUrl": "https://github.com/zeola0187/scean/tree/v1.4.0"
+}

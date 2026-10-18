@@ -1,0 +1,206 @@
+{
+  "title": "合成潮汐船",
+  "characters": [
+    {
+      "id": "pilot",
+      "name": "舵手",
+      "description": "舵手的原創合成背景。SHIP_OWNER_COPPER_PROMISE",
+      "publicDescription": "舵手在此負責維修與生活事務。",
+      "relationships": {
+        "contextScope": {
+          "kind": "character",
+          "characterId": "pilot"
+        },
+        "note": "只屬本人視角；不推定他人知情。"
+      }
+    },
+    {
+      "id": "mechanic",
+      "name": "技師",
+      "description": "技師的原創合成背景。不知其他人的私人約定。",
+      "publicDescription": "技師在此負責維修與生活事務。",
+      "relationships": {
+        "contextScope": {
+          "kind": "character",
+          "characterId": "mechanic"
+        },
+        "note": "只屬本人視角；不推定他人知情。"
+      }
+    },
+    {
+      "id": "medic",
+      "name": "醫師",
+      "description": "醫師的原創合成背景。不知其他人的私人約定。",
+      "publicDescription": "醫師在此負責維修與生活事務。",
+      "relationships": {
+        "contextScope": {
+          "kind": "character",
+          "characterId": "medic"
+        },
+        "note": "只屬本人視角；不推定他人知情。"
+      }
+    }
+  ],
+  "worldbook": {
+    "entries": [
+      {
+        "id": 1,
+        "keys": [
+          "碼頭"
+        ],
+        "content": "工作只有完成後才改任務進度；未完工不得宣稱交付。",
+        "enabled": true,
+        "insertion_order": 0,
+        "extensions": {}
+      }
+    ]
+  },
+  "variables": {
+    "blueprint": {
+      "schemaVersion": 1,
+      "id": "ship-blueprint",
+      "version": 1,
+      "extensionPolicy": "deny",
+      "variables": [
+        {
+          "key": "fuel",
+          "displayName": "fuel",
+          "scope": "world",
+          "category": "resources",
+          "type": "number",
+          "visibility": "public",
+          "min": 0,
+          "max": 100,
+          "unit": "L"
+        },
+        {
+          "key": "mode",
+          "displayName": "mode",
+          "scope": "world",
+          "category": "facts",
+          "type": "enum",
+          "visibility": "public",
+          "enumValues": [
+            "moored",
+            "sailing"
+          ]
+        },
+        {
+          "key": "weather",
+          "displayName": "weather",
+          "scope": "world",
+          "category": "facts",
+          "type": "string",
+          "visibility": "public"
+        },
+        {
+          "key": "lantern",
+          "displayName": "lantern",
+          "scope": "world",
+          "category": "facts",
+          "type": "boolean",
+          "visibility": "public"
+        },
+        {
+          "key": "commission",
+          "displayName": "commission",
+          "scope": "world",
+          "category": "tasks",
+          "type": "json",
+          "visibility": "public",
+          "requiredFields": [
+            "status",
+            "assignees",
+            "progress"
+          ]
+        },
+        {
+          "key": "promise",
+          "displayName": "PRIVATE_LABEL_ship",
+          "scope": "character",
+          "characterId": "pilot",
+          "category": "facts",
+          "type": "string",
+          "visibility": "restricted"
+        }
+      ]
+    },
+    "initial": {
+      "schemaVersion": 1,
+      "blueprintId": "ship-blueprint",
+      "blueprintVersion": 1,
+      "values": [
+        {
+          "scope": "world",
+          "category": "resources",
+          "key": "fuel",
+          "value": 40,
+          "source": {
+            "id": "ship-author-fixture",
+            "version": 1
+          }
+        },
+        {
+          "scope": "world",
+          "category": "facts",
+          "key": "mode",
+          "value": "moored",
+          "source": {
+            "id": "ship-author-fixture",
+            "version": 1
+          }
+        },
+        {
+          "scope": "world",
+          "category": "facts",
+          "key": "lantern",
+          "value": false,
+          "source": {
+            "id": "ship-author-fixture",
+            "version": 1
+          }
+        },
+        {
+          "scope": "world",
+          "category": "tasks",
+          "key": "commission",
+          "value": {
+            "status": "pending",
+            "assignees": [
+              "mechanic"
+            ],
+            "progress": 0
+          },
+          "source": {
+            "id": "ship-author-fixture",
+            "version": 1
+          }
+        },
+        {
+          "scope": "character",
+          "characterId": "pilot",
+          "category": "facts",
+          "key": "promise",
+          "value": "SHIP_OWNER_COPPER_PROMISE",
+          "source": {
+            "id": "ship-author-fixture",
+            "version": 1
+          }
+        }
+      ]
+    }
+  },
+  "prompt": {
+    "system": "事件已發生才結算，未定義規則保留未知。",
+    "post": "保持作者給定條件及玩家選擇。"
+  },
+  "scripts": null,
+  "frontend": {
+    "intent": "顯示公開資源與任務；未知天氣不得補零，私密約定不得顯示。",
+    "layout": "作者接受通用狀態面板"
+  },
+  "hostRules": {
+    "intent": "拒絕越界數值、非法角色scope與錯誤enum；未定義消耗公式。",
+    "eventRule": "完成事件才更新；此語義由模型遵循，不聲稱確定性執行。"
+  }
+}

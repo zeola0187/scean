@@ -1,0 +1,8 @@
+{
+  "name": "@local/cardstudio-scean-isolated-service-subset",
+  "version": "1.2.0-scean.2",
+  "private": true,
+  "type": "module",
+  "description": "Unmodified 33-module closure of authorized isolated Studio loader/service; no skills, UI bundle, SDK or data.",
+  "license": "AGPL-3.0-only"
+}

@@ -1,0 +1,6 @@
+[
+  {
+    "name": "scean-native-authoring",
+    "description": "依實裝 SCEAN 契約分析完整酒館卡，製作原生角色、StateBlueprint／InitialState、知情範圍與固定 revision 驗證；不執行腳本或製作專屬前端。"
+  }
+]

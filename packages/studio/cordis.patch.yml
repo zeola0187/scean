@@ -1,0 +1,4 @@
+- insert:
+    - id: local-cardstudio-scean-workspace-loader
+      name: '@local/dsh-card-studio-scean-test'
+      config: {}

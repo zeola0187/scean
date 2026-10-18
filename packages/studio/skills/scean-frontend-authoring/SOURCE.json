@@ -1,0 +1,145 @@
+{
+  "schemaVersion": 1,
+  "skill": "scean-frontend-authoring",
+  "version": "1.0.0",
+  "authorship": "SCEAN-native original instructions authored for this repository from implemented contracts and tests",
+  "baselineCommit": "32f8630fbb0f3ecfa0a393bd9be8004ac3759082",
+  "authoringRecord": {
+    "language": "zh-TW",
+    "method": "Read W01 public binding admission, Blueprint and initial values, bounded predicate AST, Host-derived facts, HTML/CSS admission, renderer, registered Studio actions, atomic saves, scope guards, immutable Snapshot handoff and synthetic tests; independently write a presentation-authoring workflow and an original field-notebook synthetic payload.",
+    "legacyBodyOrReferencesRead": false,
+    "legacyTextExamplesOrMethodOrganizationReused": false,
+    "note": "Historical provenance of retired skills remains a repository-level record. This manifest does not remove notices for retained material or claim that a private repository has cleared project-wide licensing."
+  },
+  "files": [
+    "SKILL.md",
+    "references/contracts.md",
+    "references/tools-and-lifecycle.md",
+    "references/synthetic-acceptance.md"
+  ],
+  "implementationEvidence": [
+    {
+      "path": "core/frontend.mjs",
+      "symbols": [
+        "validateFrontend",
+        "frontendPackage",
+        "frontendProjection",
+        "frontendPreview"
+      ],
+      "purpose": "Versioned package, capabilities, HTML/CSS admission and preview projection"
+    },
+    {
+      "path": "core/public-state-bindings.mjs",
+      "symbols": [
+        "admitPublicBindings",
+        "publicBindingValues"
+      ],
+      "purpose": "Only declared public exact targets and strict binding types"
+    },
+    {
+      "path": "core/condition-ast.mjs",
+      "symbols": [
+        "validateConditionExpression",
+        "evaluateCondition"
+      ],
+      "purpose": "Bounded typed AST and known/unknown/unavailable/stale semantics"
+    },
+    {
+      "path": "core/state-blueprint.mjs",
+      "symbols": [
+        "validateBlueprint",
+        "materializeInitialState",
+        "validateBlueprintState",
+        "publicBlueprintState"
+      ],
+      "purpose": "Declaration fields, legal typed initial values, provenance and visibility"
+    },
+    {
+      "path": "core/derived-facts.mjs",
+      "symbols": [
+        "derivedFactsPackage",
+        "projectDerivedFacts"
+      ],
+      "purpose": "Independent Host rules over committed public State; no State or memory writer"
+    },
+    {
+      "path": "authoring/frontend-html.mjs",
+      "symbols": [
+        "tokenizeHtml"
+      ],
+      "purpose": "Bounded tokenizer without authored-code execution"
+    },
+    {
+      "path": "authoring/frontend-css.mjs",
+      "symbols": [
+        "sanitizeDeclarations",
+        "sanitizeCss"
+      ],
+      "purpose": "Actual CSS property/function/media subset and diagnostics"
+    },
+    {
+      "path": "isolated/web/frontend-runtime.mjs",
+      "symbols": [
+        "displayValues",
+        "renderFrontendDocument"
+      ],
+      "purpose": "Text escaping, state classes, visibility, progress and CSP"
+    },
+    {
+      "path": "packages/studio/lib/tool-definitions.js",
+      "symbols": [
+        "toolSpecs"
+      ],
+      "purpose": "Registered public tools and exact action parameters"
+    },
+    {
+      "path": "packages/studio/lib/authoring-service.js",
+      "symbols": [
+        "frontend",
+        "dynamicFrontend",
+        "derivedFactsAuthoring"
+      ],
+      "purpose": "Real read/validate/preview/save/patch and independent derived tool behavior"
+    },
+    {
+      "path": "packages/studio/lib/authoring-scope.js",
+      "symbols": [
+        "assertScopeOperation",
+        "assertScopeCandidate"
+      ],
+      "purpose": "Human-owned Full Scope and protected structure"
+    },
+    {
+      "path": "packages/studio/lib/frontend-authoring.js",
+      "symbols": [
+        "inspectFrontend",
+        "readFrontend",
+        "createFrontend",
+        "patchFrontend"
+      ],
+      "purpose": "Distinct legacy fragment locators, stable identities and source hashes"
+    },
+    {
+      "path": "packages/studio/lib/scean-integration.js",
+      "symbols": [
+        "buildSavedSnapshot",
+        "createSceanControl"
+      ],
+      "purpose": "Saved revision and human-only fixed Snapshot handoff"
+    }
+  ],
+  "testEvidenceSources": [
+    "tests/w01-frontend.test.mjs",
+    "tests/w01-renderer.test.mjs",
+    "tests/w01-studio.test.mjs",
+    "tests/w01-derived-studio.test.mjs",
+    "tests/w01-derived-facts.test.mjs"
+  ],
+  "responsibilityReferences": [
+    "packages/studio/skills/scean-native-authoring/SKILL.md",
+    "packages/studio/skills/scean-compatibility-audit/SKILL.md"
+  ],
+  "validationBoundary": "References to existing tests are source evidence, not a claim of this run passing. Separate static, tool integration, Scripted Model, actual GUI and live semantic results. No paid model or production profile is required or authorized by this skill.",
+  "license": "AGPL-3.0-only",
+  "licenseDecision": "2026-10-18 author decision for original SCEAN materials; full text in package LICENSE; original content hashes retained."
+}

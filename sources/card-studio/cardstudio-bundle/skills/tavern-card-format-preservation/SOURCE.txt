@@ -1,0 +1,3 @@
+Source: Project-authored guide; primary-source links retained in references
+Independent project text; specification references are citations, not licenses for other skills.
+Original methodology, original entry bytes, references and existing attribution are preserved. DSH compatibility additions are explicitly identified. This private packaging decision does not authorize public release.

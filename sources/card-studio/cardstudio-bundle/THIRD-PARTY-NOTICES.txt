@@ -1,0 +1,83 @@
+PUBLIC RELEASE 1.4.0 — 2026-10-18
+Original SCEAN material: AGPL-3.0-only; advanced-tavern-card-authoring retains MIT.
+Source: https://github.com/zeola0187/scean/tree/v1.4.0
+Historical status paragraphs below describe earlier private candidates.
+Necessary original notices and license copies remain applicable.
+
+CURRENT LICENSE DECISION — 2026-10-18
+Original SCEAN code, documentation, tests/build tools and original native Skills
+are AGPL-3.0-only. LICENSE and LICENSE-SCOPE.md define the current scope; the
+advanced-tavern-card-authoring MIT license is an explicit retained exception.
+Memory origin is qualified in licenses/zeolas-source-snippets.json: the archived
+functions are not attributed as established official Aventuras authorship.
+Public release is held for an exact public source endpoint and explicit
+publication authorization. No public repository or release has been created.
+The new scean-opening-authoring 1.0.0 is active. Old opening, Palette and retired
+Arcamage bodies remain excluded. The paragraphs below are historical notices,
+not current payload or current license declarations; necessary notices remain.
+
+HISTORICAL RECORDS (unchanged)
+
+CURRENT CANDIDATE UPDATE — 2026-10-18
+The actual user-provided scean-opening-authoring 1.0.0 is integrated as native guidance. Its original prose is retained in its references and provenance is recorded by content hash. The retired opening-narrative-crafter and Palette remain excluded and blocked. Project-wide license selection and Memory author/source label consistency remain unresolved. No project-wide license grant is added.
+
+PREVIOUS-CANDIDATE RECORDS (historical status, retained notices)
+CANDIDATE SCOPE — 2026-10-18
+No project-wide license is selected. Public release remains blocked pending license/author consistency review and user-supplied opening guidance. The old opening Skill, Palette and retired Arcamage Skill bodies/references are excluded. Old notices below are retained as provenance, not current payload declarations or a license grant. Private history locators are withheld separately.
+
+RETAINED PRE-EXPORT NOTICES
+2026-10-18 Palette removal candidate: Palette is removed from current source,
+catalogs, method options and runtime; it is not shipped or selected in this branch.
+Prior Palette paragraphs below are historical private-use provenance, not the
+current payload or a public license grant. Old tags/Releases/history are retained.
+Opening and character-authoring bytes are unchanged. See docs/PALETTE-REMOVAL.zh-TW.md.
+
+DSH Card Studio SCEAN native Skills candidate — source and rights record
+Updated 2026-10-18. This file is not a new license grant or project-wide clearance.
+
+ACTIVE, UNCHANGED THIRD-PARTY MATERIAL
+opening-narrative-crafter originates from Shizuku-Yume/Arcamage:
+https://github.com/Shizuku-Yume/Arcamage
+frontend/public/agent-skills/opening-narrative-crafter
+The upstream README declares MIT. Its linked LICENSE returned 404, and the
+provided local source contains no complete copyright/license notice. Those
+materials remain unverified/incomplete; no author name, year, or license text
+has been invented. Its SKILL.md, ORIGINAL-SKILL.md, SOURCE.txt and references
+remain byte-for-byte intact. Its creative method is deferred, not redesigned.
+
+Palette originates from the user's palette-skill-arcamage.zip, SHA256:
+2a1995b20fa6fb26b06cf37c574b449bf49af92df25ebae0174e26b1e3245152
+No license was supplied; ownership/redistribution rights are not established
+by private repository visibility. The user explicitly authorized retaining
+these supplied materials in their private repository for their own computers.
+This scope is not a public redistribution grant. Public publication requires
+separate rights review or replacement of the affected materials. Palette's
+body, original, references and SOURCE.txt remain unchanged. Its external
+mvu-guide.md was not supplied; the inert URL grants no executable capability.
+
+RETIRED FROM THIS RUNTIME PACKAGE
+character-design-deepener, lorebook-architect, dialogue-and-prompt-tuner and
+frontend-presentation-optimizer formerly came from the same Arcamage tree.
+Their incomplete notice history remains recorded, not retroactively cleared.
+Their original bodies and references are absent from this runtime package.
+skills/sources.json retains each source URL/original hash and fixed Git-history
+locator at [private source repository] commit 32f8630fbb0f3ecfa0a393bd9be8004ac3759082.
+Historical source overlays remain outside the suite runtime payload; the final
+native-skills overlay removes those four trees before package verification.
+
+INDEPENDENT SCEAN INSTRUCTIONS
+scean-worldbook-authoring, scean-dialogue-authoring and scean-frontend-authoring
+are newly written from SCEAN source, contracts and tests. Their SOURCE.json
+files record implementation evidence and authorship; no retired text, examples,
+method organization or references were ported. They are not labeled Arcamage
+derivatives. This claim concerns these new files, not licenses of dependencies.
+character-authoring remains the user's original method with source hashes intact.
+scean-native-authoring and scean-compatibility-audit retain their existing origins.
+
+tavern-card-format-preservation, advanced-tavern-card-authoring and DSH adapters
+retain their independently authored source records and primary citations.
+Their citations do not relicense any other Skill. echo-xianyu/worldbook-skill
+is a separate CC BY-NC-SA 4.0 research source and is NOT included here.
+
+This package contains no DSH executable/runtime, external skill scripts, real
+cards, chat history, credentials, API keys or mutable user workspace data.

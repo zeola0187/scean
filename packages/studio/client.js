@@ -1,0 +1,850 @@
+// Generated client.js embeds the same tested WorkspaceClient controller. No build dependencies.
+(() => {
+  // Only fixed stages, Boolean facts, and allowlisted error names are recorded.
+  const diagnostic={schema:1,version:'1.4.0',build:'scean-public-1.4.0',stages:{},events:[]};
+  const mark=(stage,facts={})=>{
+    const value=JSON.stringify(facts);
+    if(JSON.stringify(diagnostic.stages[stage])===value)return;
+    diagnostic.stages[stage]=facts;
+    diagnostic.events.push({stage,...facts});
+    if(diagnostic.events.length>48)diagnostic.events.shift();
+    console.info('[DSH-CardStudio 1.2.0] '+stage+' '+value);
+  };
+  const markError=(stage,error)=>mark(stage,{kind:['Error','TypeError','ReferenceError','SyntaxError','RangeError'].includes(error?.name)?error.name:'Error'});
+  window.__DSH_CARDSTUDIO_SCEAN_DIAGNOSTICS__=diagnostic;
+  mark('script',{bootAdvertised:Array.isArray(window.__DSH_BOOT__?.entries)&&window.__DSH_BOOT__.entries.some(row=>row.id==='@local/dsh-card-studio-scean-test')});
+window.__ModuleLoader__.load({
+  id:'@local/dsh-card-studio-scean-test',
+  factory(require){
+    mark('factory-enter');
+    const React=require('react'),h=React.createElement;
+    mark('factory-ready');
+    /** View lifetime controller: no React/DOM, no inference, no session rebinding. */
+class WorkspaceClient {
+  constructor({root,send,sendScope,sendReview,sendMethod,sendLibrary,sendScean,sendDownload,pageId,present=()=>{},show,hide,notify,setTimer=setInterval,clearTimer=clearInterval}) {
+    this.root=root?.toLowerCase().replace(/\\/g,'/').replace(/\/+$/,'')??null;this.discoverySequence=0;this.send=send;this.sendScope=sendScope;this.authoringScope=null;this.pageId=pageId;
+    this.present=present;this.show=show;this.hide=hide;this.notify=notify;this.sendReview=sendReview;
+    this.sendScean=sendScean;this.sendLibrary=sendLibrary;this.librarySettings=null;this.librarySequence=0;this.sendMethod=sendMethod;this.characterMethod=null;
+    this.sendDownload=sendDownload;this.selectionStatus=null;
+    // Window timers reject a WorkspaceClient receiver. Keep both default and
+    // injected timer functions as ordinary calls instead of object methods.
+    this.setTimer=(...args)=>setTimer(...args);this.clearTimer=(...args)=>clearTimer(...args);
+    this.heartbeatSequence=null;this.sequence=0;this.current=null;this.claim=null;this.phase='inactive';this.timer=null;this.disposed=false;this.pending=new Set();
+  }
+  task(p){this.pending.add(p);p.finally(()=>this.pending.delete(p)).catch(()=>{});return p;}
+  matches(row){return row?.cwd?.toLowerCase().replace(/\\/g,'/').replace(/\/+$/,'')===this.root;}
+  async transition(row){
+    if(this.disposed)return;
+    const discovery=++this.discoverySequence;
+    if(!this.root && row?.id){
+      try{
+        const result=await this.send(row.id,{action:'workspace'});
+        if(this.disposed || discovery!==this.discoverySequence)return;
+        if(!result.ok)throw new Error(result.error.message);
+        const root=result.value?.workspace;
+        if(typeof root!=='string' || !/^(?:[A-Za-z]:[\\/]|[\\/])/.test(root))throw new Error('Host returned an invalid Card Studio workspace.');
+        this.root=root.toLowerCase().replace(/\\/g,'/').replace(/\/+$/,'');
+      }catch(error){if(!this.disposed && discovery===this.discoverySequence)this.notify(error);return;}
+    }
+    const identity=this.matches(row)?row.id:null;
+    if(this.current?.id===identity)return;
+    const sequence=++this.sequence,old=this.current,claim=this.claim;
+    this.current=identity?{id:identity}:null;this.claim=null;this.authoringScope=null;this.characterMethod=null;this.selectionStatus=null;this.phase='inactive';this.hide();this.clearTimer(this.timer);this.timer=null;
+    if(old&&claim)this.task(this.send(old.id,{action:'release',claim}).catch(()=>{}));
+    if(!identity)return;
+    this.phase='connecting';
+    try{
+      this.present();
+      const result=await this.send(identity,{action:'acquire',page_id:this.pageId});
+      if(sequence!==this.sequence || this.disposed){if(result.ok)await this.send(identity,{action:'release',claim:result.value});return;}
+      if(!result.ok)throw new Error(`${result.error.code}: ${result.error.message}`);
+      this.claim=result.value;this.authoringScope=result.value.authoring_scope??null;
+      this.characterMethod=result.value.character_method??null;
+      this.updateSelection(result.value.selection_status,true);
+      const capabilities=await this.send(identity,{action:'capabilities',claim:this.claim});
+      if(sequence!==this.sequence || this.disposed)return;
+      if(!capabilities.ok)throw new Error(`${capabilities.error.code}: ${capabilities.error.message}`);
+      this.authoringScope=capabilities.value.authoring_scope??this.authoringScope;
+      this.characterMethod=capabilities.value.character_method??this.characterMethod;
+      this.updateLibrary(capabilities.value.library_settings,true);this.phase='ready';this.show(capabilities.value);
+      this.timer=this.setTimer(()=>this.task(this.heartbeat(sequence)),20000);
+    }catch(e){if(sequence===this.sequence && !this.disposed){
+      const failedClaim=this.claim;this.claim=null;this.phase='error';
+      if(failedClaim)this.task(this.send(identity,{action:'release',claim:failedClaim}).catch(()=>{}));
+      this.notify(e);
+    }}
+  }
+  async retry(){
+    if(this.disposed || !this.current || this.phase!=='error')return;
+    const row={...this.current,cwd:this.root};this.current=null;
+    await this.transition(row);
+  }
+  async heartbeat(sequence){
+    if(sequence!==this.sequence || !this.current || !this.claim || this.heartbeatSequence===sequence)return;
+    this.heartbeatSequence=sequence;
+    try{const r=await this.send(this.current.id,{action:'renew',claim:this.claim});if(sequence!==this.sequence||this.disposed)return;if(!r.ok)throw new Error(r.error.message);this.updateLibrary(r.value?.library_settings);this.updateSelection(r.value?.selection_status);this.authoringScope=r.value?.authoring_scope??this.authoringScope;this.scopeChanged?.(this.authoringScope);this.characterMethod=r.value?.character_method??this.characterMethod;this.methodChanged?.(this.characterMethod,r.value?.skills);}
+    catch(e){if(sequence===this.sequence){const old=this.current;this.current=null;this.claim=null;this.hide();this.clearTimer(this.timer);this.timer=null;await this.transition({...old,cwd:this.root});if(this.sequence===sequence+1&&this.phase==='ready')this.notify(e);}}
+    finally{if(this.heartbeatSequence===sequence)this.heartbeatSequence=null;}
+  }
+  bind(sequence=this.sequence){
+    // A continuation from an old Panel must not start its next RPC in a newly
+    // selected Session, even if the preceding await already returned.
+    return (action,args={})=>this.call(action,args,sequence);
+  }
+  async call(action,args={},expectedSequence=this.sequence){
+    const sequence=this.sequence,session=this.current,claim=this.claim,librarySequence=this.librarySequence;
+    if(this.disposed||expectedSequence!==sequence)throw new Error('Discarded operation from previous workspace/session.');
+    if(!session || !claim || this.phase!=='ready')throw new Error('Card Studio workspace is not ready.');
+    const result=await this.send(session.id,{action,args,claim});
+    if(this.disposed || sequence!==this.sequence)throw new Error('Discarded response from previous workspace/session.');
+    this.updateSelection(result.selection_status);
+    if(action.startsWith('library')){this.updateLibrary(result.value?.library_settings);if(librarySequence!==this.librarySequence)throw new Error('Discarded response from previous Library root.');}
+    if(!result.ok)throw Object.assign(new Error(`${result.error.code}: ${result.error.message}`),{details:result.error.details});if(result.value?.authoring_scope){this.authoringScope=result.value.authoring_scope;this.scopeChanged?.(this.authoringScope);}if(result.value?.character_method){this.characterMethod=result.value.character_method;this.methodChanged?.(this.characterMethod,result.value.skills);}return result.value;
+  }
+  updateLibrary(value,fresh=false){
+    if(!value)return;
+    if(!fresh&&this.librarySettings&&value.revision<this.librarySettings.revision)return;
+    if(JSON.stringify(value)!==JSON.stringify(this.librarySettings)){this.librarySettings=value;this.librarySequence++;this.libraryChanged?.(value);}
+  }
+  updateSelection(value,fresh=false){
+    if(!value)return;
+    const previous=this.selectionStatus;
+    if(previous&&previous.agent_generation===value.agent_generation&&previous.workspace_generation===value.workspace_generation&&previous.document_id===value.document_id&&value.revision<previous.revision)return;
+    this.selectionStatus=value;
+    if(!fresh&&value.changed&&JSON.stringify(previous)!==JSON.stringify(value))this.selectionChanged?.(value);
+  }
+  async downloadExport(request,expectedSequence=this.sequence){
+    const sequence=this.sequence,session=this.current,claim=this.claim;
+    if(this.disposed||expectedSequence!==sequence||this.phase!=='ready'||!session||!claim||!this.sendDownload)throw new Error('Export download page is not ready.');
+    const result=await this.sendDownload(session.id,{...request,claim});
+    if(this.disposed||sequence!==this.sequence||this.claim!==claim)throw new Error('Discarded download response from previous Session or page lease.');
+    if(!result.ok)throw new Error(result.error.code+': '+result.error.message);return result.value;
+  }
+  async sceanControl(request,expectedSequence=this.sequence){
+    const sequence=this.sequence,session=this.current,claim=this.claim;
+    if(this.disposed||expectedSequence!==sequence||this.phase!=='ready'||!session||!claim||!this.sendScean)throw new Error('SCEAN human page is not ready.');
+    const result=await this.sendScean(session.id,{...request,claim});
+    if(this.disposed||sequence!==this.sequence)throw new Error('Discarded SCEAN response from previous Session.');
+    if(!result.ok)throw new Error(result.error.code+': '+result.error.message);
+    return result.value;
+  }
+  async setLibraryRoot(path,expectedSequence=this.sequence){
+    const sequence=this.sequence,session=this.current,claim=this.claim;
+    if(this.disposed||expectedSequence!==sequence||this.phase!=='ready'||!session||!claim||!this.sendLibrary)throw new Error('Human Library control is not ready.');
+    const result=await this.sendLibrary(session.id,{path,expected_revision:this.librarySettings?.revision??0,claim});
+    if(this.disposed||sequence!==this.sequence)throw new Error('Discarded Library setting response from previous Session.');
+    if(!result.ok)throw new Error(result.error.code+': '+result.error.message);
+    this.updateLibrary(result.value);return result.value;
+  }
+  async setAuthoringScope(mode,expectedSequence=this.sequence){
+    const sequence=this.sequence,session=this.current,claim=this.claim;
+    if(expectedSequence!==sequence||this.phase!=='ready'||!session||!claim||!this.sendScope||!this.authoringScope)throw new Error('Human scope control is not ready.');
+    const result=await this.sendScope(session.id,{mode,expected_epoch:this.authoringScope.epoch,claim});
+    if(this.disposed||sequence!==this.sequence)throw new Error('Discarded scope response from previous Session.');
+    if(!result.ok)throw new Error(result.error.code+': '+result.error.message);
+    this.authoringScope=result.value.authoring_scope;this.scopeChanged?.(this.authoringScope);return this.authoringScope;
+  }
+  async setCharacterMethod(name,expectedSequence=this.sequence){
+    const sequence=this.sequence,session=this.current,claim=this.claim;
+    if(expectedSequence!==sequence||this.phase!=='ready'||!session||!claim||!this.sendMethod||!this.characterMethod)throw new Error('Human character method control is not ready.');
+    const result=await this.sendMethod(session.id,{name,expected_epoch:this.characterMethod.epoch,claim});
+    if(this.disposed||sequence!==this.sequence)throw new Error('Discarded method response from previous Session.');
+    if(!result.ok)throw new Error(result.error.code+': '+result.error.message);
+    this.characterMethod=result.value.character_method;this.methodChanged?.(this.characterMethod,result.value.skills);return this.characterMethod;
+  }
+  async close(){
+    this.disposed=true;++this.sequence;++this.discoverySequence;this.phase='inactive';this.hide();this.clearTimer(this.timer);this.timer=null;
+    const old=this.current,claim=this.claim;this.current=null;this.claim=null;
+    if(old&&claim)await this.send(old.id,{action:'release',claim}).catch(()=>{});
+    await Promise.allSettled([...this.pending]);
+  }
+  async reviewMaterials(request,expectedSequence=this.sequence){
+    const sequence=this.sequence,session=this.current,claim=this.claim;
+    if(expectedSequence!==sequence||this.phase!=='ready'||!session||!claim||!this.sendReview||!this.authoringScope)throw new Error('Human review page is not ready.');
+    const result=await this.sendReview(session.id,{...request,expected_epoch:this.authoringScope.epoch,claim});
+    if(this.disposed||sequence!==this.sequence)throw new Error('Discarded review response from previous Session.');
+    if(!result.ok)throw new Error(result.error.code+': '+result.error.message);return result.value;
+  }
+}
+
+    // Public Typert descriptor over the existing authenticated DSH Connection.
+// Shared verbatim by Host and generated Client; no command/session-log transport.
+const cardstudioRemote = {
+  package:'@local/dsh-card-studio-scean-test',
+  descriptors:[{
+    id:'@local/dsh-card-studio-scean-test#cardstudioScean/request',service:'cardstudioSceanBridge',namespace:'cardstudioScean',method:'request',
+    invocation:{kind:'direct'},scope:{context:'agent',wire:'agentId'},
+    parameters:[
+      {name:'agent',wire:'agentId',source:'lookup',lookup:'agent',codec:{mode:'strict',typeSymbol:'@deepseek-ai/dsh-session/types#SessionId',create:()=>({parse(value){
+        if(typeof value!=='string'||!value.trim())throw new TypeError('Expected an agent identity.');return value;
+      }})}},
+      {name:'request',wire:'request',source:'json',codec:{mode:'strict',typeSymbol:'@local/dsh-card-studio-scean-test#CardStudioRequest',create:()=>({parse(value){
+        if(!value||typeof value!=='object'||Array.isArray(value)||typeof value.action!=='string')throw new TypeError('Expected a Card Studio action object.');return value;
+      }})}},
+    ],cancellation:{parameter:'signal'},result:{mode:'src-json'},
+  }],
+};
+
+cardstudioRemote.descriptors.push({
+  ...cardstudioRemote.descriptors[0],id:'@local/dsh-card-studio-scean-test#cardstudioScean/setCharacterMethod',method:'setCharacterMethod',
+  parameters:[cardstudioRemote.descriptors[0].parameters[0],{
+    name:'request',wire:'request',source:'json',codec:{mode:'strict',typeSymbol:'@local/dsh-card-studio-scean-test#HumanCharacterMethod',create:()=>({parse(value){
+      if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).some(k=>!['name','expected_epoch','claim'].includes(k))||!['character-authoring'].includes(value.name)||!Number.isSafeInteger(value.expected_epoch)||!value.claim)throw new TypeError('Expected a human Session character method request.');return value;
+    }})}
+  }]
+});
+
+// This is a separate client-side invocation, intentionally absent from the
+// generic command dispatcher and all Agent tool action schemas.
+cardstudioRemote.descriptors.push({
+  ...cardstudioRemote.descriptors[0],
+  id:'@local/dsh-card-studio-scean-test#cardstudioScean/setAuthoringScope',method:'setAuthoringScope',
+  parameters:[cardstudioRemote.descriptors[0].parameters[0],{
+    name:'request',wire:'request',source:'json',codec:{mode:'strict',typeSymbol:'@local/dsh-card-studio-scean-test#HumanScopeRequest',create:()=>({parse(value){
+      if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).some(k=>!['mode','expected_epoch','claim'].includes(k))||!['content','full'].includes(value.mode)||!Number.isSafeInteger(value.expected_epoch)||!value.claim)throw new TypeError('Expected a human Session scope request.');return value;
+    }})}
+  }]
+});
+
+// Human-only review invocation. Never admitted by generic request/command or Agent schemas.
+cardstudioRemote.descriptors.push({
+  ...cardstudioRemote.descriptors[0],id:'@local/dsh-card-studio-scean-test#cardstudioScean/reviewMaterials',method:'reviewMaterials',
+  parameters:[cardstudioRemote.descriptors[0].parameters[0],{
+    name:'request',wire:'request',source:'json',codec:{mode:'strict',typeSymbol:'@local/dsh-card-studio-scean-test#HumanMaterialReview',create:()=>({parse(value){
+      if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).some(k=>!['mode','extraction_id','expected_revision','candidate_sha256','accepted_ids','edits','expected_epoch','claim'].includes(k))||!['edit','confirm'].includes(value.mode)||!value.claim||!Number.isSafeInteger(value.expected_epoch))throw new TypeError('Expected a bound human material review.');return value;
+    }})}
+  }]
+});
+
+// Human folder choice is deliberately absent from Agent command/action schemas.
+cardstudioRemote.descriptors.push({
+  ...cardstudioRemote.descriptors[0],id:'@local/dsh-card-studio-scean-test#cardstudioScean/setLibraryRoot',method:'setLibraryRoot',
+  parameters:[cardstudioRemote.descriptors[0].parameters[0],{
+    name:'request',wire:'request',source:'json',codec:{mode:'strict',typeSymbol:'@local/dsh-card-studio-scean-test#HumanLibraryRoot',create:()=>({parse(value){
+      if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).some(k=>!['path','expected_revision','claim'].includes(k))||value.path!==null&&typeof value.path!=='string'||!Number.isSafeInteger(value.expected_revision)||!value.claim)throw new TypeError('Expected a human Library folder request.');return value;
+    }})}
+  }]
+});
+
+// Human-only explicit saved-snapshot handoff and readonly Inspector. Never an Agent tool.
+cardstudioRemote.descriptors.push({
+  ...cardstudioRemote.descriptors[0],id:'@local/dsh-card-studio-scean-test#cardstudioScean/sceanControl',method:'sceanControl',
+  parameters:[cardstudioRemote.descriptors[0].parameters[0],{
+    name:'request',wire:'request',source:'json',codec:{mode:'strict',typeSymbol:'@local/dsh-card-studio-scean-test#HumanSceanControl',create:()=>({parse(value){
+      const keys=['mode','claim','document_id','expected_revision','worldbook_document_id','worldbook_revision','preset','characters','runId','binding'];
+      if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).some(k=>!keys.includes(k))||!['start','inspect','attach'].includes(value.mode)||!value.claim)throw new TypeError('Expected a current human SCEAN control request.');
+      if(value.mode==='start'&&(typeof value.document_id!=='string'||!Number.isSafeInteger(value.expected_revision)))throw new TypeError('Select a saved revision.');
+      if(value.mode!=='start'&&(typeof value.runId!=='string'||!value.binding))throw new TypeError('Explicit inspection binding is required.');
+      return value;
+    }})}
+  }]
+});
+
+// Browser downloads use existing authenticated RPC and exact export receipts.
+// No path, URL or generic/model action is admitted.
+cardstudioRemote.descriptors.push({
+  ...cardstudioRemote.descriptors[0],id:'@local/dsh-card-studio-scean-test#cardstudioScean/downloadExport',method:'downloadExport',
+  parameters:[cardstudioRemote.descriptors[0].parameters[0],{
+    name:'request',wire:'request',source:'json',codec:{mode:'strict',typeSymbol:'@local/dsh-card-studio-scean-test#HumanExportDownload',create:()=>({parse(value){
+      const keys=['mode','receipt_id','document_id','expected_revision','sha256','offset','claim'];
+      if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).some(key=>!keys.includes(key))||!['chunk','release'].includes(value.mode)||!value.claim||typeof value.receipt_id!=='string'||typeof value.document_id!=='string'||!Number.isSafeInteger(value.expected_revision)||!/^[a-f0-9]{64}$/.test(value.sha256)||value.mode==='chunk'&&!Number.isSafeInteger(value.offset))throw new TypeError('Expected a bound human export download receipt.');return value;
+    }})}
+  }]
+});
+
+    // Embedded by the existing client build; only readonly text/pixel projections.
+function createLibraryComponents({React,h,ctx,t,controller,useUpdates,css,viewCache,isDirty,getFolderRemote}) {
+  const cache=new Map();let imagesEnabled=false;
+  const ref=row=>({item_id:row.item_id,source_sha256:row.source_sha256});
+  function ReadonlyDocumentViewer({projection,onMore}){
+    if(!projection)return null;
+    return h('section',{'data-view':'readonly-document',className:'csscean-box csscean-readonly'},h('p',{className:'csscean-badge csscean-notice','data-coverage':projection.coverage},t('libraryCoverage')+' · '+projection.coverage),
+      ...(projection.evidence??[]).map(row=>h('article',{key:row.locator,className:'csscean-section-space'},h('strong',null,t('field_'+row.field)===('field_'+row.field)?row.field:t('field_'+row.field)),h('p',{className:'csscean-muted csscean-path csscean-mono'},row.locator+' · '+row.raw_start+'–'+row.raw_end+' / '+row.total_characters),h('pre',{className:'csscean-prose','data-evidence':row.locator},row.text),onMore&&row.raw_end<row.total_characters?h('button',{className:'csscean-button',onClick:()=>onMore(row)},t('libraryMore')):null)),
+      projection.omitted?h('p',{role:'note'},t('libraryOmitted')+' '+projection.omitted):null);
+  }
+  // Visible consumers own cache entries. Offscreen/unmounted consumers release
+  // them; new visible/selected rows can evict LRU entries. Only one RPC runs,
+  // and every late reply is guarded by generation, visibility and Session.
+  function gallery(){
+    const g={items:new Map(),visible:new Map(),listeners:new Set(),epoch:0,running:false,enabled:false};
+    g.emit=()=>{for(const fn of g.listeners)fn();};
+    g.clear=()=>{g.epoch++;g.items.clear();g.visible.clear();g.emit();};
+    g.touch=key=>{const image=g.items.get(key);if(image){g.items.delete(key);g.items.set(key,image);}};
+    g.pump=()=>{
+      if(!g.enabled||g.running)return;
+      const next=[...g.visible.entries()].reverse().find(([,view])=>view.want&&view.valid());
+      if(!next)return;const [key,view]=next,epoch=g.epoch;view.want=false;g.running=true;
+      (async()=>{
+        let result;try{result=await view.call('library_image',ref(view.row));if(typeof result.data_url!=='string'||!result.data_url.startsWith('data:image/png;base64,')||result.bytes>524288||result.width>256||result.height>256)throw new Error(t('libraryImageUnavailable'));}
+        catch(error){result={error:error.message};}
+        if(g.enabled&&epoch===g.epoch&&g.visible.has(key)&&view.valid()){
+          g.items.delete(key);g.items.set(key,result);
+          while(g.items.size>4||[...g.items.values()].reduce((n,x)=>n+(x.bytes??0),0)>2097152)g.items.delete(g.items.keys().next().value);
+          g.emit();
+        }
+      })().finally(()=>{g.running=false;g.pump();});
+    };
+    g.release=(key,token)=>{
+      const view=g.visible.get(key);if(!view)return;view.tokens.delete(token);
+      if(!view.tokens.size){g.visible.delete(key);if(g.items.delete(key))g.emit();}
+      g.pump();
+    };
+    g.view=(row,token,visible,call,valid)=>{
+      const key=row.item_id+':'+row.source_sha256;
+      if(!visible){g.release(key,token);return;}
+      if(!g.enabled||!valid())return;
+      let view=g.visible.get(key);
+      if(!view){view={row,call,valid,tokens:new Set(),want:!g.items.has(key)};g.visible.set(key,view);}
+      if(!view.tokens.has(token)){view.tokens.add(token);if(!g.items.has(key))view.want=true;else g.touch(key);}
+      g.pump();
+    };
+    return g;
+  }
+  function SourceImage({row,manager,call,valid,epoch}){
+    const node=React.useRef(null),[,update]=React.useReducer(n=>n+1,0),key=row.item_id+':'+row.source_sha256;
+    React.useEffect(()=>{let active=true;const token=Symbol('visible-image'),change=()=>{if(active)update();};manager.listeners.add(change);
+      const root=node.current.closest('.csscean-panel');
+      const measure=()=>{const bounds=node.current.getBoundingClientRect(),clip=root?.getBoundingClientRect();manager.view(row,token,bounds.width>0&&bounds.height>0&&bounds.bottom>Math.max(0,clip?.top??0)&&bounds.top<Math.min(window.innerHeight,clip?.bottom??window.innerHeight)&&bounds.right>Math.max(0,clip?.left??0)&&bounds.left<Math.min(window.innerWidth,clip?.right??window.innerWidth),call,valid);};
+      const observer=typeof IntersectionObserver==='function'?new IntersectionObserver(measure,{root}):null;
+      if(observer)observer.observe(node.current);root?.addEventListener('scroll',measure,{passive:true});window.addEventListener('resize',measure);measure();
+      return()=>{active=false;observer?.disconnect();root?.removeEventListener('scroll',measure);window.removeEventListener('resize',measure);manager.listeners.delete(change);manager.release(key,token);};
+    },[key,epoch]);
+    const image=manager.items.get(key);
+    return h('figure',{ref:node,className:'csscean-library-image','data-image-source':row.item_id},image?.data_url?h('img',{src:image.data_url,alt:row.relative_path,width:128,height:128,decoding:'async',loading:'lazy'}):h('span',{className:'csscean-muted'},image?.error??t('libraryImageWaiting')),h('figcaption',{className:'csscean-muted',title:row.relative_path},row.relative_path));
+  }
+  function LibraryPanel({sequence}){
+    useUpdates();const sessionId=controller.current?.id,ready=controller.phase==='ready',rootEpoch=controller.librarySequence,cacheKey=sessionId+':'+rootEpoch;
+    const [v,setView]=React.useState(()=>cache.get(cacheKey)??{list:null,query:'',selected:null,projection:null,versions:null,entries:null,entry:null,error:'',offset:0,sourceStale:false});
+    const [busy,setBusy]=React.useState(false),[scanBusy,setScanBusy]=React.useState(false),[folderAvailable,setFolderAvailable]=React.useState(false),[showImages,setShowImages]=React.useState(imagesEnabled),[imageEpoch,setImageEpoch]=React.useState(0);
+    const [libraryPath,setLibraryPath]=React.useState(controller.librarySettings?.path??controller.root+'/library');
+    const state=React.useRef(v),live=React.useRef(true),lock=React.useRef(false),scanLock=React.useRef(false),selection=React.useRef(0),listing=React.useRef(0),images=React.useRef(null);state.current=v;
+    if(!images.current)images.current=gallery();images.current.enabled=showImages;
+    const call=controller.bind(sequence),valid=()=>live.current&&controller.sequence===sequence&&controller.librarySequence===rootEpoch;
+    const setV=change=>{if(!valid())return;const next={...state.current,...change};state.current=next;cache.set(cacheKey,next);setView(next);};
+    const run=async fn=>{if(!valid()||lock.current)return;lock.current=true;setBusy(true);setV({error:''});try{await fn();}catch(error){if(valid())setV({error:error.message});}finally{lock.current=false;if(valid())setBusy(false);}};
+    const source=()=>ref(state.current.selected);
+    const list=async(offset=0)=>{const ticket=++listing.current,query=state.current.query,value=await call('library',{action:query.trim()?'search':'list',...query.trim()?{query,limit:20}:{offset,limit:20}});if(ticket===listing.current&&query===state.current.query)setV({list:value,offset});};
+    const open=async row=>{
+      const ticket=++selection.current,args=ref(row),projection=await call('library',{action:'read',...args,budget:12000}),entries=await call('library',{action:'entries',...args,limit:20});
+      if(ticket===selection.current)setV({selected:row,projection,entries,entry:null,versions:null,sourceStale:false,error:''});
+    };
+    const refresh=async(rebuild=false)=>{
+      if(!valid()||scanLock.current)return;scanLock.current=true;setScanBusy(true);setV({error:''});
+      try{
+        await call('library',{action:rebuild?'rebuild':'refresh'});await list(state.current.offset);
+        images.current.clear();if(valid())setImageEpoch(n=>n+1);
+        const ticket=selection.current,row=state.current.selected;
+        if(row)try{await call('library',{action:'read',...ref(row),fields:['name'],budget:256});if(ticket===selection.current)setV({sourceStale:false});}
+        catch(error){if(ticket===selection.current&&!lock.current&&state.current.selected?.item_id===row.item_id&&state.current.selected?.source_sha256===row.source_sha256){setV({projection:null,entry:null,versions:null,entries:null,sourceStale:true});throw error;}}
+      }catch(error){if(valid())setV({error:error.message});}
+      finally{scanLock.current=false;if(valid())setScanBusy(false);}
+    };
+    React.useEffect(()=>{live.current=true;if(ready)refresh();return()=>{live.current=false;images.current.enabled=false;images.current.clear();};},[ready]);
+    const remote=getFolderRemote?.();
+    React.useEffect(()=>{let active=true;setFolderAvailable(false);if(remote?.canOpenWorkspacePath&&remote?.openWorkspacePath)remote.canOpenWorkspacePath().then(result=>{if(active)setFolderAvailable(result?.ok===true&&result.value===true);}).catch(()=>{});return()=>{active=false;};},[remote]);
+    const button=(label,fn,disabled=false,className='')=>h('button',{className:'csscean-button '+className,disabled:busy||!ready||disabled,onClick:()=>run(fn)},t(label));
+    const scanButton=(label,rebuild=false)=>h('button',{className:'csscean-button '+(rebuild?'csscean-maintenance':''),disabled:scanBusy||!ready,onClick:()=>refresh(rebuild)},t(label));
+    const pages=(rows,load)=>rows?h('div',{className:'csscean-row'},h('span',null,rows.total??rows.items.length),button('previous',()=>load(Math.max(0,(rows.offset??0)-20)),!(rows.offset>0)),button('next',()=>load((rows.offset??0)+20),!(rows.total>(rows.offset??0)+20))):null;
+    const image=row=>showImages&&row?.format==='png'?h(SourceImage,{row,manager:images.current,call,valid,epoch:imageEpoch}):null;
+    return h('div',{className:'csscean-panel','data-page':'library'},h('style',null,css),h('div',{className:'csscean-shell'},
+      h('div',{className:'csscean-row csscean-head csscean-toolbar'},h('h2',null,t('library')+' 1.2.0'),h('span',{className:'csscean-spacer'}),h('button',{className:'csscean-button',disabled:busy,onClick:()=>ctx.layout.selectPanel('local-cardstudio-scean-materials')},t('materials')),h('button',{className:'csscean-button',disabled:busy,onClick:()=>ctx.layout.selectPanel('local-cardstudio-scean')},t('title')),h('button',{className:'csscean-button',disabled:busy,onClick:()=>ctx.layout.selectPanel(null)},t('back'))),
+      h('p',{className:'csscean-path csscean-mono'},controller.librarySettings?.path??controller.root+'/library/'),h('p',{role:'note',className:'csscean-notice csscean-readonly'},t('libraryHint')),
+      h('p',{className:'csscean-muted'},t('libraryFolderHint')),h('div',{className:'csscean-row'},h('input',{'aria-label':t('libraryChooseFolder'),value:libraryPath,maxLength:1024,onChange:event=>setLibraryPath(event.target.value)}),button('libraryChooseFolder',()=>controller.setLibraryRoot(libraryPath,sequence),!libraryPath.trim()),button('libraryDefaultFolder',()=>controller.setLibraryRoot(null,sequence),!controller.librarySettings?.custom)),
+      controller.librarySettings?.error?h('p',{role:'alert',className:'csscean-error'},controller.librarySettings.error.code+': '+controller.librarySettings.error.message):null,
+      h('details',null,h('summary',null,t('libraryAgent')),h('p',null,t('libraryAgentHint')),h('code',null,'cardstudio_scean_library · search → read / entries / entry')),
+      h('div',{className:'csscean-row'},h('input',{'aria-label':t('librarySearch'),placeholder:t('librarySearch'),value:v.query,onChange:e=>setV({query:e.target.value}),onKeyDown:e=>{if(e.key==='Enter')run(()=>list());}}),button('search',()=>list()),scanButton('refresh'),scanButton('libraryRebuild',true),button('libraryOpenFolder',async()=>{const folder=await call('library_folder',{});if(typeof folder.path!=='string'||!remote?.openWorkspacePath)throw new Error(t('folderUnavailable'));const result=await remote.openWorkspacePath({path:folder.path});if(result?.ok!==true)throw new Error(result?.error?.message??t('folderUnavailable'));},!folderAvailable)),
+      h('label',{className:'csscean-library-toggle'},h('input',{type:'checkbox',checked:showImages,onChange:e=>{imagesEnabled=e.target.checked;images.current.clear();setShowImages(imagesEnabled);setImageEpoch(n=>n+1);}}),' '+t('libraryImages')),
+      showImages?h('p',{className:'csscean-muted'},t('libraryImageHint')):null,
+      h('p',{role:v.error?'alert':'status','aria-live':'polite','aria-busy':busy||scanBusy,className:'csscean-muted csscean-library-status'+(v.error?' csscean-error':''),'data-error':!!v.error,title:v.error||undefined},v.error||(busy?t('working'):scanBusy?t('libraryScanning'):t('libraryIdle'))),
+      v.list?h('p',{className:'csscean-notice','data-complete':v.list.complete},t(v.list.complete?'libraryComplete':'libraryIncomplete')+' · '+v.list.source_count+' · '+v.list.index_generation):null,
+      v.list?.diagnostics?.length?h('details',null,h('summary',null,t('diagnostics')),h('pre',null,JSON.stringify(v.list.diagnostics,null,2))):null,
+      h('div',{className:'csscean-grid'},h('aside',{className:'csscean-side'},h('section',{className:'csscean-box'},h('div',{className:'csscean-list'},...(v.list?.items??[]).map(row=>h('article',{key:row.item_id},image(row.image_source?{...row.image_source,format:'png'}:row),buttonRow(row),...(row.evidence??[]).map(e=>h('p',{key:e.locator,className:'csscean-summary'},e.field+' · '+e.text))))),!v.query.trim()?pages(v.list,list):null)),
+        v.selected?h('section',{className:'csscean-view csscean-box csscean-library-selection','data-stale':v.sourceStale},h('h3',null,v.selected.name),h('p',{className:'csscean-muted csscean-path csscean-mono'},v.selected.relative_path+' · '+v.selected.source_sha256),h('p',{className:'csscean-notice csscean-readonly'},t('libraryReadonly')),!v.sourceStale?image(v.selected):null,
+          h('div',{className:'csscean-row'},button('libraryCopy',async()=>{
+            if(isDirty(viewCache.get(sessionId)??{}))throw new Error(t('libraryDraft'));
+            await call('library_copy',source());viewCache.delete(sessionId);ctx.layout.selectPanel('local-cardstudio-scean');
+          },v.sourceStale,'csscean-primary'),button('libraryVersions',async()=>setV({versions:await call('library',{action:'variants',...source(),limit:20})}),v.sourceStale)),
+          v.versions?h('section',{className:'csscean-box'},h('p',null,t('libraryIdentity')),h('div',{className:'csscean-list'},...v.versions.items.map(buttonRow)),pages(v.versions,async offset=>setV({versions:await call('library',{action:'variants',...source(),offset,limit:20})}))):null,
+          v.projection?.warnings?.length?h('details',null,h('summary',null,t('diagnostics')),h('pre',null,JSON.stringify(v.projection.warnings,null,2))):null,
+          h('div',{className:'csscean-row'},...['description','personality','scenario','first_mes','alternate_greetings','mes_example','creator_notes','system_prompt','post_history_instructions','tags','creator'].map(field=>button('field_'+field,async()=>setV({projection:await call('library',{action:'read',...source(),fields:[field],budget:12000}),entry:null}),v.sourceStale))),
+          h(ReadonlyDocumentViewer,{projection:v.entry??v.projection,onMore:row=>run(async()=>setV({entry:null,projection:await call('library',{action:'read',...source(),locators:[row.locator],offset:row.raw_end,budget:12000})}))}),
+          h('section',{className:'csscean-box csscean-section-space'},h('h3',null,t('book')),h('div',{className:'csscean-list'},...(v.entries?.items??[]).map(entry=>h('button',{key:entry.index,className:'csscean-button',disabled:busy||v.sourceStale,onClick:()=>run(async()=>setV({entry:await call('library',{action:'entry',...source(),entry_index:entry.index,budget:12000})}))},entry.comment||entry.keys.join(', ')||String(entry.index),h('small',{className:'csscean-muted'},' · '+t(entry.enabled?'enabled':'disabled'))))),pages(v.entries,async offset=>setV({entries:await call('library',{action:'entries',...source(),offset,limit:20})})))):h('p',null,t('libraryChoose')))));
+    function buttonRow(row){return h('button',{key:row.item_id,className:'csscean-button csscean-tile','data-selected':v.selected?.item_id===row.item_id&&v.selected?.source_sha256===row.source_sha256,disabled:busy||!ready||row.state!=='ready'||row.freshness&&row.freshness!=='verified',onClick:()=>run(()=>open(row))},h('strong',null,row.name),h('span',{className:'csscean-muted csscean-path'},(row.format??row.relative_path?.split('.').pop()?.toLowerCase()??'')+' · '+row.relative_path),h('span',{className:'csscean-muted'},(row.tags??[]).join(' · ')),h('small',null,row.error?.code??row.freshness??row.coverage),row.source_count>1?h('small',null,t('libraryVersions')+' · '+row.source_count):null);}
+  }
+  return {LibraryPanel,ReadonlyDocumentViewer};
+}
+
+    // Embedded by the existing client builder. Plain text only; no source/card execution.
+function createMaterialComponents({React,h,ctx,t,controller,useUpdates,css,ScopeControl}){
+  const views=new Map();
+  const ref=r=>({material_id:r.material_id,record_sha256:r.record_sha256});
+  function MaterialPanel({sequence}){
+    useUpdates();const valid=()=>sequence===controller.sequence&&!controller.disposed,call=controller.bind(sequence),key=sequence;
+    const initial=()=>{for(const old of views.keys())if(old!==key)views.delete(old);return views.get(key)??{tab:'catalog',catalog:{items:[],total:0,offset:0,limit:20},sources:{items:[],total:0,offset:0,limit:20},candidates:{items:[],total:0,offset:0,limit:20},selected:[],accepted:[],intent:'',query:'',batch:null,edits:{},material:null,projection:null};};
+    const [v,update]=React.useState(initial),[busy,setBusy]=React.useState(false),[notice,setNotice]=React.useState('');const state=React.useRef(v),lock=React.useRef(false),mounted=React.useRef(true);
+    const setV=patch=>{if(!mounted.current||!valid())return;update(previous=>{const next={...previous,...(typeof patch==='function'?patch(previous):patch)};state.current=next;views.set(key,next);return next;});};
+    React.useEffect(()=>()=>{mounted.current=false;},[]);
+    const run=async(fn)=>{if(lock.current||!valid()||controller.phase!=='ready')return;lock.current=true;setBusy(true);setNotice('');try{await fn();}catch(e){if(mounted.current&&valid())setNotice(e.message);}finally{lock.current=false;if(mounted.current&&valid())setBusy(false);}};
+    const load=async(tab=state.current.tab,offset=0)=>{
+      if(tab==='sources'){await call('library',{action:'refresh'});setV({sources:await call('material',{action:'source_status',offset,limit:20})});}
+      else if(tab==='candidates')setV({candidates:await call('material',{action:'candidates',offset,limit:20})});
+      else setV({catalog:await call('material',{action:'catalog',offset,limit:20})});
+    };
+    React.useEffect(()=>{if(controller.phase==='ready')run(()=>load());},[controller.phase]);
+    const btn=(label,fn,disabled=false,props={})=>h('button',{...props,className:'csscean-button '+(props.className??''),disabled:busy||disabled||controller.phase!=='ready',onClick:()=>run(fn)},t(label));
+    const pagination=(list,tab)=>h('div',{className:'csscean-row'},btn('previous',()=>load(tab,Math.max(0,list.offset-20)),list.offset===0),h('span',null,list.offset+' / '+list.total),btn('next',()=>load(tab,list.offset+20),list.offset+20>=list.total));
+    const openBatch=async(id)=>{const b=await call('material',{action:'candidate',extraction_id:id});setV({batch:b,edits:{},accepted:b.candidates.map(c=>c.candidate_id),receipt:null});};
+    const edit=(id,field,value)=>setV(previous=>({edits:{...previous.edits,[id]:{...(previous.edits[id]??{}),[field]:value}}}));
+    const humanRequest=mode=>({mode,extraction_id:state.current.batch.extraction_id,expected_revision:state.current.batch.revision,candidate_sha256:state.current.batch.candidate_sha256});
+    const review=async()=>{const result=await controller.reviewMaterials({...humanRequest('confirm'),accepted_ids:state.current.accepted},sequence);setV({receipt:result.receipt,batch:null,edits:{},accepted:[]});await load('candidates');};
+    const candidateView=v.batch?h('section',{className:'csscean-box csscean-review','data-material-review':v.batch.extraction_id},h('h3',null,t('materialReview')),h('p',null,v.batch.intent),h('p',{className:'csscean-notice'},t('materialReviewHint')),h('pre',null,JSON.stringify(v.batch.sources,null,2)),
+      ...v.batch.candidates.map(c=>h('article',{key:c.candidate_id,className:'csscean-box csscean-section-space csscean-candidate','data-selected':v.accepted.includes(c.candidate_id),'data-material-candidate':c.candidate_id},h('label',null,h('input',{type:'checkbox',checked:v.accepted.includes(c.candidate_id),disabled:busy,onChange:e=>setV(previous=>({accepted:e.target.checked?[...previous.accepted,c.candidate_id]:previous.accepted.filter(id=>id!==c.candidate_id)}))}),c.kind==='character'?t('materialCharacter'):t('materialWorldbook')),
+        ...['title','summary','body','use_notes'].map(field=>h('label',{key:field},t('material_'+field),field==='title'?h('input',{'data-material-editor':field,value:v.edits[c.candidate_id]?.[field]??c[field],disabled:busy,onChange:e=>edit(c.candidate_id,field,e.target.value)}):h('textarea',{'data-material-editor':field,className:field==='body'?'csscean-body':undefined,value:v.edits[c.candidate_id]?.[field]??c[field],disabled:busy,onChange:e=>edit(c.candidate_id,field,e.target.value)}))),h('details',null,h('summary',null,t('materialProvenance')),h('pre',null,JSON.stringify(c.provenance,null,2))))),
+      h('div',{className:'csscean-row'},btn('materialSaveEdits',async()=>{const edits=Object.entries(state.current.edits).map(([candidate_id,fields])=>({candidate_id,...fields}));const b=await controller.reviewMaterials({...humanRequest('edit'),edits},sequence);setV({batch:b,edits:{}});},!Object.keys(v.edits).length,{className:Object.keys(v.edits).length?'csscean-primary':''}),btn(v.accepted.length?'materialConfirm':'materialZero',review,Object.keys(v.edits).length>0,{className:Object.keys(v.edits).length?'':'csscean-primary','data-action':'material-human-confirm'}),btn('materialCloseReview',async()=>setV({batch:null,edits:{}})))):null;
+    const sources=h('section',{'data-material-tab':'sources'},h('p',{className:'csscean-muted'},t('materialSourceHint')),...v.sources.items.map(row=>h('article',{className:'csscean-box csscean-section-space csscean-material-source',key:row.item_id},h('strong',null,row.name),h('p',{'data-extraction-state':row.extraction_status},row.extraction_label+' · '+row.relative_path),h('small',{className:'csscean-mono'},row.extraction_receipt?JSON.stringify(row.extraction_receipt):row.freshness),h('label',null,t('materialIntent'),h('input',{value:v.intent,maxLength:2000,onChange:e=>setV({intent:e.target.value})})),btn('materialBegin',async()=>{const b=await call('material',{action:'begin',intent:state.current.intent,sources:[{type:'library',item_id:row.item_id,source_sha256:row.source_sha256}]});setV({tab:'candidates',batch:b,edits:{},accepted:[],receipt:null});await load('candidates');},!v.intent.trim()||row.freshness!=='verified'))),pagination(v.sources,'sources'));
+    const candidates=h('section',{'data-material-tab':'candidates'},h('p',{className:'csscean-muted'},t('materialAgentHint')),...v.candidates.items.map(b=>btn('materialOpenCandidate',()=>openBatch(b.extraction_id),false,{key:b.extraction_id,title:b.intent})),!v.candidates.items.length?h('p',null,t('materialNoCandidates')):null,pagination(v.candidates,'candidates'),candidateView,v.receipt?h('pre',{'data-extraction-receipt':v.receipt.extraction_id},JSON.stringify(v.receipt,null,2)):null);
+    const catalog=h('section',{'data-material-tab':'catalog'},h('p',{className:'csscean-muted'},t('materialCatalogHint')),h('div',{className:'csscean-row'},h('input',{'aria-label':t('search'),value:v.query,onChange:e=>setV({query:e.target.value})}),btn('search',async()=>setV({catalog:{...(await call('material',{action:'search',query:state.current.query})),offset:0,limit:20}}),!v.query.trim()),btn('materialCatalog',()=>load('catalog'))),h('p',{className:'csscean-badge csscean-notice','data-material-coverage':v.catalog.coverage},v.catalog.coverage+' · '+String(v.catalog.complete)),...v.catalog.items.map(r=>h('article',{key:r.material_id,className:'csscean-box csscean-section-space csscean-material-card','data-selected':v.selected.some(p=>p.material_id===r.material_id)},h('label',null,h('input',{type:'checkbox',disabled:busy,checked:v.selected.some(p=>p.material_id===r.material_id),onChange:e=>setV(previous=>({selected:e.target.checked?[...previous.selected,ref(r)]:previous.selected.filter(p=>p.material_id!==r.material_id)}))}),h('span',{className:'csscean-material-title'},r.title),h('span',{className:'csscean-mono'},' · '+r.kind)),h('p',{className:'csscean-summary'},r.summary),h('div',{className:'csscean-row csscean-material-actions'},btn('materialRead',async()=>setV({material:r,projection:await call('material',{action:'read',...ref(r),field:'body',budget:12000})})),btn('materialTrace',async()=>setV({material:r,projection:await call('material',{action:'trace',...ref(r)})}))))),pagination(v.catalog,'catalog'),
+      h('div',{className:'csscean-row'},btn('materialPin',async()=>{const result=await call('material',{action:'select',materials:state.current.selected});setV({pinned:result});},!v.selected.length,{className:'csscean-primary'}),btn('materialRebuild',async()=>{await call('material',{action:'rebuild'});await load('catalog');},false,{className:'csscean-maintenance'})),v.pinned?h('p',{className:'csscean-notice','data-material-pinned':true},t('materialPinned')+' '+v.pinned.items.map(i=>i.title).join('、')):null,
+      v.projection?h('section',{className:'csscean-box','data-material-reader':true},h('h3',null,v.material?.title),h('p',{className:'csscean-badge csscean-notice','data-coverage':v.projection.coverage},v.projection.coverage),h('pre',{className:v.projection.text!=null?'csscean-prose':'csscean-mono'},v.projection.text??JSON.stringify(v.projection.sources,null,2)),v.projection.next_offset!==null&&v.projection.next_offset!==undefined?btn('libraryMore',async()=>setV({projection:await call('material',{action:'read',...ref(state.current.material),field:'body',offset:state.current.projection.next_offset,budget:12000})})):null,v.projection.use_notes?h('p',null,v.projection.use_notes):null,v.projection.provenance?h('details',null,h('summary',null,t('materialProvenance')),h('pre',null,JSON.stringify(v.projection.provenance,null,2))):null):null);
+    return h('div',{className:'csscean-panel','data-view':'materials'},h('style',null,css),h('div',{className:'csscean-shell'},h('div',{className:'csscean-row csscean-toolbar'},h('h2',null,t('materials')+' · V1 candidate'),btn('library',async()=>ctx.layout.selectPanel('local-cardstudio-scean-library')),btn('title',async()=>ctx.layout.selectPanel('local-cardstudio-scean')),btn('back',async()=>ctx.layout.selectPanel(null))),h(ScopeControl,{sequence}),notice?h('p',{role:'alert',className:'csscean-error'},notice):null,h('div',{className:'csscean-row csscean-material-tabs'},...['catalog','candidates','sources'].map(tab=>btn('materialTab_'+tab,async()=>{setV({tab});await load(tab);},false,{'aria-pressed':v.tab===tab})),btn('refresh',()=>load(state.current.tab))),v.tab==='sources'?sources:v.tab==='candidates'?candidates:catalog));
+  }
+  return {MaterialPanel};
+}
+
+    const translations={
+      zh:{title:'Card Studio SCEAN Test',workspace:'工作目錄',archiveError:'封存回收需要恢復。請稍後更新能力清單；若仍失敗，依恢復說明處理。',archiveUnavailable:'封存回收尚未就緒；目前不會自動搬移工作副本。',connecting:'連線中',connectionError:'連線失敗',retry:'重試連線',refresh:'重新整理',back:'回到對話',import:'匯入副本',card:'角色卡',worldbook:'獨立世界書',files:'imports 內的檔案',documents:'目前對話的工作副本',allDocuments:'全部工作副本',noDocuments:'目前對話尚無工作副本。',legacy:'舊版／未建立來源關聯',shared:'多個對話共用',previous:'上一頁',next:'下一頁',fields:'卡片欄位',save:'儲存局部修改',book:'世界書',search:'搜尋',newEntry:'新增條目',patchEntry:'儲存條目修改',deleteEntry:'刪除條目',config:'世界書設定',saveConfig:'儲存設定',history:'快照紀錄',diff:'比較快照',rollback:'回退至快照',export:'匯出新檔',skills:'可用技能',skillHint:'在下一則訊息以 /技能名稱 呼叫；創作深化與 Palette 重建請分開選擇。',empty:'將選定的 JSON/PNG 副本放入工作目錄 imports 後重新整理。',entry:'條目內容（JSON）',revision:'目前 revision',target:'目標快照 revision',exportName:'匯出檔名',capabilities:'更新能力清單',error:'操作失敗',draft:'HTML/CSS 僅作文字草稿；此頁不執行卡片 HTML、JS、macro 或遠端腳本。'},
+      en:{title:'Card Studio SCEAN Test',workspace:'Workspace',archiveError:'Archive recycling needs recovery. Refresh capabilities; if the error persists, follow the recovery guide.',archiveUnavailable:'Archive recycling is unavailable. Working copies are not being moved automatically.',connecting:'Connecting',connectionError:'Connection failed',retry:'Retry connection',refresh:'Refresh',back:'Conversation',import:'Import copy',card:'Character card',worldbook:'Standalone worldbook',files:'Files in imports',documents:'Working copies in this conversation',allDocuments:'All working copies',noDocuments:'No working copies in this conversation.',legacy:'Legacy / original association unknown',shared:'Shared across conversations',previous:'Previous',next:'Next',fields:'Card fields',save:'Save local edit',book:'Worldbook',search:'Search',newEntry:'Create entry',patchEntry:'Save entry changes',deleteEntry:'Delete entry',config:'Worldbook configuration',saveConfig:'Save configuration',history:'Snapshots',diff:'Compare snapshots',rollback:'Rollback to snapshot',export:'Export new file',skills:'Available skills',skillHint:'Invoke /skill-name in your next message. Choose creative deepening and Palette reconstruction separately.',empty:'Copy a chosen JSON/PNG into workspace imports and refresh.',entry:'Entry content (JSON)',revision:'Current revision',target:'Target snapshot revision',exportName:'Export filename',capabilities:'Refresh capabilities',error:'Operation failed',draft:'HTML/CSS are text drafts. This page never executes card HTML, JS, macros or remote scripts.'}
+    };
+    Object.assign(translations.zh,{scopeContent:'內容模式 / Content',scopeFull:'完整模式 / Full',scopeBoundary:'限制 Card Studio 工具與受控 UI 寫入；完整 runtime 可讀。內容模式只改 RP 正文與普通世界書正文，混合 executable 保持唯讀。一般 DSH filesystem/shell 不在此限制內。'});
+    Object.assign(translations.en,{scopeContent:'Content',scopeFull:'Full',scopeBoundary:'Applies to Card Studio tools and controlled UI writes. Runtime remains readable. Content edits narrative and ordinary worldbook bodies only; mixed executable source stays readonly. General DSH filesystem/shell is outside this policy.'});
+    Object.assign(translations.zh,{"working": "處理中…", "done": "已完成", "failed": "操作失敗，請查看上方訊息", "refreshing": "重新整理中…", "uploading": "正在匯入…", "cancelled": "已取消匯入", "cancel": "取消／返回", "overview": "總覽", "unsaved": "尚未儲存", "discardPrompt": "這裡有尚未儲存的修改。繼續會捨棄這些修改；也可以留在這裡繼續編輯。", "deletePrompt": "要刪除這個條目嗎？這會建立新版本；可從快照回退。", "rollbackPrompt": "要將工作副本回退至指定快照嗎？這會建立新版本。", "confirmTitle": "確認操作", "keepEditing": "留在這裡", "continue": "繼續", "uploadLimit": "請選擇 1 byte 至 32 MiB 的 JSON 或 PNG 檔案。", "oneFile": "一次請拖入一個 JSON 或 PNG。", "dropHint": "拖放 JSON／PNG，或點此選檔（最多 32 MiB）", "openExports": "開啟成品資料夾", "folderUnavailable": "目前 DSH 未提供本機資料夾開啟能力。", "importType": "匯入類型", "selectionHint": "已選為目前對話的工作副本；後續指令可直接說「這張卡」。", "entries": "個條目", "emptyField": "尚無內容", "welcome": "開始編輯工作副本", "searchHint": "搜尋關鍵字或條目內容", "noKeywords": "無關鍵字", "noEntries": "沒有符合的條目", "enabled": "啟用", "disabled": "停用", "editEntry": "編輯世界書條目", "newEntryHint": "儲存後自動配置穩定 ID", "entryName": "名稱", "comment": "註解／列表標題", "keywords": "主要關鍵字（每行一個）", "secondaryKeywords": "次要關鍵字（每行一個）", "content": "條目內文", "advanced": "進階欄位（JSON）", "originalJSON": "原始條目 JSON（唯讀）", "mergeHint": "只更新有修改的欄位；省略的未知欄位不會刪除。既有 null、extensions 及 ID 會保留。", "lastResult": "最近操作結果", "staleEntry": "此工作副本已有較新版本。請重新整理後再編輯。", "field_name": "角色名稱", "field_description": "角色描述", "field_personality": "人格", "field_scenario": "情境", "field_first_mes": "開場白", "field_mes_example": "對話範例", "field_creator_notes": "作者備註", "field_system_prompt": "系統提示", "field_post_history_instructions": "歷史後指令"});
+    Object.assign(translations.en,{"working": "Working…", "done": "Completed", "failed": "Failed; see the message above", "refreshing": "Refreshing…", "uploading": "Importing…", "cancelled": "Import cancelled", "cancel": "Cancel / back", "overview": "Overview", "unsaved": "Unsaved changes", "discardPrompt": "There are unsaved changes. Continue to discard them, or stay here to keep editing.", "deletePrompt": "Delete this entry? A new revision is created; snapshots allow rollback.", "rollbackPrompt": "Restore the chosen snapshot as a new revision?", "confirmTitle": "Confirm action", "keepEditing": "Keep editing", "continue": "Continue", "uploadLimit": "Choose a JSON or PNG file between 1 byte and 32 MiB.", "oneFile": "Drop one JSON or PNG at a time.", "dropHint": "Drop JSON / PNG, or click to choose (up to 32 MiB)", "openExports": "Open finished files folder", "folderUnavailable": "This DSH connection cannot open local folders.", "importType": "Import type", "selectionHint": "Selected for this conversation. You can refer to this working copy in your next message.", "entries": "entries", "emptyField": "No content yet", "welcome": "Start editing a working copy", "searchHint": "Search keywords or content", "noKeywords": "No keywords", "noEntries": "No matching entries", "enabled": "Enabled", "disabled": "Disabled", "editEntry": "Edit worldbook entry", "newEntryHint": "A stable ID is assigned on save", "entryName": "Name", "comment": "Comment / list title", "keywords": "Primary keywords (one per line)", "secondaryKeywords": "Secondary keywords (one per line)", "content": "Entry content", "advanced": "Advanced fields (JSON)", "originalJSON": "Original entry JSON (read only)", "mergeHint": "Only changed fields are updated. Omitted unknown fields are retained, including existing null values, extensions and IDs.", "lastResult": "Last operation result", "staleEntry": "This working copy has a newer revision. Refresh before editing.", "field_name": "Name", "field_description": "Description", "field_personality": "Personality", "field_scenario": "Scenario", "field_first_mes": "First message", "field_mes_example": "Example dialogue", "field_creator_notes": "Creator notes", "field_system_prompt": "System prompt", "field_post_history_instructions": "Post-history instructions"});
+    Object.assign(translations.zh,{"materials": "素材中途站", "materialReview": "候選人工審閱", "materialReviewHint": "請檢閱完整內容、來源範圍與條件。修改後先儲存，再確認；未勾選的候選視為不接受。", "materialCharacter": "完整角色", "materialWorldbook": "世界書／設定", "material_title": "名稱", "material_summary": "摘要與用途", "material_body": "完整正文", "material_use_notes": "適用條件／排除與不確定處", "materialProvenance": "來源證據與讀取範圍", "materialSaveEdits": "儲存候選修改", "materialConfirm": "確認勾選素材入庫", "materialZero": "確認本次零接受並完成整理", "materialCloseReview": "關閉審閱", "materialSourceHint": "來源保持唯讀；掃描只更新索引及整理狀態，不呼叫 Agent。來源變更不自動重抽。", "materialIntent": "抽取要求（下一則訊息交給 Agent）", "materialBegin": "指定來源並準備抽取", "materialAgentHint": "明確要求 Agent 抽取後，Agent 讀來源並提出候選。此頁僅供人類確認；準備抽取不觸發模型。", "materialOpenCandidate": "開啟候選完整內容", "materialNoCandidates": "目前無待審候選；可先指定來源並要求 Agent 抽取。", "materialCatalogHint": "整批瀏覽摘要後選擇素材；組卡前讀完正文及 use notes。角色整體保存，設定可自由合併／拆分。Opening 在組卡最後重寫。", "materialCatalog": "素材目錄", "materialRead": "讀完整素材／續讀", "materialTrace": "核驗來源快照", "materialPin": "固定 ID＋hash 供組卡", "materialRebuild": "重建素材索引", "materialPinned": "已固定供目前對話組卡；請告訴 Agent 組卡意圖。新增世界書 entry 需人類選 Full。", "materialTab_catalog": "正式素材", "materialTab_candidates": "候選審閱", "materialTab_sources": "來源整理狀態"});
+    Object.assign(translations.en,{"materials": "Material station", "materialReview": "Human candidate review", "materialReviewHint": "Review full narratives, source ranges and conditions. Save edits before confirmation. Unchecked candidates are declined.", "materialCharacter": "Whole character", "materialWorldbook": "World setting", "material_title": "Title", "material_summary": "Summary", "material_body": "Body", "material_use_notes": "Use notes", "materialProvenance": "Source evidence and read ranges", "materialSaveEdits": "Save candidate edits", "materialConfirm": "Confirm selected materials", "materialZero": "Confirm zero acceptance", "materialCloseReview": "Close review", "materialSourceHint": "Sources remain readonly. Scan updates indexes/status only and never calls the Agent or automatically re-extracts.", "materialIntent": "Extraction intent (send to Agent next)", "materialBegin": "Prepare selected extraction", "materialAgentHint": "After an explicit extraction request, the Agent reads sources and proposes candidates. This page is human review. Preparation does not trigger inference.", "materialOpenCandidate": "Open candidate review", "materialNoCandidates": "No pending candidates. Select a source and request extraction.", "materialCatalogHint": "Browse summaries before choosing, then read complete body/use notes. Characters remain whole; settings may combine/split. Rewrite Opening last.", "materialCatalog": "Catalog", "materialRead": "Read material", "materialTrace": "Verify source snapshot", "materialPin": "Pin IDs + hashes", "materialRebuild": "Rebuild material index", "materialPinned": "Pinned for this conversation. Tell the Agent your composition intent. Adding worldbook entries requires human Full scope.", "materialTab_catalog": "Accepted materials", "materialTab_candidates": "Candidate review", "materialTab_sources": "Source extraction status"});
+    Object.assign(translations.zh,{libraryChooseFolder:'選擇 Library 資料夾',libraryDefaultFolder:'使用預設資料夾',libraryFolderHint:'PNG／JSON 原始卡片來源。切換不搬移、合併或刪除原檔；設定於本工作區保存。'});
+    Object.assign(translations.en,{libraryChooseFolder:'Choose Library folder',libraryDefaultFolder:'Use default folder',libraryFolderHint:'Original PNG/JSON cards. Switching never moves, merges or deletes sources. Saved for this workspace.'});
+    translations.zh.exportFolderHint='優先開啟目前對話／工作副本已存在的成品目錄；尚未匯出則開啟 exports。';
+    translations.en.exportFolderHint='Open the existing export folder for this Session and copy, or exports before the first export.';
+    Object.assign(translations.zh,{pngCompatibility:'這張 PNG 含有其他不同或無法解析的角色資料。已依酒館規則選用主資料；編輯只更新這一份，其他區塊與圖片保留在 PNG 中。',compatibilityDismiss:'知道了',pngExportHint:'使用 .png 保留圖片與所有資料區塊；使用 .json 匯出目前主資料。'});
+    Object.assign(translations.en,{pngCompatibility:'This PNG contains other different or unreadable character data. The main data follows SillyTavern selection. Edits update only that version; other chunks and the image remain in the PNG.',compatibilityDismiss:'Got it',pngExportHint:'Use .png to retain the image and all metadata chunks, or .json to export the selected main data.'});
+    Object.assign(translations.en,{createCard:'Create a new card',createName:'Character name',createFormat:'Card format',createNow:'Create working copy',authoring:'Frontend and Visual State',source:'Frontend fragment',fixture:'Authoring fixture',visual:'Visual contract',assets:'Local image assets',preview:'Isolated preview',inspectFrontend:'Inspect fragments',readComponent:'Read fragment',createFrontend:'Create fragment',patchFrontend:'Save fragment edit',sourceTarget:'Host source target',sourceCode:'HTML / CSS fragment',localPatch:'Apply exact local replacement',oldText:'Exact text to replace',newText:'Replacement text',saveFixture:'Save fixture',fixtureJSON:'Typed fixture JSON',sample:'Use sample fixture',readContract:'Read contract',createContract:'Create contract',saveContract:'Save contract',validateState:'Validate sample state',contractJSON:'Visual contract JSON',stateJSON:'State update JSON',characterId:'Stable character ID',expression:'Expression',uploadAsset:'Import raster image',linkAsset:'Link selected expression',unlinkAsset:'Unlink selected expression',renderPreview:'Refresh preview',bundleExport:'Export card + authoring bundle',authoringHint:'Design samples only. Card JavaScript, EJS, MVU and remote scripts are not executed. Preview does not certify SillyTavern runtime compatibility.',assetHint:'Choose a local PNG, JPEG or WebP. Imported bytes are validated by the host; cards and images are not sent to a provider.',noComponents:'No safely identified frontend fragments. Create an explicit fragment in a host-supported target.',previewHint:'Opaque-origin frame; no scripts, host bridge or network. Viewport changes require refresh with the same fixture.',discardAuthoring:'Discard unsaved authoring edits',previewWarnings:'Preview omitted unsupported content; review diagnostics below.',diagnostics:'Unsupported features and diagnostics',entryId:'Worldbook entry ID / regex ID',variant:'Selected visual state',resetVisual:'Reset sample to neutral',newFragment:'New fragment draft',contractSample:'Six-expression contract draft',highAffection:'High affection',longInventory:'Long inventory',hideNumbers:'Labels without numbers'});
+    Object.assign(translations.zh,{createCard:'從零建立角色卡',createName:'角色名稱',createFormat:'角色卡格式',createNow:'建立工作副本',authoring:'前端與視覺狀態',source:'前端片段',fixture:'製卡樣本狀態',visual:'視覺契約',assets:'本地圖片素材',preview:'隔離預覽',inspectFrontend:'檢查前端片段',readComponent:'讀取片段',createFrontend:'新增片段',patchFrontend:'儲存片段修改',sourceTarget:'宿主定位目標',sourceCode:'HTML / CSS 片段',localPatch:'套用精確局部替換',oldText:'要替換的精確文字',newText:'替換文字',saveFixture:'儲存樣本狀態',fixtureJSON:'型別樣本 JSON',sample:'載入樣本草稿',readContract:'讀取契約',createContract:'建立契約',saveContract:'儲存契約',validateState:'驗證樣本狀態',contractJSON:'視覺契約 JSON',stateJSON:'狀態更新 JSON',characterId:'角色穩定 ID',expression:'表情',uploadAsset:'匯入點陣圖片',linkAsset:'連結至所選表情',unlinkAsset:'取消所選表情連結',renderPreview:'更新預覽',bundleExport:'匯出角色卡與製卡套件',authoringHint:'這裡使用製卡樣本。卡內 JavaScript、EJS、MVU 和遠端腳本不執行；預覽不等於酒館 runtime 相容性驗證。',assetHint:'選擇本地 PNG、JPEG 或 WebP；宿主驗證圖片內容，不傳送至生圖供應商。',noComponents:'尚無可安全識別的前端片段；可在宿主支援的目標新增明確片段。',previewHint:'不透明來源 iframe，禁止腳本、宿主橋接及網路；修改寬度後以同一樣本更新預覽。',discardAuthoring:'捨棄尚未儲存的製卡修改',previewWarnings:'預覽已略過不支援的內容；請查看下方診斷。',diagnostics:'不支援項目與診斷',entryId:'世界書條目 ID／regex ID',variant:'所選視覺狀態',resetVisual:'樣本回到 neutral',newFragment:'新增片段草稿',contractSample:'六表情契約草稿',highAffection:'高好感樣本',longInventory:'長物品清單',hideNumbers:'以文字取代數字'});
+    Object.assign(translations.zh,{targetCheck:'檢查酒館目標',targetExport:'匯出酒館可交付套件',targetPreview:'預覽目標版型',targetRebuild:'重建目標內容',generatedArm:'接收下一張生圖並連結',generatedStatus:'查看自動入卡結果',generatedCancel:'取消等待生圖',viewportLabel:'預覽寬度',mobile:'手機',desktop:'桌面',previewTitle:'Card Studio 隔離製卡預覽',source_first_mes:'開場白',source_worldbook_entry:'世界書條目',source_regex:'正規表示式替換',expr_neutral:'平靜',expr_happy:'開心',expr_angry:'生氣',expr_sad:'難過',expr_embarrassed:'害羞',expr_surprised:'驚訝',scene_locations:'場景地點',scene_lighting:'場景光線',sceneDefault:'預設',diagnosticGeneric:'此項目無法完成；請依代碼檢查來源或重新整理工作副本。',diagnosticPreview:'隔離預覽已略過此功能；原卡內容仍保留。',diagnosticTarget:'酒館目標尚未完成；請檢查狀態脚本、未轉換標記、圖片和目標設定。',diagnosticRevision:'工作副本已變更，請重新讀取後再修改。',diagnosticAsset:'圖片未通過驗證或找不到，請檢查素材與連結。',diagnosticSession:'目前對話的工作區能力已失效，請重新開啟。'});
+    Object.assign(translations.en,{targetCheck:'Check target',targetExport:'Export target bundle',targetPreview:'Preview target template',targetRebuild:'Rebuild target content',generatedArm:'Link the next generated image',generatedStatus:'Generated image receipt',generatedCancel:'Cancel image waiting',viewportLabel:'Preview viewport',mobile:'mobile',desktop:'desktop',previewTitle:'Card Studio isolated authoring preview',source_first_mes:'First message',source_worldbook_entry:'Worldbook entry',source_regex:'Regex replacement',expr_neutral:'Neutral',expr_happy:'Happy',expr_angry:'Angry',expr_sad:'Sad',expr_embarrassed:'Embarrassed',expr_surprised:'Surprised',scene_locations:'Location',scene_lighting:'Lighting',sceneDefault:'Default',diagnosticGeneric:'Check this diagnostic and refresh the working copy.',diagnosticPreview:'Unsupported preview feature was omitted; source is preserved.',diagnosticTarget:'Review the target writer, bindings, images and configuration.',diagnosticRevision:'Read the changed working copy before editing.',diagnosticAsset:'Review image validation and links.',diagnosticSession:'Reopen the workspace in this Session.'});
+    Object.assign(translations.zh,{backupOptions:'製卡備份（不供直接遊玩）',rawBackup:'匯出原始卡備份',bundleExport:'匯出製卡備份套件',targetExport:'匯出酒館遊玩套件',targetDeliveryHint:'主要交付：酒館目標套件。請依套件步驟安裝圖片並在酒館驗收。',prepareTargetHint:'這張卡仍有製卡標記；請先建立酒館目標，再交付遊玩。'});
+    Object.assign(translations.en,{backupOptions:'Authoring backups (not for play)',rawBackup:'Export raw card backup',bundleExport:'Export authoring backup bundle',targetExport:'Export Tavern play package',targetDeliveryHint:'Primary delivery: the Tavern target package. Follow its image installation steps and verify in Tavern.',prepareTargetHint:'This card still has authoring bindings. Prepare a Tavern target before delivering it for play.'});
+    // The installed language pack registers zh-tw with fallback en, not zh.
+    // Register our complete dictionary at that exact locale; do not alter the pack.
+    Object.assign(translations.zh,{preflight:'匯出前檢查',checkStale:'檢查已過期，請重新檢查。',checkScope:'僅檢查已儲存版本；實際酒館執行未驗證。',checkNext:'下一步',checkObject:'查看條目'});
+    Object.assign(translations.en,{preflight:'Preflight check',checkStale:'This check is stale; check again.',checkScope:'Stored revision only; Tavern runtime is untested.',checkNext:'Next action',checkObject:'Open entry'});
+    Object.assign(translations.zh,{checkDetails:'技術診斷',checkBlocked:'暫停匯出',checkReady:'檢查完成；匯出時會重新核對。',checkPending:'檢查中…',checkRaw:'完整檢查紀錄'});
+    Object.assign(translations.en,{checkDetails:'Technical diagnostics',checkBlocked:'Export paused',checkReady:'Check complete; export will check again.',checkPending:'Checking…',checkRaw:'Full check record'});
+    Object.assign(translations.zh,{"library": "角色卡管理庫", "librarySearch": "搜尋卡片文字", "libraryHint": "讀取所選資料夾的 PNG／JSON，最多 4 層子資料夾。來源永遠唯讀；不執行卡片 HTML、JS、EJS 或 regex。", "libraryAgent": "模糊自然語言：使用 DSH 對話 Agent", "libraryAgentHint": "在原對話輸入需求，例如「四個人在魔法塔裡」，請 Agent 使用 Library 工具展開查詢並讀少量候選原文判讀。查詢、候選片段和按需欄位會進入目前 DSH provider，可能產生 token 費用。本機搜尋／瀏覽不呼叫模型。數量、同場、否定與前提需逐項證據；證據不足應標存疑。", "libraryRebuild": "重建索引", "libraryComplete": "掃描完成（已排除項目見診斷）", "libraryIncomplete": "掃描不完整，未驗證來源保留；請看診斷", "libraryReadonly": "來源唯讀。來源與工作副本建立後不自動同步。", "libraryCopy": "在 Card Studio 編輯", "libraryDraft": "Card Studio 有未儲存草稿。請先返回儲存或處理草稿，再建立編輯副本。", "libraryVersions": "展開來源版本", "libraryIdentity": "僅完整主卡資料完全一致才合併；PNG 圖片、次要 metadata 與原始 bytes 仍各自保留。相似或修改過的卡分列。", "libraryCoverage": "有界原文；未讀欄位與執行條件未驗證", "libraryMore": "讀取後續原文", "libraryOmitted": "預算略過欄位數：", "libraryChoose": "選擇一張卡唯讀查看。", "field_alternate_greetings": "其他開場", "field_tags": "標籤", "field_creator": "作者"});
+    Object.assign(translations.en,{"library": "Character Library", "librarySearch": "Search card text", "libraryHint": "Read PNG/JSON from the selected folder, up to 4 subfolder levels. Sources are always readonly; card HTML, JS, EJS and regex are never executed.", "libraryAgent": "Natural language: use the DSH conversation Agent", "libraryAgentHint": "Ask the current conversation Agent to use Library tools, expand the query and judge a few candidates with original evidence. Query, candidate excerpts and requested fields enter the current DSH provider and may incur token costs. Local search and browsing make no model calls. Counts, same-scene relations, negation and prerequisites require evidence; insufficient evidence stays uncertain.", "libraryRebuild": "Rebuild index", "libraryComplete": "Scan complete (excluded items are diagnosed)", "libraryIncomplete": "Incomplete scan; unverified sources retained. See diagnostics.", "libraryReadonly": "Readonly source. Working copies never auto-sync with sources.", "libraryCopy": "Edit in Card Studio", "libraryDraft": "Card Studio has unsaved drafts. Return to save or handle them before creating an editing copy.", "libraryVersions": "Source versions", "libraryIdentity": "Groups require exact complete selected main card data. PNG images, inactive metadata and original bytes stay distinct. Similar or modified cards stay separate.", "libraryCoverage": "Bounded raw evidence; unread fields and runtime conditions are unverified", "libraryMore": "Read following text", "libraryOmitted": "Fields omitted by budget:", "libraryChoose": "Choose a card to view readonly.", "field_alternate_greetings": "Alternate greetings", "field_tags": "Tags", "field_creator": "Creator"});
+    Object.assign(translations.zh,{libraryOpenFolder:'開啟 Library 資料夾',libraryImages:'顯示 PNG 圖片（預設關閉）',libraryImageWaiting:'等待可見圖片',libraryImageUnavailable:'圖片預覽無法使用',libraryImageHint:'只讀取可見 PNG；離屏與換頁自動釋放，有界快取最多 4 張，本地縮圖最多 512 KiB／256 邊長；來源限 4096 邊長／16M pixels，8-bit 非交錯靜態 PNG。預覽移除 metadata／色彩描述檔；原卡不改。',libraryScanning:'正在掃描；已列出的卡片仍可選閱。',libraryIdle:'開啟頁面掃描；新增／移除來源後請手動刷新。'});
+    Object.assign(translations.en,{libraryOpenFolder:'Open Library folder',libraryImages:'Show PNG images (off by default)',libraryImageWaiting:'Waiting for visible image',libraryImageUnavailable:'Image preview unavailable',libraryImageHint:'Visible PNG only; offscreen/page changes release images, at most 4 cached, local thumbnails at most 512 KiB / 256 per side; source at most 4096 per side / 16M pixels, static noninterlaced 8-bit PNG. Metadata/profiles are removed from previews; originals are unchanged.',libraryScanning:'Scanning; listed cards remain selectable.',libraryIdle:'Scans on opening. Refresh after adding/removing sources.'});
+    Object.assign(translations.zh,{verifiedDownload:'下載已驗證檔案',verifiedDownloadReady:'檔案已驗證，請點選下載。連結將於兩分鐘內到期。',verifiedDownloadRequested:'瀏覽器已收到下載要求；若尚未儲存，可再次點選。'});
+    Object.assign(translations.en,{verifiedDownload:'Download verified file',verifiedDownloadReady:'File verified. Select the link to download; it expires within two minutes.',verifiedDownloadRequested:'The browser received the download request. Select again if the file was not saved.'});
+    translations['zh-tw']={...translations.zh};
+    function start(ctx){
+      mark('services-ready');
+      ctx.effect(()=>ctx.locale.register('cardstudio-scean',translations),'cardstudio locale');const t=ctx.locale.bind('cardstudio-scean');
+      let capabilities={skills:[],tools:[]},disposers=[],listeners=new Set(),notice='';
+      const changed=()=>{for(const fn of listeners)fn();};
+      let directoryPicker=null;
+      ctx.inject(['remote','remote.directoryPicker'],function cardstudioDirectoryPicker(scope){directoryPicker=scope.remote.directoryPicker;changed();scope.effect(()=>()=>{directoryPicker=null;changed();},'cardstudio folder picker lifecycle');});
+      let desktopRemote=null;
+      ctx.inject(['remote','remote.session'],function cardstudioFolder(scope){
+        desktopRemote=scope.remote.session;changed();
+        scope.effect(()=>()=>{desktopRemote=null;changed();},'cardstudio native folder lifecycle');
+      });
+      const diagnosticText=(code,message)=>{
+        const language=String(ctx.locale.getLocale?.()?.active??'en').toLowerCase();
+        if(!language.startsWith('zh')||/[\u3400-\u9fff]/.test(message??''))return message;
+        const kind=/REVISION|CONFLICT/.test(code)?'Revision':/TARGET/.test(code)?'Target':/ASSET|IMAGE|RASTER|UPLOAD|GENERATED/.test(code)?'Asset':/SESSION|LEASE|WORKSPACE/.test(code)?'Session':/CSS|HTML|SCRIPT|MACRO|EJS|MVU|EXTERNAL|UNSUPPORTED|PREVIEW/.test(code)?'Preview':'Generic';
+        return t('diagnostic'+kind);
+      };
+      const presentDiagnostics=value=>Array.isArray(value)?value.map(presentDiagnostics):value&&typeof value==='object'?Object.fromEntries(Object.entries(value).map(([k,v])=>[k,k==='message'&&typeof v==='string'&&value.code?diagnosticText(value.code,v):presentDiagnostics(v)])):value;
+      const notify=error=>{markError('operation-error',error);const code=/^([A-Z_]+):/.exec(error.message??'')?.[1]??'OPERATION';notice=diagnosticText(code,error.message)+' ('+code+')';changed();};
+      function useUpdates(){const [,rerender]=React.useState(0);React.useEffect(()=>{const fn=()=>rerender(x=>x+1);listeners.add(fn);return()=>listeners.delete(fn);},[]);}
+      const contextChanged=sessionId=>window.dispatchEvent(new CustomEvent('scean:context',{detail:{authoringSessionId:sessionId}}));
+      const send=async(sessionId,request)=>{
+        const changesSelection=['open','import','upload_finish','create','library_copy'].includes(request.action);
+        if(changesSelection)contextChanged(sessionId);
+        const observed=['workspace','acquire','capabilities','imports','documents','renew','release'].includes(request.action);
+        if(observed)mark('bridge-'+request.action+'-sent');
+        try{
+        const result=await ctx.remote.cardstudioScean.request(sessionId,request);
+        if(observed)mark('bridge-'+request.action+'-reply',{rpcOk:result.ok===true,hasValue:!!result.value,hasText:false});
+        if(!result.ok)throw new Error(result.error.message);
+        if(!result.value)throw new Error('Card Studio RPC unavailable.');
+        const decoded=result.value;
+        if(changesSelection||request.action==='acquire')contextChanged(sessionId);
+        if(observed)mark('bridge-'+request.action+'-decoded',{ok:decoded.ok===true});return decoded;
+        }catch(error){if(observed)markError('bridge-'+request.action+'-error',error);throw error;}
+      };
+      function hide(){for(const dispose of disposers.splice(0).reverse())dispose();capabilities={skills:[],tools:[]};notice='';}
+      const sendScope=async(sessionId,request)=>{const result=await ctx.remote.cardstudioScean.setAuthoringScope(sessionId,request);if(!result.ok)throw new Error(result.error.message);return result.value;};
+      const sendReview=async(sessionId,request)=>{const result=await ctx.remote.cardstudioScean.reviewMaterials(sessionId,request);if(!result.ok)throw new Error(result.error.message);return result.value;};
+      const sendMethod=async(sessionId,request)=>{const result=await ctx.remote.cardstudioScean.setCharacterMethod(sessionId,request);if(!result.ok)throw new Error(result.error.message);return result.value;};
+      const sendScean=async(sessionId,request)=>{const result=await ctx.remote.cardstudioScean.sceanControl(sessionId,request);if(!result.ok)throw new Error(result.error.message);return result.value;};
+      const sendLibrary=async(sessionId,request)=>{const result=await ctx.remote.cardstudioScean.setLibraryRoot(sessionId,request);if(!result.ok)throw new Error(result.error.message);return result.value;};
+      const sendDownload=async(sessionId,request)=>{const result=await ctx.remote.cardstudioScean.downloadExport(sessionId,request);if(!result.ok)throw new Error(result.error.message);return result.value;};
+      const controller=new WorkspaceClient({send,sendScope,sendReview,sendMethod,sendLibrary,sendScean,sendDownload,pageId:crypto.randomUUID(),notify,hide,present(){
+        mark('entry-requested');
+        const sequence=controller.sequence,SessionPanel=()=>h(Panel,{key:sequence,sequence});
+        try{
+          disposers.push(ctx.slots.inject('main',()=>{mark('main-slot-ready');try{const dispose=ctx.slots.register({name:'main',key:'local-cardstudio-scean'},SessionPanel);mark('main-registered');const libraryDispose=ctx.slots.register({name:'main',key:'local-cardstudio-scean-library'},()=>{useUpdates();return h(LibraryPanel,{key:sequence+':'+controller.librarySequence,sequence});});const materialDispose=ctx.slots.register({name:'main',key:'local-cardstudio-scean-materials'},()=>h(MaterialPanel,{key:sequence,sequence}));return ()=>{materialDispose();libraryDispose();dispose();};}catch(error){markError('main-registration-error',error);throw error;}}));
+          disposers.push(ctx.slots.inject('conversation.input.dock',()=>{mark('dock-slot-ready');try{const dispose=ctx.slots.register({name:'conversation.input.dock',id:'local-cardstudio-scean-entry',order:15},Dock);mark('dock-registered');return dispose;}catch(error){markError('dock-registration-error',error);throw error;}}));
+        }catch(error){markError('entry-registration-error',error);throw error;}
+      },show(value){capabilities=value;notice='';changed();}});
+      controller.libraryChanged=()=>changed();
+      controller.selectionChanged=()=>changed();
+      const resumeStudio=()=>{if(document.visibilityState!=='hidden')void controller.heartbeat(controller.sequence);};
+      window.addEventListener('focus',resumeStudio);window.addEventListener('pageshow',resumeStudio);window.addEventListener('online',resumeStudio);document.addEventListener('visibilitychange',resumeStudio);
+
+      controller.scopeChanged=value=>{capabilities={...capabilities,authoring_scope:value};changed();};
+      controller.methodChanged=(value,skills)=>{capabilities={...capabilities,character_method:value,...skills?{skills}:{}};changed();};
+      function CharacterMethodControl({sequence}){
+        useUpdates();const [pending,setPending]=React.useState(false),method=controller.characterMethod??capabilities.character_method;
+        const id='csscean-character-method-'+sequence;
+        return h('div',{'data-character-method':method?.name??'unknown',className:'csscean-box csscean-method'},
+          h('label',{htmlFor:id},'角色設計方法（本對話）'),
+          h('select',{id,'aria-label':'角色設計方法（本對話）',value:method?.name??'',disabled:pending||!method||method.locked||controller.phase!=='ready',onChange:e=>{const name=e.target.value;setPending(true);controller.task(controller.setCharacterMethod(name,sequence).catch(error=>{if(sequence===controller.sequence&&!controller.disposed)notify(error);}).finally(()=>setPending(false)));}},
+            ...(!method?.name?[h('option',{value:''},'設定無效；請開新對話')]:[]),...(method?.options??[]).map(option=>h('option',{key:option.name,value:option.name,disabled:!option.available},option.label+(!option.available?'（檔案不可用）':'')))),
+          h('p',{className:'csscean-muted csscean-method-current'},method?.label??'正在取得角色方法'),
+          h('p',{role:'note','aria-live':'polite',className:'csscean-muted'},method?.available===false?'所選方法不可用；不會自動切換。'+method.notice:method?.notice??''));
+      }
+      function ScopeControl({sequence}){
+        useUpdates();const [pending,setPending]=React.useState(false),scope=controller.authoringScope??capabilities.authoring_scope;
+        return h('div',{'data-authoring-scope':scope?.mode??'unknown',className:'csscean-box csscean-scope'},h('label',null,'Authoring Scope ',h('select',{'aria-label':'Authoring Scope',value:scope?.mode??'full',disabled:pending||!scope||controller.phase!=='ready',onChange:e=>{const mode=e.target.value;setPending(true);controller.task(controller.setAuthoringScope(mode,sequence).catch(notify).finally(()=>setPending(false)));}},h('option',{value:'content'},t('scopeContent')),h('option',{value:'full'},t('scopeFull')))),h('small',{className:'csscean-muted'},' '+t('scopeBoundary')));
+      }
+      function Dock(){mark('dock-rendered');useUpdates();const style={color:'var(--dsw-alias-label-primary)',background:'var(--dsw-alias-bg-layer-2)',border:'1px solid color-mix(in srgb,var(--dsw-alias-label-secondary,#B5C1CF) 80%,var(--dsw-alias-bg-layer-2,#202832))',borderRadius:4,padding:'8px 12px',boxSizing:'border-box',flex:'1 1 0',minWidth:0,width:'50%',minHeight:44,fontFamily:'"Microsoft JhengHei", "Segoe UI", sans-serif',fontSize:19,lineHeight:1.4,whiteSpace:'normal',overflowWrap:'anywhere'};return h('div',{'data-cardstudio-scean-dock':'dual',className:'csscean-dock',style:{display:'flex',gap:8,boxSizing:'border-box',width:'calc(100% - var(--dsh-composer-side-clearance,16px) - var(--dsh-composer-side-clearance,16px))',maxWidth:'var(--dsh-composer-card-max-width,952px)',margin:'0 auto',flex:'none'}},h('button',{className:'csscean-button',style,onClick:()=>ctx.layout.selectPanel('local-cardstudio-scean')},t('title')+(controller.phase==='ready'?'':' · '+t(controller.phase==='error'?'connectionError':'connecting'))),h('button',{className:'csscean-button',style,onClick:()=>ctx.layout.selectPanel('local-cardstudio-scean-library')},t('library')));}
+      const css=`
+/* Batch 1: shared presentation foundation only; native DOM and scroll roots retained. */
+.csscean-panel,.csscean-dock{--csscean-accent:var(--dsw-alias-brand-primary,#8EC0F4);--csscean-selected-bg:var(--dsw-alias-bg-multi-select,#1D3043);--csscean-warn:#E7BD79;--csscean-danger:#F1ABB4;--csscean-prose-size:20px}
+.csscean-method label{font-size:20px}.csscean-method select{display:block;width:100%;max-width:100%;min-width:0}.csscean-method-current{overflow-wrap:anywhere}
+.csscean-panel{container-type:inline-size;box-sizing:border-box;height:100%;min-height:0;overflow:auto;padding:20px 24px;color:var(--dsw-alias-label-primary,#E8EDF3);background:var(--dsw-alias-bg-base,#171D25);font-family:"Microsoft JhengHei","Segoe UI",sans-serif;font-size:var(--csscean-prose-size);line-height:1.55;overflow-wrap:anywhere}
+.csscean-panel *{box-sizing:border-box}.csscean-panel h2{font-size:26px;line-height:1.4;margin:0}.csscean-panel h3{font-size:22px;line-height:1.4;margin:0 0 12px}.csscean-panel p{margin:8px 0}.csscean-panel small{font-size:17px;line-height:1.5}.csscean-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0}.csscean-row>*{min-width:0;max-width:100%}.csscean-spacer{flex:1}.csscean-shell{max-width:1600px;margin:auto}.csscean-grid{display:grid;grid-template-columns:minmax(230px,300px) minmax(0,1fr);gap:24px;align-items:start}
+.csscean-button,.csscean-panel select,.csscean-panel input,.csscean-panel textarea{font:inherit;line-height:1.4;color:var(--dsw-alias-label-primary,#E8EDF3);background:var(--dsw-alias-bg-layer-2,#202832);border:1px solid color-mix(in srgb,var(--dsw-alias-label-secondary,#B5C1CF) 80%,var(--dsw-alias-bg-layer-2,#202832));border-radius:4px;padding:8px 12px;max-width:100%;min-width:0}
+.csscean-panel select,.csscean-panel input:not([type=checkbox]){font-size:20px;min-height:44px}.csscean-panel select{width:100%;color-scheme:light dark}.csscean-panel option{color:var(--dsw-alias-label-primary,#E8EDF3);background:var(--dsw-alias-bg-layer-2,#202832)}.csscean-panel input[type=checkbox]{width:20px;height:20px;vertical-align:middle;accent-color:var(--csscean-accent)}
+.csscean-panel .csscean-button,.csscean-dock .csscean-button{font-size:19px;line-height:1.4;cursor:pointer;min-height:44px;white-space:normal;overflow-wrap:anywhere}.csscean-panel .csscean-button:hover:not(:disabled),.csscean-dock .csscean-button:hover:not(:disabled){border-color:var(--dsw-alias-label-secondary,#B5C1CF);background:var(--dsw-alias-interactive-bg-hover-solid,#273342)}
+.csscean-panel .csscean-button:disabled,.csscean-dock .csscean-button:disabled,.csscean-panel input:disabled,.csscean-panel select:disabled,.csscean-panel textarea:disabled{opacity:1;color:var(--dsw-alias-label-secondary,#B5C1CF);background:var(--dsw-alias-bg-base,#171D25);cursor:default}
+/* Daily appearance can use a low-contrast brand color and a #root focus rule. Keep the correction inside Card Studio. */
+.csscean-panel :focus-visible,.csscean-dock .csscean-button:focus-visible,#root .csscean-panel :focus-visible,#root .csscean-dock .csscean-button:focus-visible{outline:2px solid var(--dsw-alias-label-primary,#E8EDF3);outline-offset:3px}
+.csscean-panel textarea{display:block;width:100%;min-height:180px;resize:vertical;font-size:20px;line-height:1.5}.csscean-panel textarea.csscean-body{min-height:clamp(260px,43vh,650px);font-size:20px}.csscean-panel textarea.csscean-keys{min-height:78px;font-size:17px}.csscean-panel pre{white-space:pre-wrap;overflow-wrap:anywhere;font:17px/1.5 Consolas,monospace;max-height:340px;overflow:auto}.csscean-panel .csscean-code,.csscean-panel [data-view=config] textarea,.csscean-panel [data-details=advanced] textarea{font:17px/1.5 Consolas,monospace}.csscean-panel .csscean-code{min-height:280px}
+.csscean-muted{font-size:17px;line-height:1.5;color:var(--dsw-alias-label-secondary,#B5C1CF)}.csscean-error{padding:12px;border:1px solid var(--dsw-alias-border-l1,#425063);border-radius:6px;overflow-wrap:anywhere}.csscean-list{display:flex;flex-direction:column;gap:8px}.csscean-list button{text-align:left}.csscean-workcopies{max-height:260px;overflow-y:auto;overscroll-behavior:contain}.csscean-workcopies button{overflow-wrap:anywhere}.csscean-workcopies button[aria-pressed=true]{border-color:var(--csscean-accent);background:var(--csscean-selected-bg);font-weight:600}
+.csscean-panel details{margin-top:16px}.csscean-panel summary{cursor:pointer;font-size:18px;line-height:1.5}.csscean-panel label{display:block;font-size:18px;line-height:1.5;margin:12px 0 8px}.csscean-panel label input:not([type=checkbox]){display:block;width:100%;margin-top:8px}.csscean-box{border:1px solid var(--dsw-alias-border-l1,#425063);border-radius:6px;padding:16px;background:var(--dsw-alias-bg-layer-2,#202832);min-width:0}.csscean-side{display:grid;gap:16px}.csscean-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.csscean-tile{text-align:left;min-height:105px;padding:16px;display:flex;flex-direction:column;gap:8px;overflow-wrap:anywhere}.csscean-tile strong{font-size:20px;line-height:1.5}.csscean-tile>span.csscean-muted{font-size:20px;line-height:1.55}.csscean-drop{padding:16px;border:1px dashed var(--dsw-alias-border-l1,#425063);border-radius:4px;cursor:pointer}.csscean-drop[data-drag=true]{outline:2px solid var(--csscean-accent)}
+.csscean-view{min-width:0}.csscean-view-title{border-bottom:1px solid var(--dsw-alias-border-l1,#425063);padding-bottom:12px;margin-bottom:16px}.csscean-booklist{max-height:65vh;overflow:auto;overscroll-behavior:contain;min-height:120px}.csscean-bookrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;width:100%;padding:16px}.csscean-bookrow strong,.csscean-bookrow small{display:block;overflow-wrap:anywhere}.csscean-bookrow small{margin-top:4px}.csscean-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 16px}.csscean-footer{position:sticky;bottom:0;background:var(--dsw-alias-bg-layer-2,#202832);border-top:1px solid var(--dsw-alias-border-l1,#425063);padding-top:12px;margin-top:16px;z-index:1}.csscean-status{min-height:26px}
+.csscean-overlay{position:fixed;inset:0;z-index:1100;display:grid;place-items:center;padding:24px;background:var(--dsw-alias-mask,#0008)}.csscean-dialog{width:min(560px,100%);padding:24px;max-height:100%;overflow:auto;background:var(--dsw-alias-bg-layer-2,#202832);box-shadow:0 8px 40px #0004}.csscean-dialog p{margin:16px 0}.csscean-path{overflow-wrap:anywhere}.csscean-head{margin-bottom:24px}.csscean-entry-title{font-size:22px;line-height:1.4;font-weight:600}.csscean-section-space{margin-top:16px}.csscean-editor-form{margin:0;padding:0;border:0;min-width:0}.csscean-skills code{font:17px/1.5 Consolas,monospace;overflow-wrap:anywhere}
+.csscean-library-status{height:51px;min-height:51px;font-size:17px;line-height:1.5;white-space:normal;overflow-wrap:anywhere}.csscean-library-status[data-error=true]{height:auto;min-height:51px}.csscean-library-image{margin:8px 0;width:128px;max-width:100%}.csscean-library-image img,.csscean-library-image>span{display:flex;align-items:center;justify-content:center;width:128px;height:128px;max-width:100%;object-fit:contain;background:var(--dsw-alias-bg-base,#171D25);border-radius:4px;overflow:hidden}.csscean-library-image figcaption{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.csscean-library-toggle input{vertical-align:middle}
+.csscean-authoring-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}.csscean-authoring-tabs .csscean-button{min-height:52px;font-size:20px}.csscean-authoring-tabs [aria-pressed=true]{border-color:var(--csscean-accent);background:var(--csscean-selected-bg);font-weight:600}.csscean-preview-shell{width:100%;overflow:auto;padding:12px;border:1px solid var(--dsw-alias-border-l1,#425063);border-radius:4px}.csscean-preview-frame{display:block;border:1px solid var(--dsw-alias-border-l1,#425063);height:520px;background:white;max-width:none}.csscean-asset-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;overflow-wrap:anywhere}.csscean-diagnostics{max-height:220px;overflow:auto}.csscean-sources{max-height:220px;overflow:auto}.csscean-sources button[aria-pressed=true]{font-weight:600}.csscean-panel .csscean-preview-width{width:100%;max-width:240px}.csscean-state-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.csscean-workcopies,.csscean-booklist,.csscean-sources,.csscean-diagnostics{padding:6px}
+.csscean-panel,.csscean-workcopies,.csscean-booklist,.csscean-sources,.csscean-diagnostics,.csscean-panel pre,.csscean-preview-shell{scrollbar-color:var(--dsw-alias-border-l1,#425063) var(--dsw-alias-bg-base,#171D25)}
+@container(max-width:950px){.csscean-grid{grid-template-columns:minmax(0,1fr)}.csscean-side{grid-template-columns:repeat(2,minmax(0,1fr))}.csscean-side>.csscean-skills{grid-column:1/-1}}
+@container(max-width:580px){.csscean-side,.csscean-fields,.csscean-tiles,.csscean-state-grid{grid-template-columns:1fr}.csscean-side>.csscean-skills{grid-column:auto}.csscean-box{padding:16px}.csscean-panel h2{font-size:22px}.csscean-view-title{align-items:flex-start}}
+@media(max-width:950px){.csscean-grid{grid-template-columns:minmax(0,1fr)}.csscean-side{grid-template-columns:repeat(2,minmax(0,1fr))}.csscean-side>.csscean-skills{grid-column:1/-1}.csscean-booklist{max-height:60vh}}
+@media(max-width:580px){.csscean-side,.csscean-fields,.csscean-tiles,.csscean-state-grid{grid-template-columns:1fr}.csscean-side>.csscean-skills{grid-column:auto}.csscean-box{padding:16px}.csscean-panel{padding:12px}.csscean-panel h2{font-size:22px}.csscean-view-title{align-items:flex-start}}
+
+/* Batch 2: main authoring presentation; no transport, state or preview-content changes. */
+.csscean-scope>label{display:grid;grid-template-columns:auto minmax(0,350px);align-items:center;gap:12px;margin:0 0 8px}.csscean-scope select{width:min(100%,350px)}.csscean-scope>small{display:block;font-size:17px;line-height:1.5}
+.csscean-workcopies .csscean-button{border-left-width:3px}.csscean-workcopies .csscean-button[aria-pressed=true]{border-left-color:var(--csscean-accent)}.csscean-workcopy-name{font-size:20px;line-height:1.5}
+.csscean-panel .csscean-mono,.csscean-sources .csscean-button{font:17px/1.5 Consolas,monospace;overflow-wrap:anywhere}.csscean-bookrow strong{font-size:22px;line-height:1.4}
+.csscean-toolbar{gap:8px;flex-wrap:wrap}.csscean-authoring-tabs .csscean-button{border-bottom-width:3px}.csscean-authoring-tabs [aria-pressed=true]{border-bottom-color:var(--csscean-accent)}.csscean-sources .csscean-button{border-left-width:3px}.csscean-sources [aria-pressed=true]{border-left-color:var(--csscean-accent);background:var(--csscean-selected-bg)}
+.csscean-panel .csscean-primary:not(:disabled){background:var(--dsw-alias-button-primary-fill,#9DCAF6);color:var(--dsw-alias-label-primary-inverted,#102235);border-color:var(--csscean-accent);font-weight:600}.csscean-panel .csscean-primary:hover:not(:disabled){background:var(--dsw-alias-button-primary-fill,#9DCAF6);border-color:var(--dsw-alias-label-primary,#E8EDF3)}
+.csscean-panel .csscean-danger{border-color:var(--csscean-danger)}.csscean-panel .csscean-maintenance{color:var(--dsw-alias-label-secondary,#B5C1CF);background:var(--dsw-alias-bg-base,#171D25)}
+.csscean-panel [data-view=overview]>[data-preflight],.csscean-panel [data-view=overview]>[data-delivery],.csscean-panel [data-view=overview]>[data-details=authoring-backups]{border-top:1px solid var(--dsw-alias-border-l1,#425063);padding-top:16px;margin-top:20px}
+@container(max-width:580px){.csscean-scope>label{grid-template-columns:minmax(0,1fr)}.csscean-dialog{padding:16px}}
+@media(max-width:580px){.csscean-scope>label{grid-template-columns:minmax(0,1fr)}.csscean-dialog{padding:16px}.csscean-overlay{padding:12px}}
+
+/* Batch 3: catalog, candidate review and source overview presentation only. */
+.csscean-material-card{padding:24px;border-radius:4px;margin-top:14px;border-left-width:3px}.csscean-material-card[data-selected=true]{border-left-color:var(--csscean-accent);background:var(--csscean-selected-bg)}.csscean-material-card>label{display:flex;align-items:flex-start;flex-wrap:wrap;gap:8px;margin:0 0 12px}.csscean-material-card>label input{flex:none;margin-top:5px}.csscean-material-title{font-size:22px;line-height:1.4;font-weight:600;overflow-wrap:anywhere}.csscean-summary{font-size:20px;line-height:1.55;color:var(--dsw-alias-label-primary,#E8EDF3)}.csscean-material-actions{gap:8px;margin:16px 0 0}
+.csscean-panel pre.csscean-prose{font:20px/1.55 "Microsoft JhengHei","Segoe UI",sans-serif;white-space:pre-wrap;overflow-wrap:anywhere}.csscean-panel [data-material-reader]{padding:24px}
+.csscean-material-tabs{gap:8px;margin:16px 0}.csscean-material-tabs .csscean-button[aria-pressed]{border-bottom-width:3px}.csscean-material-tabs [aria-pressed=true]{border-bottom-color:var(--csscean-accent);background:var(--csscean-selected-bg);font-weight:600}
+.csscean-review{padding:24px}.csscean-review .csscean-candidate{border:0;border-top:1px solid var(--dsw-alias-border-l1,#425063);border-radius:0;padding:20px 0;background:transparent;margin-top:20px}.csscean-review .csscean-candidate[data-selected=true]{border-top-color:var(--csscean-accent)}.csscean-review [data-material-editor]{font:20px/1.5 "Microsoft JhengHei","Segoe UI",sans-serif}.csscean-review .csscean-candidate>label{font-size:18px}.csscean-material-source>strong{font-size:22px;line-height:1.4}.csscean-material-source [data-extraction-state]{font-size:17px;line-height:1.5;overflow-wrap:anywhere}
+@container(max-width:580px){.csscean-material-card,.csscean-review,.csscean-panel [data-material-reader]{padding:16px}}
+@media(max-width:580px){.csscean-material-card,.csscean-review,.csscean-panel [data-material-reader]{padding:16px}}
+
+/* Batch 4: readonly, explicit status and Library presentation; gallery unchanged. */
+.csscean-panel code,.csscean-panel .csscean-path,.csscean-panel .csscean-tile>.csscean-path{font:17px/1.5 Consolas,monospace;overflow-wrap:anywhere}.csscean-panel[data-page=library] .csscean-tile>span.csscean-muted{font-size:17px;line-height:1.5}.csscean-panel[data-page=library] .csscean-side{display:block}
+.csscean-notice,.csscean-badge{font-size:17px;line-height:1.5;overflow-wrap:anywhere;color:var(--dsw-alias-label-primary,#E8EDF3)}.csscean-notice{padding:12px;border:1px solid var(--dsw-alias-border-l1,#425063);border-radius:4px;background:var(--dsw-alias-bg-base,#171D25)}.csscean-badge{display:inline-block;padding:4px 8px;border:1px solid var(--dsw-alias-border-l1,#425063);border-radius:4px;max-width:100%}
+.csscean-error{font-size:17px;line-height:1.5;border-left:3px solid var(--csscean-danger);background:var(--dsw-alias-bg-base,#171D25)}.csscean-readonly{border-left-width:3px}.csscean-warn,.csscean-partial,[data-check-status=stale],[data-coverage=partial],[data-material-coverage=partial],[data-material-coverage=summary-only],[data-extraction-state=source_changed]{border-left:3px solid var(--csscean-warn)}[data-check-status=stale]{padding-left:12px}[data-extraction-state]{padding:4px 8px;border:1px solid var(--dsw-alias-border-l1,#425063);border-radius:4px;overflow-wrap:anywhere}[data-extraction-state=source_changed]{border-left:3px solid var(--csscean-warn)}
+.csscean-panel[data-page=library] .csscean-tile strong{font-size:22px;line-height:1.4}.csscean-panel[data-page=library] .csscean-tile{border-left-width:3px;width:100%}.csscean-panel[data-page=library] .csscean-tile[data-selected=true]{border-left-color:var(--csscean-accent);background:var(--csscean-selected-bg)}.csscean-library-selection{padding:24px}.csscean-library-selection[data-stale=true]{border-left:3px solid var(--csscean-warn)}.csscean-library-selection>[data-view=readonly-document]{border:0;padding:0;background:transparent}.csscean-panel[data-page=library] .csscean-summary{font-size:20px;line-height:1.55}
+@container(max-width:580px){.csscean-library-selection{padding:16px}}
+@media(max-width:580px){.csscean-library-selection{padding:16px}}
+@media(max-height:650px){.csscean-footer{position:static}}
+.csscean-verified-download{display:inline-block;text-decoration:none}.csscean-verified-download:focus-visible{outline:3px solid var(--csscean-accent);outline-offset:3px}
+`;
+      // Drafts stay in this Client's memory while changing panels/Sessions. No card text is logged or sent to a model.
+      const viewCache=new Map(),compatibilityDismissed=new Set(),emptyList={items:[],total:0,offset:0,limit:50};
+      const cardFields=['name','description','personality','scenario','first_mes','mes_example','creator_notes','system_prompt','post_history_instructions'];
+      const json=value=>JSON.stringify(value,null,2);
+      const entryKnown=['id','uid','name','comment','keys','key','secondary_keys','keysecondary','enabled','disable','content'];
+      function entryDraft(row){const base=row?.entry??{keys:[],content:'',enabled:true,insertion_order:0,extensions:{}};return {id:row?.entry_id??'',revision:row?.revision,base,name:base.name??'',comment:base.comment??'',keys:(base.keys??base.key??[]).join('\n'),secondary:(base.secondary_keys??base.keysecondary??[]).join('\n'),enabled:base.enabled??!base.disable,content:base.content??'',extra:json(Object.fromEntries(Object.entries(base).filter(([key])=>!entryKnown.includes(key))))};}
+      function changedEntry(draft){const initial=entryDraft({entry:draft.base}),changes={};for(const key of ['name','comment','content'])if(draft[key]!==initial[key])changes[key]=draft[key];for(const [field,key] of [['keys','keys'],['secondary','secondary_keys']])if(draft[field]!==initial[field])changes[key]=draft[field].split('\n').filter(value=>value.length>0);if(draft.enabled!==initial.enabled)changes.enabled=draft.enabled;
+        if(draft.extra!==initial.extra){const value=JSON.parse(draft.extra);if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).some(key=>entryKnown.includes(key)))throw new Error('Advanced fields must be an object without IDs or fields edited above.');for(const [key,item] of Object.entries(value))if(JSON.stringify(item)!==JSON.stringify(draft.base[key]))changes[key]=item;}return changes;}
+      const authoringBlank=()=>({dynamic:'{}',dynamicBase:'{}',tab:'source',components:[],component:null,source:'',sourceBase:'',target:'first_mes',entryId:'',fixture:'{}',fixtureBase:'{}',contract:'{}',contractBase:'{}',assets:[],character:'maliyah',expression:'neutral',viewport:390,preview:null,state:'{}',oldText:'',newText:''});
+      const expressions=['neutral','happy','angry','sad','embarrassed','surprised'];
+      // Detached template contents are inert: card markup is never mounted in the host.
+      // Only already-projected raster data is decoded by trusted product code.
+      async function decodePreviewImages(result){
+        const template=document.createElement('template');template.innerHTML=result.html;const diagnostics=[...(result.diagnostics??[])];
+        for(const element of template.content.querySelectorAll('img')){
+          const source=element.getAttribute('src')??'';let valid=/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/.test(source)&&source.length<=48*1024*1024;
+          if(valid){const image=new Image();let timer;try{image.src=source;await Promise.race([image.decode(),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Image decoding timed out')),3000);})]);valid=image.naturalWidth>0&&image.naturalHeight>0;}catch{valid=false;}finally{clearTimeout(timer);image.removeAttribute('src');}}
+          if(!valid){const placeholder=document.createElement('span');placeholder.textContent='Image unavailable';placeholder.setAttribute('role','img');placeholder.setAttribute('aria-label','Image unavailable');element.replaceWith(placeholder);diagnostics.push({code:'RASTER_DECODE_FAILED',message:'Raster could not be decoded; the preview uses a placeholder.'});}
+        }
+        return {...result,html:'<!doctype html>'+template.innerHTML,diagnostics};
+      }
+      const isDirty=v=>v.route==='authoring'?!!v.authoring&&['source','fixture','contract','dynamic'].some(key=>v.authoring[key]!==v.authoring[key+'Base']):v.route==='create'?!!v.createName:v.route==='field'?v.text!==(v.doc?.card.data[v.field]??''):v.route==='entry'&&v.entry?['name','comment','keys','secondary','enabled','content','extra'].some(key=>v.entry[key]!==entryDraft({entry:v.entry.base})[key]):v.route==='config'?v.config!==v.configBase:false;
+      /* W19_VERIFIED_DOWNLOAD_START */
+      function createVerifiedDownload({createURL,revokeURL,onChange,now=Date.now,setTimer=setTimeout,clearTimer=clearTimeout}){
+        let row=null,timer=null,closed=false;
+        const clear=()=>{clearTimer(timer);timer=null;if(row){revokeURL(row.url);row=null;onChange(null);}};
+        const matches=identity=>row&&identity.sequence===row.sequence&&identity.session_id===row.session_id&&identity.document_id===row.document_id&&identity.revision===row.revision&&identity.selected_document_id===row.document_id&&identity.selected_revision===row.revision&&row.expires_at>now();
+        return {get current(){return row;},clear,
+          publish(blob,receipt,identity){
+            clear();if(closed)throw new Error('Download page is closed.');
+            if(identity.document_id!==receipt.document_id||identity.revision!==receipt.revision||identity.selected_document_id!==receipt.document_id||identity.selected_revision!==receipt.revision)throw new Error('Card selection changed before download verification completed.');
+            row={url:createURL(blob),filename:receipt.filename,size:receipt.size,sha256:receipt.sha256,document_id:receipt.document_id,revision:receipt.revision,sequence:identity.sequence,session_id:identity.session_id,expires_at:now()+120000,requested:false};
+            timer=setTimer(clear,120000);onChange(row);return row;
+          },
+          usable(identity){if(!matches(identity)){clear();return false;}return true;},
+          invalidate(identity){if(row&&!matches(identity))clear();},
+          requested(){if(!row)return;clearTimer(timer);row={...row,requested:true};timer=setTimer(clear,Math.max(0,Math.min(30000,row.expires_at-now())));onChange(row);},
+          close(){closed=true;clear();}
+        };
+      }
+      /* W19_VERIFIED_DOWNLOAD_END */
+      function Panel({sequence}){
+        mark('panel-rendered');useUpdates();
+        const sessionId=controller.current?.id,initial=viewCache.get(sessionId)??{files:[],documents:emptyList,allDocuments:emptyList,allOpen:false,chosen:'',type:'card',doc:null,route:'overview',field:'first_mes',text:'',entries:[],entry:null,query:'',scroll:0,config:'{}',configBase:'{}',output:'',target:'0',exportName:''};
+        const [v,setView]=React.useState(initial),[busy,setBusy]=React.useState(false),[status,setStatus]=React.useState(''),[dialog,setDialog]=React.useState(null),[drag,setDrag]=React.useState(false),[folderAvailable,setFolderAvailable]=React.useState(false),[upload,setUpload]=React.useState(null),[verifiedDownload,setVerifiedDownload]=React.useState(null);
+        const live=React.useRef(true),lock=React.useRef(false),state=React.useRef(v),bookList=React.useRef(null),fileInput=React.useRef(null),dialogRef=React.useRef(null),uploadRef=React.useRef(null),assetUploadRef=React.useRef(null);
+        const downloadRef=React.useRef(null);
+        if(!downloadRef.current)downloadRef.current=createVerifiedDownload({createURL:blob=>URL.createObjectURL(blob),revokeURL:url=>URL.revokeObjectURL(url),onChange:value=>{if(live.current)setVerifiedDownload(value);}});
+        state.current=v;const transportCall=controller.bind(sequence),call=async(...args)=>{const result=await transportCall(...args);if(result?.preflight)setV({preflight:result.preflight});return result;},selection=controller.selectionStatus,selectionStale=!!v.doc&&!!selection&&(v.doc.id!==selection.document_id||v.doc.revision!==selection.revision),ready=controller.phase==='ready'&&!selectionStale,valid=()=>live.current&&sequence===controller.sequence;
+        const setV=update=>{if(!valid())return;const previous=state.current,next={...previous,...(typeof update==='function'?update(previous):update)};viewCache.set(sessionId,next);state.current=next;setView(next);};
+        const downloadIdentity=()=>{const doc=state.current.doc,selected=controller.selectionStatus;return {sequence:controller.sequence,session_id:controller.current?.id,document_id:doc?.id,revision:doc?.revision,selected_document_id:selected?.document_id??doc?.id,selected_revision:selected?.revision??doc?.revision};};
+        React.useEffect(()=>{downloadRef.current.invalidate(downloadIdentity());},[sequence,sessionId,v.doc?.id,v.doc?.revision,selection?.document_id,selection?.revision]);
+        React.useEffect(()=>()=>{live.current=false;downloadRef.current.close();if(assetUploadRef.current)call('asset_upload_abort',{upload_id:assetUploadRef.current}).catch(()=>{});if(uploadRef.current){uploadRef.current.cancelled=true;if(uploadRef.current.id)call('upload_abort',{upload_id:uploadRef.current.id}).catch(()=>{});}},[]);
+        React.useEffect(()=>{let active=true;setFolderAvailable(false);const remote=desktopRemote;if(remote?.canOpenWorkspacePath&&remote?.openWorkspacePath)remote.canOpenWorkspacePath().then(result=>{if(active&&valid())setFolderAvailable(result?.ok===true&&result.value===true);}).catch(()=>{});return()=>{active=false;};},[desktopRemote]);
+        React.useEffect(()=>{if(v.route==='book'&&bookList.current)bookList.current.scrollTop=v.scroll;},[v.route]);
+        React.useEffect(()=>{if(!dialog)return;const previous=document.activeElement;dialogRef.current?.querySelector('button')?.focus();return()=>previous?.isConnected&&previous.focus();},[dialog]);
+        const run=async(fn,label)=>{if(!valid()||lock.current)return;lock.current=true;setBusy(true);notice='';setStatus(label??t('working'));try{await fn();if(valid())setStatus(t('done')+' · '+new Date().toLocaleTimeString());}catch(error){if(valid()){if(error.details?.check)setV({preflight:error.details.check});notify(error);setStatus(t('failed'));}}finally{lock.current=false;if(valid())setBusy(false);}};
+        const confirm=(message,fn)=>setDialog({message,fn});
+        const guard=fn=>{if(isDirty(state.current))confirm(t('discardPrompt'),fn);else fn();};
+        const go=route=>guard(()=>setV(previous=>({route,text:previous.doc?.card.data[previous.field]??'',config:previous.configBase,entry:null,createName:'',authoring:previous.authoring?{...previous.authoring,source:previous.authoring.sourceBase,fixture:previous.authoring.fixtureBase,contract:previous.authoring.contractBase}:undefined})));
+        const refreshAll=async(offset=state.current.allDocuments.offset)=>{const list=await call('documents',{scope:'all',offset});setV({allDocuments:list});};
+        const lists=async()=>{const current=state.current;const [files,documents]=await Promise.all([call('imports'),call('documents',{offset:current.documents.offset})]);setV({files,documents});if(current.allOpen)await refreshAll();return documents;};
+        const read=async(id,{select=true,route='overview'}={})=>{const doc=await call(select?'open':'read',{document_id:id});const [book,config]=await Promise.all([call('book_list',{document_id:id}),call('book_config',{document_id:id})]);if(!valid())return;const changed=state.current.doc?.id!==id;setV({doc,entries:book.entries,config:json(config.config??{}),configBase:json(config.config??{}),route,entry:null,text:doc.card.data[state.current.field]??'',exportName:`cardstudio-${id.slice(0,8)}-r${doc.revision}.${doc.format==='png'?'png':'json'}`,...changed?{sceanRun:null,sceanOpeningPending:false,sceanInspector:null,query:'',scroll:0,output:'',preflight:null,authoring:authoringBlank(),sceanCharacters:doc.card.data.extensions?.scean?.characters?JSON.stringify(doc.card.data.extensions.scean.characters,null,2):''}:{}});if(select)await lists();};
+        const refresh=async({restore=false}={})=>{const documents=await lists(),current=state.current;if(!valid())return;const id=restore?documents.selectedId:current.doc?.id;if(restore&&isDirty(current)&&current.doc?.id!==documents.selectedId){notify(new Error('此對話的選卡已在另一頁變更；未保存文字已保留，請先複製文字後重新讀取。'));return;}if(id&&!isDirty(current)){await read(id,{select:false,route:current.route==='entry'?'book':current.route});if(current.route==='authoring')await loadAuthoring();}};
+        React.useEffect(()=>{if(ready)run(()=>refresh({restore:true}),t('refreshing'));},[ready]);
+        const args=()=>({document_id:state.current.doc.id,expected_revision:state.current.doc.revision});
+        const sceanRequest=async request=>{const documentId=state.current.doc?.id,result=await controller.sceanControl(request,sequence);if(!valid()||documentId!==state.current.doc?.id)throw new Error('Discarded SCEAN response from previous card.');return result;};
+        const startScean=async()=>{
+          if(isDirty(state.current))throw new Error('請先儲存目前編輯，再傳送已保存版本。');
+          const current=state.current,preset=JSON.parse(current.sceanPreset??'{"id":"scean-default","revision":1,"instructions":"以繁體中文進行角色扮演；保留未知狀態。"}');
+          const result=await sceanRequest({mode:'start',document_id:current.doc.id,expected_revision:current.doc.revision,preset,
+            ...(current.sceanWorldbook?{worldbook_document_id:current.sceanWorldbook,worldbook_revision:Number(current.sceanWorldbookRevision)}:{}),
+            characters:parseSceanRoster(current.sceanCharacters)});
+          if(!valid()||state.current.doc?.id!==current.doc.id||state.current.doc?.revision!==current.doc.revision)return;
+          setV({sceanRun:result.runId?result:null,sceanOpeningPending:result.openingRequired===true,sceanInspector:null});
+          window.dispatchEvent(new CustomEvent('scean:open',{detail:{runId:result.runId,authoringSessionId:sessionId,documentId:current.doc.id}}));ctx.layout.selectPanel('local-scean');
+        };
+        function parseSceanRoster(value){
+          if(!value?.trim())throw new Error('SCEAN_ROSTER_REQUIRED：請設定名冊，至少一位角色的穩定 ID、名稱與專屬背景。');
+          const parsed=JSON.parse(value),rows=Array.isArray(parsed)?parsed:parsed?.characters;
+          if(!Array.isArray(rows)||!rows.length||rows.length>100)throw new Error('SCEAN_ROSTER_REQUIRED：名冊需要 1–100 位已識別角色。');
+          const ids=new Set();for(const actor of rows){
+            if(!actor||typeof actor.id!=='string'||!/^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/.test(actor.id)||/^(?:con|prn|aux|nul|com[1-9]|lpt[1-9]|constructor|prototype)$/i.test(actor.id)||typeof actor.name!=='string'||!actor.name.trim()||actor.name.length>500||typeof actor.description!=='string'||!actor.description.trim()||actor.description.length>100000||ids.has(actor.id))throw new Error('SCEAN_CHARACTERS：角色需要合法且不重複的 ID、名稱與專屬背景；同名角色用不同 ID 辨識。');
+            ids.add(actor.id);
+          }return rows;
+        }
+        let rosterRows=[],rosterIssue='';try{rosterRows=parseSceanRoster(v.sceanCharacters);}catch(e){rosterIssue=e.message;}
+        const sceanPanel=v.doc?h('details',{className:'csscean-box','data-scean-integration':'saved-snapshot'},h('summary',null,'SCEAN 舞台測試與唯讀 Inspector'),
+          h('p',{className:'csscean-muted'},'已保存卡 '+v.doc.id+' · revision '+v.doc.revision+'。交接後於舞臺選開場；只有一個有效開場會直接開局。之後改卡不會污染舊 Run。未保存的編輯不會傳送。'),
+          h('label',null,'固定 Preset（JSON）',h('textarea',{'data-scean':'preset',className:'csscean-code',value:v.sceanPreset??'{"id":"scean-default","revision":1,"instructions":"以繁體中文進行角色扮演；保留未知狀態。"}',onChange:e=>setV({sceanPreset:e.target.value})})),
+          h('p',{className:'csscean-muted'},'預設使用卡內世界書。若要指定獨立世界書，填入本工作區已保存文件 ID 與 revision；由原權限接口讀取。'),
+          h('label',null,'獨立世界書文件 ID（可留空）',h('input',{'data-scean':'worldbook',value:v.sceanWorldbook??'',onChange:e=>setV({sceanWorldbook:e.target.value})})),
+          h('label',null,'世界書 revision',h('input',{type:'number',min:0,value:v.sceanWorldbookRevision??0,onChange:e=>setV({sceanWorldbookRevision:e.target.value})})),
+          h('label',null,'角色名冊（單人／群像均必填；JSON 陣列，每人 id、name、description）',h('textarea',{'data-scean':'characters','aria-label':'角色名冊（必填 JSON）',className:'csscean-code',value:v.sceanCharacters??'',onChange:e=>setV({sceanCharacters:e.target.value}),placeholder:'[{"id":"actor-1","name":"角色名稱","description":"該角色可知的背景；未知處請明示未知"}]'})),
+          h('label',null,'匯入名冊 JSON（只讀取所選檔案，確認後才建立新 Run）',h('input',{type:'file',accept:'.json','data-scean':'roster-file',disabled:busy||!ready,onChange:e=>{const file=e.target.files?.[0];e.target.value='';if(file)run(async()=>{if(file.size>1024*1024)throw new Error('名冊檔案上限 1 MiB。');const content=await file.text();const rows=parseSceanRoster(content);setV({sceanCharacters:JSON.stringify(rows,null,2)});});}})),
+          h('button',{className:'csscean-button','data-scean':'roster-add',disabled:busy||!ready,onClick:()=>{let rows=[];try{rows=parseSceanRoster(state.current.sceanCharacters);}catch{if(state.current.sceanCharacters?.trim())return;}let n=rows.length+1;while(rows.some(x=>x.id==='actor-'+n))n++;setV({sceanCharacters:JSON.stringify([...rows,{id:'actor-'+n,name:'',description:''}],null,2)});}},'新增角色欄位（請填名稱及背景）'),
+          h('p',{className:'csscean-muted'},'不會從卡名或自然語言猜名冊，也不建立 main 包含全員。ID 是記憶 scope；同名角色必須使用不同 ID。CR 一次只諮詢一個 ID。未知身份先在此確認；背景未知請明示，勿杜撰。名冊只凍結進新 Run，不更改舊 Run。'),
+          rosterIssue?h('p',{role:'status','data-scean':'roster-error',className:'csscean-error'},rosterIssue):h('ul',{'data-scean':'roster-summary'},...rosterRows.map(actor=>h('li',{key:actor.id},actor.name+' ['+actor.id+'] · '+actor.description.slice(0,100)))),
+          h('div',{className:'csscean-row'},h('button',{'data-scean':'start',className:'csscean-button',disabled:busy||!ready||isDirty(v)||v.doc.type!=='card'||!!rosterIssue,onClick:()=>run(startScean)},'交接已保存 r'+v.doc.revision+' 到舞臺／開新故事'),
+            v.sceanRun?h('button',{className:'csscean-button',disabled:busy||!ready,onClick:()=>{window.dispatchEvent(new CustomEvent('scean:open',{detail:{runId:v.sceanRun.runId,authoringSessionId:sessionId,documentId:v.doc.id}}));ctx.layout.selectPanel('local-scean');}},'回舞台 '+v.sceanRun.runId):null,
+            v.sceanRun?h('button',{'data-scean':'inspect',className:'csscean-button',disabled:busy||!ready,onClick:()=>run(async()=>setV({sceanInspector:await sceanRequest({mode:'inspect',runId:state.current.sceanRun.runId,binding:state.current.sceanRun.binding})}))},'查本 Run 的 state／memory／tool trace'):null,
+            v.sceanRun?h('button',{'data-scean':'attach',className:'csscean-button',disabled:busy||!ready,onClick:()=>run(async()=>{const old=state.current.sceanRun,result=await sceanRequest({mode:'attach',runId:old.runId,binding:old.binding});setV({sceanRun:{...old,...result}});})},'重新授權本 Session 唯讀觀察'):null),
+          v.sceanOpeningPending?h('p',{role:'status'},'已交接保存版本，請到舞臺預覽並確認開場；尚未建立新故事。'):null,
+          v.sceanRun?h('p',{'data-scean':'run-id'},'本製卡 Session 已明確綁定 Run：'+v.sceanRun.runId):null,
+          v.sceanInspector?h('pre',{'data-scean':'inspector',style:{whiteSpace:'pre-wrap',overflowWrap:'anywhere',maxHeight:600,overflow:'auto'}},json(v.sceanInspector)):null,
+          h('p',{className:'csscean-muted'},'Inspector 顯示公開結果與提交證據，不顯示隱藏推理。not_recorded、未呼叫、pending、failed、committed 保持原狀態。CR 建議不等於已發生事件。SCEAN 未啟用時，製卡與匯出仍可使用。')):null;
+
+        const a=v.authoring??authoringBlank();
+        const setA=update=>setV(previous=>({authoring:{...(previous.authoring??authoringBlank()),...update}}));
+        const componentId=row=>row?.component_id??row?.id;
+        const loadComponent=async(id)=>{const result=await call('frontend',{action:'read',document_id:state.current.doc.id,component_id:id}),row=result.component??result;setA({component:row,source:row.source??result.source??'',sourceBase:row.source??result.source??'',preview:null});};
+        const loadAuthoring=async({tab=state.current.authoring?.tab??'source',reset=false,selectNewest=false}={})=>{
+          const id=state.current.doc.id,[front,fixture,visual,assets,dynamic]=await Promise.all([call('frontend',{action:'inspect',document_id:id}),call('fixture',{action:'read',document_id:id,fixture_id:'default'}),call('visual_contract',{action:'read',document_id:id}),call('asset',{action:'list',document_id:id}),call('frontend',{action:'dynamic_read',document_id:id})]);
+          const components=front.components??[],previous=state.current.authoring??authoringBlank(),selected=(selectNewest?components.find(row=>!previous.components.some(old=>componentId(old)===componentId(row))):null)??components.find(row=>componentId(row)===componentId(previous.component))??components[0];
+          setV({route:'authoring',authoring:{...previous,tab,components,dynamic:json({stateBlueprint:dynamic.stateBlueprint,initialState:dynamic.initialState,frontend:dynamic.frontend,...(dynamic.derivedFacts?{derivedFacts:dynamic.derivedFacts}:{})}),dynamicBase:json({stateBlueprint:dynamic.stateBlueprint,initialState:dynamic.initialState,frontend:dynamic.frontend,...(dynamic.derivedFacts?{derivedFacts:dynamic.derivedFacts}:{})}),fixture:json(fixture.fixture??{}),fixtureBase:json(fixture.fixture??{}),contract:json(visual.contract??{}),contractBase:json(visual.contract??{}),character:Object.hasOwn(visual.contract?.characters??{},previous.character)?previous.character:Object.keys(visual.contract?.characters??{})[0]??previous.character,assets:assets.assets??[],diagnostics:front.diagnostics??[],preview:null,...reset?{component:null,source:'',sourceBase:''}:{}}});
+          if(selected)await loadComponent(componentId(selected));else setA({component:null,source:'',sourceBase:''});
+        };
+        const authoringMutation=async(action,changes,tab=a.tab)=>{const id=state.current.doc.id,result=await call(action,{...args(),...changes});await read(id,{route:'authoring'});await loadAuthoring({tab,reset:true,selectNewest:action==='frontend'&&changes.action==='create'});setV({output:json(result)});return result;};
+        const assetFile=async(file)=>{
+          if(!file)return;if(!/\.(png|jpe?g|webp)$/i.test(file.name)||file.size<1||file.size>16*1024*1024)throw new Error('Choose a PNG, JPEG or WebP between 1 byte and 16 MiB.');
+          let uploadId=null;try{const start=await call('asset_upload_begin',{...args(),name:file.name,size:file.size});uploadId=start.upload_id;assetUploadRef.current=uploadId;
+            for(let offset=0;offset<file.size;offset+=start.chunk_bytes){if(!valid())throw new Error('Session changed; image import cancelled.');const bytes=new Uint8Array(await file.slice(offset,offset+start.chunk_bytes).arrayBuffer());let binary='';for(let i=0;i<bytes.length;i+=8192)binary+=String.fromCharCode(...bytes.subarray(i,i+8192));await call('asset_upload_chunk',{upload_id:uploadId,offset,base64:btoa(binary)});}
+            const result=await call('asset_upload_finish',{upload_id:uploadId});uploadId=null;assetUploadRef.current=null;await read(state.current.doc.id,{route:'authoring'});await loadAuthoring({tab:'assets',reset:true});setV({output:json(result)});
+          }finally{assetUploadRef.current=null;if(uploadId)await call('asset_upload_abort',{upload_id:uploadId}).catch(()=>{});}
+        };
+        const refreshPreview=async()=>{const current=state.current.authoring??authoringBlank();if(!current.component)throw new Error('Choose a safely identified fragment first.');const result=await call('preview',{document_id:state.current.doc.id,component_id:componentId(current.component),fixture_id:'default',viewport:Number(current.viewport),state:JSON.parse(current.state)}),decoded=await decodePreviewImages(result);if(valid())setA({preview:decoded});};
+        const mutate=async(action,changes,route='overview')=>{const id=state.current.doc.id,result=await call(action,{...args(),...changes});setV({output:json(result)});await read(id,{route});};
+        const button=(label,fn,disabled=false,requiresReady=true,props={})=>h('button',{...props,className:'csscean-button '+(props.className??''),disabled:busy||disabled||(requiresReady&&!ready),onClick:()=>run(fn)},t(label));
+        const nav=(label,fn,props={})=>h('button',{...props,className:'csscean-button '+(props.className??''),disabled:busy||!ready,onClick:()=>guard(fn)},t(label));
+        const choose=id=>guard(()=>run(()=>read(id)));
+        const copies=(list,load)=>h(React.Fragment,null,h('div',{className:'csscean-list csscean-workcopies'},...list.items.map(d=>h('button',{key:d.id,className:'csscean-button','aria-pressed':v.doc?.id===d.id,disabled:busy||!ready,onClick:()=>choose(d.id)},h('span',{className:'csscean-workcopy-name'},d.source),h('small',null,' · r'+d.revision),d.legacy?h('small',null,' · '+t('legacy')):null,d.shared?h('small',null,' · '+t('shared')):null))),list.total?h('div',{className:'csscean-row'},button('previous',()=>load(Math.max(0,list.offset-list.limit)),list.offset===0),h('span',{className:'csscean-muted'},`${list.offset+1}–${Math.min(list.offset+list.limit,list.total)} / ${list.total}`),button('next',()=>load(list.offset+list.limit),list.offset+list.limit>=list.total)):h('p',{className:'csscean-muted'},t('noDocuments')));
+        const uploadFile=file=>guard(()=>run(async()=>{
+          if(!file)return;if(!/\.(json|png)$/i.test(file.name)||file.size<1||file.size>32*1024*1024)throw new Error(t('uploadLimit'));
+          const job={id:null,cancelled:false};uploadRef.current=job;setUpload({name:file.name,percent:0});
+          try{const start=await call('upload_begin',{name:file.name,size:file.size,type:state.current.type});job.id=start.upload_id;
+            for(let offset=0;offset<file.size;offset+=start.chunk_bytes){if(job.cancelled||!valid())throw new Error(t('cancelled'));const bytes=new Uint8Array(await file.slice(offset,offset+start.chunk_bytes).arrayBuffer());let binary='';for(let i=0;i<bytes.length;i+=8192)binary+=String.fromCharCode(...bytes.subarray(i,i+8192));await call('upload_chunk',{upload_id:job.id,offset,base64:btoa(binary)});if(valid())setUpload({name:file.name,percent:Math.round(Math.min(offset+bytes.length,file.size)/file.size*100)});}
+            if(job.cancelled||!valid())throw new Error(t('cancelled'));const result=await call('upload_finish',{upload_id:job.id});job.id=null;await read(result.id);
+          }finally{if(job.id)await call('upload_abort',{upload_id:job.id}).catch(()=>{});if(uploadRef.current===job)uploadRef.current=null;if(valid())setUpload(null);}
+        },t('uploading')));
+        const openFolder=()=>run(async()=>{const folder=await call('export_folder');if(typeof folder.path!=='string')throw new Error(t('folderUnavailable'));if(!desktopRemote)throw new Error(t('folderUnavailable'));const result=await desktopRemote.openWorkspacePath({path:folder.path});if(!result?.ok)throw new Error(result?.error?.message??t('folderUnavailable'));});
+        const openEntry=entryId=>run(async()=>{const row=await call('book_read',{document_id:v.doc.id,entry_id:entryId});if(row.revision!==state.current.doc.revision)throw new Error(t('staleEntry'));setV({entry:entryDraft(row),route:'entry',scroll:bookList.current?.scrollTop??v.scroll});});
+        const editEntry=(key,value)=>setV(previous=>({entry:{...previous.entry,[key]:value}}));
+        const sectionTitle=(title,back)=>h('div',{className:'csscean-row csscean-view-title'},h('button',{className:'csscean-button',disabled:busy,onClick:()=>go(back)},'← '+t(back)),h('h3',{style:{margin:0}},title),h('span',{className:'csscean-spacer'}),isDirty(v)?h('span',{className:'csscean-badge csscean-notice'},t('unsaved')):null);
+        const fieldLabel=(key,child)=>h('label',null,t(key),child);
+        const create=h('section',{className:'csscean-box csscean-view','data-view':'create'},sectionTitle(t('createCard'),'overview'),h('p',{className:'csscean-muted'},t('authoringHint')),fieldLabel('createName',h('input',{value:v.createName??'','data-editor':'create-name',onChange:e=>setV({createName:e.target.value}),maxLength:120})),fieldLabel('createFormat',h('select',{value:v.createFormat??'v3',onChange:e=>setV({createFormat:e.target.value})},h('option',{value:'v3'},'CCv3'),h('option',{value:'v2'},'CCv2'))),button('createNow',async()=>{const result=await call('create',{format:v.createFormat??'v3',name:state.current.createName.trim()});setV({createName:'',authoring:authoringBlank()});await read(result.document_id??result.id);setV({output:json(result)});},!(v.createName??'').trim(),true,{className:'csscean-primary'}));
+        const codeEditor=(label,value,onChange,editor)=>fieldLabel(label,h('textarea',{className:'csscean-code',value,onChange:e=>onChange(e.target.value),'aria-label':t(label),'data-editor':editor,spellCheck:false}));
+        const tabs=['source','dynamic','fixture','visual','assets','preview'];
+        const stateObject=()=>{const value=JSON.parse(a.state);return value&&typeof value==='object'&&!Array.isArray(value)?value:{};};
+        let contractView={};try{contractView=JSON.parse(a.contract);}catch{}
+        const castIds=Object.keys(contractView?.characters??{});
+        const contractSample=()=>setA({contract:json({schemaVersion:1,contractRevision:1,characters:{[a.character||'maliyah']:{displayName:v.doc?.card.data.name||'Character',expressions:[...expressions],defaultExpression:'neutral',dimensions:{outfit:['casual','uniform']},variants:[]}},scene:{locations:['courtyard','shop'],lighting:['day','evening']}})});
+        const sampleVariant=kind=>{const fixture=JSON.parse(a.fixture);if(kind==='high')fixture.values.affection=90;else if(kind==='long')fixture.values.inventory=Array.from({length:24},(_,i)=>'notebook '+(i+1));else{fixture.bindings.affection={...fixture.bindings.affection,display:'label',bands:[{min:0,label:'陌生'},{min:40,label:'親近'},{min:80,label:'信任'}]};}setA({fixture:json(fixture),preview:null});};
+        const selectVisual=(character,expression)=>{const current=stateObject();setA({character,expression,state:json({...current,mode:'patch',characters:{...current.characters,[character]:{...current.characters?.[character],expression}}}),preview:null});};
+        const visualSelectors=h('div',{className:'csscean-state-grid'},fieldLabel('characterId',castIds.length?h('select',{value:castIds.includes(a.character)?a.character:castIds[0],'aria-label':t('characterId'),onChange:e=>{try{selectVisual(e.target.value,'neutral');}catch(error){notify(error);}}},...castIds.map(value=>h('option',{key:value,value},value))):h('input',{value:a.character,onChange:e=>setA({character:e.target.value}),maxLength:64,'data-editor':'visual-character'})),fieldLabel('expression',h('select',{value:a.expression,onChange:e=>{try{selectVisual(a.character,e.target.value);}catch(error){notify(error);}},'aria-label':t('expression')},...expressions.map(value=>h('option',{key:value,value},t('expr_'+value)+' ('+value+')')))),...Object.entries(contractView?.scene??{}).map(([key,values])=>h('label',{key},t('scene_'+key),h('select',{'aria-label':t('scene_'+key),value:(()=>{try{return stateObject().scene?.[key==='locations'?'location':key]??'';}catch{return '';}})(),onChange:e=>{try{const current=stateObject();setA({state:json({...current,mode:'patch',scene:{...current.scene,[key==='locations'?'location':key]:e.target.value||null}}),preview:null});}catch(error){notify(error);}}},h('option',{value:''},t('sceneDefault')),...(Array.isArray(values)?values:[]).map(value=>h('option',{key:value,value},value))))));
+        // A UI check is evidence for one context, never an export permission cache.
+        const checkKey=check=>JSON.stringify([check.document_id,check.revision,check.target??null,check.export_action,check.format,check.cases_hash]);
+        const checkAction=v.doc?.delivery?.primaryAction??'export';
+        const expectedCheck=v.doc?{document_id:v.doc.id,revision:v.doc.revision,target:v.doc.check_context?.target??null,export_action:checkAction,format:checkAction==='export'&&v.exportName?.endsWith('.json')?'json':v.doc.format,cases_hash:v.doc.check_context?.cases_hash}:null;
+        const checkCurrent=!!v.preflight&&checkKey(v.preflight)===checkKey(expectedCheck);
+        const blockers=v.preflight?.items?.filter(item=>item.severity==='FAIL')??[];
+        const checkPanel=v.doc?h('section',{'data-preflight':true,className:'csscean-section-space'},
+          button('preflight',async()=>setV({preflight:await call('check',{...args(),export_action:state.current.doc.delivery?.primaryAction??'export',...(checkAction==='export'?{name:state.current.exportName}:{})})})),
+          v.preflight?h('div',{'data-check-status':checkCurrent?'current':'stale','data-check-key':checkKey(v.preflight)},
+            h('p',{role:'status'},busy?t('checkPending'):!checkCurrent?t('checkStale'):blockers.length?t('checkBlocked'):t('checkReady')),
+            blockers.length?h('div',{'data-check-blocking':true},h('p',null,blockers.slice(0,3).map(item=>item.message).join(' ')),...blockers.slice(0,3).filter(item=>item.object?.entry_id).map((item,index)=>h('button',{key:index,className:'csscean-button',disabled:busy,onClick:()=>guard(()=>openEntry(item.object.entry_id))},t('checkObject')))):null,
+            h('details',{key:checkKey(v.preflight),'data-details':'check-diagnostics'},h('summary',null,t('checkDetails')),
+              h('p',{className:'csscean-muted'},t('checkScope')),h('strong',null,v.preflight.overall+' · r'+v.preflight.revision+' · '+v.preflight.export_action),
+              h('p',null,Object.entries(v.preflight.counts).map(([key,n])=>key+' '+n).join(' · ')),
+              h('div',{className:'csscean-diagnostics'},...v.preflight.items.map((item,index)=>h('details',{key:index},h('summary',null,item.severity+' · '+item.code),h('p',null,item.message),h('code',null,json(item.object)),item.object.entry_id?h('button',{className:'csscean-button',disabled:busy,onClick:()=>guard(()=>openEntry(item.object.entry_id))},t('checkObject')):null,item.nextAction?h('pre',null,t('checkNext')+': '+json(item.nextAction)):null))),
+              h('details',{'data-details':'check-raw'},h('summary',null,t('checkRaw')),h('pre',null,json(v.preflight)))))
+          :null):null;
+        const deliverExport=async(action,values)=>{
+          downloadRef.current.clear();
+          const result=await call(action,values),receipt=result.download;
+          setV({output:json(presentDiagnostics(result))});
+          if(!receipt)throw new Error('成品已留在 Host；此檔案超過瀏覽器下載上限或未取得下載收據。');
+          const request={receipt_id:receipt.receipt_id,document_id:receipt.document_id,expected_revision:receipt.revision,sha256:receipt.sha256},chunks=[];
+          try{
+            let offset=0;
+            while(offset<receipt.size){
+              if(!valid()||state.current.doc?.id!==receipt.document_id||state.current.doc?.revision!==receipt.revision)throw new Error('選卡或版本已變更，下載已停止；請重新匯出。');
+              const part=await controller.downloadExport({...request,mode:'chunk',offset},sequence);
+              const bytes=Uint8Array.from(atob(part.base64),c=>c.charCodeAt(0));
+              if(!bytes.length||bytes.length>receipt.chunk_bytes||offset+bytes.length>receipt.size)throw new Error('下載內容不完整，請重新匯出。');
+              chunks.push(bytes);offset+=bytes.length;
+            }
+            const blob=new Blob(chunks,{type:receipt.media_type});
+            if(blob.size!==receipt.size)throw new Error('下載長度不符。');
+            if(!crypto.subtle)throw new Error('下載驗證需要安全的瀏覽器連線。');
+            const digest=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',await blob.arrayBuffer())),v=>v.toString(16).padStart(2,'0')).join('');
+            if(digest!==receipt.sha256)throw new Error('下載驗證失敗，請重新匯出。');
+            if(!valid())throw new Error('Download page changed. Export the selected saved revision again.');
+            downloadRef.current.publish(blob,receipt,downloadIdentity());
+          }finally{await controller.downloadExport({...request,mode:'release'},sequence).catch(()=>{});}
+        };
+        const rawExportForm=(backup=false)=>h('div',null,h('label',null,t('exportName')),v.doc.format==='png'?h('p',{className:'csscean-muted'},t('pngExportHint')):null,h('div',{className:'csscean-row'},h('input',{value:v.exportName,'aria-label':t('exportName'),onChange:e=>setV({exportName:e.target.value})}),button(backup?'rawBackup':'export',async()=>deliverExport(backup?'export_backup':'export',{...args(),name:v.exportName}),false,true,{className:backup?'csscean-maintenance':'csscean-primary'})));
+        const primaryDelivery=v.doc?.delivery?.targetProfile?h('section',{'data-delivery':'target'},h('p',null,t('targetDeliveryHint')),button('targetExport',async()=>deliverExport('export_target',{...args(),name:'tauritavern'}),false,true,{className:'csscean-primary'})):v.doc?.delivery?.requiresTargetPreparation?h('p',{'data-delivery':'unprepared'},t('prepareTargetHint')):null;
+        const backupOptions=v.doc?h('details',{'data-details':'authoring-backups'},h('summary',null,t('backupOptions')),rawExportForm(true),v.doc.type==='card'?button('bundleExport',async()=>deliverExport('export_bundle',{...args(),name:'authoring-backup'}),false,true,{className:'csscean-maintenance'}):null):null;
+        const authoring=h('section',{className:'csscean-box csscean-view','data-view':'authoring'},sectionTitle(t('authoring'),'overview'),h('p',{className:'csscean-muted'},t('authoringHint')),h('div',{className:'csscean-authoring-tabs',role:'navigation','aria-label':t('authoring')},...tabs.map(tab=>h('button',{key:tab,className:'csscean-button',disabled:busy,'aria-pressed':a.tab===tab,'data-tab':tab,onClick:()=>guard(()=>setA({tab,source:a.sourceBase,fixture:a.fixtureBase,contract:a.contractBase}))},tab==='dynamic'?'SCEAN 動態前端':t(tab)))),
+          a.tab==='source'?h(React.Fragment,null,button('inspectFrontend',()=>loadAuthoring({tab:'source',reset:true})),h('button',{className:'csscean-button',disabled:busy,onClick:()=>guard(()=>setA({component:null,source:'',sourceBase:'',preview:null}))},t('newFragment')),h('div',{className:'csscean-list csscean-sources'},...a.components.map(row=>h('button',{key:componentId(row),className:'csscean-button','aria-pressed':componentId(a.component)===componentId(row),disabled:busy,onClick:()=>guard(()=>run(()=>loadComponent(componentId(row))))},componentId(row)+' · '+(row.target??row.locator?.target??'')))),!a.components.length?h('p',{className:'csscean-muted'},t('noComponents')):null,h('div',{className:'csscean-fields'},fieldLabel('sourceTarget',h('select',{value:a.target,onChange:e=>setA({target:e.target.value})},...['first_mes','worldbook_entry','regex'].map(value=>h('option',{key:value,value},t('source_'+value))))),a.target!=='first_mes'?fieldLabel('entryId',h('input',{value:a.entryId,onChange:e=>setA({entryId:e.target.value}),maxLength:128})):null),a.component?h('p',{className:'csscean-muted csscean-path csscean-mono'},componentId(a.component)+' · '+(a.component.source_hash??a.component.sourceHash??'')):null,codeEditor('sourceCode',a.source,value=>setA({source:value,preview:null}),'frontend-source'),h('div',{className:'csscean-row'},button(a.component?'patchFrontend':'createFrontend',()=>authoringMutation('frontend',a.component?{action:'patch',component_id:componentId(a.component),expected_source_hash:a.component.source_hash??a.component.sourceHash,old_text:a.sourceBase,new_text:a.source}:{action:'create',target:a.target,...a.target==='regex'?{regex_id:a.entryId}:a.target==='worldbook_entry'?{entry_id:a.entryId}:{},source:a.source},'source'),!a.source||!!a.component&&a.source===a.sourceBase,true,{className:'csscean-primary'})),a.component?h('details',null,h('summary',null,t('localPatch')),fieldLabel('oldText',h('input',{value:a.oldText,onChange:e=>setA({oldText:e.target.value})})),fieldLabel('newText',h('input',{value:a.newText,onChange:e=>setA({newText:e.target.value})})),button('localPatch',()=>authoringMutation('frontend',{action:'patch',component_id:componentId(a.component),expected_source_hash:a.component.source_hash??a.component.sourceHash,old_text:a.oldText,new_text:a.newText},'source'),!a.oldText||a.source!==a.sourceBase,true,{className:'csscean-primary'})):null,a.component?.dependencies?h('details',null,h('summary',null,t('diagnostics')),h('pre',null,json(a.component.dependencies))):null):null,
+          a.tab==='dynamic'?h(React.Fragment,null,h('p',null,'自由 HTML/CSS + Blueprint 綁定。先確認變數、型別、public/restricted 及初值；可同次補充 Blueprint。此處預覽使用初始值，正式 Run 只使用已提交狀態。'),codeEditor('Blueprint / InitialState / Frontend JSON',a.dynamic,value=>setA({dynamic:value,preview:null}),'dynamic-frontend'),h('div',{className:'csscean-row'},button('驗證綁定',async()=>{const d=JSON.parse(a.dynamic);setV({output:json(await call('frontend',{...args(),action:'dynamic_validate',blueprint:d.stateBlueprint,initial_state:d.initialState,frontend:d.frontend,...(d.derivedFacts?{derived_facts:d.derivedFacts}:{})}))});}),button('預覽動態前端',async()=>{const d=JSON.parse(a.dynamic);const result=await call('frontend',{...args(),action:'dynamic_preview',blueprint:d.stateBlueprint,initial_state:d.initialState,frontend:d.frontend,...(d.derivedFacts?{derived_facts:d.derivedFacts}:{})});setA({preview:result});}),button('保存動態前端版本',async()=>{const d=JSON.parse(a.dynamic);await authoringMutation('frontend',{action:'dynamic_save',blueprint:d.stateBlueprint,initial_state:d.initialState,frontend:d.frontend,...(d.derivedFacts?{derived_facts:d.derivedFacts}:{})},'dynamic');},a.dynamic===a.dynamicBase,true,{className:'csscean-primary'})),a.preview?h(React.Fragment,null,h('p',null,'合成初值預覽 · '+a.preview.frontend_hash),h('iframe',{title:'SCEAN 動態前端預覽',sandbox:'',srcDoc:a.preview.html,referrerPolicy:'no-referrer',className:'csscean-preview-frame',style:{width:'100%'}}),h('pre',null,json(a.preview.diagnostics))):null):null,
+          a.tab==='fixture'?h(React.Fragment,null,button('sample',()=>setA({fixture:json({schemaVersion:1,fixtureId:'default',values:{affection:42,time:'18:30',location:'courtyard',outfit:'casual',mood:'embarrassed',inventory:['notebook']},bindings:{affection:{type:'number',min:0,max:100,display:'value'},time:{type:'string',maxLength:64},location:{type:'string',maxLength:120},outfit:{type:'string',maxLength:120},mood:{type:'string',maxLength:120},inventory:{type:'array',maxItems:64}}})})),h('div',{className:'csscean-row'},h('button',{className:'csscean-button',onClick:()=>run(()=>sampleVariant('high'))},t('highAffection')),h('button',{className:'csscean-button',onClick:()=>run(()=>sampleVariant('long'))},t('longInventory')),h('button',{className:'csscean-button',onClick:()=>run(()=>sampleVariant('labels'))},t('hideNumbers'))),codeEditor('fixtureJSON',a.fixture,value=>setA({fixture:value,preview:null}),'fixture'),button('saveFixture',()=>authoringMutation('fixture',{action:'patch',fixture_id:'default',fixture:JSON.parse(a.fixture)},'fixture'),a.fixture===a.fixtureBase,true,{className:'csscean-primary'})):null,
+          a.tab==='visual'?h(React.Fragment,null,h('button',{className:'csscean-button',onClick:contractSample},t('contractSample')),codeEditor('contractJSON',a.contract,value=>setA({contract:value,preview:null}),'contract'),h('div',{className:'csscean-row'},button(a.contractBase==='{}'?'createContract':'saveContract',()=>authoringMutation('visual_contract',{action:a.contractBase==='{}'?'create':'patch',contract:JSON.parse(a.contract),changes:Object.fromEntries(Object.entries(JSON.parse(a.contract)).filter(([key])=>['characters','scene'].includes(key)))},'visual'),a.contract===a.contractBase,true,{className:'csscean-primary'})),visualSelectors,codeEditor('stateJSON',a.state,value=>setA({state:value,preview:null}),'visual-state'),button('validateState',async()=>setV({output:json(await call('visual_contract',{action:'validate',document_id:v.doc.id,state:JSON.parse(a.state)}))}))):null,
+          a.tab==='assets'?h(React.Fragment,null,h('p',{className:'csscean-muted'},t('assetHint')),visualSelectors,h('div',{className:'csscean-row'},button('generatedArm',async()=>setV({output:json(await call('asset',{...args(),action:'arm_generated',character_id:a.character,expression:a.expression}))})),button('generatedStatus',async()=>{const result=await call('asset',{action:'generated_status'});await read(v.doc.id,{route:'authoring'});await loadAuthoring({tab:'assets'});setV({output:json(presentDiagnostics(result))});}),button('generatedCancel',async()=>setV({output:json(await call('asset',{action:'cancel_generated'}))}))),h('label',null,t('uploadAsset'),h('input',{type:'file',accept:'.png,.jpg,.jpeg,.webp',disabled:busy,'data-upload':'asset',onChange:e=>{const file=e.target.files?.[0];e.target.value='';if(file)guard(()=>run(()=>assetFile(file),t('uploading')));}})),h('div',{className:'csscean-list'},...a.assets.map(asset=>h('div',{key:asset.asset_id??asset.assetId,className:'csscean-asset-row'},h('code',null,asset.asset_id??asset.assetId),h('span',{className:'csscean-muted'},`${asset.width??''} × ${asset.height??''} ${asset.mediaType??asset.mime??''}`),button('linkAsset',()=>authoringMutation('asset',{action:'link',asset_id:asset.asset_id??asset.assetId,character_id:a.character,expression:a.expression},'assets'))))),button('unlinkAsset',()=>authoringMutation('asset',{action:'unlink',asset_id:contractView.characters?.[a.character]?.variants?.find(row=>row.expression===a.expression&&!Object.keys(row.dimensions??{}).length)?.assetId,character_id:a.character,expression:a.expression},'assets'),!contractView.characters?.[a.character]?.variants?.some(row=>row.expression===a.expression&&!Object.keys(row.dimensions??{}).length))):null,
+          a.tab==='preview'?h(React.Fragment,null,h('p',{className:'csscean-muted'},t('previewHint')),visualSelectors,h('div',{className:'csscean-row'},h('select',{value:a.viewport,'aria-label':t('viewportLabel'),className:'csscean-preview-width',onChange:e=>setA({viewport:Number(e.target.value),preview:null})},...[[360,'360 '+t('mobile')],[390,'390 '+t('mobile')],[1024,'1024 '+t('desktop')]].map(([width,label])=>h('option',{key:width,value:width},label))),button('renderPreview',refreshPreview,!a.component)),a.preview?h(React.Fragment,null,a.preview.diagnostics?.length?h('p',{role:'status',className:'csscean-muted'},t('previewWarnings')+' ('+a.preview.diagnostics.length+')'):null,h('p',{className:'csscean-muted'},`r${a.preview.revision} · ${a.preview.sourceHash??a.preview.source_hash??''}`),h('div',{className:'csscean-preview-shell'},h('iframe',{title:t('previewTitle'),sandbox:'',srcDoc:a.preview.html,referrerPolicy:'no-referrer',className:'csscean-preview-frame',style:{width:a.viewport},'data-preview':'static'})),h('div',{className:'csscean-diagnostics',role:'note'},h('h3',null,t('diagnostics')),h('pre',null,json(presentDiagnostics(a.preview.diagnostics??[]))))):null):null,
+          checkPanel,a.diagnostics?.length?h('details',null,h('summary',null,t('diagnostics')),h('pre',null,json(presentDiagnostics(a.diagnostics)))):null,h('div',{className:'csscean-row csscean-footer'},nav('history',()=>setV({route:'history'})),button('targetCheck',async()=>setV({output:json(presentDiagnostics(await call('target',{action:'check',document_id:v.doc.id})))})),button('targetRebuild',()=>authoringMutation('target',{action:'rebuild'}),false,true,{className:'csscean-maintenance'}),button('targetPreview',async()=>{const preview=await call('preview',{document_id:v.doc.id,component_id:'target',viewport:a.viewport});setA({tab:'preview',preview});}),primaryDelivery,backupOptions,h('button',{className:'csscean-button',disabled:busy,onClick:()=>go('overview')},t('cancel'))));
+        const overview=v.doc?h('section',{className:'csscean-view csscean-box','data-view':'overview'},h('h3',null,v.doc.card.data.name||t(v.doc.type==='worldbook'?'worldbook':'card')),h('p',{className:'csscean-muted csscean-path'},v.doc.id+' · r'+v.doc.revision+' · '+v.doc.format),h('p',{className:'csscean-muted'},t('selectionHint')),h('details',{'data-view':'shared-readonly'},h('summary',null,t('libraryReadonly')),h(ReadonlyDocumentViewer,{projection:v.doc.readonlyDocument})),
+          h('div',{className:'csscean-tiles csscean-section-space'},v.doc.type==='card'?cardFields.map(field=>h('button',{key:field,className:'csscean-button csscean-tile',disabled:busy||!ready,onClick:()=>setV({field,text:v.doc.card.data[field]??'',route:'field'})},h('strong',null,t('field_'+field)),h('span',{className:'csscean-muted'},String(v.doc.card.data[field]??'').slice(0,100)||t('emptyField')))):null,
+            h('button',{className:'csscean-button csscean-tile',disabled:busy||!ready,onClick:()=>setV({route:'book'})},h('strong',null,t('book')),h('span',{className:'csscean-muted'},v.entries.length+' '+t('entries')))),
+          h('div',{className:'csscean-row'},nav('history',()=>setV({route:'history'})),v.doc.type==='card'?nav('authoring',()=>run(()=>loadAuthoring())):null),checkPanel,primaryDelivery,v.doc.delivery?.targetProfile||v.doc.delivery?.requiresTargetPreparation?backupOptions:rawExportForm()):h('section',{className:'csscean-box','data-view':'overview'},h('h3',null,t('welcome')),h('p',null,t('empty')));
+        const book=h('section',{className:'csscean-box csscean-view','data-view':'book'},sectionTitle(t('book'),'overview'),h('div',{className:'csscean-row'},h('input',{value:v.query,'aria-label':t('search'),placeholder:t('searchHint'),onChange:e=>setV({query:e.target.value}),onKeyDown:e=>{if(e.key==='Enter')run(async()=>setV({entries:(await call('book_search',{document_id:v.doc.id,query:v.query})).entries,scroll:0}));}}),button('search',async()=>setV({entries:(await call('book_search',{document_id:v.doc.id,query:v.query})).entries,scroll:0})),button('newEntry',async()=>setV({entry:entryDraft(),route:'entry',scroll:bookList.current?.scrollTop??v.scroll})),nav('config',()=>setV({route:'config'}))),h('p',{className:'csscean-muted'},v.entries.length+' '+t('entries')),h('div',{className:'csscean-list csscean-booklist',ref:bookList},...v.entries.map(entry=>h('button',{key:entry.entry_id,className:'csscean-button csscean-bookrow',disabled:busy||!ready,onClick:()=>openEntry(entry.entry_id)},h('span',null,h('strong',null,entry.comment||entry.keys.join(', ')||entry.entry_id),h('small',{className:'csscean-muted'},entry.keys.join(', ')||t('noKeywords')),h('small',{className:'csscean-muted csscean-mono'},entry.entry_id)),h('span',{className:'csscean-muted'},t(entry.enabled?'enabled':'disabled')+' · '+entry.contentLength))),!v.entries.length?h('p',{className:'csscean-muted'},t('noEntries')):null));
+        const entry=v.entry?h('section',{className:'csscean-box csscean-view','data-view':'entry'},sectionTitle(v.entry.id?t('editEntry'):t('newEntry'),'book'),h('p',{className:'csscean-muted csscean-mono'},v.entry.id||t('newEntryHint')),h('div',{className:'csscean-fields'},fieldLabel('entryName',h('input',{value:v.entry.name,onChange:e=>editEntry('name',e.target.value)})),fieldLabel('comment',h('input',{value:v.entry.comment,onChange:e=>editEntry('comment',e.target.value)})),fieldLabel('keywords',h('textarea',{className:'csscean-keys',value:v.entry.keys,onChange:e=>editEntry('keys',e.target.value)})),fieldLabel('secondaryKeywords',h('textarea',{className:'csscean-keys',value:v.entry.secondary,onChange:e=>editEntry('secondary',e.target.value)}))),h('label',null,h('input',{type:'checkbox',checked:v.entry.enabled,onChange:e=>editEntry('enabled',e.target.checked)}),' '+t('enabled')),fieldLabel('content',h('textarea',{className:'csscean-body',value:v.entry.content,onChange:e=>editEntry('content',e.target.value),'data-editor':'entry-content'})),
+          h('details',{'data-details':'advanced'},h('summary',null,t('advanced')),h('p',{className:'csscean-muted'},t('mergeHint')),h('textarea',{className:'csscean-code csscean-mono','aria-label':t('advanced'),value:v.entry.extra,onChange:e=>editEntry('extra',e.target.value)}),h('details',null,h('summary',null,t('originalJSON')),h('pre',null,json(v.entry.base)))),
+          h('div',{className:'csscean-row csscean-footer'},button('patchEntry',async()=>{const changes=changedEntry(v.entry);await mutate(v.entry.id?'book_patch':'book_upsert',v.entry.id?{entry_id:v.entry.id,changes}:{entry:{...v.entry.base,...changes}},'book');if(v.query)setV({entries:(await call('book_search',{document_id:v.doc.id,query:v.query})).entries});},!!v.entry.id&&!isDirty(v),true,{className:'csscean-primary'}),h('button',{className:'csscean-button',disabled:busy,onClick:()=>go('book')},t('cancel')),h('span',{className:'csscean-spacer'}),v.entry.id?h('button',{className:'csscean-button csscean-danger',disabled:busy,onClick:()=>confirm(t('deletePrompt'),()=>run(()=>mutate('book_delete',{entry_id:v.entry.id},'book')))},t('deleteEntry')):null)):null;
+        const field=h('section',{className:'csscean-box csscean-view','data-view':'field'},sectionTitle(t('field_'+v.field),'overview'),fieldLabel('fields',h('select',{value:v.field,onChange:e=>{const key=e.target.value;guard(()=>setV({field:key,text:v.doc.card.data[key]??''}));}},...cardFields.map(key=>h('option',{key,value:key},t('field_'+key))))),h('textarea',{className:'csscean-body',value:v.text,onChange:e=>setV({text:e.target.value}),'aria-label':t('field_'+v.field),'data-editor':'field'}),h('div',{className:'csscean-row csscean-footer'},button('save',()=>mutate('patch',{patches:Object.hasOwn(v.doc?.card.data??{},v.field)?[{op:'test',path:'/data/'+v.field,value:v.doc.card.data[v.field]},{op:'replace',path:'/data/'+v.field,value:v.text}]:[{op:'add',path:'/data/'+v.field,value:v.text}]},'field'),!isDirty(v),true,{className:'csscean-primary'}),h('button',{className:'csscean-button',disabled:busy,onClick:()=>go('overview')},t('cancel'))));
+        const config=h('section',{className:'csscean-box csscean-view','data-view':'config'},sectionTitle(t('config'),'book'),h('p',{className:'csscean-muted'},t('mergeHint')),h('textarea',{className:'csscean-code csscean-mono',value:v.config,onChange:e=>setV({config:e.target.value}),'aria-label':t('config')}),h('div',{className:'csscean-row csscean-footer'},button('saveConfig',()=>mutate('book_patch_config',{changes:JSON.parse(v.config)},'book'),!isDirty(v),true,{className:'csscean-primary'}),h('button',{className:'csscean-button',disabled:busy,onClick:()=>go('book')},t('cancel'))));
+        const history=h('section',{className:'csscean-box csscean-view','data-view':'history'},sectionTitle(t('history'),'overview'),h('div',{className:'csscean-row'},button('history',async()=>setV({output:json(await call('history',{document_id:v.doc.id}))})),fieldLabel('target',h('input',{value:v.target,inputMode:'numeric',onChange:e=>setV({target:e.target.value})})),button('diff',async()=>setV({output:json(await call('diff',{document_id:v.doc.id,from:Number(v.target),to:v.doc.revision}))})),h('button',{className:'csscean-button csscean-danger',disabled:busy,onClick:()=>confirm(t('rollbackPrompt'),()=>run(()=>mutate('rollback',{to:Number(v.target)},'history')))},t('rollback'))));
+        return h('div',{className:'csscean-panel'},h('style',null,css),h('div',{className:'csscean-shell'},
+          selectionStale?h('section',{role:'alert',className:'csscean-box csscean-warn','data-w19-selection-conflict':true},h('p',null,'此對話的選卡或保存版本已在另一頁變更。未保存文字已保留；請先複製需要的文字，再重新讀取。'),h('button',{className:'csscean-button',disabled:busy,onClick:()=>guard(()=>run(async()=>{const list=await lists();if(list.selectedId)await read(list.selectedId,{select:false});else setV({doc:null,entry:null,sceanInspector:null});}))},'重新讀取目前選卡')):null,
+          h('div',{className:'csscean-row csscean-head csscean-toolbar'},h('h2',null,t('title')+' · 1.4.0'),h('span',{className:'csscean-spacer'}),h('button',{className:'csscean-button',disabled:busy,onClick:()=>ctx.layout.selectPanel('local-cardstudio-scean-materials')},t('materials')),h('button',{className:'csscean-button',disabled:busy,onClick:()=>ctx.layout.selectPanel('local-cardstudio-scean-library')},t('library')),h('button',{className:'csscean-button',disabled:busy,onClick:()=>ctx.layout.selectPanel(null)},t('back')),h('button',{className:'csscean-button',disabled:busy||!ready,onClick:()=>guard(()=>run(async()=>{setV({route:v.route==='entry'?'book':v.route,text:v.doc?.card.data[v.field]??'',entry:null,config:v.configBase,authoring:v.authoring?{...v.authoring,source:v.authoring.sourceBase,fixture:v.authoring.fixtureBase,contract:v.authoring.contractBase}:undefined});await refresh();},t('refreshing')))},t('refresh')),controller.phase==='error'?button('retry',()=>controller.retry(),false,false):null),
+          h('p',{className:'csscean-muted',id:'studio-source-offer'},'原碼與授權（AGPL-3.0-only）：',h('a',{href:'https://github.com/zeola0187/scean/tree/v1.4.0',target:'_blank',rel:'noopener noreferrer'},'https://github.com/zeola0187/scean/tree/v1.4.0')),
+          h(ScopeControl,{sequence}),h(CharacterMethodControl,{sequence}),notice?h('div',{role:'alert',className:'csscean-error'},t('error')+': '+notice):null,h('p',{role:'status','aria-live':'polite',className:'csscean-muted csscean-status'},status),
+          verifiedDownload&&!selectionStale?h('section',{className:'csscean-box','data-verified-export-ready':true},h('p',{role:'status','aria-live':'polite'},t(verifiedDownload.requested?'verifiedDownloadRequested':'verifiedDownloadReady')),h('a',{className:'csscean-button csscean-primary csscean-verified-download',href:verifiedDownload.url,download:verifiedDownload.filename,'data-verified-download':'ready',onClick:event=>{if(!valid()||!downloadRef.current.usable(downloadIdentity())){event.preventDefault();return;}downloadRef.current.requested();}},t('verifiedDownload')),h('p',{className:'csscean-path'},verifiedDownload.filename+' · '+verifiedDownload.size.toLocaleString()+' bytes'),h('code',{className:'csscean-mono'},'SHA-256 '+verifiedDownload.sha256)):null,
+          sceanPanel,
+          v.doc?.compatibilityWarnings?.some(w=>w.code==='PNG_ALTERNATE_METADATA')&&!compatibilityDismissed.has(v.doc.id)?h('div',{className:'csscean-box','data-notice':'png-compatibility',role:'note'},h('p',null,t('pngCompatibility')),h('button',{className:'csscean-button',onClick:()=>{compatibilityDismissed.add(v.doc.id);setV({});}},t('compatibilityDismiss'))):null,
+          capabilities.archiveRecycle?.state==='error'?h('p',{role:'alert',className:'csscean-error'},t('archiveError')):capabilities.archiveRecycle?.state==='unavailable'?h('p',{className:'csscean-muted'},t('archiveUnavailable')):null,
+          v.route==='overview'?h('div',{className:'csscean-grid'},h('aside',{className:'csscean-side'},h('section',{className:'csscean-box'},h('h3',null,t('files')),nav('createCard',()=>setV({route:'create',createName:'',createFormat:'v3'})),h('select',{'aria-label':t('files'),value:v.chosen,onChange:e=>setV({chosen:e.target.value})},h('option',{value:''},'—'),...v.files.map(file=>h('option',{key:file,value:file},file))),h('div',{className:'csscean-row'},h('select',{'aria-label':t('importType'),value:v.type,onChange:e=>setV({type:e.target.value})},h('option',{value:'card'},t('card')),h('option',{value:'worldbook'},t('worldbook'))),h('button',{className:'csscean-button',disabled:busy||!ready||!v.chosen,onClick:()=>guard(()=>run(async()=>{const result=await call('import',{path:v.chosen,type:v.type});await read(result.id);}))},t('import'))),h('p',{className:'csscean-muted'},'匯出成功後會由此瀏覽器下載；Host 成品仍保留。'),h('p',{className:'csscean-muted csscean-path'},controller.root+'/imports'),h('input',{type:'file',accept:'.json,.png',ref:fileInput,style:{display:'none'},onChange:e=>{const file=e.target.files?.[0];e.target.value='';if(file)uploadFile(file);}}),
+              h('div',{className:'csscean-drop',role:'button',tabIndex:busy||!ready?-1:0,'aria-disabled':busy||!ready,'data-drag':drag,onClick:()=>{if(!busy&&ready)fileInput.current?.click();},onKeyDown:e=>{if((e.key==='Enter'||e.key===' ')&&!busy&&ready){e.preventDefault();fileInput.current?.click();}},onDragOver:e=>{e.preventDefault();if(!busy&&ready)setDrag(true);},onDragLeave:()=>setDrag(false),onDrop:e=>{e.preventDefault();setDrag(false);if(busy||!ready)return;const files=[...e.dataTransfer.files];if(files.length!==1){notify(new Error(t('oneFile')));return;}uploadFile(files[0]);}},t('dropHint')),
+              upload?h('div',null,h('p',null,upload.name+' · '+upload.percent+'%'),h('progress',{max:100,value:upload.percent}),h('button',{className:'csscean-button',onClick:()=>{if(uploadRef.current)uploadRef.current.cancelled=true;}},t('cancel'))):null),
+            h('section',{className:'csscean-box'},h('h3',null,t('documents')),copies(v.documents,async offset=>setV({documents:await call('documents',{offset})})),h('details',{'data-details':'all',open:v.allOpen,onToggle:e=>{const open=e.currentTarget.open;if(open===state.current.allOpen)return;setV({allOpen:open});if(open)run(()=>refreshAll(0));}},h('summary',null,t('allDocuments')),v.allOpen?copies(v.allDocuments,refreshAll):null)),
+            h('details',{className:'csscean-box csscean-skills','data-details':'skills'},h('summary',null,t('skills')+' · '+capabilities.skills.length),button('capabilities',async()=>{capabilities=await call('capabilities');changed();}),h('p',{className:'csscean-muted'},t('skillHint')),h('div',{className:'csscean-list'},...capabilities.skills.map(skill=>h('div',{key:skill.name},h('code',null,'/'+skill.name),h('p',{className:'csscean-muted'},skill.description)))))),overview):v.route==='create'?create:v.doc?h('fieldset',{disabled:busy,className:'csscean-editor-form','aria-busy':busy},({book,entry,field,config,history,authoring,create}[v.route]??overview)):overview,
+          v.output?h('details',{'data-details':'receipt'},h('summary',null,t('lastResult')),h('pre',null,v.output)):null,
+          dialog?h('div',{className:'csscean-overlay'},h('section',{ref:dialogRef,role:'dialog','aria-modal':true,'aria-labelledby':'csscean-confirm-title',className:'csscean-dialog csscean-box',onKeyDown:e=>{if(e.key==='Escape'){e.preventDefault();setDialog(null);}if(e.key==='Tab'){const buttons=[...dialogRef.current.querySelectorAll('button')],index=buttons.indexOf(document.activeElement);e.preventDefault();buttons[(index+(e.shiftKey?-1:1)+buttons.length)%buttons.length].focus();}}},h('h3',{id:'csscean-confirm-title'},t('confirmTitle')),h('p',null,dialog.message),h('div',{className:'csscean-row'},h('button',{className:'csscean-button',onClick:()=>setDialog(null)},t('keepEditing')),h('button',{className:'csscean-button',onClick:()=>{const fn=dialog.fn;setDialog(null);fn();}},t('continue'))))):null));
+      }
+      const {MaterialPanel}=createMaterialComponents({React,h,ctx,t,controller,useUpdates,css,ScopeControl});
+      const {LibraryPanel,ReadonlyDocumentViewer}=createLibraryComponents({React,h,ctx,t,controller,useUpdates,css,viewCache,isDirty,notify,getFolderRemote:()=>desktopRemote,getDirectoryPicker:()=>directoryPicker});
+      const sync=()=>{
+        try{
+          const row=Object.values(ctx.sessions.list.getSnapshot().byId).find(r=>(r.retainedBy.mainView??0)>0);
+          mark('session',{mainSelected:!!row,hasCwd:typeof row?.cwd==='string',rootMatches:controller.matches(row),blank:row?.blank===true,scopeAvailable:!!row&&typeof ctx.sessions.scope==='function'&&!!ctx.sessions.scope(row.id)});
+          controller.task(controller.transition(row)).then(()=>{
+            const current=Object.values(ctx.sessions.list.getSnapshot().byId).find(r=>(r.retainedBy.mainView??0)>0);
+            if(current?.id===row?.id)mark('session',{mainSelected:!!row,hasCwd:typeof row?.cwd==='string',rootMatches:controller.matches(row),blank:row?.blank===true,scopeAvailable:!!row&&typeof ctx.sessions.scope==='function'&&!!ctx.sessions.scope(row.id)});
+          }).catch(error=>markError('transition-rejected',error));
+        }catch(error){markError('session-read-error',error);throw error;}
+      };
+      const unsubscribe=ctx.sessions.list.subscribe(sync);sync();
+      ctx.effect(()=>()=>{unsubscribe();window.removeEventListener('focus',resumeStudio);window.removeEventListener('pageshow',resumeStudio);window.removeEventListener('online',resumeStudio);document.removeEventListener('visibilitychange',resumeStudio);return controller.close();},'cardstudio-client cleanup');
+    }
+    // A small outer plugin observes service availability even while the original
+    // functional plugin waits. Its inner body retains the original dependencies.
+    return {name:'cardstudio-client-diagnostics',apply(ctx){
+      mark('apply-enter');
+      // send() captures this injected child. The mounted Card Studio namespace has
+      // its own Cordis dependency; remote alone does not grant access to it.
+      const required=['slots','layout','sessions','remote','remote.cardstudioScean','locale'];
+      const observe=()=>{
+        try{mark('services',Object.fromEntries(required.map(name=>[name,ctx.get(name)!==undefined])));}
+        catch(error){markError('services-read-error',error);}
+      };
+      observe();
+      ctx.on('internal/service',name=>{if(required.includes(name))observe();});
+      ctx.inject(['remote','typert'],async function cardstudioTransport(scope){
+        try{
+          await scope.remote.$mount(cardstudioRemote);
+          scope.inject(required,function cardstudioClient(child){start(child);});
+        }catch(error){markError('apply-error',error);throw error;}
+      });
+      ctx.effect(()=>()=>mark('disposed'),'cardstudio diagnostics cleanup');
+    }};
+  }
+});
+})();

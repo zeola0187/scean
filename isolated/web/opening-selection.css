@@ -1,0 +1,5 @@
+.opening-selection{min-width:0;margin-bottom:24px}
+#opening-new{width:100%;min-height:44px;white-space:normal;overflow-wrap:anywhere}
+.opening-selection select,.opening-selection button{width:100%;min-height:44px;margin:6px 0;white-space:normal;overflow-wrap:anywhere}
+.opening-selection .opening-preview{max-height:42vh;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font:inherit}
+.opening-selection .error{overflow-wrap:anywhere}

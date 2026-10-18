@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "project": "Aventuras",
+  "repository": "https://github.com/AventurasTeam/Aventuras",
+  "commit": "d7f58f7a0338bec82355f1c3856f98432e5c5e25",
+  "verificationDate": "2026-10-16",
+  "license": {
+    "upstreamPath": "LICENSE.md",
+    "file": "aventuras-d7f58-AGPL-3.0.md",
+    "sha256": "db52e3daad9260a1cc638efaf3f6b7a6bdead236365586a60078a9a287613037",
+    "bytes": 34273,
+    "url": "https://github.com/AventurasTeam/Aventuras/blob/d7f58f7a0338bec82355f1c3856f98432e5c5e25/LICENSE.md",
+    "copy": "Unmodified license bytes from the public fixed-commit source archive."
+  },
+  "sourceFiles": [
+    {
+      "path": "src/lib/services/generation/ChapterService.ts",
+      "sha256": "d88452a29e725f5420788ebedcc8365e6a95401f29304a486446916677819f5a",
+      "gitBlob": "563bcb571f4bd4bfb7a2e78aaa2b004c96571466",
+      "url": "https://github.com/AventurasTeam/Aventuras/blob/d7f58f7a0338bec82355f1c3856f98432e5c5e25/src/lib/services/generation/ChapterService.ts"
+    },
+    {
+      "path": "src/lib/services/ai/generation/MemoryService.ts",
+      "sha256": "761c3e50af4f95e8d04c5e73aec58441ef8624278aee3e30f82f41cb01815b97",
+      "gitBlob": "bba733546182c4d057bd78034d7a781f699094f6",
+      "url": "https://github.com/AventurasTeam/Aventuras/blob/d7f58f7a0338bec82355f1c3856f98432e5c5e25/src/lib/services/ai/generation/MemoryService.ts"
+    },
+    {
+      "path": "src/lib/services/prompts/templates/memory.ts",
+      "sha256": "8e9ffa9fb2cc6c3783581d7fefb284bfb3f63ed2e3bd258c1653a4e8baa797d5",
+      "gitBlob": "248ea6dc5d63a3f2a42adaa58b4c65811af39831",
+      "url": "https://github.com/AventurasTeam/Aventuras/blob/d7f58f7a0338bec82355f1c3856f98432e5c5e25/src/lib/services/prompts/templates/memory.ts"
+    },
+    {
+      "path": "src/lib/services/ai/sdk/schemas/memory.ts",
+      "sha256": "08e5841320caecc1816de67779573ba76bee81f5085a805424c542e727523c82",
+      "gitBlob": "c8a6e6d5efbbf29cea11440c086019c74f6d8457",
+      "url": "https://github.com/AventurasTeam/Aventuras/blob/d7f58f7a0338bec82355f1c3856f98432e5c5e25/src/lib/services/ai/sdk/schemas/memory.ts"
+    }
+  ],
+  "adaptation": {
+    "scope": "Behavioral contract adaptation and newly written Traditional Chinese prompts for SCEAN chapter analysis and chapter summaries; not a wholesale copy or import of the upstream application.",
+    "derivedBehaviors": [
+      "Threshold and protected recent buffer before endpoint selection.",
+      "Endpoint analysis followed by one structured chapter summary.",
+      "Structured title, summary, keywords, characters, locations, plotThreads and emotionalTone.",
+      "Summary detail modes concise, auto and precise."
+    ],
+    "notImported": [
+      "Upstream database or StoryStore implementation",
+      "PromptPack database contents or private prompt overrides",
+      "Upstream style review, lore management, chapter timeline or history-evidence pipelines",
+      "Runtime, credentials, private stories or sessions"
+    ],
+    "promptLanguageNote": "Fixed source templates are English. Traditional Chinese prompts are an explicit new adaptation, not a recovered live ZEOLAS prompt.",
+    "sceanSpecificChanges": [
+      "SCEAN uses complete committed input/body turns instead of upstream individual StoryEntry messages.",
+      "Strict integer endpoint and canonical commit identity validation replaces upstream endpoint clamping.",
+      "Bounded source and prior-chapter context replaces upstream unbounded previous chapter summaries.",
+      "SCEAN aggregate persistence, receipts, source invalidation, cancellation and recovery remain local contracts."
+    ]
+  },
+  "relatedProvenance": {
+    "zeolasCommit": "a9362c4a18b585f2c322f2bab9e976144fa7eb46",
+    "existingMemoryAlgorithmRecord": "zeolas-source-snippets.json",
+    "mapping": "../AVENTURAS-CHAPTER-MAPPING.md",
+    "research": [
+      "../docs/research-aventuras-chapters.md",
+      "../docs/research-zeolas-chapters.md"
+    ]
+  }
+}

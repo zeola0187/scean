@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "defaultLicense": "AGPL-3.0-only",
+  "exceptions": [
+    {
+      "component": "advanced-tavern-card-authoring",
+      "license": "MIT",
+      "paths": [
+        "sources/card-studio/cardstudio-bundle/skills/advanced-tavern-card-authoring/**",
+        "packages/studio/skills/advanced-tavern-card-authoring/**"
+      ],
+      "notice": "skills/advanced-tavern-card-authoring/SOURCE.txt in Studio; full notice retained byte-for-byte",
+      "copyright": "Copyright (c) 2026 Card Studio contributors"
+    }
+  ],
+  "retainedMaterials": [
+    {
+      "component": "ZEOLAS archived Memory algorithms",
+      "license": "AGPL-3.0-only",
+      "paths": [
+        "core/memory.mjs",
+        "packages/scean/core/memory.mjs"
+      ],
+      "provenance": "licenses/zeolas-source-snippets.json",
+      "qualification": "User reports local original development; official Aventuras authorship of these functions is not established."
+    },
+    {
+      "component": "Aventuras chapter behavior adaptation",
+      "license": "AGPL-3.0-only",
+      "provenance": "licenses/aventuras-chapter-provenance.json",
+      "notice": "licenses/aventuras-d7f58-AGPL-3.0.md; existing bytes and fixed-source attribution retained"
+    }
+  ],
+  "externalNotBundled": [
+    {
+      "component": "DSH host and SDK",
+      "license": "External upstream licenses; not changed by SCEAN",
+      "scope": "Only external reviewed SDK is used for isolated tests; no SDK/runtime binaries are distributed."
+    },
+    {
+      "component": "SillyTavern, TavernHelper / JS-Slash-Runner, MagVarUpdate and other cited specifications",
+      "scope": "Primary-source citations only; their code and example materials are not included by citation."
+    }
+  ],
+  "excluded": [
+    "Retired Arcamage Skill bodies and references",
+    "Palette Skill",
+    "Private cards, RP, Runs, traces, credentials and user data"
+  ],
+  "reviewLimit": "Candidate file/notice and dependency-boundary review; not a guarantee about unseen historical materials or future added dependencies."
+}

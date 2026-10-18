@@ -1,0 +1,58 @@
+// Explicit authorized installation. Never reads cards, sessions, keys or Run payloads.
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import {createHash,randomUUID} from 'node:crypto';
+import {hostname,tmpdir} from 'node:os';
+import {execFileSync} from 'node:child_process';
+export const digest=b=>createHash('sha256').update(b).digest('hex');
+const eq=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+const need=(value,code)=>{if(!value)throw Error(code);};
+const readJson=async p=>JSON.parse(await fs.readFile(p,'utf8'));
+export async function tree(root){
+ const rows=[];async function walk(dir){for(const item of await fs.readdir(dir,{withFileTypes:true})){const file=path.join(dir,item.name);need(!item.isSymbolicLink(),'PACKAGE_LINK_REFUSED');if(item.isDirectory())await walk(file);else if(item.isFile())rows.push([path.relative(root,file).replaceAll('\\','/'),digest(await fs.readFile(file))]);}}
+ await walk(root);return rows.sort((a,b)=>a[0]<b[0]?-1:a[0]>b[0]?1:0);
+}
+function equivalent(a,b){return eq([...a].sort(),[...b].sort());}
+async function exists(p){try{await fs.lstat(p);return true;}catch(e){if(e.code==='ENOENT')return false;throw e;}}
+async function copy(from,to){await fs.mkdir(to);for(const row of await fs.readdir(from,{withFileTypes:true})){need(!row.isSymbolicLink(),'COPY_LINK_REFUSED');const a=path.join(from,row.name),b=path.join(to,row.name);if(row.isDirectory())await copy(a,b);else await fs.copyFile(a,b,1);}}
+async function atomic(file,bytes){const temp=file+'.scean-'+randomUUID()+'.tmp';await fs.writeFile(temp,bytes,{flag:'wx'});await fs.rename(temp,file);}
+export function productionOptions(){const root=path.resolve(import.meta.dirname,'..');return {root,profile:process.env.SCEAN_PROFILE,prior:path.resolve(root,'../scean-mvp-r2/evidence/upgrade-receipt.json'),evidence:path.join(root,'evidence/formal-install'),source:path.join(root,'dist/scean-0.8.1-formal-play'),dataRoot:process.env.SCEAN_DATA_ROOT,production:true};}
+export function deployment(o){
+ const profile=path.resolve(o.profile),evidence=path.resolve(o.evidence),source=path.resolve(o.source),name='@local/dsh-scean',version='0.8.1-formal-play';
+ const oldTarget=path.join(profile,'.local-packages/scean-mvp-0.2.0'),newTarget=path.join(profile,'.local-packages/scean-'+version),link=path.join(profile,'node_modules/@local/dsh-scean');
+ const files=['package.json','cordis.patch.yml'],receiptFile=path.join(evidence,'receipt.json'),planFile=path.join(evidence,'plan.json');
+ if(!o.production){const base=path.resolve(o.testRoot??'');need(path.dirname(base)===path.resolve(tmpdir())&&path.basename(base).startsWith('scean-formal-deploy-'),'TEST_ROOT_REFUSED');for(const p of [profile,evidence,source,path.resolve(o.prior)])need(p.startsWith(base+path.sep),'TEST_PATH_ESCAPE');}
+ async function closed(){if(!o.production)return;need(hostname()===process.env.SCEAN_PRIMARY_MACHINE,'WRONG_HOST');const output=execFileSync('powershell.exe',['-NoProfile','-Command',"@(Get-Process | Where-Object {$_.ProcessName -eq 'DeepSeek Harness'} | Select-Object Id,ProcessName) | ConvertTo-Json -Compress"],{encoding:'utf8'}).trim();need(eq(JSON.parse(output||'[]'),[]),'DESKTOP_RUNNING_STOP');}
+ async function exactLink(target){need((await fs.lstat(link)).isSymbolicLink()&&path.resolve(await fs.readlink(link))===path.resolve(target),'LINK_DRIFT');}
+ async function hashes(){return Object.fromEntries(await Promise.all(files.map(async f=>[f,digest(await fs.readFile(path.join(profile,f)))])));}
+ async function protectedFiles(){if(!o.production)return [];const baseline=await readJson(path.join(o.root,'ui-evidence/protected-before.json')),rows=[];for(const item of baseline.files){if(item.path.startsWith('dsh-scean/')||['desktop/package.json','desktop/cordis.patch.yml'].includes(item.path))continue;const p=item.path==='desktop/app.asar'?process.env.SCEAN_DSH_ASAR:item.path.startsWith('desktop/')?path.join(profile,item.path.slice(8)):path.join(profile,'node_modules/@local',item.path);const value=digest(await fs.readFile(p));need(value===item.sha256,'PROTECTED_BASELINE_DRIFT:'+item.path);rows.push([item.path,value]);}for(const gate of (await readJson(path.join(o.root,'ui-evidence/gates-before.json'))).gates){const value=digest(await fs.readFile(gate.path));need(value===gate.sha256,'OLD_GATE_DRIFT');rows.push([gate.path,value]);}return rows;}
+ async function validatePackages(plan){await exactLink(oldTarget);need(eq(await tree(oldTarget),plan.oldFiles),'OLD_PACKAGE_DRIFT');need(eq(await tree(source),plan.newFiles),'SOURCE_PACKAGE_DRIFT');need(eq(await protectedFiles(),plan.protectedFiles),'PROTECTED_DRIFT');need(digest(await fs.readFile(o.prior))===plan.priorHash,'PRIOR_RECEIPT_DRIFT');}
+ async function prepare(){
+  await closed();need(!await exists(planFile)&&!await exists(receiptFile),'PREPARATION_EXISTS');need(!await exists(newTarget),'NEW_TARGET_EXISTS');
+  const priorBytes=await fs.readFile(o.prior),prior=JSON.parse(priorBytes),before=await hashes(),pkg=await readJson(path.join(profile,'package.json'));
+  need(prior.status==='installed'&&prior.production===o.production&&path.resolve(prior.profile)===profile&&prior.afterHash===before['package.json'],'PREVIOUS_RECEIPT_PROFILE_MISMATCH');
+  need(pkg.dependencies[name]==='link:./.local-packages/scean-mvp-0.2.0'&&pkg.dsh.profile.bundles.filter(x=>x===name).length===1,'OLD_REGISTRATION_MISMATCH');await exactLink(oldTarget);
+  const oldFiles=await tree(oldTarget),priorEntry=prior.updates.find(x=>x.name===name);need(priorEntry&&path.resolve(priorEntry.newTarget)===oldTarget&&equivalent(priorEntry.newFiles,oldFiles),'OLD_RECEIPT_PACKAGE_MISMATCH');
+  for(const update of prior.updates){need(equivalent(update.newFiles,await tree(update.newTarget)),'PRIOR_OTHER_PACKAGE_DRIFT');}
+  const meta=await readJson(path.join(source,'package.json'));need(meta.name===name&&meta.version===version&&meta.engines.dsh==='0.2.0-rc.2'&&Object.values(meta.peerDependencies).every(v=>v==='0.2.0-rc.2'),'NEW_PACKAGE_IDENTITY');
+  const patch=await fs.readFile(path.join(profile,files[1]));need(!patch.toString().includes('id: local-scean-host'),'EXISTING_SCEAN_OVERRIDE_REVIEW_REQUIRED');
+  if(o.production){need(!await exists(o.dataRoot),'NEW_DATA_ROOT_EXISTS');need(Boolean(process.env['OpenRouter API Key']),'EXISTING_EMBEDDING_ENV_MISSING');}
+  pkg.dependencies[name]='link:./.local-packages/scean-'+version;
+  const nextPackage=Buffer.from(JSON.stringify(pkg,null,2)+'\n');const nextPatch=Buffer.concat([patch,Buffer.from("\n# SCEAN formal player; independent data, existing DSH model selection.\n- id: local-scean-host\n  config:\n    dataRoot: '"+o.dataRoot.replaceAll('\\','/')+"'\n    enableExistingEmbedding: true\n    summaryEnabled: false\n    chapterModelsEnabled: false\n    technicalRetries: 0\n")]);
+  const plan={schemaVersion:1,production:o.production,host:hostname(),version,baseCommit:'ffeb0a38e19302e65e400fa2bf2a6fa5d680edd1',at:new Date().toISOString(),profile,source,oldTarget,newTarget,link,dataRoot:o.dataRoot,prior:o.prior,priorHash:digest(priorBytes),before,after:{'package.json':digest(nextPackage),'cordis.patch.yml':digest(nextPatch)},oldFiles,newFiles:await tree(source),protectedFiles:await protectedFiles(),policy:{dollarGate:false,generationGate:false,oldGatesUntouched:true,backgroundModels:false,paidDeploymentCalls:0}};
+  await fs.mkdir(evidence,{recursive:true});for(const f of files)await fs.copyFile(path.join(profile,f),path.join(evidence,'before-'+f),1);await fs.writeFile(path.join(evidence,'after-package.json'),nextPackage,{flag:'wx'});await fs.writeFile(path.join(evidence,'after-cordis.patch.yml'),nextPatch,{flag:'wx'});await fs.writeFile(planFile,JSON.stringify(plan,null,2)+'\n',{flag:'wx'});return {status:'prepared',version,packageFiles:plan.newFiles.length,protectedFiles:plan.protectedFiles.length,planFile};
+ }
+ async function plan(){const p=await readJson(planFile);need(p.profile===profile&&p.source===source&&p.oldTarget===oldTarget&&p.newTarget===newTarget&&p.link===link&&p.version===version&&p.production===o.production,'PLAN_IDENTITY');for(const kind of ['before','after'])for(const f of files)need(digest(await fs.readFile(path.join(evidence,kind+'-'+f)))===p[kind][f],'BACKUP_DRIFT');return p;}
+ async function switchLink(from,to){await exactLink(from);await fs.unlink(link);try{await fs.symlink(to,link,'junction');}catch(e){await fs.symlink(from,link,'junction');throw e;}}
+ async function install(){await closed();const p=await plan();need(!await exists(receiptFile)&&!await exists(newTarget),'INSTALL_ALREADY_STARTED');need(eq(await hashes(),p.before),'PRE_INSTALL_PROFILE_DRIFT');await validatePackages(p);
+  const receipt={schemaVersion:1,status:'preparing',version,at:new Date().toISOString(),planHash:digest(await fs.readFile(planFile)),profile,oldTarget,newTarget,link,dataRoot:o.dataRoot};await fs.writeFile(receiptFile,JSON.stringify(receipt,null,2),{flag:'wx'});
+  await copy(source,newTarget);need(eq(await tree(newTarget),p.newFiles),'COPIED_PACKAGE_MISMATCH');await closed();await validatePackages(p);need(eq(await hashes(),p.before),'PRE_SWITCH_PROFILE_DRIFT');
+  let switched=false;try{await switchLink(oldTarget,newTarget);switched=true;for(const f of files){need(digest(await fs.readFile(path.join(profile,f)))===p.before[f],'PROFILE_RACE');await atomic(path.join(profile,f),await fs.readFile(path.join(evidence,'after-'+f)));}need(eq(await hashes(),p.after),'POST_INSTALL_PROFILE_DRIFT');receipt.status='installed';}
+  catch(e){const current=await hashes();if(files.every(f=>[p.before[f],p.after[f]].includes(current[f]))){for(const f of files)if(current[f]===p.after[f])await atomic(path.join(profile,f),await fs.readFile(path.join(evidence,'before-'+f)));if(switched)await switchLink(newTarget,oldTarget);receipt.status='failed_restored';}else receipt.status='needs_recovery';receipt.failure=e.message;await atomic(receiptFile,JSON.stringify(receipt,null,2));throw e;}
+  receipt.installedAt=new Date().toISOString();await atomic(receiptFile,JSON.stringify(receipt,null,2));return verify();
+ }
+ async function verify(){const p=await plan(),r=await readJson(receiptFile);need(r.planHash===digest(await fs.readFile(planFile))&&r.status==='installed','RECEIPT_MISMATCH');await exactLink(newTarget);need(eq(await hashes(),p.after),'INSTALLED_PROFILE_DRIFT');need(eq(await tree(newTarget),p.newFiles)&&eq(await tree(oldTarget),p.oldFiles),'INSTALLED_PACKAGE_DRIFT');need(eq(await protectedFiles(),p.protectedFiles),'PROTECTED_DRIFT');return {status:'installed_verified',version,packageFiles:p.newFiles.length,protectedFiles:p.protectedFiles.length,receipt:receiptFile,planHash:r.planHash,dataRoot:p.dataRoot};}
+ async function restore(){await closed();await verify();const p=await plan(),r=await readJson(receiptFile);await switchLink(newTarget,oldTarget);try{for(const f of files){need(digest(await fs.readFile(path.join(profile,f)))===p.after[f],'RESTORE_PROFILE_RACE');await atomic(path.join(profile,f),await fs.readFile(path.join(evidence,'before-'+f)));}}catch(e){r.status='needs_recovery';r.failure=e.message;await atomic(receiptFile,JSON.stringify(r,null,2));throw e;}need(eq(await hashes(),p.before),'RESTORE_VERIFY');r.status='restored';r.restoredAt=new Date().toISOString();await atomic(receiptFile,JSON.stringify(r,null,2));return {status:r.status,dataRetained:true,newPackageRetained:true};}
+ return {prepare,install,verify,restore};
+}
+if(process.argv[1]===import.meta.filename){const action=process.argv[2];need(['prepare','install','verify','restore'].includes(action),'USAGE_prepare_install_verify_restore');console.log(JSON.stringify(await deployment(productionOptions())[action]()));}

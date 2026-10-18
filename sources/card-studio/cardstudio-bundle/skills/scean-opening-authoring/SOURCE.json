@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "skill": "scean-opening-authoring",
+  "version": "1.0.0",
+  "origin": "User-provided SCEAN opening-authoring specification, received 2026-10-18",
+  "specification": {
+    "sha256": "f08bf582c42483e6d0883a6df13f635afdc6d7fe4479e436478c9a7da9ac9e23",
+    "bytes": 23528,
+    "lines": 566,
+    "declaredName": "scean-opening-authoring",
+    "declaredVersion": "1.0.0"
+  },
+  "adaptation": "Full original body retained by section in creative-guide.md and authoring-workflow.md; SKILL.md routes it and studio-contract.md maps existing tools. No retired opening Skill body was used.",
+  "originalSectionOrder": [
+    "creative-guide.md before section 10",
+    "authoring-workflow.md sections 10-12",
+    "creative-guide.md from section 13"
+  ],
+  "files": {
+    "SKILL.md": "e24823b7cdffa5cd69646e9faf80dc07a0ab3735bb31b6e5cd3a03c1cefc0144",
+    "references/creative-guide.md": "4da5d980f29aca692def39e3fd5fa932c0e785b958bbecda8804d0c7700add94",
+    "references/authoring-workflow.md": "b654e6710c79bccc391482ba94464c4105f5c3b3272212c8255491be5afb669a",
+    "references/studio-contract.md": "41bb7545df60f824e1f3e824635e7b2b8e657189b4289b8e033ace775b982a84"
+  },
+  "license": "AGPL-3.0-only",
+  "historicalLicenseStatement": "No project-wide license selected; no new grant inferred from the supplied specification.",
+  "licenseDecision": "2026-10-18 author decision for original SCEAN materials; full text in package LICENSE; original content hashes retained."
+}

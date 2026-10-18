@@ -1,0 +1,61 @@
+{
+  "project": "ZEOLAS local archive",
+  "version": "0.8.0",
+  "tag": "zeolas-selfuse-0.8",
+  "commit": "a9362c4a18b585f2c322f2bab9e976144fa7eb46",
+  "sourcePath": "src/lib/services/memory/SparseMemoryRecallService.ts",
+  "sha256": "c455160fdf9951892923d273d745c5c9bba13d20f9a975027efdff4ea30f2c11",
+  "gitBlob": "9d81c2384049cee637f72036bd1bf807bc9505de",
+  "license": {
+    "file": "zeolas-AGPL-3.0.md",
+    "sha256": "db52e3daad9260a1cc638efaf3f6b7a6bdead236365586a60078a9a287613037"
+  },
+  "excerpts": [
+    {
+      "start": 67,
+      "end": 69,
+      "sha256": "e8b7ed87efda2ed9e5a85ad4db798a1c171c8d6dad590aa8f9b64f38aa5a7562",
+      "text": "function normalized(value: string): string {\n  return value.normalize('NFKC').toLocaleLowerCase()\n}"
+    },
+    {
+      "start": 92,
+      "end": 110,
+      "sha256": "f68c855bd8fbe9bc7ae8637584c16f142e8bb6ff1999239d2c81becf91a2203e",
+      "text": "export function tokenizeForSparseRecall(value: string): string[] {\n  const text = normalized(value)\n  const tokens: string[] = []\n  for (const match of text.matchAll(\n    /[\\p{Script=Han}\\p{Script=Hiragana}\\p{Script=Katakana}]+|[\\p{L}\\p{N}_]+/gu,\n  )) {\n    const term = match[0]\n    if (/^[\\p{Script=Han}\\p{Script=Hiragana}\\p{Script=Katakana}]+$/u.test(term)) {\n      const characters = Array.from(term)\n      tokens.push(...characters)\n      for (let index = 0; index < characters.length - 1; index++) {\n        tokens.push(characters[index] + characters[index + 1])\n      }\n    } else {\n      tokens.push(term)\n    }\n  }\n  return tokens\n}"
+    },
+    {
+      "start": 1019,
+      "end": 1097,
+      "sha256": "638b336137a0b554f55034d37475c24965c48bfb8937f56e9bbb75c9dabec2e3",
+      "text": "  private bm25(input: SparseMemoryRecallInput, chunks: MemoryChunk[]): ScoredChunk[] {\n    if (chunks.length === 0) return []\n    const queryTokens = tokenizeForSparseRecall(input.query)\n    const documents = chunks.map((chunk) => tokenizeForSparseRecall(chunk.text))\n    const averageLength =\n      documents.reduce((sum, document) => sum + document.length, 0) / documents.length || 1\n    const documentFrequency = new Map<string, number>()\n    for (const document of documents) {\n      for (const term of new Set(document)) {\n        documentFrequency.set(term, (documentFrequency.get(term) ?? 0) + 1)\n      }\n    }\n\n    const normalizedQuery = normalized(input.query)\n    const referencedEntityIds = new Set<string>()\n    for (const entity of [\n      ...input.characters,\n      ...input.locations,\n      ...input.items,\n      ...input.storyBeats.map((beat) => ({ id: beat.id, name: beat.title })),\n    ]) {\n      if (entity.name && normalizedQuery.includes(normalized(entity.name))) {\n        referencedEntityIds.add(entity.id)\n      }\n    }\n\n    return chunks\n      .map((chunk, index): ScoredChunk => {\n        const document = documents[index]\n        const frequencies = new Map<string, number>()\n        for (const term of document) frequencies.set(term, (frequencies.get(term) ?? 0) + 1)\n        let bm25Score = 0\n        for (const term of queryTokens) {\n          const frequency = frequencies.get(term) ?? 0\n          if (frequency === 0) continue\n          const containing = documentFrequency.get(term) ?? 0\n          const inverseFrequency = Math.log(\n            1 + (chunks.length - containing + 0.5) / (containing + 0.5),\n          )\n          const k1 = 1.2\n          const b = 0.75\n          bm25Score +=\n            inverseFrequency *\n            ((frequency * (k1 + 1)) /\n              (frequency + k1 * (1 - b + b * (document.length / averageLength))))\n        }\n\n        const exactKeyword = chunk.keywords.some((keyword) => {\n          const value = normalized(keyword)\n          return value.length >= 2 && normalizedQuery.includes(value)\n        })\n        const structuredMatch = [\n          ...chunk.characterIds,\n          ...chunk.locationIds,\n          ...chunk.itemIds,\n          ...chunk.storyBeatIds,\n        ].some((id) => referencedEntityIds.has(id))\n        const activeThreadBoost = chunk.storyBeatIds.some((id) =>\n          input.storyBeats.some(\n            (beat) => beat.id === id && (beat.status === 'active' || beat.status === 'pending'),\n          ),\n        )\n        const score =\n          bm25Score +\n          (exactKeyword ? 2.5 : 0) +\n          (structuredMatch ? 3.5 : 0) +\n          (activeThreadBoost ? 0.5 : 0)\n        return {\n          chunk,\n          score,\n          bm25Score,\n          reason: structuredMatch ? 'structured' : exactKeyword ? 'exact' : 'bm25',\n        }\n      })\n      .sort(\n        (left, right) =>\n          right.score - left.score || right.chunk.endPosition - left.chunk.endPosition,\n      )\n  }"
+    },
+    {
+      "start": 871,
+      "end": 934,
+      "sha256": "d06f00f998b6ec811dc5e51d5badf30975944fa5f62cffdf9cb00d42f154fab2",
+      "text": "    const fusePool = (\n      sparse: ScoredChunk[],\n      dense: ScoredChunk[],\n      poolChunks: MemoryChunk[],\n      includeSticky: boolean,\n    ): ScoredChunk[] => {\n      const fused = new Map<string, ScoredChunk>()\n      const addRank = (items: ScoredChunk[], kind: 'sparse' | 'dense') => {\n        items.forEach((item, index) => {\n          const existing = fused.get(item.chunk.id)\n          const rrf = 1 / (60 + index + 1)\n          if (existing) {\n            existing.rrfScore = (existing.rrfScore ?? 0) + rrf\n            if (kind === 'dense') existing.denseScore = item.denseScore\n            existing.reason = 'hybrid'\n          } else {\n            fused.set(item.chunk.id, { ...item, rrfScore: rrf })\n          }\n        })\n      }\n      addRank(\n        sparse\n          .filter((item) => item.score > 0)\n          .sort((left, right) => right.score - left.score)\n          .slice(0, 40),\n        'sparse',\n      )\n      addRank(dense.slice(0, 40), 'dense')\n      if (includeSticky) {\n        for (const chunk of poolChunks) {\n          const stickyBonus = input.stickyLorebookBonuses?.[chunk.sourceId] ?? 0\n          if (stickyBonus <= 0) continue\n          const existing = fused.get(chunk.id)\n          if (existing) {\n            existing.stickyBonus = stickyBonus\n          } else {\n            fused.set(chunk.id, {\n              chunk,\n              score: stickyBonus * 0.5,\n              bm25Score: 0,\n              rrfScore: stickyBonus / 100,\n              stickyBonus,\n              reason: 'hybrid',\n            })\n          }\n        }\n      }\n      return [...fused.values()]\n        .sort(\n          (left, right) =>\n            (right.rrfScore ?? 0) +\n              (right.stickyBonus ?? 0) / 100 -\n              ((left.rrfScore ?? 0) + (left.stickyBonus ?? 0) / 100) ||\n            right.score - left.score ||\n            right.chunk.updatedAt - left.chunk.updatedAt,\n        )\n        .filter((item, index, all) => {\n          const priorFromSource = all\n            .slice(0, index)\n            .filter((candidate) => candidate.chunk.sourceId === item.chunk.sourceId).length\n          return priorFromSource < (includeSticky ? 1 : 2)\n        })\n        .slice(0, 32)\n    }"
+    }
+  ],
+  "transformations": [
+    "Node stripTypeScriptTypes(mode:strip); export normalized",
+    "private bm25 method exported as function",
+    "fusePool unchanged within exported fuseRanks wrapper with input parameters",
+    "SCEAN scope/provenance/port adapter added after original functions; no upstream imports"
+  ],
+  "historicalProjectLabel": "Aventuras / ZEOLAS",
+  "provenanceQualification": {
+    "recordDate": "2026-10-18",
+    "functions": [
+      "normalized",
+      "tokenizeForSparseRecall",
+      "bm25",
+      "fuseRanks/fusePool"
+    ],
+    "established": "The SCEAN functions were extracted from the hash-pinned user ZEOLAS archive identified here.",
+    "userStatement": "The user reports developing these functions locally, without GitHub at that time.",
+    "limitedComparison": "The prior comparison of three official Aventuras versions and 39 retrieval-version files found no long implementation overlap sufficient to establish the same implementation. This is limited negative evidence, not a comprehensive proof of originality.",
+    "authorshipConclusion": "Official Aventuras authorship of these functions is not established; user-reported local authorship is distinguished from independently observed history.",
+    "missingEvidence": "First-add history was not recovered; this fact alone is not a release blocker.",
+    "licenseDecision": "Author selected AGPL-3.0-only; existing SPDX and complete archived license copies are retained."
+  }
+}

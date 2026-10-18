@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "supportedDshVersions": [
+    "0.2.0-rc.2",
+    "0.2.1-rc.1",
+    "0.2.1-rc.2"
+  ],
+  "reviewedAsarSHA256": {
+    "0.2.0-rc.2": "983ca71114e6dfd353fc79af5a1f9481a250ee64c2a3c757673029b811b23bc2",
+    "0.2.1-rc.1": "91434162c7b0393110b3c5d3f079c1ab3a33334fa636a104fc5e28d5affa606b",
+    "0.2.1-rc.2": "47874618bf5b3011fcaac10cd4c85f69da333e70d4f99b921207c78d0999512a"
+  },
+  "policy": "Only these exact reviewed DSH versions are admitted; no compatibility exemptions are required."
+}

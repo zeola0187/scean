@@ -1,0 +1,11 @@
+{
+  "purpose": "Documentation template, not an automatic installer or a credential file",
+  "package": "@local/dsh-scean",
+  "version": "0.3.0",
+  "targetDesktop": "0.2.0-rc.2",
+  "dataRoot": "<NEW_ISOLATED_SCEAN_R3_DATA_ROOT>",
+  "modelConfiguration": "Use existing authorized DSH provider configuration; candidate native adapter is still fixed to DeepSeek",
+  "credentialsIncluded": false,
+  "deployAutomatically": false,
+  "reuseExistingRuns": false
+}

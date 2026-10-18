@@ -1,0 +1,145 @@
+{
+  "schemaVersion": 1,
+  "name": "scean-worldbook-authoring",
+  "version": "1.0.0",
+  "origin": "scean-original",
+  "authorship": "Original Traditional Chinese instructions written from the repository implementation, data contracts and tests for the user's authorized native-skill refactor.",
+  "baselineRepository": "[private source repository]",
+  "baselineCommit": "32f8630fbb0f3ecfa0a393bd9be8004ac3759082",
+  "baselineSuiteVersion": "1.1.0-w01-derived.1",
+  "foreignSkillTextUsed": false,
+  "foreignSkillMethodsExamplesOrReferencesPorted": false,
+  "programEvidence": [
+    {
+      "path": "core/worldbook.mjs",
+      "contracts": [
+        "selectWorldbooks",
+        "stripWorldbookContainers",
+        "literal matching",
+        "public scope",
+        "selection and presentation order"
+      ]
+    },
+    {
+      "path": "core/engine.mjs",
+      "contracts": [
+        "fixed Snapshot",
+        "worldbook assembly",
+        "stageUse",
+        "atomic PostStat commit"
+      ]
+    },
+    {
+      "path": "core/context-budget.mjs",
+      "contracts": [
+        "budgetStage",
+        "stage boundaries",
+        "optional worldbook pruning",
+        "estimate-only diagnostics"
+      ]
+    },
+    {
+      "path": "core/state-blueprint.mjs",
+      "contracts": [
+        "validateBlueprint",
+        "materializeInitialState",
+        "validateBlueprintStateChanges",
+        "publicBlueprintState"
+      ]
+    },
+    {
+      "path": "core/memory-policy.mjs",
+      "contracts": [
+        "validateMemoryPolicy",
+        "eligibleMemory",
+        "publicData",
+        "ownerData"
+      ]
+    },
+    {
+      "path": "core/memory.mjs",
+      "contracts": [
+        "recall ranking is independent from worldbook selection"
+      ]
+    },
+    {
+      "path": "packages/studio/lib/tool-definitions.js",
+      "contracts": [
+        "registered tool names and parameter schemas"
+      ]
+    },
+    {
+      "path": "packages/studio/lib/card-service.js",
+      "contracts": [
+        "book",
+        "commit",
+        "revision CAS",
+        "stable IDs",
+        "reference guards"
+      ]
+    },
+    {
+      "path": "packages/studio/lib/codec.js",
+      "contracts": [
+        "validateBook",
+        "preservation compatibility"
+      ]
+    },
+    {
+      "path": "packages/studio/lib/tavern-compatibility.js",
+      "contracts": [
+        "tavernBookIssues",
+        "nextTavernEntryId"
+      ]
+    },
+    {
+      "path": "packages/studio/lib/authoring-scope.js",
+      "contracts": [
+        "Content and Full scope",
+        "managed Gate body guard"
+      ]
+    },
+    {
+      "path": "packages/studio/lib/worldbook-gating.js",
+      "contracts": [
+        "TauriTavern target-only Gate",
+        "evaluateGate",
+        "compileGate"
+      ]
+    },
+    {
+      "path": "packages/studio/lib/scean-integration.js",
+      "contracts": [
+        "buildSavedSnapshot",
+        "human-only handoff",
+        "source hash validation"
+      ]
+    },
+    {
+      "path": "packages/studio/lib/scean-audit-control.js",
+      "contracts": [
+        "validateArgs",
+        "selected saved card",
+        "cases schema"
+      ]
+    }
+  ],
+  "testEvidence": [
+    "tests/b-worldbook.test.mjs",
+    "tests/b-worldbook-integration.test.mjs",
+    "tests/b-context-budget.test.mjs",
+    "tests/b-state-blueprint.test.mjs",
+    "tests/b-blueprint-integration.test.mjs",
+    "tests/compatibility-audit.test.mjs"
+  ],
+  "cooperationEvidence": [
+    "packages/studio/skills/scean-native-authoring/SKILL.md",
+    "packages/studio/skills/scean-native-authoring/references/studio-integration.md",
+    "packages/studio/skills/scean-native-authoring/references/character-workspace.md",
+    "packages/studio/skills/scean-compatibility-audit/SKILL.md",
+    "packages/studio/skills/scean-compatibility-audit/references/tool-and-results.md"
+  ],
+  "provenanceLimits": "This record describes these newly written skill files only. It does not replace repository third-party notices, erase retired material from Git history, clear licenses of retained materials, or certify a project-wide licensing audit. Private repository status is not license clearance.",
+  "license": "AGPL-3.0-only",
+  "licenseDecision": "2026-10-18 author decision for original SCEAN materials; full text in package LICENSE; original content hashes retained."
+}

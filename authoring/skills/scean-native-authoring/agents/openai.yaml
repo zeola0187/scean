@@ -1,0 +1,4 @@
+interface:
+  display_name: "SCEAN 原生製卡"
+  short_description: "依實裝版本將完整酒館機制映射為原生資料，驗證角色知情與保存契約"
+  default_prompt: "使用 $scean-native-authoring 分析指定卡的完整機制並提出原生資料與驗證映射。"

@@ -1,0 +1,64 @@
+PUBLIC RELEASE 1.4.0 — 2026-10-18
+Original SCEAN material: AGPL-3.0-only; advanced-tavern-card-authoring retains MIT.
+Source: https://github.com/zeola0187/scean/tree/v1.4.0
+Historical status paragraphs below describe earlier private candidates.
+Necessary original notices and license copies remain applicable.
+
+CURRENT LICENSE DECISION — 2026-10-18
+Original SCEAN code, documentation, tests/build tools and original native Skills
+are AGPL-3.0-only. LICENSE and LICENSE-SCOPE.md define the current scope; the
+advanced-tavern-card-authoring MIT license is an explicit retained exception.
+Memory origin is qualified in licenses/zeolas-source-snippets.json: the archived
+functions are not attributed as established official Aventuras authorship.
+Public release is held for an exact public source endpoint and explicit
+publication authorization. No public repository or release has been created.
+The new scean-opening-authoring 1.0.0 is active. Old opening, Palette and retired
+Arcamage bodies remain excluded. The paragraphs below are historical notices,
+not current payload or current license declarations; necessary notices remain.
+
+HISTORICAL RECORDS (unchanged)
+
+CANDIDATE SCOPE — 2026-10-18
+No project-wide license is selected. Public release remains blocked pending license/author consistency review and user-supplied opening guidance. The old opening Skill, Palette and retired Arcamage Skill bodies/references are excluded. Old notices below are retained as provenance, not current payload declarations or a license grant. Private history locators are withheld separately.
+
+RETAINED PRE-EXPORT NOTICES
+2026-10-18 Palette removal candidate: Palette is removed from current source,
+catalogs, method options and runtime; it is not shipped or selected in this branch.
+Prior Palette paragraphs below are historical private-use provenance, not the
+current payload or a public license grant. Old tags/Releases/history are retained.
+Opening and character-authoring bytes are unchanged. See docs/PALETTE-REMOVAL.zh-TW.md.
+
+DSH Card Studio private cross-machine package — source and rights record
+Checked 2026-10-04. This file is not a new license grant.
+
+Five original skills originate from Shizuku-Yume/Arcamage:
+https://github.com/Shizuku-Yume/Arcamage
+frontend/public/agent-skills/{character-design-deepener,lorebook-architect,
+dialogue-and-prompt-tuner,opening-narrative-crafter,frontend-presentation-optimizer}
+The upstream README declares MIT. Its linked LICENSE returned 404, and the
+provided local source contains no complete copyright/license notice. Those
+materials remain unverified/incomplete; no author name, year, or license text
+has been invented. Existing text and attribution have been preserved.
+
+Palette originates from the user's palette-skill-arcamage.zip, SHA256:
+2a1995b20fa6fb26b06cf37c574b449bf49af92df25ebae0174e26b1e3245152
+No license was supplied; ownership/redistribution rights are not established
+by private repository visibility. The user explicitly authorized retaining
+these supplied materials in their private repository for their own computers.
+This scope is not a public redistribution grant. Public publication requires
+separate rights review or replacement of the affected materials.
+
+skills/sources.json records the original entry/reference hashes. Each skill's
+SOURCE.txt identifies its origin. ORIGINAL-SKILL.md and original references
+remain byte-for-byte intact. SKILL.md identifies project-authored DSH adapter
+text separately from original methodology. No remote code is downloaded or run.
+Palette references external mvu-guide.md that was not supplied; related changes
+remain unavailable. The remote MVU URL is retained as inert source text only.
+
+tavern-card-format-preservation and the DSH adapters were independently written
+for this project. Their CCv2/v3 and SillyTavern primary-source citations do not
+relicense any other skill. echo-xianyu/worldbook-skill is a separate CC BY-NC-SA
+4.0 research source and is NOT included in this package.
+
+This package contains no DSH executable/runtime, external skill scripts, real
+cards, chat history, credentials, API keys, logs or mutable user workspace data.

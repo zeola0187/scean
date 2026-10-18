@@ -1,0 +1,217 @@
+{
+  "spec": "chara_card_v2",
+  "spec_version": "2.0",
+  "data": {
+    "name": "合成潮汐船",
+    "description": "僅供驗收的多人船上日常；機械初值與作者指定的狀態有效。",
+    "personality": "角色保有不同視角，不替玩家決定。",
+    "scenario": "清晨碼頭維修。",
+    "first_mes": "眾人整理當日工作，等待你的選擇。",
+    "mes_example": "",
+    "creator_notes": "原創合成 fixture；非私人卡或真模型生成。",
+    "system_prompt": "事件已發生才結算，未定義規則保留未知。",
+    "post_history_instructions": "保持作者給定條件及玩家選擇。",
+    "alternate_greetings": [],
+    "tags": [
+      "synthetic",
+      "native-authoring"
+    ],
+    "creator": "SCEAN authoring acceptance",
+    "character_version": "1",
+    "extensions": {
+      "scean": {
+        "characters": [
+          {
+            "id": "pilot",
+            "name": "舵手",
+            "description": "舵手的原創合成背景。SHIP_OWNER_COPPER_PROMISE",
+            "publicDescription": "舵手在此負責維修與生活事務。",
+            "relationships": {
+              "contextScope": {
+                "kind": "character",
+                "characterId": "pilot"
+              },
+              "note": "只屬本人視角；不推定他人知情。"
+            }
+          },
+          {
+            "id": "mechanic",
+            "name": "技師",
+            "description": "技師的原創合成背景。不知其他人的私人約定。",
+            "publicDescription": "技師在此負責維修與生活事務。",
+            "relationships": {
+              "contextScope": {
+                "kind": "character",
+                "characterId": "mechanic"
+              },
+              "note": "只屬本人視角；不推定他人知情。"
+            }
+          },
+          {
+            "id": "medic",
+            "name": "醫師",
+            "description": "醫師的原創合成背景。不知其他人的私人約定。",
+            "publicDescription": "醫師在此負責維修與生活事務。",
+            "relationships": {
+              "contextScope": {
+                "kind": "character",
+                "characterId": "medic"
+              },
+              "note": "只屬本人視角；不推定他人知情。"
+            }
+          }
+        ],
+        "stateBlueprint": {
+          "schemaVersion": 1,
+          "id": "ship-blueprint",
+          "version": 1,
+          "extensionPolicy": "deny",
+          "variables": [
+            {
+              "key": "fuel",
+              "displayName": "fuel",
+              "scope": "world",
+              "category": "resources",
+              "type": "number",
+              "visibility": "public",
+              "min": 0,
+              "max": 100,
+              "unit": "L"
+            },
+            {
+              "key": "mode",
+              "displayName": "mode",
+              "scope": "world",
+              "category": "facts",
+              "type": "enum",
+              "visibility": "public",
+              "enumValues": [
+                "moored",
+                "sailing"
+              ]
+            },
+            {
+              "key": "weather",
+              "displayName": "weather",
+              "scope": "world",
+              "category": "facts",
+              "type": "string",
+              "visibility": "public"
+            },
+            {
+              "key": "lantern",
+              "displayName": "lantern",
+              "scope": "world",
+              "category": "facts",
+              "type": "boolean",
+              "visibility": "public"
+            },
+            {
+              "key": "commission",
+              "displayName": "commission",
+              "scope": "world",
+              "category": "tasks",
+              "type": "json",
+              "visibility": "public",
+              "requiredFields": [
+                "status",
+                "assignees",
+                "progress"
+              ]
+            },
+            {
+              "key": "promise",
+              "displayName": "PRIVATE_LABEL_ship",
+              "scope": "character",
+              "characterId": "pilot",
+              "category": "facts",
+              "type": "string",
+              "visibility": "restricted"
+            }
+          ]
+        },
+        "initialState": {
+          "schemaVersion": 1,
+          "blueprintId": "ship-blueprint",
+          "blueprintVersion": 1,
+          "values": [
+            {
+              "scope": "world",
+              "category": "resources",
+              "key": "fuel",
+              "value": 40,
+              "source": {
+                "id": "ship-author-fixture",
+                "version": 1
+              }
+            },
+            {
+              "scope": "world",
+              "category": "facts",
+              "key": "mode",
+              "value": "moored",
+              "source": {
+                "id": "ship-author-fixture",
+                "version": 1
+              }
+            },
+            {
+              "scope": "world",
+              "category": "facts",
+              "key": "lantern",
+              "value": false,
+              "source": {
+                "id": "ship-author-fixture",
+                "version": 1
+              }
+            },
+            {
+              "scope": "world",
+              "category": "tasks",
+              "key": "commission",
+              "value": {
+                "status": "pending",
+                "assignees": [
+                  "mechanic"
+                ],
+                "progress": 0
+              },
+              "source": {
+                "id": "ship-author-fixture",
+                "version": 1
+              }
+            },
+            {
+              "scope": "character",
+              "characterId": "pilot",
+              "category": "facts",
+              "key": "promise",
+              "value": "SHIP_OWNER_COPPER_PROMISE",
+              "source": {
+                "id": "ship-author-fixture",
+                "version": 1
+              }
+            }
+          ]
+        }
+      },
+      "unrelated": {
+        "keep": "synthetic-preservation"
+      }
+    },
+    "character_book": {
+      "entries": [
+        {
+          "id": 1,
+          "keys": [
+            "碼頭"
+          ],
+          "content": "工作只有完成後才改任務進度；未完工不得宣稱交付。",
+          "enabled": true,
+          "insertion_order": 0,
+          "extensions": {}
+        }
+      ]
+    }
+  }
+}

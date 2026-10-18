@@ -1,0 +1,4 @@
+- insert:
+    - id: local-scean-host
+      name: '@local/dsh-scean'
+      config: {}

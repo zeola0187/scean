@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "baselineCommit": "32f8630fbb0f3ecfa0a393bd9be8004ac3759082",
+  "preservedFiles": [
+    {
+      "path": "packages/studio/skills/character-authoring/CODEX-INTEGRATION.md",
+      "sha256": "2bc0c34a59eee3b45e0590dc52716a565c3574fb1a33815cde47052af55618d8"
+    },
+    {
+      "path": "packages/studio/skills/character-authoring/ORIGINAL-SKILL.md",
+      "sha256": "64a36965d4bf19dd258f4d9b254ebc3cbece9f46e78a6e20ab4cbb30300a3eae"
+    },
+    {
+      "path": "packages/studio/skills/character-authoring/references/person-design.md",
+      "sha256": "aabee204819dc074f22a0e870a70dd89e987552eb378daf5b64f0961d42c7e4a"
+    },
+    {
+      "path": "packages/studio/skills/character-authoring/references/review-and-delivery.md",
+      "sha256": "4d7c0f1ad2f42e59a6b7f2b743ee99a1e1a76c4dade1a504a28ed60627ed856d"
+    },
+    {
+      "path": "packages/studio/skills/character-authoring/references/social-and-situational.md",
+      "sha256": "5f701eab809dd18beb1205caf4de1ca26b2cf6a769912fd520bd2a6d91de431a"
+    },
+    {
+      "path": "packages/studio/skills/character-authoring/SKILL.md",
+      "sha256": "64a36965d4bf19dd258f4d9b254ebc3cbece9f46e78a6e20ab4cbb30300a3eae"
+    },
+    {
+      "path": "packages/studio/skills/character-authoring/SOURCE.json",
+      "sha256": "ecfd210e7bc98919c73b819e84e96792c4cf4af8916826ba7586f63271d03d4d",
+      "beforeLicenseDecisionSha256": "ff708ffd7fa0edb4abe3c5e4878de71c1c33d4dc57463e164e38697b8028d240",
+      "change": "2026-10-18: explicit AGPL-3.0-only scope metadata; original prose and historical authorization retained."
+    },
+    {
+      "path": "packages/studio/skills/character-authoring/TRIAL-GUIDE.md",
+      "sha256": "4f9b5f07cc5163fc0e71f1b0f187ece773da0b150f4ce53c00b9b7c5d7a8921a"
+    }
+  ],
+  "retiredRuntimeFiles": [],
+  "scope": "Active Skill prose retained unchanged; explicit author licensing metadata revision identified with previous and current hashes."
+}

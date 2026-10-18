@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "license": "AGPL-3.0-only",
+  "status": "PUBLIC_TAG_WITH_DETACHED_RELEASE_RECEIPT",
+  "sourceUrl": "https://github.com/zeola0187/scean/tree/v1.4.0",
+  "revision": null,
+  "sourceArchiveSha256": null,
+  "networkSourceNoticeReady": false,
+  "anonymousSourceAccessVerified": false,
+  "note": "The public source offer points to this release tag. Exact commit, archive hashes and observed remote acceptance are supplied in the detached release-source descriptor; no archive embeds its own hash."
+}

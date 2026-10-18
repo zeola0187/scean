@@ -1,0 +1,10 @@
+{
+  "kind": "user-provided-local-upload",
+  "filename": "character-authoring-alpha1.zip",
+  "sha256": "48d39c64eaabd81c539f5d31543b70dd3d69faa3c41eda25c8a2f3abed843924",
+  "title": "角色塑造（試用草稿 α1）",
+  "unchangedMarkdown": true,
+  "historicalAuthorization": "Private daily Card Studio installation; no public distribution requested.",
+  "license": "AGPL-3.0-only",
+  "licenseDecision": "2026-10-18 author decision for original SCEAN materials; full text in package LICENSE; original content hashes retained."
+}
