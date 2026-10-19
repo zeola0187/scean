@@ -1,3 +1,5 @@
+import {assertDiagnosisCandidate} from './diagnosis-consent.js';
+import {assertDiagnosisWrite} from './scean-diagnosis.js';
 import { randomUUID } from 'node:crypto';
 import { fail } from './codec.js';
 import fs from 'node:fs/promises';
@@ -87,15 +89,17 @@ export class WorkspaceLoader {
   }
   scopePolicy(agent,r,claim,action,args){
     const mode=r.scope.mode,epoch=r.scope.epoch,selectionEpoch=r.selectionEpoch??0;
+    const diagnosis=r.diagnosis,repairWrite=args?.expected_revision!==undefined&&!['open','read','history','diff','check','preview','export','export_backup','export_bundle','export_target'].includes(action);
     const task=claim?null:r.hostTask;
     const selectionBound=!!args?.document_id&&args.expected_revision!==undefined&&!['open','read','history','diff'].includes(action);
     const assertCurrent=()=>{
       this.assertRecord(agent,r,claim,{task});
+      if(!claim&&repairWrite){if(diagnosis&&diagnosis!==r.diagnosis)fail('DIAG_EDIT_CONSENT','Diagnosis changed during repair.');assertDiagnosisWrite(this,r,args);}
       if(r.scopeChanging||r.scope.epoch!==epoch)fail('AUTHORING_SCOPE_CHANGED','Authoring Scope changed while this operation was pending. Refresh and retry under the current scope.');
       if(selectionBound&&(r.selectionEpoch??0)!==selectionEpoch)fail('STUDIO_SELECTION_CHANGED','The Session selection changed while this operation was pending. Keep the draft and refresh before retrying.');
     };
-    return {mode,epoch,sessionGeneration:r.generation,workspaceGeneration:r.workspaceGeneration,action,args,assertCurrent,validateSelection:async()=>{
-      assertCurrent();if(!selectionBound)return;
+    return {mode,epoch,sessionGeneration:r.generation,workspaceGeneration:r.workspaceGeneration,action,args,assertCurrent,...!claim&&repairWrite?{assertCandidate:candidate=>assertDiagnosisCandidate(r,candidate)}:{},validateSelection:async()=>{
+      assertCurrent();if(!claim&&repairWrite&&diagnosis){await diagnosis.validate?.();assertCurrent();}if(!selectionBound)return;
       const selected=await this.workspace.service.selectedDocument?.(agent.id);assertCurrent();
       if(selected&&selected.document_id!==args.document_id)fail('STUDIO_SELECTION_CHANGED','The saved Session selection differs from this operation. Refresh before writing.');
     }};
@@ -153,7 +157,7 @@ export class WorkspaceLoader {
   }
   taskInfo(r){return r.hostTask?{state:'running',task_id:r.hostTask.id,deadline:r.hostTask.deadline,max_ms:this.taskMs}:{state:'idle',max_ms:this.taskMs};}
   trackHostTask(r){
-    if(r.hostTask&&r.agent.status!=='running'){r.hostTask.controller.abort(new DOMException('Agent task completed','AbortError'));r.hostTask=null;}
+    if(r.hostTask&&r.agent.status!=='running'){if(r.diagnosis)r.diagnosis.approval=null;r.hostTask.controller.abort(new DOMException('Agent task completed','AbortError'));r.hostTask=null;}
     if(!r.hostTask&&r.agent.status==='running'&&[...r.pages.values()].some(lease=>lease.expires>this.now())){
       // One absolute deadline per accepted Agent execution. Page renewals and
       // tool calls never extend it, and an idle transition retires the claim.
@@ -208,6 +212,7 @@ export class WorkspaceLoader {
     try{
       await this.archiveTask;
       await this.validate(agent,r,claim);if(r.scopeTask)await r.scopeTask;
+      if(!claim&&r.diagnosis&&action==='create')fail('DIAG_EDIT_CONSENT','Diagnosis repair is limited to the verified existing source. It cannot create a replacement card without a separate human creation workflow.');
       if(['import','upload_finish','create','library_copy'].includes(action)||action==='open'&&args.document_id!==r.selected?.document_id)r.selectionEpoch=(r.selectionEpoch??0)+1;
       const service=this.workspace.service;
       let policyArgs=args;
@@ -233,7 +238,8 @@ export class WorkspaceLoader {
         const invoke=async()=>humanReview?{ok:true,value:await service.humanMaterials(args,combined,context)}:service.operation(action,args,combined,context);
         const result=typeof service.withAuthoringScope==='function'?await service.withAuthoringScope(policy,invoke):await invoke();await this.validate(agent,r,claim,{task});
         if(result.ok&&['import','upload_finish','open','create','library_copy'].includes(action)){r.selected=await service.selectedDocument?.(agent.id)??null;if(claim)r.pages.get(claim.page_id).selection=r.selected?.document_id??null;}
-        if(result.ok&&action==='material'&&args.action==='select')r.materialSelection=result.value.selection;
+        if(result.ok&&!claim&&r.diagnosis?.approval&&args.document_id===r.diagnosis.approval.documentId&&result.value?.revision!==undefined&&args.expected_revision===r.diagnosis.approval.revision)r.diagnosis.approval.revision=result.value.revision;
+        if(result.ok&&action==='material' &&args.action==='select')r.materialSelection=result.value.selection;
         if(result.ok){
           result.authoring_scope=this.scopeInfo(r);
           if(claim){

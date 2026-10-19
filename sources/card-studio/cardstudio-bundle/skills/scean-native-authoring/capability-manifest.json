@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "skillVersion": "1.1.0",
-  "runtimeVersion": "1.4.2",
-  "studioVersion": "1.4.2",
+  "runtimeVersion": "1.5.0",
+  "studioVersion": "1.5.0",
   "desktopVersion": "0.2.0-rc.2",
   "claimsScope": "structure/data-path proof; no true-model semantic acceptance",
   "capabilities": [
@@ -384,7 +384,7 @@
         "path": "sources/card-studio/cardstudio-bundle/lib/scean-integration.js",
         "line": 49,
         "symbol": "Card JavaScript",
-        "sha256": "8fd40b5d0b1206cfb415bdd202b2748569b91c88dd150e9d8d959d0c410d6809",
+        "sha256": "7a8c5a0f189a49eb5eec56a6926b28693d215bfc5dfca64e48b8d6664b60c171",
         "priorSha256": "95153467540cd9633b9b46d92a37e5a28fbe8c273e575d757eee92065f007f8b"
       },
       "tests": [
@@ -423,7 +423,7 @@
         "path": "plugin/player-native-bridge.mjs",
         "line": 2,
         "symbol": "export",
-        "sha256": "06729f51423dcd27bca2d53aa04d3c47fe4d7a2519cbb8fe1579abd3fa0c6a80",
+        "sha256": "02d19075c10ae36e73461b5d48ad7ba00c49a2e242f253a0002c7b7882933050",
         "priorSha256": "d3b890dccd81f954368ad04120a6c3510a764522cda132222d7c4bf2a3215f7d",
         "playerNameBaselineSha256": "44ba5afdea62fe9638fc29fe45350d9bee53af16c705555a4ec61d7d05fa458b"
       },
@@ -506,7 +506,7 @@
         "path": "sources/card-studio/cardstudio-bundle/index.js",
         "line": 52,
         "symbol": "addonCtx.tools.register",
-        "sha256": "f503b4fbd6722f595b26060e0e053288908dcbb3dbd15f33203397cdb6918eaf",
+        "sha256": "3d95abb85a318cf85ecc24220f705a4b5b04b2f0b89474b4b7b0556d832cb27d",
         "priorSha256": "5bd327c74759dd237a40d2a7c39aabb9f0e06a2b6c4ea5073792bb568f6bd182",
         "previousCandidateSource": {
           "path": "authoring/.integration/cardstudio/index.js",
@@ -535,7 +535,7 @@
         "path": "plugin/index.js",
         "line": 59,
         "symbol": "TRUSTED_CLIENT_REQUIRED",
-        "sha256": "e45b22a157fea0d12942f0ab18a14acee6cabaa00f538d73f7bcebf639f4edad",
+        "sha256": "eebefd4f0dbb37a5a640debe8b0a8d00aa37e4d5fba05a8771081deb5986797f",
         "priorSha256": "c147be085f45389c7687bfebda4cff106e5ca3997f6ebd891baa6c94f067cd7e"
       },
       "tests": [
@@ -592,7 +592,7 @@
         "path": "isolated/web/player-shell.mjs",
         "line": 6,
         "symbol": "export",
-        "sha256": "504dd160b3320fdf2c1ff1840428e080ccb0385af4a33d14f86a2794d556e594",
+        "sha256": "4cc6c25bd60ac62cde4a30c59e2878060552ff44d35c2b0367979ecf0fc56cf1",
         "priorSha256": "58b26e8cf1b1366bfcc974cb28b30ae3173003fdba2df8c6bc44cc4389a53cca",
         "beforePublic142Sha256": "ab3bfe7e1552fb5ad9ff8e971059603b9f706e9ef4774d4c4cbb30161c9b5f07",
         "public142Note": "Reviewed 1.4.2 version/source-offer metadata alignment; capability checks remain enforced."

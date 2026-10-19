@@ -13,6 +13,7 @@ import {mkdir,readFile,rename,open} from 'node:fs/promises';
 import {join} from 'node:path';
 import {safeFailure} from '../core/engine.mjs';
 import {safeId,hash} from '../core/contracts.mjs';
+import {AgentDiagnostics} from './agent-diagnostics.mjs';
 import {publicInspection,publicSnapshot,publicTurnResult,publicRunView} from '../core/inspection.mjs';
 import {playerHistoryForView} from '../core/memory-policy.mjs';
 import {encodeRunBundle,validateRunBundle} from '../core/save-bundle.mjs';
@@ -49,7 +50,7 @@ export class SceanHost {
     this.engine=engine;this.root=root;this.now=now;this.bindingTtlMs=bindingTtlMs;this.openings=new OpeningSelections(this);
     if(!Number.isSafeInteger(maxConcurrentOperations)||maxConcurrentOperations<1||maxConcurrentOperations>16)fail('HOST_CONCURRENCY','Use a Host concurrency limit between 1 and 16.');
     this.maxConcurrentOperations=maxConcurrentOperations;this.auxRunning=new Map();this.jobs=new HostJobs(this,jobLedgerOptions);this.notifications=new HostNotifications(this,notificationOptions);
-    this.diagnosticGrants=new Map();this.running=new Map();this.activeOperations=new Map();this.usedOperations=new Set();this.progressByRun=new Map();this.draftQueues=new Map();this.metadata={schemaVersion:1,runs:[],bindings:[],drafts:{}};this.writeQueue=Promise.resolve();
+    this.agentDiagnostics=new AgentDiagnostics(this);this.diagnosticGrants=new Map();this.running=new Map();this.activeOperations=new Map();this.usedOperations=new Set();this.progressByRun=new Map();this.draftQueues=new Map();this.metadata={schemaVersion:1,runs:[],bindings:[],drafts:{}};this.writeQueue=Promise.resolve();
   }
   async init(){
     await mkdir(this.root,{recursive:true});
@@ -57,6 +58,7 @@ export class SceanHost {
     catch(e){if(e.code!=='ENOENT')throw e;}
     if(this.metadata.schemaVersion!==1||!Array.isArray(this.metadata.runs)||!Array.isArray(this.metadata.bindings))fail('HOST_METADATA','Invalid SCEAN host metadata.');
     this.metadata.drafts??={};this.metadata.pageDrafts??={};
+    for(const row of this.metadata.openingSelections??[])this.openings.rows.set(row.offerId,row);
     this.metadata.playerDefaults??={schemaVersion:1,revision:0,name:null};
     const defaults=this.metadata.playerDefaults;if(defaults.schemaVersion!==1||!Number.isSafeInteger(defaults.revision)||defaults.revision<0||defaults.name!==null&&playerName(defaults.name)!==defaults.name)fail('PLAYER_SETTINGS_INVALID','主角預設設定格式不正確。');
     if(Object.keys(defaults).some(k=>!['schemaVersion','revision','name','operationId','fingerprint'].includes(k))||defaults.revision===0&&(defaults.operationId!==undefined||defaults.fingerprint!==undefined)||defaults.revision>0&&(!defaults.operationId||defaults.fingerprint!==hash({name:defaults.name,expectedRevision:defaults.revision-1,operationId:defaults.operationId})))fail('PLAYER_SETTINGS_INVALID','主角預設設定格式不正確。');
@@ -86,6 +88,7 @@ export class SceanHost {
     return this;
   }
   async persist(){
+    this.metadata.openingSelections=[...this.openings.rows.values()].map(({promise,...row})=>row.result&&row.requestId?{...row,snapshot:{cardId:row.snapshot.cardId,revision:row.snapshot.revision,hash:row.snapshot.hash,source:{card:{sha256:row.snapshot.source?.card?.sha256}}},options:[],initialState:undefined}:row);
     const content=JSON.stringify(this.metadata,null,2);
     const op=this.writeQueue.catch(()=>{}).then(async()=>{
       const temp=join(this.root,`host.${randomUUID()}.tmp`);
@@ -484,10 +487,10 @@ export class SceanHost {
     return {...run,playerHistoryView:playerHistoryForView(run.playerHistory??[],{runId:run.runId,audience:'player-history'}),diagnostics:{scope:'operator-private',expiresAt:row.expiresAt,sharedExportAllowed:false}};
   }
   diagnosticsRevoke(request,authority){this.diagnosticGrantRow(request,authority);this.diagnosticGrants.delete(request.grantToken);return {runId:request.runId,revoked:true};}
-  async startFromStudio({snapshot,authoringSessionId,generation,initialState,playerName,signal}){
+  async startFromStudio({snapshot,authoringSessionId,generation,initialState,playerName,requestId,signal}){
     signal?.throwIfAborted();this.validateOwner(authoringSessionId,generation);
     snapshot=normalizeStudioHandoffSnapshot(snapshot);
-    if(playerName===undefined&&snapshot.card?.data&&snapshotCardScope(snapshot))return this.openings.prepare({snapshot,authoringSessionId,generation,initialState,signal});
+    if(playerName===undefined&&snapshot.card?.data&&snapshotCardScope(snapshot))return this.openings.prepare({snapshot,authoringSessionId,generation,initialState,requestId,signal});
     const created=await this.createRun({snapshot,initialState,...(playerName!==undefined?{playerName}:{})});
     const binding=this.issueBinding(created.runId,authoringSessionId,generation);
     await this.persist();return {runId:created.runId,binding};
@@ -540,7 +543,7 @@ export class SceanHost {
         case 'list':value=authority.requireCardScope?await this.scopedRuns(scope):await this.refreshRuns();break;
         case 'openingPrepare':case 'openingOffer':case 'openingStart':case 'openingCancel':
           if(!authority.requireCardScope||!scope)fail('CARD_CONTEXT_REQUIRED','選開場需要目前對話已選取的 Studio 卡片。');
-          value=request.action==='openingPrepare'?await this.openings.reopen(request,scope,()=>authority.resolveCardScope(request.sessionId),signal):request.action==='openingOffer'?this.openings.get(scope):request.action==='openingCancel'?this.openings.cancel(request,scope):await this.openings.start(request,scope,()=>authority.resolveCardScope(request.sessionId),signal);break;
+          value=request.action==='openingPrepare'?await this.openings.reopen(request,scope,()=>authority.resolveCardScope(request.sessionId),signal):request.action==='openingOffer'?this.openings.get(scope):request.action==='openingCancel'?await this.openings.cancel(request,scope):await this.openings.start(request,scope,()=>authority.resolveCardScope(request.sessionId),signal);break;
         case 'playerBind':value=await this.auxiliaryMutation(request,()=>bindPlayerIdentity(this.engine,{...request,signal}));await this.refreshRuns();break;
         case 'progress':value=await this.progress(request.runId);break;
         case 'operationSubmit':value=await this.jobs.submit(request,signal);break;
@@ -579,5 +582,5 @@ export class SceanHost {
       return {ok:true,value};
     }catch(e){const failure=signal?.aborted?safeFailure({code:'CANCELLED'},'request'):e.sceanFailure??safeFailure(e,'request','SCEAN_ERROR');return {ok:false,error:failure,lastFailure:failure};}
   }
-  async close(){this.closing=true;this.chapterProviderSettings?.close();this.chapterAutoArmed.clear();this.writerSummaryArmed.clear();this.chapterContextArmed.clear();const chapterTasks=[...this.chapterRunning.values()].map(o=>o.promise);for(const {controller} of this.chapterRunning.values())controller.abort(Object.assign(new Error('Host closed.'),{code:'CANCELLED'}));for(const {controller} of this.summaryRunning.values())controller.abort();this.diagnosticGrants.clear();for(const c of this.running.values())c.abort(Object.assign(new Error('SCEAN plugin unloaded.'),{code:'CANCELLED'}));await this.jobs.close();await Promise.allSettled([...chapterTasks,...(this.chapterBackground??[])]);}
+  async close(){this.closing=true;this.chapterProviderSettings?.close();this.chapterAutoArmed.clear();this.writerSummaryArmed.clear();this.chapterContextArmed.clear();const chapterTasks=[...this.chapterRunning.values()].map(o=>o.promise);for(const {controller} of this.chapterRunning.values())controller.abort(Object.assign(new Error('Host closed.'),{code:'CANCELLED'}));for(const {controller} of this.summaryRunning.values())controller.abort();this.agentDiagnostics.rows.clear();this.diagnosticGrants.clear();for(const c of this.running.values())c.abort(Object.assign(new Error('SCEAN plugin unloaded.'),{code:'CANCELLED'}));await this.jobs.close();await Promise.allSettled([...chapterTasks,...(this.chapterBackground??[])]);}
 }

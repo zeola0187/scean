@@ -62,6 +62,7 @@ export function mountPlayerShell(){
   $('setup').querySelector('summary').textContent='開始一段故事';$('create').textContent='確認版本，開啟新故事';
 
   const main=$('player'),reading=el('section',undefined,'reading-pane');reading.id='reading-pane';reading.setAttribute('aria-label','故事閱讀區');reading.tabIndex=0;
+  const diagnosticEntry=$('agent-diagnose');if(diagnosticEntry)document.querySelector('.composer-actions').prepend(diagnosticEntry);
   const backup=$('backup-panel'),turnTools=el('details');turnTools.id='turn-tools';turnTools.append(el('summary','回合操作'),document.querySelector('.history-actions'));
   const prefs=el('details');prefs.id='preferences-panel';prefs.append(el('summary','閱讀與版面'));
   const fontLabel=el('label','閱讀字級'),font=el('select');font.id='reading-size';for(const [v,t] of [['normal','標準'],['large','大字']]){const o=el('option',t);o.value=v;font.append(o);}fontLabel.append(font);prefs.append(fontLabel);

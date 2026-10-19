@@ -63,7 +63,13 @@ cardstudioRemote.descriptors.push({
   ...cardstudioRemote.descriptors[0],id:'@local/dsh-card-studio-scean-test#cardstudioScean/sceanControl',method:'sceanControl',
   parameters:[cardstudioRemote.descriptors[0].parameters[0],{
     name:'request',wire:'request',source:'json',codec:{mode:'strict',typeSymbol:'@local/dsh-card-studio-scean-test#HumanSceanControl',create:()=>({parse(value){
-      const keys=['mode','claim','document_id','expected_revision','worldbook_document_id','worldbook_revision','preset','characters','runId','binding'];
+      if(value?.mode?.startsWith('diagnosis_')){
+        const fields={diagnosis_list:['offset'],diagnosis_grant:['runId','ranges','fromTurn','toTurn','ttlMs','acknowledgement'],diagnosis_status:[],diagnosis_consent:['expected_revision'],diagnosis_revoke:[]}[value.mode];
+        if(!fields||!value.claim||Object.keys(value).some(k=>!['mode','claim',...fields].includes(k)))throw new TypeError('Expected a human diagnosis selection, bounded consent or revocation.');
+        if(value.mode==='diagnosis_grant'&&typeof value.runId!=='string'||value.mode==='diagnosis_consent'&&!Number.isSafeInteger(value.expected_revision))throw new TypeError('Exact Run or saved repair revision is required.');
+        return value;
+      }
+      const keys=['mode','claim','document_id','expected_revision','worldbook_document_id','worldbook_revision','preset','characters','runId','binding','request_id'];
       if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).some(k=>!keys.includes(k))||!['start','inspect','attach'].includes(value.mode)||!value.claim)throw new TypeError('Expected a current human SCEAN control request.');
       if(value.mode==='start'&&(typeof value.document_id!=='string'||!Number.isSafeInteger(value.expected_revision)))throw new TypeError('Select a saved revision.');
       if(value.mode!=='start'&&(typeof value.runId!=='string'||!value.binding))throw new TypeError('Explicit inspection binding is required.');

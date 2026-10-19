@@ -9,7 +9,7 @@ Original SCEAN code and Skills: AGPL-3.0-only. The independently authored
 advanced-tavern-card-authoring directory retains its complete MIT grant in
 skills/advanced-tavern-card-authoring/SOURCE.txt. Preserve all notices.
 
-Source: https://github.com/zeola0187/scean/tree/v1.4.2
+Source: https://github.com/zeola0187/scean/tree/main
 Install/update the complete suite from https://github.com/zeola0187/scean
 Build and regression commands live at the full source checkout root; installed
 component packages have no historical standalone build scripts. Existing

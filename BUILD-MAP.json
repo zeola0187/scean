@@ -825,6 +825,18 @@
     {
       "path": "packages/studio/skills/tavern-card-format-preservation/references/worldbook-and-edits.md",
       "source": "sources/card-studio/cardstudio-bundle/skills/tavern-card-format-preservation/references/worldbook-and-edits.md"
+    },
+    {
+      "path": "packages/scean/plugin/agent-diagnostics.mjs",
+      "source": "plugin/agent-diagnostics.mjs"
+    },
+    {
+      "path": "packages/studio/lib/scean-diagnosis.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/scean-diagnosis.js"
+    },
+    {
+      "path": "packages/studio/lib/diagnosis-consent.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/diagnosis-consent.js"
     }
   ]
 }

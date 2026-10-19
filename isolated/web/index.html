@@ -13,7 +13,7 @@
 </head>
 <body>
   <header class="topbar"><div><h1>SCEAN <span>舞台</span></h1><p>里程碑 D · 隔離試玩</p></div><button id="global-chapter-open" type="button" class="quiet">舞臺全域設定</button><div id="connection" role="status">連線中…</div></header>
-  <p class="hint" id="scean-source-offer" aria-label="原碼與授權">原碼與授權（AGPL-3.0-only）：<a href="https://github.com/zeola0187/scean/tree/v1.4.2" target="_blank" rel="noopener noreferrer">https://github.com/zeola0187/scean/tree/v1.4.2</a>；受限視窗可複製網址開啟。</p>
+  <p class="hint" id="scean-source-offer" aria-label="原碼與授權">原碼與授權（AGPL-3.0-only）：<a href="https://github.com/zeola0187/scean/tree/main" target="_blank" rel="noopener noreferrer">https://github.com/zeola0187/scean/tree/main</a>；受限視窗可複製網址開啟。</p>
   <div id="mode-banner" class="mode-banner" role="note">正在確認執行環境</div>
   <dialog id="global-chapter-dialog" aria-labelledby="global-chapter-dialog-title">
     <div class="section-heading"><h2 id="global-chapter-dialog-title">舞臺全域設定</h2><button id="global-chapter-close" type="button" class="quiet">關閉設定</button></div>
@@ -165,6 +165,7 @@
         <div class="recovery"><button id="retry" type="button" hidden>重試同一輸入</button><button id="recheck" type="button" class="quiet" hidden>查詢儲存結果</button></div>
       </section>
       <section class="state-panel" aria-label="已保存世界狀態"><h2>此刻的世界 <span>已提交</span></h2><div id="state-summary"><p class="hint">開局後顯示世界狀態。</p></div></section>
+      <button id="agent-diagnose" type="button" class="quiet">檢查這局的問題</button>
       <details id="inspector" class="inspector"><summary>進階 Inspector · 版本、記憶、工具與提交</summary><p>一般 Inspector 只顯示公開投影。restricted 表示內容受限而非未記錄；CR 建議不等於已發生事件。</p><pre id="inspection">尚未開局</pre>
         <section class="private-diagnostics" aria-label="僅本機的詳細診斷授權">
           <h3>詳細診斷 · 可能包含角色秘密</h3>

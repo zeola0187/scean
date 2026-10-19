@@ -97,7 +97,7 @@ export function createSceanControl(loader,getService) {
       await loader.validate(agent,r,request.claim);combined.throwIfAborted();
       if((await loader.workspace.service.selectedDocument(agent.id))?.document_id!==request.document_id)fail('SCEAN_SELECTION','Selected card changed during handoff. Refresh before opening a Run.');
       // RP ownership is SCEAN's. This signal covers only handoff, never later RP turns.
-      return service.startFromStudio({...identity,snapshot,signal:combined});
+      return service.startFromStudio({...identity,snapshot,requestId:request.request_id,signal:combined});
     })();
     r.jobs.add(job);try{return await job;}finally{r.jobs.delete(job);}
   };

@@ -143,8 +143,8 @@
   "license": "AGPL-3.0-only",
   "licenseDecision": "2026-10-18 author decision for original SCEAN materials; full text in package LICENSE; original content hashes retained.",
   "presentationUpdate": {
-    "publicVersion": "1.4.2",
-    "sourceOffer": "https://github.com/zeola0187/scean/tree/v1.4.2",
+    "publicVersion": "1.5.0",
+    "sourceOffer": "https://github.com/zeola0187/scean/tree/main",
     "sourceFiles": [
       "isolated/web/card-frontend.mjs",
       "isolated/web/app.mjs"

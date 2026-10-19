@@ -1,5 +1,5 @@
 // Authenticated RPC adapter only. No file access, HTTP proxy, or Studio database access.
-export function createNativeBridge({call,selectPanel,getSessionId=()=>null,getViewerId=()=>null,notifications,enableNotifications}){
+export function createNativeBridge({call,selectPanel,getSessionId=()=>null,getViewerId=()=>null,notifications,enableNotifications,onOpeningStarted,onDiagnose}){
   const allowed=new Set(['playerBind','capabilities','list','openingPrepare','openingOffer','openingStart','openingCancel','progress','draftSave','draftGet','turn','rollback','regenerate','operationSubmit','operationStatus','exportRun','importRun','cancel','runView','historySearch','historyRead','historyPage','summaryStatus','summaryStart','summaryCancel','chapterStatus','chapterSettings','chapterSummarize','chapterAuto','chapterCancel','chapterClose','inspect','diagnosticsGrant','diagnosticsRead','diagnosticsRevoke','banList','models']);
   const grants=new Map();let disposed=false,privacyEpoch=0,contextEpoch=0,cardScope=null;
   const denied=code=>Object.assign(new Error(code),{code});
@@ -37,6 +37,7 @@ export function createNativeBridge({call,selectPanel,getSessionId=()=>null,getVi
     if(action==='native.notificationConfigure')return notifications?.configure({enabled:payload.enabled,backgroundEnabled:payload.backgroundEnabled,runId:payload.runId});
     if(action==='catalog')return {cards:[],source:'studio-handoff-only'};
     if(action==='native.context')return context();
+    if(action==='native.diagnose'){if(!cardScope||typeof payload.runId!=='string')throw denied('CARD_CONTEXT_REQUIRED');onDiagnose?.({runId:payload.runId,authoringSessionId:getSessionId()});selectPanel('local-cardstudio-scean');return {opened:true,authorization:'human_confirmation_required'};}
     if(action==='native.openStudio'){selectPanel('local-cardstudio-scean');return {opened:true};}
     if(action==='native.bootstrap'){
       let models;try{models=await call({action:'models'});}catch{models={mode:'native',source:'DSH authenticated host',status:'unavailable'};}
@@ -60,6 +61,7 @@ export function createNativeBridge({call,selectPanel,getSessionId=()=>null,getVi
       if(action==='diagnosticsRead'&&(epoch!==privacyEpoch||value?.runId!==payload.runId))throw denied('NATIVE_DIAGNOSTICS_STALE');
       if(disposed)throw denied('NATIVE_PANEL_CLOSED');
       if(contextToken!==contextEpoch)throw denied('NATIVE_CONTEXT_STALE');
+      if(action==='openingStart'&&value?.runId&&value?.binding)onOpeningStarted?.({request,value});
       return value;
   }
   async function clearPrivate(){privacyEpoch++;const prior=[...grants.values()];grants.clear();await Promise.allSettled(prior.map(revoke));}

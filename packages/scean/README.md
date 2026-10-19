@@ -1,4 +1,4 @@
-# SCEAN 1.4.2
+# SCEAN 1.5.0
 
 SCEAN combines native Card Studio authoring with saved story openings, dynamic
 card fronts, durable story operations, independent reading sidebars and chapter
@@ -6,7 +6,13 @@ memory. Original SCEAN material is **AGPL-3.0-only**; the existing
 advanced-tavern-card-authoring Skill retains its MIT grant. See [LICENSE](LICENSE),
 [scope](LICENSE-SCOPE.md) and [third-party notices](THIRD-PARTY-NOTICES.md).
 
-**完整對應原碼／Source:** https://github.com/zeola0187/scean/tree/v1.4.2
+**完整對應原碼／Source:** https://github.com/zeola0187/scean/tree/main
+
+## 1.5.0：Card Studio 診斷回修
+
+編輯室方案 A 與舞臺診斷閉環：檢查這局 → 和 AI 討論 → 明確同意修卡 → 保存新版 → 用新版另開局。來源身份、明確範圍讀取、expectedRevision與開局回執均有核對。診斷與修卡同意沒有固定倒數，僅限同一受控對話、對象與範圍，直到你撤銷或生命週期失效；不跨重啟繼承舊授權。來源缺失暫採唯讀；實體手機與Safari仍待驗收。
+
+詳見 [玩家操作與工具契約](docs/W02-USER-GUIDE.zh-TW.md) 與 [Changelog](CHANGELOG.md)。本次更新公開main分支，不另建立GitHub Release；舊標籤維持原內容。
 
 ## 安裝與更新
 

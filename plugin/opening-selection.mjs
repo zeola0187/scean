@@ -1,6 +1,7 @@
 import {playerTemplateSpans} from '../core/player-text.mjs';
 import {playerName} from '../core/player-identity.mjs';
 import {randomUUID} from 'node:crypto';
+import {hash} from '../core/contracts.mjs';
 import {validateSnapshot,clone} from '../core/contracts.mjs';
 import {snapshotCardScope,sameCardScope} from './card-scope.mjs';
 
@@ -23,16 +24,37 @@ export function selectSavedOpening(snapshot,index){
 // consume it. Retries use one deterministic Run ID, including publication errors.
 export class OpeningSelections {
   constructor(host,{ttlMs=600000}={}){this.host=host;this.ttlMs=ttlMs;this.rows=new Map();}
-  async prepare({snapshot,authoringSessionId,generation,initialState,signal}){
+  async prepare({snapshot,authoringSessionId,generation,initialState,requestId,signal}){
     const fixed=validateSnapshot(snapshot),options=savedOpenings(fixed);
-    for(const [id,row] of this.rows)if(!row.promise&&(row.expiresAt<this.host.now()||row.authoringSessionId===authoringSessionId&&row.generation===generation&&!row.result))this.rows.delete(id);
+    if(requestId!==undefined&&(typeof requestId!=='string'||!/^[A-Za-z0-9-]{16,100}$/.test(requestId)))fail('HANDOFF_REQUEST_ID','Use a stable handoff request identity.');
+    const fingerprint=hash({snapshot:fixed,initialState:initialState??null,authoringSessionId});
+    const receipts=this.host.metadata.studioHandoffReceipts??={},receipt=requestId&&receipts[authoringSessionId+':'+requestId];
+    if(receipt){
+      if(receipt.fingerprint!==fingerprint)fail('HANDOFF_CONFLICT','This handoff identity belongs to another saved payload.');
+      if(receipt.cancelled)fail('OPENING_EXPIRED','This handoff was cancelled.');
+      this.host.requireRun(receipt.runId);
+      const result={runId:receipt.runId,binding:this.host.issueBinding(receipt.runId,authoringSessionId,generation)};await this.host.persist();return result;
+    }
+    const prior=requestId&&[...this.rows.values()].find(r=>r.requestId===requestId&&r.authoringSessionId===authoringSessionId);
+    if(prior){
+      if(prior.fingerprint!==fingerprint)fail('HANDOFF_CONFLICT','This handoff identity belongs to another saved payload.');
+      prior.generation=generation;
+      if(prior.result){const result={runId:prior.runId,binding:this.host.issueBinding(prior.runId,authoringSessionId,generation)};await this.host.persist();return result;}
+      if(prior.cancelled)fail('OPENING_EXPIRED','This handoff was cancelled.');
+      prior.expiresAt=this.host.now()+this.ttlMs;await this.host.persist();return {openingRequired:true,openingOfferId:prior.offerId,recovered:true};
+    }
+    for(const [id,row] of this.rows){
+      if(row.requestId&&!row.promise&&(row.result||row.cancelled)&&(row.expiresAt<this.host.now()||this.rows.size>=64)){
+        receipts[row.authoringSessionId+':'+row.requestId]={fingerprint:row.fingerprint,runId:row.runId,cancelled:row.cancelled===true};this.rows.delete(id);
+      }else if(!row.requestId&&!row.promise&&(row.expiresAt<this.host.now()||row.authoringSessionId===authoringSessionId&&row.generation===generation&&!row.result))this.rows.delete(id);
+    }
     if(!options.length)fail('OPENING_EMPTY','這張已保存卡沒有非空開場，請回 Studio 保存開場後再交接。');
     const scope=snapshotCardScope(fixed);
     if(!scope)fail('OPENING_CARD_SCOPE','選開場需要可確認的 Studio 已保存卡片。');
     if(this.rows.size>=64)fail('OPENING_CAPACITY','待選開場過多，請稍後重新交接。');
     const offerId=randomUUID();
-    this.rows.set(offerId,{offerId,scope,snapshot:fixed,options,authoringSessionId,generation,initialState:clone(initialState),expiresAt:this.host.now()+this.ttlMs,runId:'opening-'+offerId});
-    return {openingRequired:true,openingOfferId:offerId};
+    this.rows.set(offerId,{offerId,scope,snapshot:fixed,options,authoringSessionId,generation,initialState:clone(initialState),...(requestId?{requestId,fingerprint}:{}),expiresAt:this.host.now()+this.ttlMs,runId:'opening-'+offerId});
+    await this.host.persist();return {openingRequired:true,openingOfferId:offerId};
   }
   current(row,scope){
     if(!row||row.expiresAt<this.host.now())fail('OPENING_EXPIRED','待選開場已取消或過期，請回 Studio 重新交接。');
@@ -59,15 +81,16 @@ export class OpeningSelections {
   async start(request,scope,resolveScope,signal){
     const row=this.bound(request,scope);
     if(row.cancelled)fail('OPENING_EXPIRED','待選開場已取消，請回 Studio 重新交接。');
-    const snapshot=selectSavedOpening(row.snapshot,request.openingIndex),name=playerName(request.playerName);
+    const name=playerName(request.playerName);
     if(row.selectedIndex!==undefined&&(row.selectedIndex!==request.openingIndex||row.playerName!==name))fail('OPENING_ALREADY_STARTED','此選擇已用於開局；請重新交接以另開故事。');
     if(row.result)return clone(row.result);
     if(row.promise)return row.promise;
+    const snapshot=selectSavedOpening(row.snapshot,request.openingIndex);
     signal?.throwIfAborted();row.selectedIndex=request.openingIndex;row.playerName=name;
     const job=(async()=>{
       let existing;try{existing=await this.host.engine.store.read(row.runId);}catch(error){if(error.code!=='RUN_NOT_FOUND')throw error;}
       this.current(row,await resolveScope());signal?.throwIfAborted();
-      row.admitted=true;
+      row.admitted=true;await this.host.persist();
       // After this admission point, publication drains to a receipt; closing the
       // page or cancelling its request cannot erase an already accepted Run.
       if(existing){if(existing.snapshot.hash!==snapshot.hash||existing.playerIdentity?.name!==name)fail('OPENING_RUN_CONFLICT','開局保存結果不符，請重新整理故事列表。');await this.host.refreshRuns();}
@@ -78,10 +101,10 @@ export class OpeningSelections {
     })();
     row.promise=job;try{return await job;}finally{row.promise=null;if(!row.admitted&&!row.result){delete row.selectedIndex;delete row.playerName;}}
   }
-  cancel(request,scope){
+  async cancel(request,scope){
     const row=this.bound(request,scope);
     if(row.promise)fail('OPENING_START_PENDING','開局結果尚待確認，請重試原選擇以查回同一故事。');
     if(row.result)return {cancelled:false,runId:row.result.runId};
-    row.cancelled=true;return {cancelled:true};
+    row.cancelled=true;await this.host.persist();return {cancelled:true};
   }
 }

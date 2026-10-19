@@ -736,6 +736,8 @@ $('chapter-operation-cancel').addEventListener('click',async()=>{
 });
 $('history-earlier').addEventListener('click',()=>void loadHistory({earlier:true}));
 $('history-latest').addEventListener('click',()=>void loadHistory({latest:true}));
+$('agent-diagnose').hidden=!native;
+$('agent-diagnose').addEventListener('click',()=>{if(view.runId)void native.request('native.diagnose',{runId:view.runId}).catch(e=>setError('turn-error',e));});
 $('inspector').addEventListener('toggle',()=>{if($('inspector').open)void loadInspector();else{inspectorSerial++;$('inspection').textContent='尚未展開讀取。';}});
 $('summary-start').addEventListener('click',()=>void mutateNarrative('summaryStart'));
 $('summary-refresh').addEventListener('click',()=>void refreshNarrative());

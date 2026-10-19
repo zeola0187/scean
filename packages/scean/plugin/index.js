@@ -66,6 +66,10 @@ export async function apply(ctx,config={}){
     startFromStudio(request){return host.startFromStudio(request);}
     inspectFromStudio(request){return host.inspectFromStudio(request);}
     attachInspection(request){return host.attachInspection(request);}
+    listDiagnosticRuns(request){return host.agentDiagnostics.list(request);}
+    grantAgentDiagnosis(request){return host.agentDiagnostics.issue(request);}
+    readAgentDiagnosis(request){return host.agentDiagnostics.read(request);}
+    revokeAgentDiagnosis(request){return host.agentDiagnostics.revoke(request);}
   }
   new SceanService();
   ctx.typert.register({package:sceanRemote.package,face:'host',schemas:[],invocations:sceanRemote.descriptors});

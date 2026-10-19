@@ -94,6 +94,7 @@ function stripNarrative(card,other,ids,otherIds,authoring) {
 }
 
 export function assertScopeCandidate(policy,{before,after,beforeIds,afterIds,beforeAuthoring,afterAuthoring}) {
+  policy?.assertCandidate?.({before,after});
   policy?.assertCurrent?.();
   if(policy?.mode!=='content')return;
   if(!same(beforeAuthoring,afterAuthoring))deny('Authoring sidecar, fixture, target, Gate, visual contract and asset bindings are protected.',{path:'/authoring'});

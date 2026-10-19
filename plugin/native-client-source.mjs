@@ -27,7 +27,7 @@ export function nativeClientFactory(React,sharedHTML,createNativeBridge,createNo
         React.useEffect(()=>close,[]);
         const connect=()=>{
           close();if(!frame.current?.contentWindow)return;
-          const channel=new MessageChannel(),bridge=createNativeBridge({call,selectPanel:key=>child.layout.selectPanel(key),getSessionId:()=>sessionId,getViewerId,notifications,enableNotifications});
+          const channel=new MessageChannel(),bridge=createNativeBridge({call,selectPanel:key=>child.layout.selectPanel(key),getSessionId:()=>sessionId,getViewerId,notifications,enableNotifications,onDiagnose:detail=>window.dispatchEvent(new CustomEvent('scean:diagnose',{detail})),onOpeningStarted:({request,value})=>{if(request.sessionId!==sessionId)return;window.dispatchEvent(new CustomEvent('scean:started',{detail:{schema:1,authoringSessionId:request.sessionId,documentId:request.cardId,generation:request.cardScope?.generation,revision:request.revision,offerId:request.offerId,runId:value.runId,binding:value.binding}}));}});
           const current={port:channel.port1,bridge,notify:runId=>{bridge.clearContext();channel.port1.postMessage({kind:'context',runId,...(notificationTarget?.runId===runId?{notificationTarget}:{})});}};session.current=current;panels.add(current);selections.add(current.notify);
           channel.port1.onmessage=async event=>{
             const message=event.data;if(session.current!==current||!message||message.kind!=='request'||typeof message.id!=='string'||message.id.length>100)return;
