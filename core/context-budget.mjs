@@ -1,11 +1,29 @@
-import { SceanError, clone } from './contracts.mjs';
+import { SceanError, clone, RP_MODEL_STAGES } from './contracts.mjs';
 
 // Capacity accounting is deliberately independent of billing and UsageLedger.
 // Unknown capacity stays unknown. Estimates are diagnostics, never a quota.
 export const DEFAULT_CONTEXT_WINDOW = null;
 export const CONTEXT_ESTIMATE_METHOD = 'unicode-script-v1: Latin runs ceil(chars/3), CJK 2/codepoint, other Unicode 3/codepoint, punctuation 1, whitespace ceil(chars/3); estimate, not tokenizer';
-const outputs = { director: 4096, character: 4096, adjudicate: 4096, draft: 4096, prose: 8192, prose_repair: 4096, post_stat: 4096 };
-export const defaultOutputReserve = stage => outputs[stage] ?? 4096;
+export const defaultOutputReserve = stage => RP_MODEL_STAGES.includes(stage) ? null : 4096;
+const outputSources=new Set(['model_description','dsh_model_default','dsh_sdk_prepared','dsh_model_default_legacy','adapter_default_unknown','scean_stage_default','plugin_limit','plugin_stage_limit','not_reported']);
+const outputPhases=new Set(['model_description','sdk_prepared','legacy_description','not_reported']);
+const outputSource=(value,fallback)=>outputSources.has(value)?value:fallback;
+
+/** Reconcile diagnostics with the exact call that ran, including failed calls.
+ * A prepared SDK config may precede adapter/context/thinking adjustments, so
+ * it is deliberately never advertised as an observed provider wire ceiling.
+ */
+export function reconcileOutputBudget(diagnostics,budget,finishKind){
+  if(!diagnostics||!budget||typeof budget!=='object')return;
+  diagnostics.outputReserve=Number.isSafeInteger(budget.sdkResolvedMaxTokens)&&budget.sdkResolvedMaxTokens>0?budget.sdkResolvedMaxTokens:null;
+  diagnostics.outputReserveSource=outputSource(budget.source,'not_reported');
+  diagnostics.outputReservePhase=outputPhases.has(budget.phase)?budget.phase:'not_reported';
+  diagnostics.outputSnapshotBound=budget.snapshotBound===true;
+  diagnostics.preparedContextWindow=Number.isSafeInteger(budget.contextWindow)&&budget.contextWindow>0?budget.contextWindow:null;
+  diagnostics.providerFinalOutputReserve=null;
+  diagnostics.providerFinalOutputSource='not_exposed_by_sdk';
+  diagnostics.sdkFinishKind=['stop','tool-calls','max-tokens','aborted','error','unknown'].includes(finishKind)?finishKind:null;
+}
 
 /** A reproducible multilingual heuristic, not a provider token count or bound. */
 export function estimateContextTokens(value) {
@@ -112,6 +130,8 @@ export function budgetStage(stage, prompt, options = {}) {
   visit(sanitized.input, ['input']);
   const contextWindow = positive(options.contextWindow, 0);
   const outputReserve = positive(options.outputReserve, defaultOutputReserve(stage));
+  const outputReserveSource=outputSource(options.outputReserveSource,outputReserve===null?'not_reported':options.outputReserve===undefined?'scean_stage_default':'model_description');
+  const outputReservePhase=outputPhases.has(options.outputReservePhase)?options.outputReservePhase:'model_description';
   const overheadReserve = nonnegative(options.overheadReserve, 0);
   const estimatedTools = options.tools?.length ? estimateContextTokens(options.tools) : 0;
   const toolReserve = Math.max(nonnegative(options.toolReserve, estimatedTools), estimatedTools);
@@ -121,7 +141,7 @@ export function budgetStage(stage, prompt, options = {}) {
   const requiredEstimate = candidateEstimate;
   const diagnostics = { schemaVersion: 1, stage, status: 'ready', estimateMethod: CONTEXT_ESTIMATE_METHOD, estimateOnly: true,
     contextWindow, capacitySource: contextWindow ? 'model_capability' : 'unknown',
-    outputReserve, toolReserve, overheadReserve, inputCapacity, candidateEstimate, requiredEstimate, includedEstimate: candidateEstimate,
+    outputReserve, outputReserveSource, outputReservePhase, providerFinalOutputReserve:null, providerFinalOutputSource:'not_exposed_by_sdk', sdkFinishKind:null, toolReserve, overheadReserve, inputCapacity, candidateEstimate, requiredEstimate, includedEstimate: candidateEstimate,
     actualUsage: null, sources: candidates };
   diagnostics.policy = 'complete_authorized_packet_no_token_quota';
   diagnostics.estimatedOverflow = contextWindow > 0 && candidateEstimate + toolReserve > contextWindow;

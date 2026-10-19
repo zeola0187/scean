@@ -40,7 +40,7 @@
 1. 作者檢查並保存指定 Revision，確定沒有未保存 JSON／文字。
 2. 在原有「SCEAN 舞台測試與唯讀 Inspector」確認名冊及 Preset，以現行 human page lease 按「將已保存 rN 送舞台／新開 testRun」。Agent 前端工具不能自行啟動 RP。
 3. Handoff 從 exact saved card 取前端包，檢查 Blueprint、型別、HTML/CSS/AST、hash，再固定進 Snapshot。Frontend hash 與 Snapshot hash 可在 Run／Inspector 追查。
-4. 舞臺故事區出現「卡片畫面」，和既有文字 RP、Composer、官方 State 面板共存。卡片只讀獲准的已提交資料；輸入草稿、生成提案、取消或失敗均不更新世界畫面。
+4. 舞臺故事區在最新有效已提交正文之後、輸入區之前顯示唯一的「卡片畫面」；開局時在固定開場之後，與既有文字 RP、Composer、官方 State 面板共存。卡片只讀獲准的已提交資料；輸入草稿、生成提案、取消或失敗均不更新世界畫面。
 5. 成功 Commit 後由既有 canonical polling 調和，自動更新文字、布林 class／顏色、進度條與條件顯示。沒有額外模型／Embedding 呼叫。
 6. 斷線會立即標為過期；15 秒未確認 canonical heartbeat 也會失去 current 狀態。安全燈不保留為目前安全。重新連線／續局／Run 切換後重新核對 canonical version/head/hash。
 7. 回退／重生成沿既有正式流程；畫面只讀最後有效 State。舊 Run 固定原資產；修改卡片必須保存新 Revision、另開新 Run 才會使用。
@@ -51,7 +51,9 @@
 ## 3. 本版邊界
 
 - 自由組合受限 HTML/CSS，不是固定官方面板；CSS 界線依 Studio 既有 allowlist。未包裝圖片／字體／外部依賴。
-- 本地互動為原生 details/summary 收合；自訂 tabs/filter 按鈕未實作。Commit／freshness 變更會重建小型 iframe，因此收合狀態可重置。
+- 本地互動為原生 details/summary 收合；自訂 tabs/filter 按鈕未實作。面板位置、分頁及側欄變更不重新掛載 iframe。Commit／freshness 變更仍由既有 renderer 更新同一 iframe 的 srcdoc，內部捲動與收合狀態可能重置。
+- 閱讀有效舊文時不因新回合完成而強迫跳底。僅載入較舊頁而沒有最新正文時，最新面板暫不顯示；「回到最新原文」後再出現。面板永遠代表目前已提交 State，不是各舊回合的狀態快照。
+- HTML/CSS 只設計面板內部；外層由平台固定在最新正文後。套件沒有 placement／mount，卡內 position 仍只 static／relative；沒有新增側邊模式或可執行 JS／Host Action。
 - 前端無 WorldState 寫權、無完整規則引擎；worldActions／derivedDisplays 預留但目前必須為空。
 - 「不執行卡片 JS」是 v1 profile 邊界；將來隔離 JS、Host Action／授權衍生結果需要另版契約、安全與生命週期驗收。
 - 四條件案例使用 `check_1`～`check_4` 四個明示合成布林條件；不是《漫遊者號》未知原卡規則。

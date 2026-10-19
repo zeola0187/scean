@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "skill": "scean-frontend-authoring",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "authorship": "SCEAN-native original instructions authored for this repository from implemented contracts and tests",
   "baselineCommit": "32f8630fbb0f3ecfa0a393bd9be8004ac3759082",
   "authoringRecord": {
@@ -141,5 +141,14 @@
   ],
   "validationBoundary": "References to existing tests are source evidence, not a claim of this run passing. Separate static, tool integration, Scripted Model, actual GUI and live semantic results. No paid model or production profile is required or authorized by this skill.",
   "license": "AGPL-3.0-only",
-  "licenseDecision": "2026-10-18 author decision for original SCEAN materials; full text in package LICENSE; original content hashes retained."
+  "licenseDecision": "2026-10-18 author decision for original SCEAN materials; full text in package LICENSE; original content hashes retained.",
+  "presentationUpdate": {
+    "publicVersion": "1.4.2",
+    "sourceOffer": "https://github.com/zeola0187/scean/tree/v1.4.2",
+    "sourceFiles": [
+      "isolated/web/card-frontend.mjs",
+      "isolated/web/app.mjs"
+    ],
+    "scope": "Explain platform-owned single iframe after the latest committed prose, older-history visibility, and unchanged inner W01 CSS/security and srcdoc lifetime limits; no new placement field or action authority."
+  }
 }

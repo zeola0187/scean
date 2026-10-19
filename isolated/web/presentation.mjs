@@ -23,7 +23,7 @@ export function mountPresentation({font,theme,palette,width,left,right,status,be
     root.dataset.theme=presentationTheme(value.theme,systemDark);root.style.colorScheme=root.dataset.theme;root.dataset.darkPalette=value.darkPalette;
     body.dataset.readingSize=value.readingSize;body.dataset.readingWidth=value.readingWidth;body.dataset.leftCollapsed=String(value.leftCollapsed);body.dataset.rightCollapsed=String(value.rightCollapsed);
     font.value=value.readingSize;theme.value=value.theme;if(palette)palette.value=value.darkPalette;if(width)width.value=value.readingWidth;
-    for(const [button,collapsed,label] of [[left,value.leftCollapsed,'書架'],[right,value.rightCollapsed,'此刻']])if(button){button.textContent=(collapsed?'展開':'收合')+label;button.setAttribute('aria-expanded',String(!collapsed));}
+    for(const [button,collapsed,label] of [[left,value.leftCollapsed,'書架'],[right,value.rightCollapsed,'此刻']])if(button){button.textContent=label;button.setAttribute('aria-label',(collapsed?'展開':'收合')+label);button.setAttribute('aria-expanded',String(!collapsed));}
     restore?.();
   };
   const update=(patch={})=>{

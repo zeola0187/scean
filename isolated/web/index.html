@@ -13,7 +13,7 @@
 </head>
 <body>
   <header class="topbar"><div><h1>SCEAN <span>舞台</span></h1><p>里程碑 D · 隔離試玩</p></div><button id="global-chapter-open" type="button" class="quiet">舞臺全域設定</button><div id="connection" role="status">連線中…</div></header>
-  <p class="hint" id="scean-source-offer" aria-label="原碼與授權">原碼與授權（AGPL-3.0-only）：<a href="https://github.com/zeola0187/scean/tree/v1.4.1" target="_blank" rel="noopener noreferrer">https://github.com/zeola0187/scean/tree/v1.4.1</a>；受限視窗可複製網址開啟。</p>
+  <p class="hint" id="scean-source-offer" aria-label="原碼與授權">原碼與授權（AGPL-3.0-only）：<a href="https://github.com/zeola0187/scean/tree/v1.4.2" target="_blank" rel="noopener noreferrer">https://github.com/zeola0187/scean/tree/v1.4.2</a>；受限視窗可複製網址開啟。</p>
   <div id="mode-banner" class="mode-banner" role="note">正在確認執行環境</div>
   <dialog id="global-chapter-dialog" aria-labelledby="global-chapter-dialog-title">
     <div class="section-heading"><h2 id="global-chapter-dialog-title">舞臺全域設定</h2><button id="global-chapter-close" type="button" class="quiet">關閉設定</button></div>
@@ -157,9 +157,9 @@
         </section>
         <div id="progress" role="status" aria-live="polite"></div>
         <form id="turn-form">
-          <label for="input">你的行動或對話</label>
-          <textarea id="input" rows="4" maxlength="20000" placeholder="例如：我走進休息室，向大家打聲招呼。" disabled></textarea>
-          <div class="composer-actions"><span id="draft-status" class="hint">開局後即可輸入。Enter 換行；Ctrl / ⌘ + Enter 送出。</span><button id="cancel" type="button" class="quiet" hidden>取消本輪</button><button id="send" type="submit" disabled>送出</button></div>
+          <label for="input" class="sr-only">你的行動或對話</label>
+          <textarea id="input" rows="2" maxlength="20000" aria-label="你的行動或對話" aria-keyshortcuts="Control+Enter Meta+Enter" placeholder="例如：我走進休息室，向大家打聲招呼。" disabled></textarea>
+          <div class="composer-actions"><span id="draft-status" class="hint sr-only" role="status">開局後即可輸入。Enter 換行；Ctrl / ⌘ + Enter 送出。</span><button id="cancel" type="button" class="quiet" hidden>取消本輪</button><button id="send" type="submit" disabled>送出</button></div>
         </form>
         <div id="turn-error" class="error" role="alert" hidden></div>
         <div class="recovery"><button id="retry" type="button" hidden>重試同一輸入</button><button id="recheck" type="button" class="quiet" hidden>查詢儲存結果</button></div>

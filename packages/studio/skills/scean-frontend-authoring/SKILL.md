@@ -2,7 +2,7 @@
 name: scean-frontend-authoring
 description: 依 SCEAN W01 實作製作及維護卡片的 HTML/CSS 動態前端，使用公開 Blueprint 綁定、顯示條件與 Host 衍生事實，透過 Card Studio 驗證、預覽、保存及讀回。適用前端製作要求；不負責角色創作方法或整體相容性稽核。
 metadata:
-  version: "1.0.0"
+  version: "1.0.1"
   runtime-profile: "scean-html-bindings-v1"
 ---
 
@@ -27,6 +27,8 @@ metadata:
 8. 保存後再次 `dynamic_read` 及 `card_read`，核對新 revision、保存 hash、宣告／初值／規則及無關資料。遇 Revision 或來源 hash 衝突，重讀並比較他人變更後重新製作候選；不可反覆盲重試舊 payload。
 
 ## 交接與證據
+
+平台負責外層位置：同一份 W01 面板位於最新有效已提交正文之後、輸入區之前，隨正式回合更新；開局時位於固定開場之後。只載入較舊歷史而沒有最新正文時，暫不顯示最新面板，回到最新原文後再顯示。這不是每回合的歷史狀態快照，也不會每輪複製 iframe。作者的 HTML/CSS 只設計面板內部；套件沒有 `placement`／`mount` 欄位，卡內 `position` 仍僅 static／relative，不能指定平台外層任意位置。位置、分頁及側欄操作不另建 iframe；已提交版本／freshness 變更仍依既有安全 renderer 更新 `srcdoc`，卡內 details 的收合可能重置，不宣稱可跨版本保留。
 
 正式 handoff 由 Studio 人類 UI 對選中已保存 revision 建立固定 Snapshot 與新 Run；本 Skill 不啟動 RP，也不直接改既有 Run。新 revision 不會熱更新舊 Run。保留原酒館欄位及未知 extension，不能為做出 W01 畫面而刪除原有程式或篡改開場白。
 

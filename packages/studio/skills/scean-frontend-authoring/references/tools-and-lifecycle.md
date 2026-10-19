@@ -51,3 +51,9 @@
 6. 新 Run 才使用新卡 revision；舊 Run 的 Snapshot 不熱更新。正式 Commit 後前端只投影已 Commit State；失敗／取消提案不更新事實，rollback/regenerate 跟隨 Runtime 有效歷史。不要由卡片 HTML 或 previewState 更動 canonical version/head。
 
 Snapshot、建 Run、Run 匯入都重新准入前端及規則。Run export/import 保留固定套件與 hash；酒館 CCv2/v3 原始欄位仍屬相容資料，不能因為未執行就刪除。handoff 的存在也不能證明瀏覽器目視結果或真模型語意已通過。
+
+## 平台外層與卡內版面的分工
+
+共用 Player 只掛載一個 W01 iframe，放在最新有效已提交正文之後、輸入區之前；尚無回合時在固定開場之後。正式更新沿用這個節點，不把整份前端複製到每個回合。閱讀舊歷史不會改成舊 State；當載入頁不含最新正文時面板暫不顯示，回到最新原文再顯示目前已提交投影。新回合完成不強迫正在閱讀有效舊文的人跳底。
+
+`frontend.html/css` 決定 iframe 內的版面；外層位置由平台 UI 決定。現有 JSON 契約沒有 `placement`／`mount`，CSS static／relative 不能移動平台 iframe。卡內 JS、Host Action、側邊固定模式均未因此開放。iframe 節點不因位置或歷史切換重建，但已提交版本及過期狀態沿原有 renderer 換 `srcdoc`，可能重置內部捲動／details；不以擴大 sandbox 權限保存這些本地狀態。

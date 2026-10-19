@@ -1,9 +1,13 @@
 // DSH 0.2.0-rc.2 native port. Credentials and routing belong to existing DSH services.
 import {randomUUID} from 'node:crypto';
 import {outputLimits,safeError,safeUsage,safeContext} from '../adapters/model.mjs';
+import {RP_MODEL_STAGES} from '../core/contracts.mjs';
 const codes=new Set(['NO_ADAPTER','UNKNOWN','AUTH','QUOTA','ACCOUNT_QUOTA','RATE_LIMIT','SERVER','CONTEXT_WINDOW_EXCEEDED','TIMEOUT','TRANSPORT','ABORTED','INVALID_REQUEST','REQUEST_EXTENSION','EMPTY_RESPONSE','MALFORMED_RESPONSE','STREAM_CLOSED','MISSING_CREDENTIAL','INVALID_CREDENTIAL','UNSUPPORTED_CONTENT','INVALID_REPLAY_STATE','UNSUPPORTED_REASONING_EFFORT','INVALID_MODEL_INFO','INVALID_MODEL_CONTEXT','INVALID_MODEL_MAX_TOKENS','INVALID_MODEL_REASONING']);
 const retryable=code=>['MODEL_TIMEOUT','MODEL_TRANSPORT_ERROR','TIMEOUT','TRANSPORT','RATE_LIMIT','SERVER','HTTP_429'].includes(code)||/^HTTP_5\d\d$/.test(code);
 const error=(code,category='model')=>Object.assign(safeError(code,`Generation failed (${code}); incomplete output was not accepted.`),{category});
+const rpStage=stage=>RP_MODEL_STAGES.includes(stage);
+function describedLimit(value){if(value===undefined||value===null)return null;if(!Number.isSafeInteger(value)||value<1)throw error('INVALID_MODEL_MAX_TOKENS');return value;}
+const finishKinds=new Set(['stop','tool-calls','max-tokens','aborted','error']);
 function selection(value){
   if(!value||typeof value.provider!=='string'||!value.provider.trim()||typeof value.model!=='string'||!value.model.trim()||value.provider.length>160||value.model.length>160)throw error('MODEL_SELECTION_REQUIRED');
   if(value.reasoningEffort!==undefined&&(typeof value.reasoningEffort!=='string'||!value.reasoningEffort||value.reasoningEffort.length>80))throw error('INVALID_REASONING_EFFORT');
@@ -31,6 +35,7 @@ export function createNativeModelPort({llm,agentDefaultModel,budget,usageLedger=
   if(!Number.isInteger(technicalRetries)||technicalRetries<0||technicalRetries>1)throw new TypeError('At most one technical retry is allowed.');
   if(!Number.isSafeInteger(timeoutMs)||timeoutMs<1||timeoutMs>600000)throw new TypeError('Invalid stage timeout.');
   const limit=outputLimits({maxTokens,stageMaxTokens});
+  const backgroundSource=stage=>stageMaxTokens?.[stage]!==undefined?'plugin_stage_limit':maxTokens!==undefined?'plugin_limit':'scean_stage_default';
   async function resolveSelection(stage,context){
     const candidates=[[context.stageModelSelections?.[stage],'run_stage'],[context.modelSelection,'run'],[stageSelections?.[stage],'plugin_stage'],[configuredSelection,'plugin']];
     const chosen=candidates.find(([value])=>value!=null);
@@ -39,7 +44,7 @@ export function createNativeModelPort({llm,agentDefaultModel,budget,usageLedger=
   return {
     async describe({stage='director',context={},signal}={}){
       const scope=deadline(signal,timeoutMs);
-      try{return await scope.run(async()=>{const route=await resolveSelection(stage,context);const info=await llm.resolveModelInfo(route.requested.provider,route.requested.model,scope.signal);return {...route,capabilities:{outputLimit:limit(stage),contextWindow:info.context?.contextWindow??null,defaultMaxTokens:info.defaultMaxTokens??null,reasoningEfforts:info.reasoning?.efforts?.map(x=>x.id)??[],defaultReasoningEffort:info.reasoning?.defaultEffort??null,toolUpdate:info.toolUpdate??null}};});}
+      try{return await scope.run(async()=>{const route=await resolveSelection(stage,context);const info=await llm.resolveModelInfo(route.requested.provider,route.requested.model,scope.signal);const outputLimit=rpStage(stage)?describedLimit(info.defaultMaxTokens):limit(stage);return {...route,capabilities:{outputLimit,outputLimitSource:rpStage(stage)?outputLimit===null?'adapter_default_unknown':'dsh_model_default':backgroundSource(stage),outputLimitPhase:'model_description',providerFinalOutputLimit:null,contextWindow:info.context?.contextWindow??null,defaultMaxTokens:info.defaultMaxTokens??null,reasoningEfforts:info.reasoning?.efforts?.map(x=>x.id)??[],defaultReasoningEffort:info.reasoning?.defaultEffort??null,toolUpdate:info.toolUpdate??null}};});}
       catch(e){throw normalizeFailure(e,scope.signal);}finally{scope.close();}
     },
     async generate({stage,system,input,tools,signal,context={}}){
@@ -52,23 +57,34 @@ export function createNativeModelPort({llm,agentDefaultModel,budget,usageLedger=
       try{selected=await selectionScope.run(()=>resolveSelection(stage,context));}catch(e){throw normalizeFailure(e,selectionScope.signal);}finally{selectionScope.close();}
       for(let attempt=0;attempt<=technicalRetries;attempt++){
         const scope=deadline(signal,timeoutMs),requestId=randomUUID();
-        let reservationId,gateId,route,usage=null,actualCostUsd=null,result,failure;
+        let reservationId,gateId,route,usage=null,actualCostUsd=null,result,failure,finishKind=null;
         try{
           result=await scope.run(async()=>{
-            const info=await llm.resolveModelInfo(selected.requested.provider,selected.requested.model,scope.signal);
             const requested=selected.requested;
-            const effort=requested.reasoningEffort??info.reasoning?.defaultEffort;
-            if(requested.reasoningEffort!==undefined&&!info.reasoning?.efforts?.some(x=>x.id===requested.reasoningEffort))throw error('UNSUPPORTED_REASONING_EFFORT');
-            const config={...requested,...effort===undefined?{}:{reasoningEffort:effort},maxTokens:limit(stage)};
+            // Omit RP maxTokens: the SDK owns provider/model defaults and any
+            // protocol-specific context/thinking adjustments. Never substitute
+            // the historical stage defaults or a guessed provider hard limit.
+            const config={...requested,...rpStage(stage)?{}:{maxTokens:limit(stage)}};
             const prepared=llm.prepareCall?await llm.prepareCall(config,scope.signal):null;
-            const effective=prepared?.config??config;
+            let effective=prepared?.config,info;
+            if(!prepared){
+              // Older SDK/test ports have no one-shot handle. Materialize only
+              // disclosed defaults; absent output capacity remains omitted.
+              info=await llm.resolveModelInfo(requested.provider,requested.model,scope.signal);
+              const effort=requested.reasoningEffort??info.reasoning?.defaultEffort;
+              if(requested.reasoningEffort!==undefined&&!info.reasoning?.efforts?.some(x=>x.id===requested.reasoningEffort))throw error('UNSUPPORTED_REASONING_EFFORT');
+              const output=rpStage(stage)?describedLimit(info.defaultMaxTokens):limit(stage);
+              effective={...config,...effort===undefined?{}:{reasoningEffort:effort},...output===null?{}:{maxTokens:output}};
+            }
+            const sdkLimit=describedLimit(effective.maxTokens);
+            const outputSource=rpStage(stage)?sdkLimit===null?'adapter_default_unknown':prepared?'dsh_sdk_prepared':'dsh_model_default_legacy':backgroundSource(stage);
             // DSH contextWindow is total context metadata; defaultMaxTokens is
             // a generation default, not a maximum-output reservation. Heuristic
             // input estimates cannot authoritatively reject or trim this call.
             // prepareCall / provider enforce actual hard limits and report errors.
-            route={requested:{...requested},effective:{provider:effective.provider,model:effective.model,maxTokens:effective.maxTokens,...effective.reasoningEffort===undefined?{}:{reasoningEffort:effective.reasoningEffort}},selectionSource:selected.selectionSource,parameterSource:{maxTokens:stageMaxTokens?.[stage]!==undefined?'plugin_stage_limit':maxTokens!==undefined?'plugin_limit':'scean_stage_default',reasoningEffort:requested.reasoningEffort!==undefined?selected.selectionSource:effective.reasoningEffort!==undefined?'dsh_model_default':'omitted'},responseModel:null,responseModelSource:'not_reported',usageSource:'not_reported'};
+            route={requested:{...requested},effective:{provider:effective.provider,model:effective.model,maxTokens:sdkLimit,...effective.reasoningEffort===undefined?{}:{reasoningEffort:effective.reasoningEffort}},selectionSource:selected.selectionSource,parameterSource:{maxTokens:outputSource,reasoningEffort:requested.reasoningEffort!==undefined?selected.selectionSource:effective.reasoningEffort!==undefined?'dsh_model_default':'omitted'},outputBudget:{policy:rpStage(stage)?'dsh_rp_inheritance':'scean_background',sdkResolvedMaxTokens:sdkLimit,source:outputSource,phase:prepared?'sdk_prepared':'legacy_description',snapshotBound:!!prepared,adapterDefaultApplied:prepared?.adapterDefaults?.maxTokens===true,contextWindow:describedLimit(prepared?.context?.contextWindow??info?.context?.contextWindow),providerFinalMaxTokens:null,providerFinalSource:'not_exposed_by_sdk'},responseModel:null,responseModelSource:'not_reported',usageSource:'not_reported'};
             scope.signal.throwIfAborted();
-            const request={kind:'generation',caseId:`${context.requestId??'interactive'}:${stage}`,requestId,retry:attempt,meta:{...safeContext(context),provider:effective.provider,model:effective.model,stage,inputBytes:requestBytes,maxTokens:effective.maxTokens}};
+            const request={kind:'generation',caseId:`${context.requestId??'interactive'}:${stage}`,requestId,retry:attempt,meta:{...safeContext(context),provider:effective.provider,model:effective.model,stage,inputBytes:requestBytes,maxTokens:sdkLimit}};
             // Durable reservations are awaited before provider dispatch; pending counts survive a crash.
             try{if(generationGate)gateId=await generationGate.reserve(request);reservationId=await usageLedger.reserve(request);}catch(e){throw error(e?.code==='GENERATION_LIMIT_REACHED'?'GENERATION_LIMIT_REACHED':'MODEL_JOURNAL_RESERVE_FAILED','persistence');}
             scope.signal.throwIfAborted();
@@ -82,6 +98,7 @@ export function createNativeModelPort({llm,agentDefaultModel,budget,usageLedger=
               else if(chunk.type==='usage'){usage=safeUsage(chunk.usage);route.usageSource='dsh_sdk_usage';}
               else if(chunk.type==='finish'){
                 finish=chunk.reason;
+                finishKind=finishKinds.has(finish?.kind)?finish.kind:'unknown';
                 // Select one public identity field only. Replay blocks may contain hidden metadata.
                 const responseModel=chunk.replayState?.response?.responseModel;
                 if(typeof responseModel==='string'&&responseModel.trim().length>0&&responseModel.length<=160){route.responseModel=responseModel;route.responseModelSource='sdk_response_replay_metadata';}
@@ -105,7 +122,7 @@ export function createNativeModelPort({llm,agentDefaultModel,budget,usageLedger=
           });
         }catch(e){failure=normalizeFailure(e,scope.signal);}finally{scope.close();}
         const status=failure?(failure.code==='CANCELLED'?'cancelled':'failed'):'completed';
-        const receipt={requestId,attempt,reservationId:reservationId??null,stage,status,...failure?{code:failure.code}:{},route:route??null,usage,actualCostUsd};
+        const receipt={requestId,attempt,reservationId:reservationId??null,stage,status,...failure?{code:failure.code}:{},finishKind,route:route??null,usage,actualCostUsd};
         attempts.push(receipt);
         try{
           if(reservationId!==undefined)await usageLedger.settle(reservationId,{actualCostUsd,usage,status});

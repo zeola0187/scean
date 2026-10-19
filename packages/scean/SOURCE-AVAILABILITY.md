@@ -1,6 +1,6 @@
 # Corresponding source — SCEAN 1.4.1
 
-Source and license: https://github.com/zeola0187/scean/tree/v1.4.1
+Source and license: https://github.com/zeola0187/scean/tree/v1.4.2
 Installation/update homepage: https://github.com/zeola0187/scean
 Release packages and the detached exact-commit/source-hash descriptor:
 https://github.com/zeola0187/scean/releases/tag/v1.4.1

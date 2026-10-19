@@ -1,6 +1,6 @@
-PUBLIC RELEASE 1.4.1 — 2026-10-18
+PUBLIC RELEASE 1.4.2 — 2026-10-18
 Original SCEAN material: AGPL-3.0-only; advanced-tavern-card-authoring retains MIT.
-Source: https://github.com/zeola0187/scean/tree/v1.4.1
+Source: https://github.com/zeola0187/scean/tree/v1.4.2
 Historical status paragraphs below describe earlier private candidates.
 Necessary original notices and license copies remain applicable.
 

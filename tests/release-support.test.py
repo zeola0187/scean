@@ -9,16 +9,16 @@ class ReleaseSupport(unittest.TestCase):
   for suffix in ['scean-dev','SCEAN-DEV.git','scean%2Ddev/tree/main']:
    c={**base,'sourceUrl':'https://github.com/zeola0187/'+suffix};self.assertIn('KNOWN_PRIVATE_REPOSITORY_NOT_PUBLIC_SOURCE',gate.check(c)['issues'])
  def test_public_source_is_distinct_from_private_development(self):
-  c={'license':'AGPL-3.0-only','sourceUrl':'https://github.com/zeola0187/scean/tree/v1.4.1','revision':'1'*40,'sourceArchiveSha256':'2'*64,'anonymousSourceAccessVerified':True,'networkSourceNoticeReady':True}
+  c={'license':'AGPL-3.0-only','sourceUrl':'https://github.com/zeola0187/scean/tree/v1.4.2','revision':'1'*40,'sourceArchiveSha256':'2'*64,'anonymousSourceAccessVerified':True,'networkSourceNoticeReady':True}
   self.assertEqual(gate.check(c)['issues'],[])
  def test_visible_offer_and_detached_receipt(self):
-  j=json.loads((ROOT/'release-source.json').read_text());url='https://github.com/zeola0187/scean/tree/v1.4.1';self.assertEqual(j['sourceUrl'],url);self.assertIsNone(j['sourceArchiveSha256']);self.assertEqual(gate.check(j)['status'],'HOLD')
+  j=json.loads((ROOT/'release-source.json').read_text());url='https://github.com/zeola0187/scean/tree/v1.4.2';self.assertEqual(j['sourceUrl'],url);self.assertIsNone(j['sourceArchiveSha256']);self.assertEqual(gate.check(j)['status'],'HOLD')
   self.assertIn(url,(ROOT/'isolated/web/index.html').read_text(encoding='utf-8'));self.assertIn('studio-source-offer',(ROOT/'sources/card-studio/cardstudio-bundle/client-template.js').read_text(encoding='utf-8'))
  def test_package_identity_version_and_development_commands(self):
   for n,name in [('package.json','@local/dsh-scean-suite'),('packages/scean/package.json','@local/dsh-scean'),('packages/studio/package.json','@local/dsh-card-studio-scean-test')]:
-   j=json.loads((ROOT/n).read_text());self.assertEqual(j['name'],name);self.assertEqual(j['version'],'1.4.1');self.assertEqual(j['license'],'AGPL-3.0-only');self.assertEqual(j['homepage'],'https://github.com/zeola0187/scean')
+   j=json.loads((ROOT/n).read_text());self.assertEqual(j['name'],name);self.assertEqual(j['version'],'1.4.2');self.assertEqual(j['license'],'AGPL-3.0-only');self.assertEqual(j['homepage'],'https://github.com/zeola0187/scean')
    if n!='package.json':self.assertNotIn('scripts',j)
-  self.assertGreater((1,4,1),(1,3,0))
+  self.assertGreater((1,4,2),(1,3,0))
   self.assertEqual((ROOT/'cordis.patch.yml').read_text(),'- insert:\n    - id: local-scean-host\n      name: ./packages/scean/plugin/index.js\n      config: {}\n    - id: local-cardstudio-scean-workspace-loader\n      name: ./packages/studio/index.js\n      config: {}\n')
  def test_included_docs_have_no_broken_local_links(self):
   for p in [ROOT/'README.md',*(ROOT/'docs').glob('*.md')]:

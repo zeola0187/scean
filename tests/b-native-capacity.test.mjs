@@ -34,24 +34,27 @@ function assertNoDispatch(effects) {
   assert.deepEqual(effects.gateSettle, []);
 }
 
-test('native describe reports configured stage output reserve rather than provider default', async () => {
+test('RP describe inherits DSH defaults while explicit background limits remain configured', async () => {
   const f = fixture({ maxTokens: 3000, stageMaxTokens: { prose: 6000, director: 1200 } });
-  assert.equal((await f.port.describe({ stage: 'director' })).capabilities.outputLimit, 1200);
-  assert.equal((await f.port.describe({ stage: 'prose' })).capabilities.outputLimit, 6000);
+  assert.equal((await f.port.describe({ stage: 'director' })).capabilities.outputLimit, 17);
+  assert.equal((await f.port.describe({ stage: 'prose' })).capabilities.outputLimit, 17);
   const draft = await f.port.describe({ stage: 'draft' });
-  assert.equal(draft.capabilities.outputLimit, 3000);
+  assert.equal(draft.capabilities.outputLimit, 17);
+  assert.equal(draft.capabilities.outputLimitSource,'dsh_model_default');
+  assert.equal((await f.port.describe({stage:'summary'})).capabilities.outputLimit,3000);
   assert.equal(draft.capabilities.defaultMaxTokens, 17);
   assert.equal(draft.capabilities.contextWindow, 32768);
   assertNoDispatch(f.effects);
 });
 
-test('native default output reserves match actual stream configuration', async () => {
+test('RP disclosed SDK output default matches stream config without a stage fallback', async () => {
   const f = fixture();
   const description = await f.port.describe({ stage: 'prose' });
-  assert.equal(description.capabilities.outputLimit, 8192);
+  assert.equal(description.capabilities.outputLimit, 17);
   const result = await f.port.generate(request({ stage: 'prose', context: { capacityBudget: { ...capacity, outputReserve: description.capabilities.outputLimit } } }));
   assert.equal(f.effects.streams[0].maxTokens, description.capabilities.outputLimit);
-  assert.equal(result.route.effective.maxTokens, 8192);
+  assert.equal(result.route.effective.maxTokens, 17);
+  assert.equal(result.route.outputBudget.providerFinalMaxTokens,null);
   assert.equal(result.usage, null);
   assert.equal(f.effects.ledgerSettle[0].actualCostUsd, null);
 });
@@ -95,6 +98,6 @@ test('D explicit summary stage limit resolves through native capability and disp
 test('native actual hard-context rejection is recorded once and never technically retried',async()=>{
  const f=fixture({streamError:'CONTEXT_WINDOW_EXCEEDED',technicalRetries:1});await assert.rejects(f.port.generate(request()),{code:'CONTEXT_WINDOW_EXCEEDED'});assert.equal(f.effects.streams.length,1);assert.equal(f.effects.ledgerReserve.length,1);assert.equal(f.effects.ledgerSettle[0].status,'failed');
 });
-test('native generic model configuration does not inherit a DeepSeek-specific output ceiling',async()=>{
- const f=fixture({maxTokens:400000});assert.equal((await f.port.describe()).capabilities.outputLimit,400000);await f.port.generate(request());assert.equal(f.effects.streams[0].maxTokens,400000);
+test('background generic model configuration keeps its limit without a DeepSeek-specific ceiling',async()=>{
+ const f=fixture({maxTokens:400000});assert.equal((await f.port.describe({stage:'summary'})).capabilities.outputLimit,400000);await f.port.generate(request({stage:'summary'}));assert.equal(f.effects.streams[0].maxTokens,400000);
 });

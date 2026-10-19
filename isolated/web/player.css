@@ -24,3 +24,43 @@
 .global-chapter-settings{margin:1rem auto;padding:1rem;max-width:1100px;border:1px solid var(--border,#888);border-radius:12px}.global-provider-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:1rem}.global-chapter-settings fieldset{min-width:0;margin:.7rem 0;padding:1rem}.global-chapter-settings input:not([type=checkbox]),.global-chapter-settings select{box-sizing:border-box;width:100%;max-width:100%}.global-chapter-settings .consent{align-items:flex-start}.global-chapter-settings summary{font-weight:700;cursor:pointer}
 
 #global-chapter-dialog{box-sizing:border-box;width:min(1100px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;overscroll-behavior:contain}#global-chapter-dialog .global-chapter-settings{margin:0;border:0;padding:.5rem}.global-chapter-settings input:not([type=checkbox]),.global-chapter-settings select{padding:.65rem;border:1px solid color-mix(in srgb,currentColor 25%,transparent);border-radius:8px;background:transparent;color:inherit;font:inherit}.global-chapter-settings fieldset{border-color:color-mix(in srgb,currentColor 25%,transparent)}
+
+
+/* Compact B: one header, in-layout edge rails, bounded composer. Shared by both transports. */
+#card-frontend{max-width:var(--reading-width,730px);margin:28px auto 0}#card-frontend-status{font-size:12px;color:var(--muted);margin:6px 0}#card-frontend-toggle{margin:0 0 8px}
+.sr-only{display:block!important;position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip-path:inset(50%);white-space:nowrap!important;border:0!important}
+.player-shell .topbar{height:56px;min-height:56px;padding:6px 20px;gap:12px;flex-wrap:nowrap}
+.stage-brand{flex:none}.stage-brand h1{font-size:18px;line-height:1.4}.stage-brand h1 span{display:none}
+.stage-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 18px/1.4 "Microsoft JhengHei",sans-serif}
+.player-shell .topbar .badge{flex:none;max-width:100px;line-height:1.35;margin:0;padding:4px 8px}
+#settings-open{flex:none;min-height:44px;white-space:nowrap}.player-shell .topbar #connection{flex:none;max-width:20ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}
+.player-shell .layout{max-width:none;padding:0 44px}.player-shell .layout>#player{border-radius:0;border-top:0}
+.edge-rail{position:absolute;top:56px;bottom:0;width:44px;padding-top:72px;display:flex;align-items:flex-start;z-index:2;background:var(--page)}
+.edge-rail.left{left:0}.edge-rail.right{right:0}.player-shell .edge-tab{width:44px;min-height:88px;min-width:0;padding:8px 10px;writing-mode:vertical-rl;letter-spacing:.12em;border-radius:0}.edge-tab:focus-visible{outline-offset:-4px}
+.pane-back{display:none}.player-shell .reading-pane{padding:18px 24px 24px}
+.player-shell .composer{padding:8px 12px max(8px,env(safe-area-inset-bottom));min-height:0;max-height:45%;overflow:auto;overscroll-behavior:contain;box-shadow:none}
+.player-shell #turn-form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}
+.player-shell #input{height:52px;min-height:52px;max-height:min(160px,24dvh);resize:none;padding:10px 12px;font-size:16px;line-height:1.65}
+.player-shell .composer-actions{display:flex;flex-wrap:nowrap;gap:8px;margin:0}.player-shell .composer-actions button{min-width:64px;min-height:44px}
+.player-shell #progress{font-size:12px;line-height:1.6}.player-shell #progress:not(:empty){margin-bottom:4px}
+.recovery:not(:has(button:not([hidden]))){display:none}.player-shell .jump-latest{bottom:calc(var(--composer-height,96px) + 12px);right:12px}
+.tool-panels{position:absolute;top:0;left:0;width:0;height:0}.tool-panels>.tool-panel{margin:0;padding:0;border:0;background:none}
+.settings-dialog{width:min(600px,calc(100vw - 32px))}.settings-navigation{display:grid;gap:6px}.settings-navigation button{width:100%;text-align:left;min-height:44px}
+.tool-heading{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center}.settings-dialog .tool-heading{grid-template-columns:minmax(0,1fr) auto}.tool-heading button{min-height:44px}.tool-heading h2{min-width:0}
+.tool-dialog #run-version{font-size:13px;overflow-wrap:anywhere}.tool-dialog #player-identity-panel{margin-top:16px}.tool-dialog #scean-source-offer{overflow-wrap:anywhere}
+@media(max-width:1179px){
+ .player-shell .topbar{height:56px;min-height:56px;padding:6px 16px}.player-shell .layout{padding:0 44px}.pane-back{display:block;margin:0 0 16px}
+ .player-shell .layout>.library,.player-shell .layout>.scene-pane{padding:16px}.player-shell .layout>#player{padding:0}
+}
+@media(max-width:600px){
+ .player-shell .topbar{padding:6px 8px;gap:8px}.stage-brand h1{font-size:14px;letter-spacing:.06em}.stage-title{font-size:15px}.player-shell .topbar .badge{max-width:76px;font-size:10px}#settings-open{padding:8px;font-size:12px}
+ .player-shell .topbar #connection{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+ .player-shell .layout{padding:0 24px}.edge-rail{width:24px;padding-top:104px}.player-shell .edge-tab{width:24px;padding:8px 2px;font-size:12px}
+ .player-shell .reading-pane{padding:14px 10px 20px}.player-shell .composer{padding:6px 6px max(6px,env(safe-area-inset-bottom))}
+ .player-shell #turn-form{grid-template-columns:minmax(0,1fr) 48px;gap:6px}.player-shell #input{min-height:52px;padding:8px;font-size:16px}
+ .player-shell .composer-actions{width:48px;flex-direction:column;gap:4px}.player-shell .composer-actions button{width:48px;min-width:48px;min-height:44px;padding:4px 2px;font-size:12px}
+ .tool-heading h2{font-size:17px}.tool-heading button{padding:6px 8px;font-size:12px}.settings-dialog{width:calc(100vw - 16px)}
+}
+@media(max-height:579px) and (max-width:600px){
+ .player-shell #turn-form{grid-template-columns:minmax(0,1fr) auto}.player-shell .composer-actions{width:auto;flex-direction:row;gap:6px}.player-shell .composer-actions button{width:44px;min-width:44px}
+}

@@ -31,7 +31,7 @@ test('independent toggle changes survive font/theme saves, late loads and unavai
   const mounted=mountPresentation({font,theme,palette,width,left,right,root,body,status,native});
   left.handlers.click();right.handlers.click();left.handlers.click();palette.value='black';font.value='normal';palette.handlers.change();
   finishLoad({theme:'light',leftCollapsed:true});await mounted.ready;await new Promise(setImmediate);
-  assert.equal(body.dataset.leftCollapsed,'false');assert.equal(body.dataset.rightCollapsed,'true');assert.equal(right['aria-expanded'],'false');assert.equal(right.textContent,'展開此刻');assert.equal(root.dataset.darkPalette,'black');assert.equal(body.dataset.readingSize,'normal');assert.equal(writes.at(-1).rightCollapsed,true);assert(status.textContent.includes('無法保存'));mounted.dispose();
+  assert.equal(body.dataset.leftCollapsed,'false');assert.equal(body.dataset.rightCollapsed,'true');assert.equal(right['aria-expanded'],'false');assert.equal(right.textContent,'此刻');assert.equal(right['aria-label'],'展開此刻');assert.equal(root.dataset.darkPalette,'black');assert.equal(body.dataset.readingSize,'normal');assert.equal(writes.at(-1).rightCollapsed,true);assert(status.textContent.includes('無法保存'));mounted.dispose();
 });
 
 test('new dark palettes preserve readable semantic colors, field edges and focus',async()=>{

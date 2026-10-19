@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { budgetStage, estimateContextTokens, defaultOutputReserve, DEFAULT_CONTEXT_WINDOW } from '../core/context-budget.mjs';
+import { budgetStage, reconcileOutputBudget, estimateContextTokens, defaultOutputReserve, DEFAULT_CONTEXT_WINDOW } from '../core/context-budget.mjs';
 
 const packet = () => ({ system: 'Keep events and player agency.', input: { assembly: {
   playerInput: '我望向煙燈。', characterIdentities: [{ id: 'lin', name: '林' }],
@@ -122,11 +122,26 @@ test('tool estimates and requested output lengths are reported without inventing
   assert.equal(result.diagnostics.capacitySource, 'unknown');
   assert.equal(result.diagnostics.outputReserve, defaultOutputReserve('director'));
   assert.equal(result.diagnostics.toolReserve, estimateContextTokens(tools));
-  assert.equal(defaultOutputReserve('prose'), 8192);
+  assert.equal(defaultOutputReserve('prose'), null);
+  assert.equal(result.diagnostics.outputReserveSource,'not_reported');
+  assert.equal(result.diagnostics.providerFinalOutputReserve,null);
+  assert.equal(defaultOutputReserve('chapter_summary'),4096);
 });
 
 test('tool and output estimates are not subtracted from an artificial input quota',()=>{
  const input={system:'s',input:{draft:'d'}},result=budgetStage('prose',input,{contextWindow:100,outputReserve:100000,overheadReserve:40,toolReserve:40});assert.deepEqual(result.prompt,input);assert.equal(result.diagnostics.inputCapacity,100);
+});
+
+test('prepared output diagnostics reconcile stale descriptions without claiming the final provider ceiling',()=>{
+ const result=budgetStage('prose',{system:'s',input:{draft:'complete'}},{contextWindow:100,outputReserve:4096,outputReserveSource:'dsh_model_default'});
+ reconcileOutputBudget(result.diagnostics,{sdkResolvedMaxTokens:24000,source:'dsh_sdk_prepared',phase:'sdk_prepared',snapshotBound:true,contextWindow:65536,providerFinalMaxTokens:99999},'max-tokens');
+ assert.equal(result.diagnostics.outputReserve,24000);assert.equal(result.diagnostics.outputReservePhase,'sdk_prepared');assert.equal(result.diagnostics.outputSnapshotBound,true);assert.equal(result.diagnostics.preparedContextWindow,65536);assert.equal(result.diagnostics.sdkFinishKind,'max-tokens');assert.equal(result.diagnostics.providerFinalOutputReserve,null);assert.equal(result.diagnostics.inputCapacity,100);assert.equal(result.prompt.input.draft,'complete');
+});
+
+test('unknown or untrusted diagnostic metadata never becomes a stage budget, wire ceiling, or leaked source label',()=>{
+ const {diagnostics}=budgetStage('post_stat',{system:'s',input:{finalBody:'body'}},{});
+ reconcileOutputBudget(diagnostics,{sdkResolvedMaxTokens:NaN,source:'PRIVATE_HEADER',phase:'PRIVATE_PROMPT',snapshotBound:'yes',contextWindow:-1,providerFinalMaxTokens:42},'PRIVATE_REASONING');
+ assert.equal(diagnostics.outputReserve,null);assert.equal(diagnostics.outputReserveSource,'not_reported');assert.equal(diagnostics.outputReservePhase,'not_reported');assert.equal(diagnostics.outputSnapshotBound,false);assert.equal(diagnostics.preparedContextWindow,null);assert.equal(diagnostics.sdkFinishKind,null);assert(!JSON.stringify(diagnostics).includes('PRIVATE_'));
 });
 
 test('fixed input and capacity produce deterministic packet and diagnostics, no wall clock fields', () => {

@@ -7,6 +7,9 @@ export class SceanError extends Error {
   constructor(code, message = code) { super(message); this.name = 'SceanError'; this.code = code; }
 }
 export const clone = value => structuredClone(value);
+// Only these interactive RP calls inherit DSH output settings. Background work
+// keeps its existing explicit/default budgets, even when it shares the port.
+export const RP_MODEL_STAGES = Object.freeze(['director','character','adjudicate','draft','prose','prose_repair','post_stat']);
 export const id = prefix => `${prefix}-${randomUUID()}`;
 export function safeId(value) {
   if (typeof value !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/.test(value)) throw new SceanError('INVALID_ID');

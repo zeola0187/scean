@@ -23,12 +23,12 @@ test('shipped Flash alias capabilities resolve without authentication or network
   assert.equal(model.id,'deepseek-flash');assert.equal(model.context.contextWindow,1000000);
   assert.equal(model.defaultMaxTokens,256000);assert.equal(model.toolUpdate,'addition-only');assert.equal(model.systemPromptUpdate,'in-history');
   assert.deepEqual(model.reasoning.efforts.map(x=>x.id),['off','low','high','max']);
-  const described=await f.port.describe({stage:'prose'});assert.equal(described.requested.model,'deepseek-flash');assert.equal(described.capabilities.outputLimit,8192);assert.equal(described.capabilities.contextWindow,1000000);
+  const described=await f.port.describe({stage:'prose'});assert.equal(described.requested.model,'deepseek-flash');assert.equal(described.capabilities.outputLimit,256000);assert.equal(described.capabilities.outputLimitSource,'dsh_model_default');assert.equal(described.capabilities.contextWindow,1000000);
   assert.equal(f.authCalls(),0);
  }finally{globalThis.fetch=oldFetch;await f.ctx.fiber.dispose();}
 });
 
-test('native stable Flash alias reaches the real Messages adapter with stage limits and synthetic SSE',async()=>{
+test('native stable Flash alias reaches the real Messages adapter with inherited SDK defaults and synthetic SSE',async()=>{
  const f=await fixture();const oldFetch=globalThis.fetch;const requests=[];
  const events=[{type:'message_start',message:{usage:{input_tokens:11}}},{type:'content_block_start',index:0,content_block:{type:'text',text:''}},{type:'content_block_delta',index:0,delta:{type:'text_delta',text:'Offline compatibility response'}},{type:'content_block_stop',index:0},{type:'message_delta',delta:{stop_reason:'end_turn'},usage:{output_tokens:3}},{type:'message_stop'}];
  globalThis.fetch=async(url,options)=>{assert.equal(url,'https://api.deepseek.com/anthropic/v1/messages');requests.push(JSON.parse(options.body));return new Response(events.map(e=>'event: '+e.type+'\ndata: '+JSON.stringify(e)+'\n\n').join(''),{status:200,headers:{'content-type':'text/event-stream'}});};
@@ -37,7 +37,7 @@ test('native stable Flash alias reaches the real Messages adapter with stage lim
    const result=await f.port.generate({stage,system:'Synthetic compatibility contract',input:{synthetic:true},...(stage==='director'?{tools:[{name:'consult_character',description:'Synthetic tool',parameters:{type:'object',properties:{characterId:{type:'string'}}}}]}:{})});
    assert.equal(result.text,'Offline compatibility response');assert.equal(result.route.requested.model,'deepseek-flash');assert.equal(result.route.effective.model,'deepseek-flash');assert.equal(result.usage.outputTokens,3);
   }
-  assert.deepEqual(requests.map(x=>x.model),['deepseek-flash','deepseek-flash']);assert.deepEqual(requests.map(x=>x.max_tokens),[4096,8192]);assert(requests.every(x=>x.thinking.type==='disabled'));
+  assert.deepEqual(requests.map(x=>x.model),['deepseek-flash','deepseek-flash']);assert.deepEqual(requests.map(x=>x.max_tokens),[256000,256000]);assert(requests.every(x=>x.thinking.type==='disabled'));
   assert.equal(requests[0].tools[0].name,'consult_character');assert.equal(f.authCalls(),2);
  }finally{globalThis.fetch=oldFetch;await f.ctx.fiber.dispose();}
 });

@@ -15,7 +15,7 @@ function fixture(options={}){
 }
 test('A1 native reads current DSH selection every call, reports actual capabilities and unknown response/cost',async()=>{
  const f=fixture();const d=await f.port.describe();assert.equal(d.selectionSource,'dsh_current_selection');assert.equal(f.reserves.length,0);
- const a=await f.port.generate(input);assert.equal(a.model,'synthetic-provider/model-a');assert.equal(a.route.responseModel,null);assert.equal(a.route.responseModelSource,'not_reported');assert.equal(a.route.usageSource,'dsh_sdk_usage');assert.equal(a.attempts[0].actualCostUsd,null);assert.equal(f.calls[0].maxTokens,8192);assert(!Object.hasOwn(f.calls[0],'reasoningEffort'));
+ const a=await f.port.generate(input);assert.equal(a.model,'synthetic-provider/model-a');assert.equal(a.route.responseModel,null);assert.equal(a.route.responseModelSource,'not_reported');assert.equal(a.route.usageSource,'dsh_sdk_usage');assert.equal(a.attempts[0].actualCostUsd,null);assert(!Object.hasOwn(f.calls[0],'maxTokens'));assert.equal(a.route.effective.maxTokens,null);assert(!Object.hasOwn(f.calls[0],'reasoningEffort'));
  f.setCurrent({provider:'second',model:'model-b'});assert.equal((await f.port.generate(input)).model,'second/model-b');assert.equal(f.gates.length,2);
 });
 test('A1 stage/run/config precedence is explicit and no auto router',async()=>{
@@ -87,12 +87,12 @@ test('A1 opaque thought-bearing tool id metadata never reaches Director handoff'
 test('A1 real shipped DSH LlmRuntime prepared-call routing with synthetic adapter and no network',async()=>{
  const ctx=new Context();await ctx.plugin(LlmRuntime);let dispatched;
  class Adapter extends LlmAdapter{
-  async resolveModel(provider,id){return {provider,id,name:id,reasoning:{efforts:[{id:'low',name:'Low'}],defaultEffort:'low'},toolUpdate:'addition-only'};}
+  async resolveModel(provider,id){return {provider,id,name:id,defaultMaxTokens:16384,reasoning:{efforts:[{id:'low',name:'Low'}],defaultEffort:'low'},toolUpdate:'addition-only'};}
   async *stream(options){dispatched=options;yield {type:'block-end',index:0,block:{type:'text',text:'offline'}};yield {type:'finish',reason:{kind:'stop'}};}
  }
  ctx.llm.registerAdapter(['synthetic-route'],new Adapter());
  try{
   const f=fixture();const port=createNativeModelPort({llm:ctx.llm,agentDefaultModel:{currentSelection:()=>({provider:'synthetic-route',model:'capability-model'})},usageLedger:f.usageLedger});
-  const r=await port.generate(input);assert.equal(r.text,'offline');assert.equal(dispatched.reasoningEffort,'low');assert.equal(dispatched.maxTokens,8192);assert.equal(r.route.responseModel,null);assert.equal(r.route.effective.model,'capability-model');assert(!Object.hasOwn(dispatched,'toolHistory'));
+  const r=await port.generate(input);assert.equal(r.text,'offline');assert.equal(dispatched.reasoningEffort,'low');assert.equal(dispatched.maxTokens,16384);assert.equal(r.route.outputBudget.snapshotBound,true);assert.equal(r.route.responseModel,null);assert.equal(r.route.effective.model,'capability-model');assert(!Object.hasOwn(dispatched,'toolHistory'));
  }finally{await ctx.fiber.dispose();}
 });

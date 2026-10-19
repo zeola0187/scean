@@ -24,28 +24,28 @@ async function fixture(toolUpdate='addition-only',register=true){
 }
 const options={provider:'deepseek-official',model:'deepseek-flash',reasoningEffort:'off',messages:[{role:'user',content:[{type:'text',text:'Synthetic'}]}],tools:[],maxTokens:128};
 
-test('FORMAL DeepSeekAdapter + LlmRuntime OFFLINE: native 8192 reaches Messages payload, SSE usage translated',async()=>{
+test('FORMAL DeepSeekAdapter + LlmRuntime OFFLINE: inherited DSH 12000 reaches Messages payload, SSE usage translated',async()=>{
   const ctx=new Context();await ctx.plugin(LlmRuntime);const originalFetch=globalThis.fetch;let request;
   const events=[{type:'message_start',message:{usage:{input_tokens:10}}},{type:'content_block_start',index:0,content_block:{type:'text',text:''}},{type:'content_block_delta',index:0,delta:{type:'text_delta',text:'Offline full response'}},{type:'content_block_stop',index:0},{type:'message_delta',delta:{stop_reason:'end_turn'},usage:{output_tokens:3000}},{type:'message_stop'}];
   globalThis.fetch=async(url,options)=>{request={url,body:JSON.parse(options.body)};return new Response(events.map(e=>'event: '+e.type+'\ndata: '+JSON.stringify(e)+'\n\n').join(''),{status:200,headers:{'content-type':'text/event-stream'}});};
-  const connection=resolveAdapterOptions({thinking:'disabled',reasoningEffort:'off',baseURL:'https://api.deepseek.com/anthropic'});
+  const connection=resolveAdapterOptions({thinking:'disabled',reasoningEffort:'off',maxTokens:12000,baseURL:'https://api.deepseek.com/anthropic'});
   ctx.llm.registerAdapter(['deepseek-official'],new DeepSeekAdapter({options:()=>connection,resolveAuth:async()=>({headers:{Authorization:'Bearer SYNTHETIC_REDACTION_FIXTURE_000000'}}),resolveUserId:()=> 'scean-r2-offline',prepareExtensions:async()=>({fields:{},accept:async()=>{}})}));
   const ends=[];const usageLedger={async reserve(){return 'offline';},async settle(id,r){ends.push(r);}};
   try{
     const result=await createNativeModelPort({llm:ctx.llm,usageLedger}).generate({stage:'prose',system:'Offline',input:'Synthetic'});
-    assert.equal(request.url,'https://api.deepseek.com/anthropic/v1/messages');assert.equal(request.body.max_tokens,8192);assert.equal(request.body.thinking.type,'disabled');
+    assert.equal(request.url,'https://api.deepseek.com/anthropic/v1/messages');assert.equal(request.body.max_tokens,12000);assert.equal(request.body.thinking.type,'disabled');assert.equal(result.route.outputBudget.sdkResolvedMaxTokens,12000);assert.equal(result.route.outputBudget.providerFinalMaxTokens,null);
     assert.equal(result.text,'Offline full response');assert.equal(result.usage.outputTokens,3000);assert.equal(ends[0].actualCostUsd,null);
   }finally{globalThis.fetch=originalFetch;await ctx.fiber.dispose();}
 });
 
-test('R2 native stage defaults permit >2048 complete output; context and usage journal have no price reservation',async()=>{
+test('RP inherited DSH default permits complete output; context and journal have no price reservation',async()=>{
   const requests=[],starts=[],ends=[];
-  const llm={async *stream(options){requests.push(options);yield {type:'block-end',index:0,block:{type:'text',text:'word '.repeat(3000)}};yield {type:'usage',usage:{inputTokens:40,outputTokens:3000}};yield {type:'finish',reason:{kind:'stop'}};}};
+  const llm={async resolveModelInfo(){return {defaultMaxTokens:16000,reasoning:{efforts:[{id:'off',name:'Off'}],defaultEffort:'off'}};},async *stream(options){requests.push(options);yield {type:'block-end',index:0,block:{type:'text',text:'word '.repeat(3000)}};yield {type:'usage',usage:{inputTokens:40,outputTokens:3000}};yield {type:'finish',reason:{kind:'stop'}};}};
   const usageLedger={async reserve(r){starts.push(r);return 'id';},async settle(id,r){ends.push(r);}};
   const port=createNativeModelPort({llm,usageLedger});
   const r=await port.generate({stage:'prose',system:'Synthetic',input:'x',context:{runId:'r',attemptId:'a',requestId:'q'}});
-  assert.equal(r.usage.outputTokens,3000);assert.equal(requests[0].maxTokens,8192);assert.equal(starts[0].meta.attemptId,'a');assert.equal(Object.hasOwn(starts[0],'maxCostUsd'),false);assert.equal(ends[0].actualCostUsd,null);
-  await port.generate({stage:'director',system:'Synthetic',input:'x'});assert.equal(requests[1].maxTokens,4096);
+  assert.equal(r.usage.outputTokens,3000);assert.equal(requests[0].maxTokens,16000);assert.equal(starts[0].meta.attemptId,'a');assert.equal(Object.hasOwn(starts[0],'maxCostUsd'),false);assert.equal(ends[0].actualCostUsd,null);
+  await port.generate({stage:'director',system:'Synthetic',input:'x'});assert.equal(requests[1].maxTokens,16000);
 });
 
 test('R2 native truncation is a safe explicit failure, partial output never returned',async()=>{

@@ -19,7 +19,7 @@ const safeReason=value=>sourceReasons.has(value)?value:'restricted';
  * visibility is restricted; restricted counts never carry per-source identity. */
 export function publicContextBudget(value){
   if(!value||typeof value!=='object')return {status:'not_recorded'};
-  const result=pick(value,['schemaVersion','stage','status','estimateMethod','estimateOnly','contextWindow','capacitySource','outputReserve','toolReserve','overheadReserve','inputCapacity','candidateEstimate','requiredEstimate','includedEstimate','actualUsage','reason','policy','estimatedOverflow']);
+  const result=pick(value,['schemaVersion','stage','status','estimateMethod','estimateOnly','contextWindow','capacitySource','outputReserve','outputReserveSource','outputReservePhase','outputSnapshotBound','preparedContextWindow','providerFinalOutputReserve','providerFinalOutputSource','sdkFinishKind','toolReserve','overheadReserve','inputCapacity','candidateEstimate','requiredEstimate','includedEstimate','actualUsage','reason','policy','estimatedOverflow']);
   result.sources=[];
   const summary={status:'restricted',count:0,includedCount:0,excludedCount:0,estimatedTokens:0,reasons:{}};
   for(const source of value.sources??[]){

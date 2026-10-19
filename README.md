@@ -1,4 +1,4 @@
-# SCEAN 1.4.1
+# SCEAN 1.4.2
 
 SCEAN combines native Card Studio authoring with saved story openings, dynamic
 card fronts, durable story operations, independent reading sidebars and chapter
@@ -6,7 +6,7 @@ memory. Original SCEAN material is **AGPL-3.0-only**; the existing
 advanced-tavern-card-authoring Skill retains its MIT grant. See [LICENSE](LICENSE),
 [scope](LICENSE-SCOPE.md) and [third-party notices](THIRD-PARTY-NOTICES.md).
 
-**完整對應原碼／Source:** https://github.com/zeola0187/scean/tree/v1.4.1
+**完整對應原碼／Source:** https://github.com/zeola0187/scean/tree/v1.4.2
 
 ## 安裝與更新
 
@@ -62,3 +62,10 @@ node --require ./scripts/w19-offline-network.cjs --test authoring/tests/*.test.m
 本版亦整合舞臺入口對齊及可還原的素材回收。
 有姓名的故事使用 v4 備份；降版須配對還原升級前 runtime 與資料，
 不可讓舊版寫入較新的姓名／v4 資料。詳見 [姓名與升級說明](docs/PLAYER-NAME.zh-TW.md)。
+
+## 1.4.2
+
+緊湊閱讀版面、邊緣側欄標籤與單一設定入口，將空間留給正文。
+卡片動態面板跟在最新有效正文之後；每局保留一份面板，W01 與 Snapshot 契約不變。
+RP 七個階段沿用該 provider／model 的 DSH 輸出預設，背景摘要與章節額度保持原樣。
+詳見[閱讀介面與輸出設定](docs/READER-AND-RP-OUTPUT.zh-TW.md)。升級前備份資料，等待回合與保存結束後，使用 DSH 官方停用、卸載與安裝流程。

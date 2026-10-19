@@ -1,23 +1,26 @@
 # SCEAN native plugin
 
-This directory is part of the project-root package `@local/dsh-scean` 0.2.0, targeting Desktop **0.2.0-rc.2**. It is not a DSHRuntime update. The package must include `core/`, `adapters/`, and `plugin/` at the same level. Do not install this directory alone.
+This directory is a canonical source of the `@local/dsh-scean-suite` bundle. The canonical builder copies it with `core/` and `adapters/` into `packages/scean`. Do not install this directory alone. This change does not update DSH Runtime; supported SDK versions remain declared in the root package metadata.
 
 ## Package metadata
 
-The root package exports `.` as `./plugin/index.js`, `./client` as `./plugin/client.js`, and `./package.json`. Set `dsh.bundle.patch` to `./plugin/cordis.patch.yml`; `dsh.client` is `{ "platform":"web", "immediately":true, "inject":["@deepseek-ai/dsh-client-ui-conversation","@deepseek-ai/dsh-client-ui-layout"] }`. Peer `@deepseek-ai/dsh-typert-protocol` must be 0.2.0-rc.2. This source-mode client is plain JavaScript; no build framework or browser credential is required.
+Install the complete Suite through its root `dsh.bundle` declaration. The generated SCEAN client is built from `native-client-source.mjs` and the shared `isolated/web` player. Native Desktop and DSH Web use the same Host model port; never patch generated clients independently.
 
 ## Isolation and configuration
 
 - Package `@local/dsh-scean`; service/RPC `scean`; panel `local-scean`; dock `local-scean-entry`.
-- `dataRoot` defaults to the new `~/.dsh/scean-mvp-0.2.0`, with `store/` for canonical runs, `host/` for read-only inspection grants, and `runtime-status.json` for non-private load evidence.
-- `usagePath` defaults to `dataRoot/usage-r2.jsonl`. The historical `budgetPath` is ignored; historical ledgers cannot be appended. No monetary reservation or cost cap remains.
-- Native generation uses existing `ctx.llm` authentication for `deepseek-official/deepseek-flash`. No key is read or exposed by the native model adapter. No model call occurs during load.
-- `enableExistingEmbedding: true` enables only the existing OpenRouter environment configuration through the shared adapter. Missing existing credential fails plugin initialization; false/omitted explicitly exposes degraded BM25-only memory rather than claiming hybrid success. No new persistent credential is installed.
-- Prose defaults to 8192 tokens; other stages default to 4096. `stageMaxTokens` overrides global `maxTokens`, which overrides stage defaults. Incomplete/truncated output fails closed. Hidden reasoning chunks are discarded. Usage is recorded; unavailable actual cost is null. No automatic retries.
+- `dataRoot` defaults to `~/.dsh/scean-mvp-0.7.1-milestone-d-final`, with canonical `store/`, Host operation metadata and `runtime-status.json`.
+- `usagePath` defaults to `dataRoot/usage-a1.jsonl`. The historical `budgetPath` is ignored. Usage journaling does not impose a monetary reservation or token quota.
+- Native generation uses existing `ctx.llm` authentication and explicit Run/stage/plugin model routes, otherwise the DSH Profile default. No key is read or exposed by this native port. Model capability lookup is distinct from generation; plugin load does not generate.
+- Existing optional embedding configuration is separate. Missing embedding configuration is reported as BM25 degradation; this output-setting change does not enable or call embeddings.
+- Interactive RP stages (`director`, `character`, `adjudicate`, `draft`, `prose`, `prose_repair`, `post_stat`) omit `maxTokens` and inherit the exact SDK prepared-call defaults. Former plugin `maxTokens`/`stageMaxTokens` do not override these RP calls. An undisclosed SDK default remains omitted/unknown.
+- Native background summary/chapter/rerank calls retain their 4096 defaults and existing explicit overrides. Incomplete/truncated output still fails closed; partial output cannot commit. Hidden reasoning is discarded, unknown actual cost stays null, and technical retries remain disabled by default.
 
-The native port explicitly sets `reasoningEffort:'off'`; only `deepseek-official` and `deepseek-flash` / its existing `deepseek-v4-flash` alias are accepted. Configured output limits are integers from 1 to the verified provider ceiling 384000; this is not unlimited output. See `docs/model-r2.md` in the source project for official specification and fixed SDK evidence.
+Explicit reasoning follows the selected route; otherwise the SDK resolves the model default and validates support. The historical direct adapter's 384000 constant is not a universal native-provider limit. `route.outputBudget` distinguishes SDK-resolved output from the unknown final provider wire limit, and safe receipts record SDK finish kind. See `docs/READER-AND-RP-OUTPUT.zh-TW.md` for scope and diagnostics.
 
-### Native retry accounting verification
+### Historical native retry accounting verification (0.2.0-rc.2)
+
+The following is retained historical evidence, not a claim that this candidate reran paid requests or updated Runtime. Current 0.2.1-rc.2 prepared-call behavior is covered by the offline SDK tests.
 
 The formal `dsh-llm` 0.2.0-rc.2 implementation at `lib/index.js:2367` calls `streamWithRegistration`, then the `llm/stream` waterfall and `adapterStream`; its iteration dispatches one adapter stream and converts errors to terminal chunks, without retrying. The formal `dsh-llm-retry/lib/index.js:175` registers only `ctx.on('agent/request-error', ...)`, **not** `llm/stream`; SCEAN's native port does not create an Agent loop or emit that event. Independent read-only ASAR verification found SHA-256 `cbb99f1c5038e4a9167aedf333343cb3e3adfb5c9f45a37ef7562b024429d050` for that retry implementation, package 0.2.0-rc.2. DeepSeek's adapter has one replacement attempt for a stale attached-file id; SCEAN sends only one text user message with no file/image blocks or replay history, so that recovery is inapplicable. Thus the fixed formal text-only native path makes one generation HTTP attempt per ledger reservation; this conclusion must be rechecked before supporting attachment inputs or a new Runtime/middleware version. No global provider retry or security setting is changed.
 

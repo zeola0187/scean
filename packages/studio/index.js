@@ -77,7 +77,7 @@ export async function apply(ctx,config = {}) {
   let clientCapabilityRequestAt,hostState='starting',clientRegistry={available:false},archiveRecycle={state:'unavailable'},statusQueue=Promise.resolve();
   const writeStatus=state=>{
     hostState=state;
-    statusQueue=statusQueue.catch(()=>{}).then(async()=>atomicReplace(await contained(root,'.cardstudio-scean/runtime-status.json'),Buffer.from(JSON.stringify({plugin:'@local/dsh-card-studio-scean-test',version:'1.4.1',build:'scean-public-1.4.1',host:hostState,skillCount:skills.length,storedSkillCount:skills.length,toolCount:toolSpecs.length,workspace:loader.canonical,time:new Date().toISOString(),clientRegistry,archiveRecycle,...(clientCapabilityRequestAt?{clientCapabilityRequestAt}:{}),visualVerification:'not-observed'},null,2))));
+    statusQueue=statusQueue.catch(()=>{}).then(async()=>atomicReplace(await contained(root,'.cardstudio-scean/runtime-status.json'),Buffer.from(JSON.stringify({plugin:'@local/dsh-card-studio-scean-test',version:'1.4.2',build:'scean-public-1.4.2',host:hostState,skillCount:skills.length,storedSkillCount:skills.length,toolCount:toolSpecs.length,workspace:loader.canonical,time:new Date().toISOString(),clientRegistry,archiveRecycle,...(clientCapabilityRequestAt?{clientCapabilityRequestAt}:{}),visualVerification:'not-observed'},null,2))));
     return statusQueue;
   };
   observeClientRegistry(ctx,new URL('./client.js',import.meta.url),facts=>{

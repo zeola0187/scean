@@ -15,7 +15,7 @@ import { eligibleMemory, publicCharacter, ownerCharacterContext, ownerStateForMo
 import { projectCharacterAdvice } from './character-advice.mjs';
 import { selectWorldbooks, stripWorldbookContainers } from './worldbook.mjs';
 import { validateBlueprint, materializeInitialState, validateBlueprintStateChanges, validateBlueprintState } from './state-blueprint.mjs';
-import { budgetStage, estimateContextTokens, CONTEXT_ESTIMATE_METHOD } from './context-budget.mjs';
+import { budgetStage, reconcileOutputBudget, estimateContextTokens, CONTEXT_ESTIMATE_METHOD } from './context-budget.mjs';
 
 // Only machine codes and fixed explanations cross the UI/audit boundary. Provider
 // messages can contain request bodies, file paths or credentials and are not copied.
@@ -255,7 +255,7 @@ export class SceanEngine {
         checkAbort(signal);
         const capability = description?.capabilities ?? description ?? {};
         try {
-          const checked = budgetStage(stage, { system: SYSTEMS[stage], input: payload }, { contextWindow: capability.contextWindow, outputReserve: capability.outputLimit, tools, requireNarrativeCoverage: true, committedRecentIds: run.turns.slice(-50).map(t=>t.commitId) });
+          const checked = budgetStage(stage, { system: SYSTEMS[stage], input: payload }, { contextWindow: capability.contextWindow, outputReserve: capability.outputLimit, outputReserveSource:capability.outputLimitSource, outputReservePhase:capability.outputLimitPhase, tools, requireNarrativeCoverage: true, committedRecentIds: run.turns.slice(-50).map(t=>t.commitId) });
           (attempt.contextPreflights ??= []).push(checked.diagnostics);
         } catch (error) { if (error.diagnostics) (attempt.contextPreflights ??= []).push(clone(error.diagnostics)); throw error; }
       };
@@ -271,7 +271,7 @@ export class SceanEngine {
           checkAbort(signal);
           const capability = description?.capabilities ?? description ?? {};
           let budgeted;
-          try { budgeted = budgetStage(stage, event.prompt, { contextWindow: capability.contextWindow, outputReserve: capability.outputLimit, tools, requireNarrativeCoverage: true, committedRecentIds: run.turns.slice(-50).map(t=>t.commitId) }); }
+          try { budgeted = budgetStage(stage, event.prompt, { contextWindow: capability.contextWindow, outputReserve: capability.outputLimit, outputReserveSource:capability.outputLimitSource, outputReservePhase:capability.outputLimitPhase, tools, requireNarrativeCoverage: true, committedRecentIds: run.turns.slice(-50).map(t=>t.commitId) }); }
           catch (error) { if (error.diagnostics) event.contextBudget = clone(error.diagnostics); throw error; }
           event.contextBudget = budgeted.diagnostics;
           event.prompt = clone(budgeted.prompt); payload = budgeted.prompt.input;
@@ -298,6 +298,7 @@ export class SceanEngine {
           const response = await abortable(() => this.model.generate({ stage, system: SYSTEMS[stage], input: clone(payload), context: modelContext, ...(tools ? { tools: clone(tools) } : {}), signal }));
           checkAbort(signal);
           if (!response || typeof response.text !== 'string') throw new SceanError('INVALID_MODEL_RESPONSE');
+          reconcileOutputBudget(event.contextBudget,response.route?.outputBudget,response.attempts?.at(-1)?.finishKind);
           if (response.finishReason && !['stop', 'tool_calls', 'end_turn', 'tool_use'].includes(response.finishReason)) throw new SceanError('INCOMPLETE_MODEL_RESPONSE');
           if (response.text.length > 200000) throw new SceanError('MODEL_RESPONSE_TOO_LARGE');
           if (stage !== 'director' && response.toolCalls?.length) throw new SceanError('STAGE_TOOL_FORBIDDEN');
@@ -313,7 +314,7 @@ export class SceanEngine {
           if (response.attempts) publicResult.attempts = clone(response.attempts);
           json(publicResult); event.result = clone(publicResult); event.status = 'completed'; event.finishedAt = new Date().toISOString(); await checkpoint();
           progress(stage, 'completed'); return publicResult;
-        } catch (error) { if(event.derivedFactsUse)event.derivedFactsUse.status='failed_or_cancelled'; if (event.narrativeUse) event.narrativeUse.status = 'failed_or_cancelled'; if (event.worldbookUse) event.worldbookUse.status = 'failed_or_cancelled'; event.status = error.code === 'CANCELLED' || signal?.aborted ? 'cancelled' : 'failed'; event.error = safeFailure(signal?.aborted ? { code: 'CANCELLED' } : error, stage, 'MODEL_FAILED'); if (error.attempts) event.attempts = clone(error.attempts); event.finishedAt = new Date().toISOString(); progress(stage, event.status); await checkpoint(); throw error; }
+        } catch (error) { const lastCall=error.attempts?.at(-1);reconcileOutputBudget(event.contextBudget,lastCall?.route?.outputBudget,lastCall?.finishKind);if(event.contextBudget&&lastCall?.usage)event.contextBudget.actualUsage=clone(lastCall.usage);if(event.derivedFactsUse)event.derivedFactsUse.status='failed_or_cancelled'; if (event.narrativeUse) event.narrativeUse.status = 'failed_or_cancelled'; if (event.worldbookUse) event.worldbookUse.status = 'failed_or_cancelled'; event.status = error.code === 'CANCELLED' || signal?.aborted ? 'cancelled' : 'failed'; event.error = safeFailure(signal?.aborted ? { code: 'CANCELLED' } : error, stage, 'MODEL_FAILED'); if (error.attempts) event.attempts = clone(error.attempts); event.finishedAt = new Date().toISOString(); progress(stage, event.status); await checkpoint(); throw error; }
       };
       try {
         checkAbort(signal);

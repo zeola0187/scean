@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "skillVersion": "1.1.0",
-  "runtimeVersion": "1.4.1",
-  "studioVersion": "1.4.1",
+  "runtimeVersion": "1.4.2",
+  "studioVersion": "1.4.2",
   "desktopVersion": "0.2.0-rc.2",
   "claimsScope": "structure/data-path proof; no true-model semantic acceptance",
   "capabilities": [
@@ -14,7 +14,7 @@
         "path": "core/contracts.mjs",
         "line": 44,
         "symbol": "validateSnapshot",
-        "sha256": "4966526b5c6ce7311f0aefee3e7daa726e196fb0094c49c01ea7b61940a7cba4",
+        "sha256": "4b3d12129a5175374b08e9b9a080b4a94b8824a440a230906e9888870542877d",
         "priorSha256": "ef8c4606012f0d80a12824ba1320b31a34822fdd94c3a3e32eb8373adf25108c"
       },
       "tests": [
@@ -33,7 +33,7 @@
         "path": "core/engine.mjs",
         "line": 210,
         "symbol": "async turn",
-        "sha256": "599a5b0aec64a7cc2749bb6d95ae3da6d0fb8d39a4dc0e4b10d1bdf20b918e3c",
+        "sha256": "f4a83d514153d2d5531f0ec1b9919196a819adffd8dffe729ba0b23d9911228f",
         "priorSha256": "13f418aabc85cd1e6ae9b6ef5920db7e92aafc5cf9d9dd6c5f50ddd9de6cf907",
         "playerNameBaselineSha256": "23686d04b743925c5c94bbb21fd1418984db7cea17ca75580243ee6321ba21e7"
       },
@@ -53,7 +53,7 @@
         "path": "core/engine.mjs",
         "line": 390,
         "symbol": "ownerPacket",
-        "sha256": "599a5b0aec64a7cc2749bb6d95ae3da6d0fb8d39a4dc0e4b10d1bdf20b918e3c",
+        "sha256": "f4a83d514153d2d5531f0ec1b9919196a819adffd8dffe729ba0b23d9911228f",
         "priorSha256": "13f418aabc85cd1e6ae9b6ef5920db7e92aafc5cf9d9dd6c5f50ddd9de6cf907",
         "playerNameBaselineSha256": "23686d04b743925c5c94bbb21fd1418984db7cea17ca75580243ee6321ba21e7"
       },
@@ -229,7 +229,7 @@
         "path": "core/context-budget.mjs",
         "line": 51,
         "symbol": "budgetStage",
-        "sha256": "7500a4c3bb29f3aef072540e7a004170f26bc305f1624ef24e869e0f218e87c2",
+        "sha256": "8af924bfc1dfdfd239d1cf9b853de0b45066b5910b0432fec6643ab7faf7b4db",
         "priorSha256": "dd5f2fc80a390c0cf60696d44dca7cab8a75d4b788306cbc35c3c5756d78fd06",
         "playerNameBaselineSha256": "f8e2ecd322373fbb4c64ed9248b098a6124e8484f1d7e2a64eb023605a7f2434"
       },
@@ -268,7 +268,7 @@
         "path": "core/inspection.mjs",
         "line": 101,
         "symbol": "publicInspection",
-        "sha256": "91abed427d1abf882804e32bd194e32346a1c991c4ea4a5d786bbf421bc38850",
+        "sha256": "ca7b70d4200db5c6ffd6b90e7f03c1b8a926a7413447c0378fd13a87f7559e0e",
         "priorSha256": "e6be0c1210c5f25606b698af4f21641bdfed34a00dfd4928fa5ee53ab6a2d402",
         "playerNameBaselineSha256": "74072c433c818b474e968fca156486cc4c6fb8e409ddf9dde5015614a7fcc219"
       },
@@ -403,7 +403,7 @@
         "path": "core/engine.mjs",
         "line": 131,
         "symbol": "no configured numerical dice runner",
-        "sha256": "599a5b0aec64a7cc2749bb6d95ae3da6d0fb8d39a4dc0e4b10d1bdf20b918e3c",
+        "sha256": "f4a83d514153d2d5531f0ec1b9919196a819adffd8dffe729ba0b23d9911228f",
         "priorSha256": "13f418aabc85cd1e6ae9b6ef5920db7e92aafc5cf9d9dd6c5f50ddd9de6cf907",
         "playerNameBaselineSha256": "23686d04b743925c5c94bbb21fd1418984db7cea17ca75580243ee6321ba21e7"
       },
@@ -462,7 +462,7 @@
         "path": "core/contracts.mjs",
         "line": 47,
         "symbol": "validateRoster",
-        "sha256": "4966526b5c6ce7311f0aefee3e7daa726e196fb0094c49c01ea7b61940a7cba4",
+        "sha256": "4b3d12129a5175374b08e9b9a080b4a94b8824a440a230906e9888870542877d",
         "priorSha256": "ef8c4606012f0d80a12824ba1320b31a34822fdd94c3a3e32eb8373adf25108c"
       },
       "tests": [
@@ -506,7 +506,7 @@
         "path": "sources/card-studio/cardstudio-bundle/index.js",
         "line": 52,
         "symbol": "addonCtx.tools.register",
-        "sha256": "40f0040456e6a0bc07b373f371b4a31b87d36bb255e124e63547e6808ee99338",
+        "sha256": "f503b4fbd6722f595b26060e0e053288908dcbb3dbd15f33203397cdb6918eaf",
         "priorSha256": "5bd327c74759dd237a40d2a7c39aabb9f0e06a2b6c4ea5073792bb568f6bd182",
         "previousCandidateSource": {
           "path": "authoring/.integration/cardstudio/index.js",
@@ -515,7 +515,9 @@
         "beforePublic140Sha256": "22db817325b344fa5c3c75b88a6957c97e0d9d31939722264379d51017edd0b7",
         "public140Note": "Public source notice/version or retired-opening guidance wording updated; runtime authority is unchanged.",
         "beforePublic141Sha256": "52cca31811a8f32ff2231edd54ea7927f7bda008cf3626218d3367169aa945a8",
-        "public141Note": "Public 1.4.1 version/source notice metadata; source and runtime authority remain pinned."
+        "public141Note": "Public 1.4.1 version/source notice metadata; source and runtime authority remain pinned.",
+        "beforePublic142Sha256": "40f0040456e6a0bc07b373f371b4a31b87d36bb255e124e63547e6808ee99338",
+        "public142Note": "Reviewed 1.4.2 version/source-offer metadata alignment; capability checks remain enforced."
       },
       "tests": [
         {
@@ -588,10 +590,10 @@
       "contract": "既有responsive共用前端、native bridge；本輪無專屬frontend",
       "source": {
         "path": "isolated/web/player-shell.mjs",
-        "line": 6,
+        "line": 23,
         "symbol": "export",
-        "sha256": "ab3bfe7e1552fb5ad9ff8e971059603b9f706e9ef4774d4c4cbb30161c9b5f07",
-        "priorSha256": "58b26e8cf1b1366bfcc974cb28b30ae3173003fdba2df8c6bc44cc4389a53cca"
+        "sha256": "504dd160b3320fdf2c1ff1840428e080ccb0385af4a33d14f86a2794d556e594",
+        "priorSha256": "ab3bfe7e1552fb5ad9ff8e971059603b9f706e9ef4774d4c4cbb30161c9b5f07"
       },
       "tests": [
         {

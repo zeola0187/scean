@@ -44,13 +44,11 @@ button:disabled{opacity:1;background:var(--soft);color:var(--muted);border-color
 :root[data-theme=dark][data-dark-palette=wine]{--page:#151013;--ink:#f0e8eb;--body-ink:#f0e8eb;--surface:#21181c;--soft:#392830;--line:#80616d;--muted:#c4b1b7;--accent:#f4a0ae;--on-accent:#32151d;--header:#1a1116;--selected:#4c2b36;--selected-line:#c28e9c;--hover:#472d37;--bubble:#39232c;--field:#2a1e24;--state:#2d1e25;--banner:#3c2630;--banner-ink:#edc4ce;--backdrop:#0a0307c9;--composer-shadow:#151013cc;--control-line:#9b7d86;--cover-light:#ac6f82;--cover-from:#472633;--cover-to:#824958;--cover-ink:#f0e8eb;--cover-orbit:#ecc4cf4d}
 .player-shell .card-cover{background:radial-gradient(ellipse at 72% 15%,var(--cover-light) 0,transparent 54%),linear-gradient(135deg,var(--cover-from),var(--cover-to));color:var(--cover-ink)}.player-shell .card-cover::after{border-color:var(--cover-orbit)}
 .player-shell .activation{color:var(--warning);background:var(--warning-bg);border-color:var(--gold)}
-.workspace-controls{display:flex;align-items:center;justify-content:space-between;gap:12px;flex:none;width:100%;max-width:1800px;margin:0 auto;padding:3px 24px 8px}.workspace-controls button{min-height:44px;white-space:nowrap}
-.player-shell[data-reading-width=wide]{--reading-width:1100px}.player-shell .chat{max-width:var(--reading-width,730px)}.reading-pane{scrollbar-gutter:stable;overflow-anchor:none}
+.player-shell[data-reading-width=wide]{--reading-width:1360px}.player-shell .chat{max-width:var(--reading-width,730px)}.reading-pane{scrollbar-gutter:stable;overflow-anchor:none}
 @media(min-width:1180px){
   .player-shell .layout{grid-template-columns:var(--library-width,258px) minmax(0,1fr) var(--scene-width,270px)}
   .player-shell .layout>.library{grid-column:1;grid-row:1}.player-shell .layout>#player{grid-column:2;grid-row:1}.player-shell .layout>.scene-pane{grid-column:3;grid-row:1}
   .player-shell[data-left-collapsed=true]{--library-width:0px}.player-shell[data-right-collapsed=true]{--scene-width:0px}
   .player-shell[data-left-collapsed=true] .layout>.library,.player-shell[data-right-collapsed=true] .layout>.scene-pane{display:none}
 }
-@media(max-width:1179px){.workspace-controls{display:none}}
-@media(forced-colors:active){.workspace-controls button{border:1px solid ButtonText}}
+@media(forced-colors:active){.edge-tab{border:1px solid ButtonText}}

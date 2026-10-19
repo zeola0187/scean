@@ -1,12 +1,14 @@
 ---
 name: scean-native-authoring
-description: 依 SCEAN Character Agent v1 契約製作原生角色工作區、StateBlueprint／InitialState 與固定 Snapshot；完整映射來源卡意圖，透過 Card Studio 保存角色 ID 與設定來源綁定。不執行原卡腳本或製作專屬前端。
+description: 依 SCEAN Character Agent v1 契約製作原生角色工作區、StateBlueprint／InitialState 與固定 Snapshot；完整映射來源卡意圖，透過 Card Studio 保存角色 ID 與設定來源綁定。W01 前端製作使用對應 Skill；不執行原卡腳本。
 metadata:
-  version: "1.1.0"
+  version: "1.1.1"
   runtime-profile: "scean-character-agent-v1"
 ---
 
 ## W01 動態前端候選（優先於下方歷史版本說明）
+
+外層掛載由平台決定：同一面板在最新有效已提交正文後、輸入區前，並非每回合複製。製作流程與卡內版面使用 `scean-frontend-authoring`；沒有任意 `placement`／`mount` 欄位，卡內 CSS 不能搬動平台 iframe。
 
 當 Runtime 宣告 `scean-html-bindings-v1` 時，可用既有 `cardstudio_scean_frontend` 的 `dynamic_read` 取得 Blueprint、InitialState 及前端包。先確認變數型別／可見性／初值；可於同一次 Agent 工作以 `dynamic_save(frontend, blueprint, initial_state, expected_revision)` 原子保存，不需兩輪模型。
 

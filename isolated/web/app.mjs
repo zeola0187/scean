@@ -1,5 +1,6 @@
 import {mountPlayerIdentity} from './player-identity-ui.mjs';
 import {mountCardFrontend} from './card-frontend.mjs';
+import {captureReadingAnchor,restoreReadingAnchor} from './reading-layout.mjs';
 import { SelectionEpoch, OperationOwnership, PrivateDiagnosticsSession, generationAvailability, interactiveEnableRequest, progressText, titleOf, requestForInput, shouldSubmit, committedMessages, worldLabels, valueText, blueprintStateRows, activeDraftReceipt } from './view-model.mjs';
 import { mountStudio } from './studio.mjs';
 import { mountPlayerShell } from './player-shell.mjs';
@@ -7,7 +8,10 @@ import {createNotificationClient,mountNotificationControls,showNotificationToast
 import {mountChapterSettings} from './chapter-settings-ui.mjs';
 import {mountOpeningSelection} from './opening-selection-ui.mjs';
 const shell=mountPlayerShell();
-const cardFrontend=mountCardFrontend();
+const cardFrontend=mountCardFrontend({preserveReading:()=>{
+  const reading=shell.reading,anchor=captureReadingAnchor(reading),top=reading.scrollTop;
+  return()=>{if(anchor)restoreReadingAnchor(reading,anchor);else reading.scrollTop=top;};
+}});
 const native=globalThis.__SCEAN_NATIVE__;
 let initialized=false,nativeSelection=null,nativeContextSerial=0,nativeNotificationTarget=null;
 let banListDirty=false,banListBusy=false;
@@ -139,6 +143,7 @@ async function refreshRuns(){
   return rows;
 }
 function clearNativeView(){
+  cardFrontend.clear();
   openingSelection.reset();
   openingSelection.setRun(null);
   view.select(null);operations.reset();resetLongform(false);clearTimeout(state.draftTimer);
@@ -254,6 +259,7 @@ function renderChat(){
   }
   for(const [key,el] of existing)if(!keep.has(key))el.remove();
   if(!wanted.length)$('chat').append(node('p','這一局已準備好，輸入第一個行動吧。','empty'));
+  cardFrontend.history({runId:state.run?.runId,snapshotHash:state.run?.snapshot.hash,head:loadedTurns.at(-1)?.commitId??null});
 }
 function resetLongform(){
   // Navigation detaches this view; only an explicit cancel stops Host work.
@@ -278,24 +284,40 @@ function longformControls(){
   $('history-search').disabled=!selected;
   chapterControls();
 }
-async function loadHistory({earlier=false,anchorCommitId,priorHead}={}){
+function captureStoryReading(){
+  const reading=shell.reading,box=reading.getBoundingClientRect(),anchor=captureReadingAnchor(reading),top=reading.scrollTop;
+  const visible=[...$('chat').querySelectorAll('.story[data-commit-id]')].filter(node=>{const bounds=node.getBoundingClientRect();return bounds.bottom>box.top&&bounds.top<box.bottom;});
+  return {follow:shell.atEnd(),anchorCommitId:visible.at(-1)?.dataset.commitId??loadedTurns[0]?.commitId,
+    restore(){if(anchor)restoreReadingAnchor(reading,anchor);else reading.scrollTop=top;}};
+}
+async function loadHistory({earlier=false,anchorCommitId,priorHead,readingBefore,latest=false}={}){
   if(!view.runId||earlier&&!historyPageState?.beforeCursor)return;
   const selected=view.capture(),baseline=canonicalStamp(),serial=++pageSerial;pageController?.abort();pageController=new AbortController();pageBusy=true;longformControls();
   $('history-page-status').textContent='正在讀取原文頁…';setError('history-page-error',null);
   const oldCursor=historyPageState?.beforeCursor;
-  const scrollBefore={top:shell.reading.scrollTop,height:shell.reading.scrollHeight,follow:shell.atEnd()};
+  const scrollBefore={top:shell.reading.scrollTop,height:shell.reading.scrollHeight,follow:readingBefore?.follow??shell.atEnd()};
+  const preserve=!!readingBefore&&!scrollBefore.follow,readingAnchor=preserve?readingBefore.anchorCommitId:undefined;
   try{
-    const page=await api('historyPage',{runId:selected.runId,limit:10,...(earlier?{cursor:oldCursor}:{}),...(anchorCommitId?{anchorCommitId}:{})},pageController.signal);
+    let page,retiredAnchor=false;
+    try{page=await api('historyPage',{runId:selected.runId,limit:10,...(earlier?{cursor:oldCursor}:{}),...((anchorCommitId??readingAnchor)?{anchorCommitId:anchorCommitId??readingAnchor}:{})},pageController.signal);}
+    catch(error){
+      if(!readingAnchor||!['HISTORY_COMMIT_RETIRED','HISTORY_COMMIT_NOT_FOUND'].includes(error.code))throw error;
+      if(!view.current(selected)||serial!==pageSerial||!relatedReadCurrent(selected,baseline))return;
+      retiredAnchor=true;page=await api('historyPage',{runId:selected.runId,limit:10},pageController.signal);
+    }
     if(!view.current(selected)||serial!==pageSerial||!relatedReadCurrent(selected,baseline,page))return;
     const turns=new Map((earlier?loadedTurns:[]).map(turn=>[turn.commitId,turn]));
     for(const turn of page.turns)turns.set(turn.commitId,turn);
     loadedTurns=[...turns.values()].sort((a,b)=>a.turn-b.turn);
     historyPageState=page;
     renderChat();
-    if(earlier)shell.reading.scrollTop=scrollBefore.top+shell.reading.scrollHeight-scrollBefore.height;
-    else if(!anchorCommitId&&scrollBefore.follow)shell.scrollEnd();
     const range=loadedTurns.length?`${loadedTurns[0].turn}–${loadedTurns.at(-1).turn}`:'無';
     $('history-page-status').textContent=`目前顯示 ${range} 回合 · ${historyPageState.hasMore?'可載入更早原文':'已到故事起點'}${anchorCommitId?' · 原文定位':''}`;
+    if(readingAnchor)$('history-page-status').textContent+=retiredAnchor?' · 原閱讀回合已失效，顯示有效原文':' · 保留原閱讀位置；回到最新原文可看最新面板';
+    // Restore only after status wrapping has settled, including narrow screens.
+    if(earlier)shell.reading.scrollTop=scrollBefore.top+shell.reading.scrollHeight-scrollBefore.height;
+    else if(preserve)readingBefore.restore();
+    else if(latest||!anchorCommitId&&scrollBefore.follow)shell.scrollEnd();
     if(anchorCommitId){const target=[...$('chat').querySelectorAll('.story')].find(el=>el.dataset.commitId===anchorCommitId);target?.classList.add('history-target');target?.scrollIntoView({block:'center',behavior:'instant'});}
   }catch(error){if(serial===pageSerial&&relatedReadCurrent(selected,baseline)&&error.name!=='AbortError'){
     setError('history-page-error',error);$('history-page-status').textContent=error.code==='HISTORY_CURSOR_STALE'?'歷史已變更；請回到近期原文後重新載入。':'讀取失敗；目前已顯示的原文保留。';
@@ -541,13 +563,13 @@ async function reconcile(){
   if(!snapshot||!view.current(token)||serial!==runReadSerial)return;
   const {run,progress,receipt,draft}=snapshot;
   if(draft&&!state.draft)restoreDraft(draft);
-  const wasPending=state.pending,priorDraft=state.draft;
+  const wasPending=state.pending,priorDraft=state.draft,readingBefore=priorHead!==storyHead(run)?captureStoryReading():undefined;
   renderRun(run);const terminal=observeOperation(receipt,progress);$('progress').textContent=operationText(receipt,progress);
   // The canonical receipt wins even if the submit acknowledgement was lost.
   if(priorDraft?.requestId&&activeDraftReceipt(run,priorDraft.requestId)){
     restoreDraft(null);state.failure=null;setError('turn-error',null);
   }else if(!state.pending){state.failure=receipt.failure??run.lastFailure??null;setError('turn-error',state.failure);}
-  if(priorHead!==storyHead(run)||!historyPageState)await loadHistory({priorHead});
+  if(priorHead!==storyHead(run)||!historyPageState)await loadHistory({priorHead,readingBefore});
   await refreshNarrative();
   if(!view.current(token)||serial!==runReadSerial)return;
   if($('inspector').open)void loadInspector();
@@ -713,7 +735,7 @@ $('chapter-operation-cancel').addEventListener('click',async()=>{
   finally{$('chapter-operation-cancel').disabled=false;}
 });
 $('history-earlier').addEventListener('click',()=>void loadHistory({earlier:true}));
-$('history-latest').addEventListener('click',()=>void loadHistory());
+$('history-latest').addEventListener('click',()=>void loadHistory({latest:true}));
 $('inspector').addEventListener('toggle',()=>{if($('inspector').open)void loadInspector();else{inspectorSerial++;$('inspection').textContent='尚未展開讀取。';}});
 $('summary-start').addEventListener('click',()=>void mutateNarrative('summaryStart'));
 $('summary-refresh').addEventListener('click',()=>void refreshNarrative());

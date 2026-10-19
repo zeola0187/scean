@@ -10,6 +10,7 @@ import {nativeFrameBootstrap} from '../plugin/native-frame-source.mjs';
 import {mountCardFrontend} from '../isolated/web/card-frontend.mjs';
 import {mountChapterSettings} from '../isolated/web/chapter-settings-ui.mjs';
 import {mountOpeningSelection} from '../isolated/web/opening-selection-ui.mjs';
+import {captureReadingAnchor,restoreReadingAnchor} from '../isolated/web/reading-layout.mjs';
 
 // Execute the actual shared app against a deterministic DOM/transport. The
 // lifecycle functions, epoch guards and journal reads are not test copies.
@@ -19,15 +20,15 @@ function fixture({secure=true,crypto=webcrypto,navigationType='navigate',priorVi
   let targetResolver=async()=>null;
   const elements=new Map(),listeners=new Map(),storage=new Map(priorViewer?[['scean-draft-viewer',priorViewer]]:[]),windowListeners=new Map();
   const element=id=>{
-    if(!elements.has(id))elements.set(id,{id,value:'',checked:false,hidden:false,disabled:false,textContent:'',dataset:{},style:{},open:false,files:[],children:[],classList:{add(){},toggle(){}},setAttribute(){},removeAttribute(){},before(){},remove(){},querySelectorAll(){return [];},replaceChildren(){},append(){},close(){},focus(){},addEventListener(event,fn){listeners.set(`${id}:${event}`,fn);}});
+    if(!elements.has(id))elements.set(id,{id,value:'',checked:false,hidden:false,disabled:false,textContent:'',dataset:{},style:{},open:false,files:[],children:[],classList:{add(){},toggle(){}},setAttribute(){},removeAttribute(){},before(){},after(){},remove(){},querySelectorAll(){return [];},replaceChildren(){},append(){},close(){},focus(){},addEventListener(event,fn){listeners.set(`${id}:${event}`,fn);}});
     return elements.get(id);
   };
-  const context={...model,crypto,isSecureContext:secure,performance:{getEntriesByType:()=>[{type:navigationType}]},AbortController,DOMException,console,setTimeout,clearTimeout,setInterval(){},URL,Blob,
+  const context={...model,captureReadingAnchor,restoreReadingAnchor,crypto,isSecureContext:secure,performance:{getEntriesByType:()=>[{type:navigationType}]},AbortController,DOMException,console,setTimeout,clearTimeout,setInterval(){},URL,Blob,
     document:{getElementById:element,createElement:tag=>element('generated-'+elements.size+'-'+tag),querySelector(){return element('queried-label');},querySelectorAll(){return [];},visibilityState:'visible',addEventListener(event,fn){listeners.set(event,fn);}},
     window:{addEventListener(event,fn){windowListeners.set(event,fn);}},
     sessionStorage:{getItem:key=>storage.get(key)??null,setItem:(key,value)=>storage.set(key,value)},
     createNotificationClient:()=>({watch:async()=>{},refresh(){},dispose(){},target:eventId=>targetResolver(eventId)}),mountNotificationControls:()=>({render(){}}),showNotificationToast(){},
-    mountPlayerShell:()=>({show(){},committed(){},atEnd:()=>false,reading:{scrollTop:0,scrollHeight:100},scrollEnd(){}}),mountStudio(){}};
+    mountPlayerShell:()=>({show(){},committed(){},atEnd:()=>false,reading:{scrollTop:0,scrollHeight:100,getBoundingClientRect:()=>({top:0,bottom:100})},scrollEnd(){}}),mountStudio(){}};
   context.mountCardFrontend=()=>mountCardFrontend({document:context.document,setTimer:()=>0,clearTimer(){}});
   context.mountChapterSettings=options=>mountChapterSettings({...options,document:context.document});
   context.mountPlayerIdentity=options=>mountPlayerIdentity({...options,document:context.document,makeId:()=>webcrypto.randomUUID()});
