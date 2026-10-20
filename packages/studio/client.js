@@ -512,9 +512,19 @@ function createMaterialComponents({React,h,ctx,t,controller,useUpdates,css,Scope
       const sendScean=async(sessionId,request)=>{const result=await ctx.remote.cardstudioScean.sceanControl(sessionId,request);if(!result.ok)throw new Error(result.error.message);return result.value;};
       const sendLibrary=async(sessionId,request)=>{const result=await ctx.remote.cardstudioScean.setLibraryRoot(sessionId,request);if(!result.ok)throw new Error(result.error.message);return result.value;};
       const sendDownload=async(sessionId,request)=>{const result=await ctx.remote.cardstudioScean.downloadExport(sessionId,request);if(!result.ok)throw new Error(result.error.message);return result.value;};
+      // A failed editor render must not take down the surrounding conversation.
+      // Retrying remounts only this view; cached drafts and Host data stay intact.
+      class StudioPanelBoundary extends React.Component{
+        state={failed:false};
+        static getDerivedStateFromError(){return {failed:true};}
+        componentDidCatch(){mark('panel-render-error',{recoverable:true});}
+        render(){return this.state.failed?h('section',{className:'csscean-panel','data-editor-recovery':true,role:'alert',style:{padding:24,height:'100%',overflow:'auto',color:'var(--dsw-alias-label-primary,#E8EDF3)',background:'var(--dsw-alias-bg-base,#171D25)'}},
+          h('h2',null,'編輯室暫時無法顯示'),h('p',null,'工作卡、未保存草稿與遊玩紀錄仍保留。可以重試，或先回到對話。'),
+          h('button',{onClick:()=>this.setState({failed:false})},'重新開啟編輯室'),h('button',{onClick:()=>ctx.layout.selectPanel(null)},'回到對話')):this.props.children;}
+      }
       const controller=new WorkspaceClient({send,sendScope,sendReview,sendMethod,sendLibrary,sendScean,sendDownload,pageId:crypto.randomUUID(),notify,hide,present(){
         mark('entry-requested');
-        const sequence=controller.sequence,SessionPanel=()=>h(Panel,{key:sequence,sequence});
+        const sequence=controller.sequence,SessionPanel=()=>h(StudioPanelBoundary,{key:sequence},h(Panel,{key:sequence,sequence}));
         try{
           disposers.push(ctx.slots.inject('main',()=>{mark('main-slot-ready');try{const dispose=ctx.slots.register({name:'main',key:'local-cardstudio-scean'},SessionPanel);mark('main-registered');const libraryDispose=ctx.slots.register({name:'main',key:'local-cardstudio-scean-library'},()=>{useUpdates();return h(LibraryPanel,{key:sequence+':'+controller.librarySequence,sequence});});const materialDispose=ctx.slots.register({name:'main',key:'local-cardstudio-scean-materials'},()=>h(MaterialPanel,{key:sequence,sequence}));return ()=>{materialDispose();libraryDispose();dispose();};}catch(error){markError('main-registration-error',error);throw error;}}));
           disposers.push(ctx.slots.inject('conversation.input.dock',()=>{mark('dock-slot-ready');try{const dispose=ctx.slots.register({name:'conversation.input.dock',id:'local-cardstudio-scean-entry',order:15},Dock);mark('dock-registered');return dispose;}catch(error){markError('dock-registration-error',error);throw error;}}));
@@ -603,6 +613,20 @@ function createMaterialComponents({React,h,ctx,t,controller,useUpdates,css,Scope
 `;
       // Drafts stay in this Client's memory while changing panels/Sessions. No card text is logged or sent to a model.
       const viewCache=new Map(),compatibilityDismissed=new Set(),emptyList={items:[],total:0,offset:0,limit:50};
+      /* EDITOR_VIEW_STATE_START */
+      function createEditorView(cached={}){
+        if(!cached||typeof cached!=='object'||Array.isArray(cached))cached={};
+        const list=value=>({...emptyList,...value,items:Array.isArray(value?.items)?value.items:[]});
+        return {files:[],documents:emptyList,allDocuments:emptyList,allOpen:false,chosen:'',type:'card',doc:null,route:'overview',field:'first_mes',summaries:{},text:'',entries:[],entry:null,query:'',scroll:0,config:'{}',configBase:'{}',output:'',target:'0',exportName:'',...cached,
+          viewSchema:1,files:Array.isArray(cached.files)?cached.files:[],entries:Array.isArray(cached.entries)?cached.entries:[],documents:list(cached.documents),allDocuments:list(cached.allDocuments)};
+      }
+      function sessionView(id){
+        const cached=viewCache.get(id);
+        if(cached?.viewSchema===1&&Array.isArray(cached.files)&&Array.isArray(cached.entries)&&Array.isArray(cached.documents?.items)&&Array.isArray(cached.allDocuments?.items))return cached;
+        const value=createEditorView(cached);viewCache.set(id,value);return value;
+      }
+      function diagnosisHandoff(detail,sessionId){return typeof sessionId==='string'&&!!sessionId&&detail?.authoringSessionId===sessionId&&typeof detail.runId==='string'&&detail.runId.length>0&&detail.runId.length<=160;}
+      /* EDITOR_VIEW_STATE_END */
       const receiptListener=async event=>{
         const value=event.detail,id=controller.current?.id,cached=viewCache.get(id),pending=cached?.sceanPending,sequence=controller.sequence;
         if(value?.schema!==1||value.authoringSessionId!==id||!pending||pending.sequence!==sequence||value.generation!==controller.claim?.agent_generation||value.offerId!==pending.offerId||value.documentId!==cached.doc?.id||value.revision!==cached.doc?.revision||typeof value.runId!=='string'||typeof value.binding!=='string')return;
@@ -613,7 +637,7 @@ function createMaterialComponents({React,h,ctx,t,controller,useUpdates,css,Scope
         }catch(error){if(controller.sequence===sequence){const current=viewCache.get(id);if(current?.sceanPending?.offerId===value.offerId){viewCache.set(id,{...current,stageReceipt:'舞臺回報開局；回執尚未核對，請至舞臺查看。'});changed();}}}
       };
       window.addEventListener('scean:started',receiptListener);
-      const diagnoseListener=event=>{const id=controller.current?.id;if(!id||event.detail?.authoringSessionId!==id)return;const cached=viewCache.get(id)??{};viewCache.set(id,{...cached,route:'diagnosis',diagnosisRun:event.detail.runId});changed();};
+      const diagnoseListener=event=>{const id=controller.current?.id;if(!diagnosisHandoff(event.detail,id))return;viewCache.set(id,{...sessionView(id),route:'diagnosis',diagnosisRun:event.detail.runId});changed();};
       window.addEventListener('scean:diagnose',diagnoseListener);
       const cardFields=['name','description','personality','scenario','first_mes','mes_example','creator_notes','system_prompt','post_history_instructions'];
       const json=value=>JSON.stringify(value,null,2);
@@ -657,12 +681,13 @@ function createMaterialComponents({React,h,ctx,t,controller,useUpdates,css,Scope
       /* W19_VERIFIED_DOWNLOAD_END */
       function Panel({sequence}){
         mark('panel-rendered');useUpdates();
-        const sessionId=controller.current?.id,initial=viewCache.get(sessionId)??{files:[],documents:emptyList,allDocuments:emptyList,allOpen:false,chosen:'',type:'card',doc:null,route:'overview',field:'first_mes',summaries:{},text:'',entries:[],entry:null,query:'',scroll:0,config:'{}',configBase:'{}',output:'',target:'0',exportName:''};
-        const [v,setView]=React.useState(initial),[busy,setBusy]=React.useState(false),[status,setStatus]=React.useState(''),[dialog,setDialog]=React.useState(null),[drag,setDrag]=React.useState(false),[folderAvailable,setFolderAvailable]=React.useState(false),[upload,setUpload]=React.useState(null),[verifiedDownload,setVerifiedDownload]=React.useState(null);
+        const sessionId=controller.current?.id,initial=sessionView(sessionId);
+        const [v,setView]=React.useState(initial),[editorBusy,setBusy]=React.useState(false),[diagnosisBusy,setDiagnosisBusy]=React.useState(false),[status,setStatus]=React.useState(''),[dialog,setDialog]=React.useState(null),[drag,setDrag]=React.useState(false),[folderAvailable,setFolderAvailable]=React.useState(false),[upload,setUpload]=React.useState(null),[verifiedDownload,setVerifiedDownload]=React.useState(null);
+        const busy=editorBusy||diagnosisBusy,diagnosisLock=React.useRef(false);
         const live=React.useRef(true),lock=React.useRef(false),state=React.useRef(v),bookList=React.useRef(null),fileInput=React.useRef(null),dialogRef=React.useRef(null),uploadRef=React.useRef(null),assetUploadRef=React.useRef(null);
         const downloadRef=React.useRef(null),dialogState=React.useRef(dialog);dialogState.current=dialog;
         if(!downloadRef.current)downloadRef.current=createVerifiedDownload({createURL:blob=>URL.createObjectURL(blob),revokeURL:url=>URL.revokeObjectURL(url),onChange:value=>{if(live.current)setVerifiedDownload(value);}});
-        React.useEffect(()=>{const cached=viewCache.get(sessionId);if(cached&&cached!==state.current){state.current=cached;setView(cached);}});
+        React.useEffect(()=>{const cached=sessionView(sessionId);if(cached!==state.current){state.current=cached;setView(cached);}});
         state.current=v;const transportCall=controller.bind(sequence),call=async(...args)=>{const result=await transportCall(...args);if(result?.preflight)setV({preflight:result.preflight});return result;},selection=controller.selectionStatus,selectionStale=!!v.doc&&!!selection&&(v.doc.id!==selection.document_id||v.doc.revision!==selection.revision),ready=controller.phase==='ready'&&!selectionStale,valid=()=>live.current&&sequence===controller.sequence;
         const setV=update=>{if(!valid())return;const previous=state.current,next={...previous,...(typeof update==='function'?update(previous):update)};viewCache.set(sessionId,next);state.current=next;setView(next);};
         const downloadIdentity=()=>{const doc=state.current.doc,selected=controller.selectionStatus;return {sequence:controller.sequence,session_id:controller.current?.id,document_id:doc?.id,revision:doc?.revision,selected_document_id:selected?.document_id??doc?.id,selected_revision:selected?.revision??doc?.revision};};
@@ -671,7 +696,13 @@ function createMaterialComponents({React,h,ctx,t,controller,useUpdates,css,Scope
         React.useEffect(()=>{let active=true;setFolderAvailable(false);const remote=desktopRemote;if(remote?.canOpenWorkspacePath&&remote?.openWorkspacePath)remote.canOpenWorkspacePath().then(result=>{if(active&&valid())setFolderAvailable(result?.ok===true&&result.value===true);}).catch(()=>{});return()=>{active=false;};},[desktopRemote]);
         React.useEffect(()=>{if(v.route==='book'&&bookList.current)bookList.current.scrollTop=v.scroll;},[v.route]);
         React.useEffect(()=>{if(!dialog)return;const previous=document.activeElement;dialogRef.current?.querySelector('button')?.focus();return()=>previous?.isConnected&&previous.focus();},[dialog]);
-        const run=async(fn,label)=>{if(!valid()||lock.current)return;lock.current=true;setBusy(true);notice='';setStatus(label??t('working'));try{await fn();if(valid())setStatus(t('done')+' · '+new Date().toLocaleTimeString());return true;}catch(error){if(valid()){if(error.details?.check)setV({preflight:error.details.check});notify(error);setStatus(t('failed'));}return false;}finally{lock.current=false;if(valid())setBusy(false);}};
+        /* EDITOR_OPERATION_START */
+        // Reading a working card is not a prerequisite for authorizing a fixed
+        // Run. Explicit diagnosis RPCs have their own duplicate-operation gate;
+        // both lanes retain the existing Session/lifetime and error checks.
+        const run=async(fn,label,diagnostic=false)=>{const gate=diagnostic?diagnosisLock:lock,setPending=diagnostic?setDiagnosisBusy:setBusy;if(!valid()||gate.current)return;gate.current=true;setPending(true);notice='';setStatus(label??t('working'));try{await fn();if(valid())setStatus(t('done')+' · '+new Date().toLocaleTimeString());return true;}catch(error){if(valid()){if(error.details?.check)setV({preflight:error.details.check});notify(error);setStatus(t('failed'));}return false;}finally{gate.current=false;if(valid())setPending(false);}};
+        const runDiagnosis=(fn,label)=>run(fn,label,true);
+        /* EDITOR_OPERATION_END */
         const confirm=(message,fn)=>setDialog({message,fn});
         const discardDraft=()=>setV(previous=>({text:previous.doc?.card.data[previous.field]??'',entry:null,config:previous.configBase,createName:'',authoring:previous.authoring?{...previous.authoring,...Object.fromEntries(['source','fixture','contract','dynamic'].map(key=>[key,previous.authoring[key+'Base']]))}:undefined}));
         const guard=fn=>{if(isDirty(state.current))setDialog({message:t('discardPrompt'),fn,guard:true});else fn();};
@@ -717,12 +748,14 @@ function createMaterialComponents({React,h,ctx,t,controller,useUpdates,css,Scope
         let rosterRows=[],rosterIssue='';try{rosterRows=parseSceanRoster(v.sceanCharacters);}catch(e){rosterIssue=e.message;}
         let actorDraft=[];try{const parsed=JSON.parse(v.sceanCharacters||'[]'),rows=Array.isArray(parsed)?parsed:parsed?.characters;actorDraft=Array.isArray(rows)?rows.slice(0,100).map(actor=>actor&&typeof actor==='object'&&!Array.isArray(actor)?actor:{id:'',name:'',description:''}):[];}catch{}
         const editActor=(index,key,value)=>{const rows=actorDraft.map((actor,i)=>i===index?{...actor,[key]:value}:actor);setV({sceanCharacters:json(rows)});};
-        const diagnosticRequest=async request=>controller.sceanControl(request,sequence);
-        const diagnosisPanel=h('section',{className:'csscean-box csscean-view','data-view':'diagnosis'},sectionTitle('和 AI 一起檢查遊玩問題','overview'),
+        // Diagnostic reads need a live human page, not an editable working card.
+        // Saving still uses ready/selectionStale and the existing revision guards.
+        const diagnosisReady=controller.phase==='ready',diagnosticRequest=async request=>controller.sceanControl(request,sequence);
+        const diagnosisPanel=h('section',{className:'csscean-box csscean-view','data-view':'diagnosis','aria-busy':diagnosisBusy},sectionTitle('和 AI 一起檢查遊玩問題','overview'),
           h('p',null,'選擇要檢查的一局，授權後回到對話描述問題。AI 會按需查閱證據，再和你討論修改方向。'),
-          h('button',{className:'csscean-button',disabled:busy||!ready,onClick:()=>run(async()=>setV({diagnosisChoosing:true,diagnosisRuns:await diagnosticRequest({mode:'diagnosis_list'})}))},'選擇遊玩紀錄'),
-          ...(v.diagnosisChoosing?v.diagnosisRuns?.items??[]:[]).map((item,index)=>h('button',{key:item.runId,className:'csscean-button csscean-tile','data-diagnosis-run':item.runId,'aria-pressed':v.diagnosisRun===item.runId,disabled:busy,onClick:()=>setV({diagnosisRun:item.runId})},h('strong',null,item.title),h('span',null,'第 '+(v.diagnosisRuns.offset+index+1)+' 局 · '+item.turnCount+' 回合 · '+String(item.createdAt??'').slice(0,19)))),
-          v.diagnosisChoosing&&v.diagnosisRuns?.nextOffset!==null&&v.diagnosisRuns?.nextOffset!==undefined?h('button',{className:'csscean-button',onClick:()=>run(async()=>setV({diagnosisRuns:await diagnosticRequest({mode:'diagnosis_list',offset:v.diagnosisRuns.nextOffset})}))},'下一頁遊玩紀錄'):null,
+          h('button',{className:'csscean-button',disabled:diagnosisBusy||!diagnosisReady,onClick:()=>runDiagnosis(async()=>setV({diagnosisChoosing:true,diagnosisRuns:await diagnosticRequest({mode:'diagnosis_list'})}))},'選擇遊玩紀錄'),
+          ...(v.diagnosisChoosing?v.diagnosisRuns?.items??[]:[]).map((item,index)=>h('button',{key:item.runId,className:'csscean-button csscean-tile','data-diagnosis-run':item.runId,'aria-pressed':v.diagnosisRun===item.runId,disabled:diagnosisBusy,onClick:()=>setV({diagnosisRun:item.runId})},h('strong',null,item.title),h('span',null,'第 '+(v.diagnosisRuns.offset+index+1)+' 局 · '+item.turnCount+' 回合 · '+String(item.createdAt??'').slice(0,19)))),
+          v.diagnosisChoosing&&v.diagnosisRuns?.nextOffset!==null&&v.diagnosisRuns?.nextOffset!==undefined?h('button',{className:'csscean-button',disabled:diagnosisBusy,onClick:()=>runDiagnosis(async()=>setV({diagnosisRuns:await diagnosticRequest({mode:'diagnosis_list',offset:v.diagnosisRuns.nextOffset})}))},'下一頁遊玩紀錄'):null,
           v.diagnosisRun?h('p',null,'已選擇一局；可展開下方細節核對。'):null,
           h('details',{'data-details':'diagnosis-permission'},h('summary',null,'讀取範圍與授權'),h('p',null,'僅限這局、所選回合與目前對話；直到你停止授權，或對象／對話失效。舊 Snapshot 保持固定，授權不包含修改卡片。'),
             h('label',null,'起始回合',h('input',{type:'number',min:1,value:v.diagnosisFrom??1,onChange:e=>setV({diagnosisFrom:Number(e.target.value)})})),
@@ -730,16 +763,17 @@ function createMaterialComponents({React,h,ctx,t,controller,useUpdates,css,Scope
             ...[['story','遊玩正文'],['snapshot','這局使用的卡片、世界書及設定'],['runtime','已遮蔽私人內容的 Runtime 紀錄']].map(([key,label])=>h('label',{key},h('input',{type:'checkbox',checked:(v.diagnosisRanges??['story','snapshot','runtime']).includes(key),onChange:e=>setV({diagnosisRanges:e.target.checked?[...(v.diagnosisRanges??['story','snapshot','runtime']),key]:(v.diagnosisRanges??['story','snapshot','runtime']).filter(x=>x!==key)})}),label)),
             h('label',null,h('input',{type:'checkbox',checked:v.diagnosisPrivate??false,onChange:e=>setV({diagnosisPrivate:e.target.checked})}),'另外允許 AI 讀取這些回合的私人角色上下文（可能含劇透）'),
             h('code',{className:'csscean-path'},v.diagnosisRun??'')),
-          h('div',{className:'csscean-row'},h('button',{className:'csscean-button csscean-primary','data-diagnosis-grant':true,disabled:busy||!ready||!v.diagnosisRun,onClick:()=>run(async()=>{const ranges=v.diagnosisRanges??['story','snapshot','runtime'];const diagnosis=await diagnosticRequest({mode:'diagnosis_grant',runId:v.diagnosisRun,fromTurn:v.diagnosisFrom??1,...v.diagnosisTo?{toTurn:Number(v.diagnosisTo)}:{},ranges:v.diagnosisPrivate?[...ranges,'private_context']:ranges,...v.diagnosisPrivate?{acknowledgement:'allow-agent-private-context-for-this-run'}:{}});setV({diagnosis,diagnosisChoosing:false});})},'允許檢查這局'),
-          v.diagnosis?h('button',{className:'csscean-button','data-diagnosis-revoke':true,onClick:()=>run(async()=>{await diagnosticRequest({mode:'diagnosis_revoke'});setV({diagnosis:null});})},'停止這次授權'):null),
+          editorBusy&&diagnosisReady?h('p',{'data-diagnosis-editor-loading':true,role:'status'},'工作卡仍在讀取；可以先允許 AI 檢查已選這局。'):null,
+          h('div',{className:'csscean-row'},h('button',{className:'csscean-button csscean-primary','data-diagnosis-grant':true,disabled:diagnosisBusy||!diagnosisReady||!v.diagnosisRun,onClick:()=>runDiagnosis(async()=>{const ranges=v.diagnosisRanges??['story','snapshot','runtime'];const diagnosis=await diagnosticRequest({mode:'diagnosis_grant',runId:v.diagnosisRun,fromTurn:v.diagnosisFrom??1,...v.diagnosisTo?{toTurn:Number(v.diagnosisTo)}:{},ranges:v.diagnosisPrivate?[...ranges,'private_context']:ranges,...v.diagnosisPrivate?{acknowledgement:'allow-agent-private-context-for-this-run'}:{}});setV({diagnosis,diagnosisChoosing:false});})},diagnosisBusy?'正在處理…':'允許檢查這局'),
+          v.diagnosis?h('button',{className:'csscean-button','data-diagnosis-revoke':true,disabled:diagnosisBusy||!diagnosisReady,onClick:()=>runDiagnosis(async()=>{await diagnosticRequest({mode:'diagnosis_revoke'});setV({diagnosis:null});})},'停止這次授權'):null),
           v.diagnosis?h('div',{'data-diagnosis-active':true},h('p',{role:'status'},'已允許檢查這局；你可隨時停止授權。回到對話告訴 AI 哪裡不符合預期。'),
             v.diagnosis.editTarget?.revisionDiffers?h('p',{className:'csscean-notice'},'這局使用較早保存內容；修正會以目前工作卡為基底，AI 必須先比較差異。'):null,
             !v.diagnosis.editTarget?.editable?h('p',{role:'alert'},'目前只能診斷。原始工作卡缺失、身份無法核對，或選中了其他工作卡；不會以同名卡替代。'):null,
-            v.diagnosis.editTarget?.status==='target_mismatch'?h('button',{className:'csscean-button',onClick:()=>run(async()=>{await read(v.diagnosis.context.cardId,{route:'diagnosis'});setV({diagnosis:await diagnosticRequest({mode:'diagnosis_status'})});})},'選取這局的原始工作卡'):null,
-            v.diagnosis.context.source?.worldbook?.kind==='saved_document'?h('button',{className:'csscean-button',onClick:()=>run(async()=>{await read(v.diagnosis.context.source.worldbook.id,{route:'diagnosis'});setV({diagnosis:await diagnosticRequest({mode:'diagnosis_status'})});})},'修改這局使用的獨立世界書'):null,
+            v.diagnosis.editTarget?.status==='target_mismatch'?h('button',{className:'csscean-button',disabled:busy,onClick:()=>run(async()=>{await read(v.diagnosis.context.cardId,{route:'diagnosis'});setV({diagnosis:await diagnosticRequest({mode:'diagnosis_status'})});})},'選取這局的原始工作卡'):null,
+            v.diagnosis.context.source?.worldbook?.kind==='saved_document'?h('button',{className:'csscean-button',disabled:busy,onClick:()=>run(async()=>{await read(v.diagnosis.context.source.worldbook.id,{route:'diagnosis'});setV({diagnosis:await diagnosticRequest({mode:'diagnosis_status'})});})},'修改這局使用的獨立世界書'):null,
             v.doc?.type==='worldbook'?h('button',{className:'csscean-button',onClick:()=>run(async()=>{setV({sceanWorldbook:v.doc.id,sceanWorldbookRevision:v.doc.revision});await read(v.diagnosis.context.cardId,{route:'stage'});})},'回到工作卡，用新版開局'):null,
-            h('div',{className:'csscean-row'},h('button',{className:'csscean-button',onClick:()=>ctx.layout.selectPanel(null)},'回到對話討論'),v.doc?.type==='card'&&v.diagnosis.editTarget?.editable?h('button',{className:'csscean-button csscean-primary','data-diagnosis-retest':true,disabled:busy||controller.phase!=='ready',onClick:()=>guard(()=>run(()=>read(v.diagnosis.context.cardId,{route:'stage'})))},'用新版本開局'):null,h('button',{className:'csscean-button','data-diagnosis-status':true,onClick:()=>run(async()=>setV({diagnosis:await diagnosticRequest({mode:'diagnosis_status'})}))},'查看 AI 提議的修改方向')),
-            v.diagnosis.proposal?h('div',{className:'csscean-notice'},h('p',null,v.diagnosis.proposal.direction),h('button',{className:'csscean-button csscean-primary','data-diagnosis-consent':true,disabled:busy||!v.diagnosis.editTarget?.editable,onClick:()=>run(async()=>{await diagnosticRequest({mode:'diagnosis_consent',expected_revision:v.diagnosis.editTarget.target.revision});setV({diagnosis:await diagnosticRequest({mode:'diagnosis_status'})});})},'同意這個修改方向，讓 AI 修改工作卡')):null,
+            h('div',{className:'csscean-row'},h('button',{className:'csscean-button',onClick:()=>ctx.layout.selectPanel(null)},'回到對話討論'),v.doc?.type==='card'&&v.diagnosis.editTarget?.editable?h('button',{className:'csscean-button csscean-primary','data-diagnosis-retest':true,disabled:busy||controller.phase!=='ready',onClick:()=>guard(()=>run(()=>read(v.diagnosis.context.cardId,{route:'stage'})))},'用新版本開局'):null,h('button',{className:'csscean-button','data-diagnosis-status':true,disabled:diagnosisBusy||!diagnosisReady,onClick:()=>runDiagnosis(async()=>setV({diagnosis:await diagnosticRequest({mode:'diagnosis_status'})}))},'查看 AI 提議的修改方向')),
+            v.diagnosis.proposal?h('div',{className:'csscean-notice'},h('p',null,v.diagnosis.proposal.direction),h('button',{className:'csscean-button csscean-primary','data-diagnosis-consent':true,disabled:diagnosisBusy||!diagnosisReady||!v.diagnosis.editTarget?.editable,onClick:()=>runDiagnosis(async()=>{await diagnosticRequest({mode:'diagnosis_consent',expected_revision:v.diagnosis.editTarget.target.revision});setV({diagnosis:await diagnosticRequest({mode:'diagnosis_status'})});})},'同意這個修改方向，讓 AI 修改工作卡')):null,
             v.diagnosis.approval?h('p',{role:'status'},'已同意修改方向；回到對話請 AI 完成保存。保存後使用「用新版本開局」。'):null,
             h('details',null,h('summary',null,'進階來源與版本'),h('pre',null,json(v.diagnosis)))):null);
         const sceanPanel=v.doc?h('section',{className:'csscean-box csscean-view','data-view':'stage','data-scean-integration':'saved-snapshot'},sectionTitle('送往舞臺','overview'),

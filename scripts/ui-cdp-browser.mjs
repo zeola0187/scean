@@ -2,6 +2,17 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {spawn} from 'node:child_process';
+// The official workspace may restore its sidebar asynchronously after a page
+// reload. Let that retain the requested Session before one explicit selection,
+// and await selection rather than racing a second open against the restore.
+export async function selectFixtureSession(browser,id){
+  const row=`__uiSessions.list.getSnapshot().byId[${JSON.stringify(id)}]`,selected=`${row}?.retainedBy.mainView>0`;
+  await browser.wait(`!!${row}`);
+  try{await browser.wait(selected,5000);}catch{
+    await browser.evaluate(`(async()=>{if(!(${selected}))await __uiWorkspace.openSession(${JSON.stringify(id)});})()`);
+  }
+  await browser.wait(selected);await browser.frames();
+}
 export async function launchUiBrowser(directory){
   await fs.mkdir(directory,{recursive:true});
   await fs.unlink(path.join(directory,'DevToolsActivePort')).catch(error=>{if(error.code!=='ENOENT')throw error;});

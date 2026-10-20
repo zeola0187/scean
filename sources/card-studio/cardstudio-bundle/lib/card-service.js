@@ -164,7 +164,10 @@ export class CardService {
   async selectedDocument(sessionId){
     const id=(await this.associations()).selections.find(row=>row.sessionId===sessionId)?.documentId;
     if(!id)return null;
-    const {record}=await this.load(id);return {document_id:record.id,type:record.type};
+    // Keep the persisted identity for restoration, but never replace a missing
+    // source or let it prevent lease renewal and Snapshot-only diagnosis.
+    try{const {record}=await this.load(id);return {document_id:record.id,type:record.type};}
+    catch(error){if(error.code==='ENOENT')return null;throw error;}
   }
   async commit(id, expected, transform, reason, signal, { restoringSnapshot=false,restoredBytes,snapshotExtras } = {}) {
     return this.serial(id,async () => {

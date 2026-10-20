@@ -12,6 +12,8 @@ advanced-tavern-card-authoring Skill retains its MIT grant. See [LICENSE](LICENS
 
 編輯室方案 A 與舞臺診斷閉環：檢查這局 → 和 AI 討論 → 明確同意修卡 → 保存新版 → 用新版另開局。來源身份、明確範圍讀取、expectedRevision與開局回執均有核對。診斷與修卡同意沒有固定倒數，僅限同一受控對話、對象與範圍，直到你撤銷或生命週期失效；不跨重啟繼承舊授權。來源缺失暫採唯讀；實體手機與Safari仍待驗收。
 
+2026-10-20 main 修正首次診斷進入／重開，以及工作卡載入時無法操作診斷授權；使用者已回報可用。詳細測試邊界見 [修正說明](docs/W02-REPAIRS-20261020.zh-TW.md)。
+
 詳見 [玩家操作與工具契約](docs/W02-USER-GUIDE.zh-TW.md) 與 [Changelog](CHANGELOG.md)。本次更新公開main分支，不另建立GitHub Release；舊標籤維持原內容。
 
 ## 安裝與更新
@@ -22,7 +24,7 @@ advanced-tavern-card-authoring Skill retains its MIT grant. See [LICENSE](LICENS
 
 無需分支、私有 GitHub token 或 runtime build。套件身分保留為
 `@local/dsh-scean-suite`、`@local/dsh-scean`、
-`@local/dsh-card-studio-scean-test`，三者版本同步為 1.4.1。
+`@local/dsh-card-studio-scean-test`，三者版本同步為 1.5.0。
 最後一個歷史名稱保留以維持既有工作區及升級相容性。
 從先前 1.3.0 使用 DSH 更新操作；舊鎖檔固定的私人 commit 不屬於新的
 公開歷史，不能把重建舊鎖檔當成取得本公開版本的方法。

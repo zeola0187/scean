@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.5.0 main fixes — 2026-10-20
+
+- Recover the first Stage-to-Studio diagnosis handoff and same-Session reopening when no complete editor view was cached. Keep drafts and source identities separate from display recovery.
+- Keep explicit diagnosis consent, status and revocation responsive while the working card loads. Pending consent blocks duplicate presses; denied requests remain visible and retryable.
+- Retain read-only Snapshot diagnosis when the selected source is missing, with the existing scope, consent and revision controls unchanged.
+- Add synthetic UI/RPC, touch, keyboard, delayed-response, denial and recovery regressions. The installed fixes were checked on existing Sessions and confirmed usable by the user; physical Safari and model-semantic acceptance are not claimed. Existing fixture and primary-machine baseline failures remain visible.
+- Keep package version 1.5.0 and existing tags; no new GitHub Release. See [repair notes](docs/W02-REPAIRS-20261020.zh-TW.md).
+
 ## 1.5.0 — 2026-10-19
 
 - Card Studio editor A: clearer selected working card, saved state and primary edit/play actions, with technical identity details in expandable areas.
