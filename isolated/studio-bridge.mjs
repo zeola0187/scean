@@ -7,6 +7,7 @@ import {createSceanControl} from '../vendor/cardstudio-scean/lib/scean-integrati
 import {contained} from '../vendor/cardstudio-scean/lib/card-service.js';
 import {hash,validateSnapshot,validateRoster} from '../core/contracts.mjs';
 import {validateBlueprint,materializeInitialState} from '../core/state-blueprint.mjs';
+import {resolveSceanCardContext,resolveSceanFrontendSource} from '../sources/card-studio/cardstudio-bundle/lib/scean-integration.js';
 
 const fail=code=>Object.assign(new Error(code),{code});
 const clone=value=>structuredClone(value);
@@ -45,6 +46,13 @@ export class IsolatedStudioBridge {
     if(!this.initialized||this.closed)throw fail('STUDIO_CLOSED');
     if(!claim)throw fail('STALE_LEASE');
     const record=this.loader.records.get(this.agent.id);await this.loader.validate(this.agent,record,claim);return record;
+  }
+  async presentationSource(runId){
+    if(!this.initialized||this.closed||!this.sceanHost)throw fail('PRESENTATION_SOURCE_UNAVAILABLE');
+    const scope=await resolveSceanCardContext(this.loader,this.agent.id);
+    if(!scope)throw fail('PRESENTATION_SOURCE_UNAVAILABLE');
+    await this.sceanHost.assertRunCardScope(runId,scope);
+    return resolveSceanFrontendSource(this.loader,this.agent.id,scope);
   }
   async operation(claim,action,args,signal){
     const record=await this.active(claim),result=await this.loader.call(this.agent,record,claim,action,args,signal);

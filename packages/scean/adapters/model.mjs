@@ -2,7 +2,7 @@ import { randomUUID, createHash } from 'node:crypto';
 
 // Provider maximum is a validation ceiling, not a request default or a price limit.
 export const MODEL_OUTPUT_LIMIT = 384000;
-export const DEFAULT_STAGE_MAX_TOKENS = Object.freeze({ director:4096, character:4096, adjudicate:4096, draft:4096, prose:8192, writer:8192, writer_repair:4096, post_stat:4096, summary:4096, chapter_analysis:4096, chapter_summary:4096, chapter_rerank:4096 });
+export const DEFAULT_STAGE_MAX_TOKENS = Object.freeze({ director:4096, character:4096, adjudicate:4096, draft:4096, prose:8192, writer:8192, writer_repair:4096, post_stat:4096, summary:4096, chapter_analysis:4096, chapter_summary:4096, chapter_rerank:4096, ideas:1536 });
 export const VERIFIED_PRICING = Object.freeze({ verifiedAt:'2026-10-15', source:'https://api-docs.deepseek.com/quick_start/pricing/', model:'deepseek-flash', servedModel:'DeepSeek-V4.1-Flash', maxOutput:MODEL_OUTPUT_LIMIT, billing:'provider-reported-only; unknown remains null' });
 export function outputLimits({maxTokens,stageMaxTokens={},providerOutputLimit}={}) {
   if(!stageMaxTokens||typeof stageMaxTokens!=='object'||Array.isArray(stageMaxTokens))throw safeError('INVALID_MAX_TOKENS');

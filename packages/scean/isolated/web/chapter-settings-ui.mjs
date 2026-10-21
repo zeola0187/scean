@@ -63,7 +63,7 @@ export function mountChapterSettings({request,onSaved=()=>{},document:doc=global
   async function refresh(){
     if(!secureContext){$('global-chapter-error').textContent='請使用正式舞臺、HTTPS 或 localhost 開啟設定。';return;}
     const current=++serial;clearInputs();$('global-chapter-error').textContent='';$('global-chapter-status').textContent='正在讀取全域設定…';
-    try{const value=await request('chapterProviderSettings');if(current!==serial)return;render(value);$('global-chapter-status').textContent=value.saveOutcomeUncertain?'上次保存結果未知。請重新讀取確認；仍無法確認時，重新啟動舞臺再查詢。章節工作已停用，不會重送金鑰。':value.appliedRevision!==value.revision?'已保存的設定尚未套用。請等工作完成後重新讀取，必要時重啟舞臺。':value.storageAvailable?`已讀取共用設定（版本 ${value.revision}）；本舞臺所有故事共用。連線尚未測試。`:'此環境沒有可寫入的安全憑證服務；僅顯示來源，不提供替代的明文儲存。';}
+    try{const value=await request('chapterProviderSettings');if(current!==serial)return;render(value);$('global-chapter-status').textContent=value.saveOutcomeUncertain?'上次保存結果未知。請重新讀取確認；仍無法確認時，重新啟動舞臺再查詢。章節工作已停用，不會重送金鑰。':value.appliedRevision!==value.revision?'已保存的設定尚未套用。請等工作完成後重新讀取，必要時重啟舞臺。':value.storageAvailable?`${value.settings.flags.chapterModelsEnabled?'摘要模型服務可用':'摘要模型服務已在進階設定停用'}；自動摘要請使用各故事的「本局自動摘要」開關。向量與記憶召回不是摘要的必要條件。連線尚未測試。`:'此環境沒有可寫入的安全憑證服務；僅顯示來源，不提供替代的明文儲存。';}
     catch(error){if(current===serial){$('global-chapter-error').textContent=chapterSettingsError(error);$('global-chapter-status').textContent='未能讀取全域設定。';}}
   }
   function settings(){
@@ -81,7 +81,7 @@ export function mountChapterSettings({request,onSaved=()=>{},document:doc=global
       if(!clear)payload.sealedKeys=await sealChapterKeys(snapshot.keyTransport,payload,keys);
       for(const key of Object.keys(keys))delete keys[key];controller.signal.throwIfAborted();
       const value=await request(clear?'chapterProviderClear':'chapterProviderSave',payload,controller.signal);if(current!==serial)return;render(value);
-      $('global-chapter-status').textContent=`${clear?'已清除保存的金鑰並停用功能':'已保存並立即套用'}（版本 ${value.revision}），不需重啟；跨故事與重啟共用。尚未啟用任何故事的額外模型工作。`;
+      $('global-chapter-status').textContent=clear?'已清除共用金鑰並停用進階服務；沒有產生摘要。':'服務設定已保存，不需重啟。自動摘要依各故事已保存的開關，在之後新回合達到整理時機才執行；本次保存不會補算舊章。';
       onSaved(value);
     }catch(error){if(current===serial){$('global-chapter-error').textContent=chapterSettingsError(error);$('global-chapter-status').textContent='請依提示修正或重新讀取確認；沒有自動重送金鑰。';}}
     finally{for(const key of Object.keys(keys))delete keys[key];clearInputs();if(current===serial){busy=false;controller=null;controls();}}

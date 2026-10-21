@@ -9,6 +9,7 @@ import {headOf,assertHistoryCapacity,rollbackLast} from './history.mjs';
 import {regenerateLast} from './regenerate.mjs';
 import {selectNarrative,invalidateNarrative} from './narrative.mjs';
 import {chapterContextSources} from './chapter-recall.mjs';
+import {seedNewRunChapterSettings} from './chapter-summary.mjs';
 import {searchHistory,readHistory,HISTORY_REFERENCE_LABEL} from './history-recall.mjs';
 import { normalizeBanList, findBans, repairRanges, applyLocalRepairs } from './banlist.mjs';
 import { applyStatProposal } from './stat-contract.mjs';
@@ -171,7 +172,7 @@ export class SceanEngine {
     if(!['single_writer','current'].includes(unconfiguredWritingMode))throw new SceanError('WRITING_MODE_UNKNOWN');
     this.unconfiguredWritingMode=unconfiguredWritingMode;this.chapterRecall = chapterRecall;
   }
-  async createRun({ snapshot, initialState = { world: {}, characters: {} }, runId = id('run'), banList = [], openingId, modelSelection, stageModelSelections, playerName: name }) {
+  async createRun({ snapshot, initialState = { world: {}, characters: {} }, runId = id('run'), banList = [], openingId, modelSelection, stageModelSelections, playerName: name, chapterAutoEnabled }) {
     safeId(runId); const fixed = validateSnapshot(snapshot);
     const blueprint = validateBlueprint(fixed.stateBlueprint, fixed.characters);
     if (blueprint && (Object.keys(initialState.world ?? {}).length || Object.keys(initialState.characters ?? {}).length)) throw new SceanError('BLUEPRINT_BASE_STATE_FORBIDDEN');
@@ -189,9 +190,11 @@ export class SceanEngine {
       for (const [stage, value] of Object.entries(stageModelSelections)) { if (!['summary', 'chapter_analysis', 'chapter_summary', 'chapter_rerank'].includes(stage) && !Object.hasOwn(SYSTEMS, stage)) throw new SceanError('INVALID_MODEL_STAGE'); overrides.stageModelSelections[stage] = selection(value); }
     }
     const now = new Date().toISOString();
-    return this.store.create({ schemaVersion: 1, runId, version: 0, snapshot: fixed, ...(name!==undefined?{playerIdentity:{schemaVersion:1,name:playerName(name),boundVersion:0,afterTurn:0}}:{}), ...overrides, ...(openingId ? { openingId } : {}),
+    const created={ schemaVersion: 1, runId, version: 0, snapshot: fixed, ...(name!==undefined?{playerIdentity:{schemaVersion:1,name:playerName(name),boundVersion:0,afterTurn:0}}:{}), ...overrides, ...(openingId ? { openingId } : {}),
       state: initialized.state, baselineState: clone(initialized.state), ...(blueprint ? { stateProvenance: initialized.provenance, baselineProvenance: clone(initialized.provenance) } : {}), memories: [], playerHistory: [], turns: [], receipts: {}, head: null, retired: [], operationReceipts: {},
-      banList: normalizeBanList(banList), createdAt: now, updatedAt: now });
+      banList: normalizeBanList(banList), createdAt: now, updatedAt: now };
+    if(chapterAutoEnabled!==undefined)seedNewRunChapterSettings(created,chapterAutoEnabled);
+    return this.store.create(created);
   }
   async rollback(request) { const value=await rollbackLast(this,request);this.chapterRecall?.clearRun(request.runId);return value; }
   async regenerate(request) { const value=await regenerateLast(this,request);this.chapterRecall?.clearRun(request.runId);return value; }

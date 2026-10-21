@@ -3,6 +3,7 @@ build-suite-source/
 build-suite-source-*/
 .test-runtime/
 .test-data/
+.test-tmp/
 evidence/
 dist/
 *.log

@@ -89,7 +89,7 @@ export function mountPlayerShell(){
   const settingsOpen=el('button','設定','quiet');settingsOpen.id='settings-open';settingsOpen.type='button';settingsOpen.setAttribute('aria-haspopup','dialog');settingsOpen.setAttribute('aria-controls','settings-dialog');top.append(settingsOpen,$('connection'));runHeader.remove();
   reading.append(document.querySelector('.history-pagination'),$('history-page-error'),$('chat'),$('provisional'));main.insertBefore(reading,document.querySelector('.composer'));
   const jump=el('button','↓ 回到故事末尾','quiet jump-latest');jump.id='jump-latest';jump.type='button';jump.hidden=true;main.insertBefore(jump,document.querySelector('.composer'));
-  const atEnd=()=>reading.scrollHeight-reading.clientHeight-reading.scrollTop<100;reading.addEventListener('scroll',()=>{jump.hidden=atEnd();},{passive:true});jump.addEventListener('click',()=>reading.scrollTo({top:reading.scrollHeight,behavior:'instant'}));
+  const atEnd=()=>reading.scrollHeight-reading.clientHeight-reading.scrollTop<100;reading.addEventListener('scroll',()=>{jump.hidden=atEnd();},{passive:true});jump.addEventListener('click',()=>{reading.scrollTo({top:reading.scrollHeight,behavior:'instant'});readingLayout.adopt();});
   readingLayout=mountReadingLayout(reading);
   const presentation=mountPresentation({font,theme,palette,width,left,right,status:preferenceStatus,beforeLayoutChange:value=>{
     for(const [pane,button,collapsed] of [[library,left,value.leftCollapsed],[state,right,value.rightCollapsed]])if(collapsed&&pane.contains(document.activeElement)&&button.getClientRects().length)button.focus({preventScroll:true});const restore=readingLayout.preserve();return()=>{restore();syncEdges();};
@@ -133,7 +133,7 @@ export function mountPlayerShell(){
   const syncViewport=()=>{const vv=window.visualViewport;if(vv&&Math.abs(vv.scale-1)>.02)return;document.documentElement.style.setProperty('--player-height',(vv?.height??innerHeight)+'px');document.documentElement.style.setProperty('--player-top',(vv?.offsetTop??0)+'px');body.classList.toggle('short-viewport',(vv?.height??innerHeight)<580);composerLayout.resize();};
   window.addEventListener('resize',syncViewport);window.visualViewport?.addEventListener('resize',syncViewport);window.visualViewport?.addEventListener('scroll',syncViewport);syncViewport();
   window.addEventListener('pagehide',()=>{presentation.dispose();readingLayout.dispose();composerLayout.dispose();identityObserver.disconnect();titleObserver.disconnect();narrow.removeEventListener('change',onBreakpoint);document.removeEventListener('keydown',onEscape);window.removeEventListener('resize',syncViewport);window.visualViewport?.removeEventListener('resize',syncViewport);window.visualViewport?.removeEventListener('scroll',syncViewport);},{once:true});
-  return {show,atEnd,scrollEnd(){reading.scrollTop=reading.scrollHeight;},reading,
+  return {show,atEnd,adoptReading(){readingLayout.adopt();},scrollEnd(){reading.scrollTop=reading.scrollHeight;readingLayout.adopt();},reading,
     preview(card,rev,opening){title.textContent=card?.title??'從 Studio 帶入故事';const data=rev?.snapshot?.card?.data??rev?.snapshot?.card;desc.textContent=data?.description??(card?'已保存的角色卡。':'請透過 Studio 交接已保存版本；已存在的故事可從書架繼續。');revision.textContent=rev?`固定 ${rev.label??rev.revision??rev.id} · ${rev.snapshot?.worldbook?.entries?.length??0} 筆世界書 · Preset 隨快照保存`:'新版本會另開故事，原局保留原快照。';
       // Only existing embedded raster covers; never fetch arbitrary remote URLs or render SVG/HTML.
       const source=data?.avatar??data?.image??rev?.snapshot?.card?.avatar;

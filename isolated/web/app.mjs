@@ -8,7 +8,12 @@ import { mountStudio } from './studio.mjs';
 import { mountPlayerShell } from './player-shell.mjs';
 import {createNotificationClient,mountNotificationControls,showNotificationToast} from './notifications.mjs';
 import {mountChapterSettings} from './chapter-settings-ui.mjs';
+import {chapterAutomationSummary,chapterOperationSummary} from './summary-settings-ui.mjs';
 import {mountOpeningSelection} from './opening-selection-ui.mjs';
+import {HistorySync} from './history-sync.mjs';
+import {mountPlayerIdeas} from './player-ideas-ui.mjs';
+import {mountPlayerReaders} from './player-readers-ui.mjs';
+import {mountPresentationPanel} from './presentation-panel-ui.mjs';
 const shell=mountPlayerShell();
 const cardFrontend=mountCardFrontend({preserveReading:()=>{
   const reading=shell.reading,anchor=captureReadingAnchor(reading),top=reading.scrollTop;
@@ -40,9 +45,12 @@ let nativeScopeKey=null,runReadSerial=0,navigationSerial=0,notificationTargetSer
 let diagnosticsBusy=false,diagnosticsTimer=null;
 let historyBusy=false,backupBusy=false,historyTarget=null,regenInput=null;
 let pageSerial=0,pageController=null,pageBusy=false,historyPageState=null,loadedTurns=[];
+const historySync=new HistorySync();let submissionReading=null,userScrollEpoch=0;
+for(const event of ['wheel','touchmove','pointerdown'])shell.reading.addEventListener(event,()=>{userScrollEpoch++;},{passive:true});
+shell.reading.addEventListener('keydown',event=>{if(['ArrowUp','ArrowDown','PageUp','PageDown','Home','End',' '].includes(event.key))userScrollEpoch++;});
 let narrativeSerial=0,narrativeController=null,narrativeBusy=false,narrativeData=null,recallSerial=0;
 let inspectorSerial=0,activeNarrativeOperation=null;
-let chapterData=null,chapterSerial=0,chapterDetailSerial=0,chapterSettingsDirty=false,selectedChapterId=null;
+let chapterData=null,chapterSerial=0,chapterDetailSerial=0,chapterSettingsDirty=false,chapterRecallDirty=false,selectedChapterId=null;
 const state = { token:null, mode:null, generationBlocked:false,writingMode:'single_writer', interactive:null, enableBusy:false, catalog:[], run:null, draft:null, pending:false, submitting:false, localTurn:null, lastOperation:null, failure:null, composing:false, pollBusy:false, operationUnknown:false, disconnected:false, nextPollAt:0, pollFailures:0, draftTimer:null, draftQueue:Promise.resolve(), chatKey:null };
 const globalChapterSettings=mountChapterSettings({secureContext:secureClient,request:(action,payload,signal)=>api(action,payload,signal),onSaved:()=>{if(view.runId)void refreshChapters();}});
 const writingMode=mountWritingMode({onMode:(mode,runId)=>{if(state.run?.runId===runId){state.writingMode=mode;void refreshModels().catch(()=>{});}},request:(action,payload)=>api(action,payload),secureContext:secureClient});
@@ -50,6 +58,13 @@ const proseStyle=mountProseStyle({request:(action,payload)=>api(action,payload),
 const openingSelection=mountOpeningSelection({enabled:!!native,request:(action,payload)=>api(action,payload),onCreated:async result=>{await refreshRuns();await selectRun(result.runId);shell.committed();},onOffer:()=>shell.show('library'),openStudio:()=>native.openStudio()});
 
 const playerIdentity=mountPlayerIdentity({request:(action,payload)=>api(action,payload),onBound:async()=>{await reconcile();await refreshRuns();}});
+function preservePlayerReading(){const anchor=captureReadingAnchor(shell.reading,{allowEnd:false}),top=shell.reading.scrollTop;return()=>{if(anchor)restoreReadingAnchor(shell.reading,anchor);else shell.reading.scrollTop=top;shell.adoptReading?.();};}
+const playerContext=()=>state.run?{...state.run,epoch:nativeContextSerial+':'+view.capture().value,selectionStamp:nativeContextSerial+':'+view.capture().value,sessionId:nativeScopeKey,cardId:state.run.snapshot?.cardId,disabled:state.pending||state.submitting||historyBusy||backupBusy||state.generationBlocked}:null;
+const playerIdeas=mountPlayerIdeas({document,request:(action,payload,signal)=>api(action,payload,signal),getContext:playerContext,preserveReading:preservePlayerReading});
+const playerReaders=mountPlayerReaders({document,request:(action,payload,signal)=>api(action,payload,signal),getContext:playerContext,preserveReading:preservePlayerReading,onNavigate:target=>target.runId===view.runId?loadHistory({anchorCommitId:target.commitId}):undefined});
+const presentationPanel=mountPresentationPanel({document,request:(action,payload,signal)=>api(action,payload,signal),getContext:playerContext,preserveReading:preservePlayerReading});
+const newBodyOpen=node('button','查看新正文','quiet');newBodyOpen.type='button';newBodyOpen.id='new-body-open';newBodyOpen.hidden=true;document.querySelector('.composer-actions').append(newBodyOpen);
+newBodyOpen.addEventListener('click',()=>{if(storyHead())void loadHistory({anchorCommitId:storyHead()});});
 function node(tag, text, className) { const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(className)e.className=className;return e; }
 function setError(id,error) { const el=$(id);el.textContent=error ? `${error.message ?? '操作未完成。'}${error.code ? `（${error.category ? error.category+' / ':''}${error.code}）` : ''}` : '';el.hidden=!error; }
 function connection(ok){if(!ok)cardFrontend.heartbeat(false);state.disconnected=!ok;$('connection').textContent=ok?(native?'舞台已連線':'本機隔離環境已連線'):'連線中斷 · 可重新查詢';}
@@ -80,7 +95,7 @@ async function refreshModels(){updateModels(await api('models'));}
 async function api(action,payload={},signal) {
   const controller=new AbortController(),abort=()=>controller.abort(signal?.reason);
   if(signal?.aborted)abort();else signal?.addEventListener('abort',abort,{once:true});
-  const timer=setTimeout(()=>controller.abort(new DOMException('Host response timed out','TimeoutError')),12000);
+  const timer=setTimeout(()=>controller.abort(new DOMException('Host response timed out','TimeoutError')),action==='playerIdeas'?180000:12000);
   try{return await requestApi(action,payload,controller.signal);}
   catch(error){
     if(controller.signal.aborted&&!signal?.aborted){connection(false);throw Object.assign(new Error('Host 回應逾時；原操作可能仍在背景執行，將查回原操作。'),{code:'CONNECTION_UNKNOWN',category:'transport'});}
@@ -147,6 +162,7 @@ async function refreshRuns(){
   return rows;
 }
 function clearNativeView(){
+  playerIdeas.reset();playerReaders.reset();presentationPanel.reset();showNotificationToast({clear:true});
   writingMode.select(null);proseStyle.select(null);cardFrontend.clear();
   openingSelection.reset();
   openingSelection.setRun(null);
@@ -187,7 +203,9 @@ function controls(){
   $('recheck').hidden=!state.failure||(busy&&!state.operationUnknown);$('recheck').disabled=state.pollBusy;
   $('provisional').hidden=!state.pending||!!state.localTurn&&!['turn','regenerate'].includes(state.localTurn.kind);
   $('pending-input').textContent=regenInput??state.draft?.input??'';
-  $('save-status').textContent=!hasRun?'尚未開局':busy?'本輪尚未提交':`已保存 · v${state.run.version}`;
+  $('save-status').textContent=!hasRun?'尚未開局':busy?'本輪尚未提交':historySync.dirty?'本輪已保存，正在讀取正文':historySync.newAvailable?'已保存 · 有新正文':`已保存 · v${state.run.version}`;
+  newBodyOpen.hidden=!hasRun||!storyHead();newBodyOpen.disabled=pageBusy;newBodyOpen.textContent=historySync.dirty?'已保存，讀取正文中':historySync.newAvailable?'有新正文 · 查看':'查看本輪正文';
+  playerIdeas.update(playerContext());presentationPanel.update(playerContext());
   $('input').setAttribute('aria-busy',String(busy));
   $('interactive-activation').hidden=state.mode!=='interactive'||state.interactive?.enabled===true;
   $('interactive-enable').disabled=state.enableBusy||!interactiveEnableRequest(state.mode,state.interactive,$('interactive-consent').checked);
@@ -235,7 +253,8 @@ async function readCanonicalSnapshot(selected,owner,serial,{includeDraft=false}=
 }
 function renderRun(run){
   openingSelection.setRun(run);
-  state.run=run;cardFrontend.update(run);proseStyle.select(run.runId);writingMode.select(run.runId);
+  state.run=run;historySync.want(run);cardFrontend.update(run);proseStyle.select(run.runId);writingMode.select(run.runId);
+  playerReaders.update(playerContext());presentationPanel.update(playerContext());
   if(!banListDirty)$('banlist-input').value=(run.banList??[]).map(x=>typeof x==='string'?x:x.text??x.phrase??'').join('\n');
   $('run-title').textContent=titleOf(run.snapshot);
   $('run-version').textContent=`固定版本 ${run.snapshot?.revision??'—'} · Run ${run.runId} · 摘要 ${run.snapshot?.hash?.slice(0,12)??'未記錄'} · ${run.turnCount??run.turns?.length??0} 回合`;
@@ -266,9 +285,10 @@ function renderChat(){
   cardFrontend.history({runId:state.run?.runId,snapshotHash:state.run?.snapshot.hash,head:loadedTurns.at(-1)?.commitId??null});
 }
 function resetLongform(){
+  historySync.reset();submissionReading=null;
   // Navigation detaches this view; only an explicit cancel stops Host work.
   activeNarrativeOperation=null;
-  chapterSerial++;chapterDetailSerial++;chapterData=null;selectedChapterId=null;chapterSettingsDirty=false;
+  chapterSerial++;chapterDetailSerial++;chapterData=null;selectedChapterId=null;chapterSettingsDirty=false;chapterRecallDirty=false;
   $('chapter-summary-list').replaceChildren();$('chapter-summary-detail').replaceChildren();$('chapter-summary-detail').hidden=true;
   $('chapter-config-status').textContent='尚未讀取分章設定。';$('chapter-operation-status').textContent='';setError('chapter-error',null);
   pageSerial++;pageController?.abort();pageController=null;pageBusy=false;historyPageState=null;loadedTurns=[];
@@ -289,18 +309,22 @@ function longformControls(){
   chapterControls();
 }
 function captureStoryReading(){
-  const reading=shell.reading,box=reading.getBoundingClientRect(),anchor=captureReadingAnchor(reading),top=reading.scrollTop;
+  const reading=shell.reading,box=reading.getBoundingClientRect(),anchor=captureReadingAnchor(reading,{allowEnd:false}),top=reading.scrollTop;
   const visible=[...$('chat').querySelectorAll('.story[data-commit-id]')].filter(node=>{const bounds=node.getBoundingClientRect();return bounds.bottom>box.top&&bounds.top<box.bottom;});
   return {follow:shell.atEnd(),anchorCommitId:visible.at(-1)?.dataset.commitId??loadedTurns[0]?.commitId,
     restore(){if(anchor)restoreReadingAnchor(reading,anchor);else reading.scrollTop=top;}};
 }
-async function loadHistory({earlier=false,anchorCommitId,priorHead,readingBefore,latest=false}={}){
+async function loadHistory({earlier=false,anchorCommitId,priorHead,readingBefore,latest=false,ownCommitId}={}){
   if(!view.runId||earlier&&!historyPageState?.beforeCursor)return;
   const selected=view.capture(),baseline=canonicalStamp(),serial=++pageSerial;pageController?.abort();pageController=new AbortController();pageBusy=true;longformControls();
   $('history-page-status').textContent='正在讀取原文頁…';setError('history-page-error',null);
   const oldCursor=historyPageState?.beforeCursor;
+  const scrollEpoch=userScrollEpoch;
   const scrollBefore={top:shell.reading.scrollTop,height:shell.reading.scrollHeight,follow:readingBefore?.follow??shell.atEnd()};
-  const preserve=!!readingBefore&&!scrollBefore.follow,readingAnchor=preserve?readingBefore.anchorCommitId:undefined;
+  const preserve=!!readingBefore&&!latest&&!anchorCommitId&&!ownCommitId;
+  const preserveOld=preserve&&(!scrollBefore.follow||historySync.historical);
+  const readingAnchor=preserveOld?readingBefore.anchorCommitId:undefined;
+  const historical=earlier||!!anchorCommitId&&anchorCommitId!==baseline.head||!!readingAnchor;
   try{
     let page,retiredAnchor=false;
     try{page=await api('historyPage',{runId:selected.runId,limit:10,...(earlier?{cursor:oldCursor}:{}),...((anchorCommitId??readingAnchor)?{anchorCommitId:anchorCommitId??readingAnchor}:{})},pageController.signal);}
@@ -309,8 +333,13 @@ async function loadHistory({earlier=false,anchorCommitId,priorHead,readingBefore
       if(!view.current(selected)||serial!==pageSerial||!relatedReadCurrent(selected,baseline))return;
       retiredAnchor=true;page=await api('historyPage',{runId:selected.runId,limit:10},pageController.signal);
     }
-    if(!view.current(selected)||serial!==pageSerial||!relatedReadCurrent(selected,baseline,page))return;
-    const turns=new Map((earlier?loadedTurns:[]).map(turn=>[turn.commitId,turn]));
+    if(!view.current(selected)||serial!==pageSerial)return;
+    if(!relatedReadCurrent(selected,baseline,page)||!historySync.loaded(page,{historical:historical&&!retiredAnchor})){
+      historySync.failed();$('history-page-status').textContent='本輪已保存，正在讀取正文';return;
+    }
+    const readerMoved=scrollEpoch!==userScrollEpoch,readingAfter=readerMoved?captureStoryReading():null;
+    const mergeForReading=readerMoved&&page.turns.some(t=>t.commitId===loadedTurns.at(-1)?.commitId);
+    const turns=new Map((earlier||mergeForReading?loadedTurns:[]).map(turn=>[turn.commitId,turn]));
     for(const turn of page.turns)turns.set(turn.commitId,turn);
     loadedTurns=[...turns.values()].sort((a,b)=>a.turn-b.turn);
     historyPageState=page;
@@ -320,12 +349,18 @@ async function loadHistory({earlier=false,anchorCommitId,priorHead,readingBefore
     if(readingAnchor)$('history-page-status').textContent+=retiredAnchor?' · 原閱讀回合已失效，顯示有效原文':' · 保留原閱讀位置；回到最新原文可看最新面板';
     // Restore only after status wrapping has settled, including narrow screens.
     if(earlier)shell.reading.scrollTop=scrollBefore.top+shell.reading.scrollHeight-scrollBefore.height;
-    else if(preserve)readingBefore.restore();
-    else if(latest||!anchorCommitId&&scrollBefore.follow)shell.scrollEnd();
-    if(anchorCommitId){const target=[...$('chat').querySelectorAll('.story')].find(el=>el.dataset.commitId===anchorCommitId);target?.classList.add('history-target');target?.scrollIntoView({block:'center',behavior:'instant'});}
+    else if(readerMoved)readingAfter.restore();
+    else if(latest)shell.scrollEnd();
+    else if(anchorCommitId||ownCommitId){
+      const commit=anchorCommitId??ownCommitId,target=[...$('chat').querySelectorAll('.player[data-commit-id]')].find(el=>el.dataset.commitId===commit);
+      target?.classList.add('history-target');
+      if(target)shell.reading.scrollTop+=target.getBoundingClientRect().top-shell.reading.getBoundingClientRect().top-16;
+    }else if(preserve)readingBefore.restore();
+    shell.adoptReading?.();
   }catch(error){if(serial===pageSerial&&relatedReadCurrent(selected,baseline)&&error.name!=='AbortError'){
-    setError('history-page-error',error);$('history-page-status').textContent=error.code==='HISTORY_CURSOR_STALE'?'歷史已變更；請回到近期原文後重新載入。':'讀取失敗；目前已顯示的原文保留。';
-  }}finally{if(view.current(selected)&&serial===pageSerial){pageBusy=false;longformControls();}}
+    historySync.failed();$('history-page-status').textContent='本輪已保存，正在讀取正文；目前顯示的內容保留。';
+    setError('history-page-error',error.code==='HISTORY_PAGE_TURN_TOO_LARGE'?error:null);
+  }}finally{if(view.current(selected)&&serial===pageSerial){pageBusy=false;longformControls();controls();}}
 }
 async function loadInspector(){
   if(!view.runId||!$('inspector').open)return;
@@ -379,10 +414,11 @@ function chapterControls(){
 function renderChapterIndex(value){
   chapterData=value;const settings=value.settings??{};
   if(!chapterSettingsDirty){$('chapter-auto-enabled').checked=settings.autoEnabled===true;$('chapter-token-threshold').value=settings.tokenThreshold??16000;$('chapter-buffer-turns').value=settings.bufferTurns??6;$('chapter-detail').value=settings.detail??'auto';}
+  if(!chapterRecallDirty)$('chapter-recall-enabled').checked=value.chapterContextArmed===true;
+  $('chapter-recall-enabled').disabled=narrativeBusy||state.pending||state.submitting;
   const eligibility=value.eligibility??{};
-  $('chapter-config-status').textContent=`分章模型：${value.enabled?'已啟用':'未啟用'} · 長篇摘要模型：${value.writerSummaryEnabled?'已啟用':'未啟用'} · 自動分章：${settings.autoEnabled?'保存為開啟':'停用'} · 本次啟動：${value.autoArmed?'已授權':'未啟用自動執行'} · Writer 摘要：${value.writerSummaryArmed?'自動維護':'未授權自動維護'} · 可用原文約 ${eligibility.estimatedTokens??0} tokens / 門檻 ${settings.tokenThreshold??16000} · ${eligibility.eligible?'可檢查章界':eligibility.reason??'未達條件'}${value.automaticFailure?` · 自動工作已停用：${value.automaticFailure.code}；請查回操作結果後重新啟用或手動補救。`:''}`;
-  $('chapter-config-status').textContent+=` · 3+8 章節上下文：${value.chapterContextArmed?'已授權':'未啟用'} · 向量：${value.chapterPorts?.embedding?'已配置':'未配置'} · rerank：${value.chapterPorts?.rerank?'已配置':'未配置'}${value.lastRecall?` · 最近召回 ${value.lastRecall.status} / ${value.lastRecall.failureCode??`近章 ${value.lastRecall.recentSummaryIds?.length??0}／召回 ${value.lastRecall.retrievedSummaryIds?.length??0}／原文 ${value.lastRecall.uncoveredTurns??0} 輪`}`:''}`;
-  const latest=(value.operations??[]).at(-1);if(!narrativeBusy)$('chapter-operation-status').textContent=latest?`最近章節操作：${latest.status}${latest.result?.code?' · '+latest.result.code:''}`:'not_started';
+  $('chapter-config-status').textContent=chapterAutomationSummary(value);
+  if(!narrativeBusy||value.chapterWork)$('chapter-operation-status').textContent=chapterOperationSummary(value);
   $('chapter-summary-list').replaceChildren();
   for(const chapter of value.chapters??[]){
     const section=node('section',undefined,'chapter-summary-row');section.dataset.chapterId=chapter.id;
@@ -558,7 +594,7 @@ function observeOperation(receipt,progress){
     state.localTurn=null;activeNarrativeOperation=null;narrativeBusy=false;regenInput=null;
   }
   if(terminal){state.lastOperation=receipt;if(receipt.failure){state.failure=receipt.failure;setError('turn-error',receipt.failure);}}
-  if(terminal&&receipt.kind==='chapterSettings'&&receipt.status==='completed')chapterSettingsDirty=false;
+  if(terminal&&receipt.kind==='chapterSettings'&&receipt.status==='completed'){chapterSettingsDirty=false;chapterRecallDirty=false;}
   return terminal;
 }
 async function reconcile(){
@@ -568,13 +604,16 @@ async function reconcile(){
   if(!snapshot||!view.current(token)||serial!==runReadSerial)return;
   const {run,progress,receipt,draft}=snapshot;
   if(draft&&!state.draft)restoreDraft(draft);
-  const wasPending=state.pending,priorDraft=state.draft,readingBefore=priorHead!==storyHead(run)?captureStoryReading():undefined;
+  const wasPending=state.pending,priorDraft=state.draft,changed=priorHead!==storyHead(run),readingBefore=(changed||historySync.dirty)?captureStoryReading():undefined;
   renderRun(run);const terminal=observeOperation(receipt,progress);$('progress').textContent=operationText(receipt,progress);
   // The canonical receipt wins even if the submit acknowledgement was lost.
   if(priorDraft?.requestId&&activeDraftReceipt(run,priorDraft.requestId)){
     restoreDraft(null);state.failure=null;setError('turn-error',null);
   }else if(!state.pending){state.failure=receipt.failure??run.lastFailure??null;setError('turn-error',state.failure);}
-  if(priorHead!==storyHead(run)||!historyPageState)await loadHistory({priorHead,readingBefore});
+  const own=submissionReading,ownTurn=run.lastTurn??run.turns?.at(-1);
+  const ownCommitId=own&&own.runId===run.runId&&own.requestId===ownTurn?.requestId&&own.scrollEpoch===userScrollEpoch&&own.canLocate?ownTurn.commitId:undefined;
+  if(changed||!historyPageState||historySync.due())await loadHistory({priorHead,readingBefore,ownCommitId});
+  if(own&&own.requestId===ownTurn?.requestId&&!historySync.dirty)submissionReading=null;
   await refreshNarrative();
   if(!view.current(token)||serial!==runReadSerial)return;
   if($('inspector').open)void loadInspector();
@@ -611,10 +650,11 @@ async function sendHostOperation(kind,payload={},base={}){
 }
 async function submitTurn(retry=false){
   if(backupBusy||historyBusy||state.pending||state.submitting||state.generationBlocked||!view.runId||!$('input').value.trim()||state.composing)return;
-  const token=view.capture();state.submitting=true;controls();
+  const token=view.capture(),readingIntent={runId:view.runId,scrollEpoch:userScrollEpoch,canLocate:!historySync.historical};state.submitting=true;controls();
   try{await saveDraft();}catch(error){if(view.current(token)){state.submitting=false;controls();}throw error;}
   if(!view.current(token))return;
   const draft={...state.draft};if(!draft?.input){state.submitting=false;controls();return;}
+  submissionReading={...readingIntent,requestId:draft.requestId};
   setError('turn-error',null);$('progress').textContent='正在交由 Host 接受操作；斷線後會查回同一操作。';
   const prior=state.lastOperation;
   const retryOf=retry&&prior?.kind==='turn'&&prior.requestId===draft.requestId&&['failed','cancelled','interrupted'].includes(prior.status)?prior.operationId:null;
@@ -646,8 +686,13 @@ async function poll({force=false,scope=false}={}){
     const changed=canonical&&(canonical.version!==state.run?.version||canonical.head!==storyHead());
     const known=outstandingOperations.has(token.runId)||!!state.localTurn;
     const aligned=receipt.runId===token.runId&&canonicalPairMatches(canonical,canonicalStamp())&&progress.runId===token.runId&&(!progress.canonical||canonicalPairMatches(progress.canonical,canonicalStamp()));
-    if(force||changed||known||canonicalRefreshNeeded||!aligned||state.pending!==!!(receipt.pending||progress.pending)){const syncing=reconcile();serial=runReadSerial;await syncing;}
-    else{cardFrontend.heartbeat(true);observeOperation(receipt,progress);$('progress').textContent=operationText(receipt,progress);controls();}
+    if(force||changed||known||canonicalRefreshNeeded||historySync.due()||!aligned||state.pending!==!!(receipt.pending||progress.pending)){const syncing=reconcile();serial=runReadSerial;await syncing;}
+    else{
+      const presentation=await api('presentation',{runId:token.runId});
+      if(!view.current(token)||!operations.current(operationToken)||serial!==runReadSerial)return;
+      if(presentation.presentationRevision!==(state.run?.presentationRevision??0)){const syncing=reconcile();serial=runReadSerial;await syncing;}
+      else{cardFrontend.heartbeat(true);observeOperation(receipt,progress);$('progress').textContent=operationText(receipt,progress);controls();}
+    }
     if(view.current(token)&&serial===runReadSerial)state.pollFailures=0;
   }catch(error){if(view.current(token)&&serial===runReadSerial){
     connection(false);state.pollFailures=Math.min(state.pollFailures+1,6);
@@ -725,10 +770,11 @@ async function importRun(){
   finally{backupBusy=false;$('import-consent').checked=false;controls();}
 }
 for(const id of ['chapter-auto-enabled','chapter-token-threshold','chapter-buffer-turns','chapter-detail'])$(id).addEventListener('input',()=>{chapterSettingsDirty=true;});
+$('chapter-recall-enabled').addEventListener('change',()=>{chapterRecallDirty=true;chapterSettingsDirty=true;});
 $('chapter-settings-form').addEventListener('submit',event=>{
   event.preventDefault();const settings={autoEnabled:$('chapter-auto-enabled').checked,tokenThreshold:Number($('chapter-token-threshold').value),bufferTurns:Number($('chapter-buffer-turns').value),detail:$('chapter-detail').value};
   if(!Number.isInteger(settings.tokenThreshold)||settings.tokenThreshold<4000||settings.tokenThreshold>32000||!Number.isInteger(settings.bufferTurns)||settings.bufferTurns<0||settings.bufferTurns>50){setError('chapter-error',new Error('門檻必須為 4000–32000，保護回合數必須為 0–50 的整數。'));return;}
-  void mutateChapter('chapterSettings',{settings,chapterContextEnabled:settings.autoEnabled});
+  void mutateChapter('chapterSettings',{settings,...(chapterRecallDirty?{chapterContextEnabled:$('chapter-recall-enabled').checked}:{})});
 });
 $('chapter-summary-refresh').addEventListener('click',()=>void refreshChapters());
 $('chapter-auto-check').addEventListener('click',()=>void mutateChapter('chapterAuto'));

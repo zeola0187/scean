@@ -10,7 +10,7 @@ const HTTP=['openrouter','openai','compatible'];
 const base={openrouter:'https://openrouter.ai/api/v1',openai:'https://api.openai.com/v1'};
 export const CHAPTER_SETTINGS_ACTIONS=new Set(['chapterProviderSettings','chapterProviderSave','chapterProviderClear']);
 export function chapterSettingsDefaults(config={}){
-  return {flags:{chapterModelsEnabled:config.chapterModelsEnabled===true,chapterRetrievalEnabled:config.chapterRetrievalEnabled===true,chapterEmbeddingEnabled:config.chapterEmbeddingEnabled===true||config.enableExistingEmbedding===true},
+  return {flags:{chapterModelsEnabled:config.chapterModelsEnabled!==false,chapterRetrievalEnabled:config.chapterRetrievalEnabled===true,chapterEmbeddingEnabled:config.chapterEmbeddingEnabled===true||config.enableExistingEmbedding===true},
     embedding:{provider:'openrouter',model:'qwen/qwen3-embedding-8b',baseUrl:base.openrouter,nebiusOnly:true,environmentFallback:true},
     rerank:{mode:'dsh_current',provider:'',model:'',baseUrl:'',environmentFallback:false}};
 }
@@ -67,7 +67,7 @@ export class ChapterProviderSettings {
   }
   publicRecord(record,{transport=false}={}){
     const result={schemaVersion:1,revision:record.revision,settings:clone(record.settings),storageAvailable:this.storageAvailable,storage:'dsh_native_credential_record',saved:record.revision>0,lastOperationId:record.lastOperationId??null,
-      embeddingKey:this.keyStatus(record,'embedding'),rerankKey:this.keyStatus(record,'rerank'),providerConnectivity:'not_tested',scope:'host_profile_all_runs',saveStartsModelWork:false,runConsent:'explicit_per_launch_and_run'};
+      embeddingKey:this.keyStatus(record,'embedding'),rerankKey:this.keyStatus(record,'rerank'),providerConnectivity:'not_tested',scope:'host_profile_all_runs',saveStartsModelWork:false,runConsent:'persisted_run_preference_future_turns',chapterSummaryAuthority:'run.chapterSettings.autoEnabled',advancedRecallConsent:'explicit_per_launch_and_run'};
     let selection;try{selection=this.nativeSelection();}catch{}if(selection?.provider&&selection?.model)result.nativeSelection={provider:selection.provider,model:selection.model};
     if(transport&&this.storageAvailable){
       this.#transport??={...generateKeyPairSync('rsa',{modulusLength:2048}),keyId:randomUUID()};

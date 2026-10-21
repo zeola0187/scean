@@ -34,8 +34,14 @@ async function fixture({turns=16,bodyRepeats=20,summaryEnabled=true,override}={}
 async function args(f,operationId,extra={}){const r=await f.store.read(f.run.runId);return {runId:r.runId,operationId,expectedVersion:r.version,expectedHead:r.head,...extra};}
 async function arm(f,{bufferTurns=2,tokenThreshold=4000,operationId='arm-writer',viaJobs=false}={}){
   const request=await args(f,operationId,{settings:{autoEnabled:true,bufferTurns,tokenThreshold,detail:'auto'},writerSummaryEnabled:true});
-  if(!viaJobs)return f.host.chapterSettings(request);
-  const value=await f.host.jobs.submit({...request,kind:'chapterSettings',baseVersion:request.expectedVersion,baseHead:request.expectedHead});return {...value,request};
+  const before=f.calls.length;
+  const value=viaJobs?await f.host.jobs.submit({...request,kind:'chapterSettings',baseVersion:request.expectedVersion,baseHead:request.expectedHead}):await f.host.chapterSettings(request);
+  for(let i=0;i<500&&(f.host.jobs.active.has(f.run.runId)||f.host.auxRunning.has(f.run.runId));i++)await wait(10);
+  assert.equal(f.calls.length,before,'settings save alone never dispatches a model');
+  // These fixtures already contain committed turns. Simulate the existing
+  // post-commit notification separately; it is no longer a settings side effect.
+  const run=await f.store.read(f.run.runId);f.host.scheduleChapterAfterTurn(run.runId,run.head);
+  return viaJobs?{...value,request}:value;
 }
 async function idle(f){for(let i=0;i<500;i++){if(!f.host.chapterBackground?.size&&!f.host.mutationBusy(f.run.runId))return;await wait(10);}throw Error('Synthetic background work did not settle');}
 const backgroundCalls=f=>f.calls.filter(c=>['chapter_analysis','chapter_summary','summary'].includes(c.stage));
@@ -117,7 +123,7 @@ test('AUTO pending rolling is visible and cancellable by exact identity across p
 test('AUTO restart recovers pending once, never replays models or re-arms via settings receipt',async()=>{
   const began=deferred(),release=deferred(),f=await fixture({override:async a=>{if(a.stage==='summary'){began.resolve();await release.promise;return {text:'LATE_PRE_RESTART'};}}});let restarted;
   try{
-    const consent=await args(f,'restart-arm',{settings:{autoEnabled:true,bufferTurns:2,tokenThreshold:4000,detail:'auto'},writerSummaryEnabled:true});await f.host.chapterSettings(consent);await began.promise;
+    const consent=await args(f,'restart-arm',{settings:{autoEnabled:true,bufferTurns:2,tokenThreshold:4000,detail:'auto'},writerSummaryEnabled:true});await f.host.chapterSettings(consent);assert.equal(f.calls.length,0);f.host.scheduleChapterAfterTurn(f.run.runId,(await f.store.read(f.run.runId)).head);await began.promise;
     restarted=await new SceanHost({engine:f.engine,root:f.hostRoot,summaryEnabled:true,chapterModelsEnabled:true}).init();
     assert.equal((await restarted.chapterStatus({runId:f.run.runId})).writerSummaryArmed,false);await restarted.chapterSettings(consent);assert.equal((await restarted.chapterStatus({runId:f.run.runId})).writerSummaryArmed,false);
     release.resolve();await idle(f);const run=await f.store.read(f.run.runId),op=Object.values(run.narrative.operations).find(o=>o.kind==='summary');assert.equal(op.status,'failed');assert.equal(op.result.code,'SUMMARY_INTERRUPTED_NO_AUTORETRY');assert.equal(run.narrative.currentSummaryId,null);assert.equal(backgroundCalls(f).length,3);assert.equal(validateNarrative(run),true);

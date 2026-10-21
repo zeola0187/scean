@@ -56,29 +56,29 @@ test('DF Host below-threshold auto attempt invokes no model',async()=>{
   }finally{await f.host.close();}
 });
 
-test('DF explicit settings enable arms only the current Host launch; restart cannot inherit model authority',async()=>{
+test('DF saved chapter preference survives restart but only a future committed turn can schedule work',async()=>{
   const f=await fixture({enabled:true});let restarted;try{
     const request=await args(f,'explicit-arm',{settings:{autoEnabled:true,tokenThreshold:4000,bufferTurns:2,detail:'precise'}});
     await f.host.chapterSettings(request);assert.equal((await f.host.chapterStatus({runId:f.run.runId})).autoArmed,true);
     await f.host.close();restarted=await new SceanHost({engine:f.engine,root:f.hostRoot,chapterModelsEnabled:true}).init();
-    const state=await restarted.chapterStatus({runId:f.run.runId});assert.equal(state.autoArmed,false);assert.equal(f.calls.length,0);
-    await restarted.turn({runId:f.run.runId,input:'Continue after restart.',requestId:'after-restart'});await wait(30);assert.equal(f.calls.filter(c=>c.stage.startsWith('chapter_')).length,0);
-    // An explicit enable request in this launch is fresh operator action, including receipt replay.
+    const state=await restarted.chapterStatus({runId:f.run.runId});assert.equal(state.autoArmed,true);assert.equal(state.writerSummaryArmed,false);assert.equal(state.chapterContextArmed,false);assert.equal(f.calls.length,0);
+    await restarted.turn({runId:f.run.runId,input:'Continue after restart.',requestId:'after-restart'});await Promise.all([...restarted.chapterBackground??[]]);assert.equal(f.calls.filter(c=>c.stage==='chapter_analysis').length,1);assert.equal(f.calls.filter(c=>c.stage==='summary'||c.stage==='chapter_rerank').length,0);
+    // Replaying saved settings does not run a model; the saved preference is already authoritative.
     await restarted.chapterSettings(request);assert.equal((await restarted.chapterStatus({runId:f.run.runId})).autoArmed,true);
     await restarted.chapterSettings(await args(f,'fresh-arm',{settings:{autoEnabled:true,tokenThreshold:4000,bufferTurns:2,detail:'precise'}}));assert.equal((await restarted.chapterStatus({runId:f.run.runId})).autoArmed,true);
     await restarted.chapterSettings(await args(f,'disarm',{settings:{autoEnabled:false,tokenThreshold:4000,bufferTurns:2,detail:'precise'}}));assert.equal((await restarted.chapterStatus({runId:f.run.runId})).autoArmed,false);
   }finally{await restarted?.close();await f.host.close();}
 });
 
-test('DF imported auto-enabled settings do not authorize models in a clean destination Host',async()=>{
+test('DF import never scans or pays for summaries; saved preference applies only after a future player turn',async()=>{
   const a=await fixture({enabled:true}),b=await fixture({enabled:true,empty:true});try{
     await configure(a,{autoEnabled:true,tokenThreshold:4000,bufferTurns:2,detail:'auto'});
     const authorityGrant={allowPrivateSaves:true,principal:'synthetic-test-operator'};
     const bundle=await a.host.exportRun({runId:a.run.runId,acknowledgement:'export-private-run-data'},authorityGrant);
     await b.host.importRun({bundle,acknowledgement:'import-private-run-data'},authorityGrant);
-    assert.equal((await b.host.chapterStatus({runId:a.run.runId})).autoArmed,false);assert.equal(b.calls.length,0);
-    await b.host.turn({runId:a.run.runId,input:'Continue after import.',requestId:'after-import'});await wait(30);
-    assert.equal(b.calls.filter(c=>c.stage.startsWith('chapter_')).length,0);
+    assert.equal((await b.host.chapterStatus({runId:a.run.runId})).autoArmed,true);assert.equal((await b.host.chapterStatus({runId:a.run.runId})).chapterContextArmed,false);assert.equal(b.calls.length,0);
+    await b.host.turn({runId:a.run.runId,input:'Continue after import.',requestId:'after-import'});await Promise.all([...b.host.chapterBackground??[]]);
+    assert.equal(b.calls.filter(c=>c.stage==='chapter_analysis').length,1);assert.equal(b.calls.filter(c=>c.stage==='summary'||c.stage==='chapter_rerank').length,0);
   }finally{await a.host.close();await b.host.close();}
 });
 
@@ -142,4 +142,18 @@ test('DF successful armed post-turn auto closes only the selected public range a
     assert.deepEqual(f.calls.filter(c=>c.stage.startsWith('chapter_')).map(c=>c.stage),['chapter_analysis','chapter_summary']);
     await f.host.turn({runId:f.run.runId,input:'Close this watch.',requestId:'auto-success'});await wait(30);assert.equal(f.calls.filter(c=>c.stage.startsWith('chapter_')).length,2);
   }finally{release.resolve();await f.host.close();}
+});
+
+test('DF new Host stories start with one saved ON preference without generation; old missing and explicit OFF stay OFF',async()=>{
+ const f=await fixture({enabled:true,empty:true});try{
+  const snapshot=syntheticLongrun({turns:0,runId:'seed-source'}).snapshot;
+  const created=await f.host.createRun({snapshot,runId:'new-auto-on'}),saved=await f.store.read(created.runId);
+  assert.equal(saved.version,0);assert.equal(saved.narrative.chapterSettings.autoEnabled,true);assert.equal(f.calls.length,0);
+  await f.host.chapterStatus({runId:created.runId});assert.equal(f.calls.length,0);
+  const legacy=syntheticLongrun({turns:0,runId:'legacy-auto-off'});await f.store.create(legacy);await f.host.refreshRuns();
+  assert.equal((await f.host.chapterStatus({runId:legacy.runId})).settings.autoEnabled,false);
+  const settings={autoEnabled:false,tokenThreshold:4000,bufferTurns:0,detail:'auto'};
+  await f.host.chapterSettings({runId:created.runId,operationId:'user-off',expectedVersion:0,expectedHead:null,settings});
+  assert.equal((await f.host.chapterStatus({runId:created.runId})).settings.autoEnabled,false);assert.equal(f.calls.length,0);
+ }finally{await f.host.close();}
 });

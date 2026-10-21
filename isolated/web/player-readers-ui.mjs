@@ -1,0 +1,71 @@
+// Two read-only player dialogs. Content is always text, never authored HTML.
+export function mountPlayerReaders({document=globalThis.document,request,getContext=()=>null,onNavigate=()=>{},preserveReading=()=>()=>{}}={}){
+  const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
+  const actions=el('nav',undefined,'player-readers-actions');actions.setAttribute('aria-label','故事閱讀');actions.style.cssText='display:flex;gap:8px;flex-wrap:wrap;padding:4px 0';
+  const bookButton=el('button','世界書','quiet'),recapButton=el('button','故事回顧','quiet');bookButton.id='player-worldbook-open';recapButton.id='player-recap-open';
+  for(const b of[bookButton,recapButton]){b.type='button';b.disabled=true;b.setAttribute('aria-haspopup','dialog');b.style.minHeight='44px';actions.append(b);}
+  const composer=document.querySelector('.composer');if(composer)composer.insertBefore(actions,composer.firstChild);else(document.querySelector('main')??document.body).append(actions);
+  const dialog=el('dialog',undefined,'tool-dialog player-reader-dialog');dialog.id='player-reader-dialog';dialog.setAttribute('aria-labelledby','player-reader-title');dialog.style.cssText='width:min(720px,calc(100vw - 20px));max-width:calc(100vw - 20px);max-height:calc(100dvh - 24px);box-sizing:border-box;overflow:auto;overscroll-behavior:contain';
+  const header=el('header',undefined,'tool-heading'),heading=el('h2');heading.id='player-reader-title';const close=el('button','返回故事','quiet');close.type='button';close.style.minHeight='44px';header.append(heading,close);
+  const note=el('p','此處只閱讀這段故事已保存的公開內容，不會啟動生成。','hint'),status=el('p',undefined,'hint');status.id='player-reader-status';status.setAttribute('role','status');
+  const search=el('form'),searchLabel=el('label','搜尋世界設定'),input=el('input');input.id='player-worldbook-query';input.type='search';input.maxLength=200;searchLabel.setAttribute('for',input.id);const submit=el('button','搜尋','quiet');submit.type='submit';submit.style.minHeight='44px';search.append(searchLabel,input,submit);
+  const list=el('section');list.id='player-reader-list';list.setAttribute('aria-label','閱讀目錄');const detail=el('section');detail.id='player-reader-detail';detail.style.cssText='white-space:normal;overflow-wrap:anywhere;min-width:0';detail.hidden=true;
+  const retry=el('button','重新讀取','quiet');retry.type='button';retry.hidden=true;retry.style.minHeight='44px';dialog.append(header,note,search,status,retry,list,detail);document.body.append(dialog);
+  for(const b of[bookButton,recapButton])b.setAttribute('aria-controls',dialog.id);
+  let run=null,kind=null,epoch=0,openedBy=null,restoreReading=null,query='',cursor=null,selected=null,detailValue=null,lastKey='',disposed=false;
+  const context=()=>{const c=getContext()??{},snapshotHash=run?.snapshot?.hash??run?.snapshotHash??c.snapshotHash;return{runId:run?.runId??null,snapshotHash,head:run&&Object.hasOwn(run,'head')?run.head:c.head??null,version:run?.version??c.version,sessionId:c.sessionId??null,cardId:c.cardId??null,selectionEpoch:c.selectionEpoch??c.epoch??null};};
+  const key=()=>JSON.stringify(context());
+  const active=(serial,stamp)=>!disposed&&dialog.open&&serial===epoch&&stamp===key();
+  const valid=(value,c)=>value?.runId===c.runId&&value.snapshotHash===c.snapshotHash&&value.head===c.head&&(c.version===undefined||value.version===c.version);
+  const args=c=>({runId:c.runId,...(c.snapshotHash?{expectedSnapshotHash:c.snapshotHash}:{}),expectedHead:c.head});
+  function begin(){const serial=++epoch,stamp=key(),c=context();status.textContent='正在讀取…';retry.hidden=true;return{serial,stamp,c};}
+  function error(serial,stamp,message){if(!active(serial,stamp))return;status.textContent=message;retry.hidden=false;}
+  function setMode(){search.hidden=kind!=='worldbook';heading.textContent=kind==='worldbook'?'世界書':'故事回顧';note.textContent=kind==='worldbook'?'這是本故事固定版本中明確公開的設定；未標示公開的內容不會顯示。':'閱讀已完成的逐章摘要與來源原文，不會自動產生摘要。';}
+  function clear(){list.replaceChildren();detail.replaceChildren();detail.hidden=true;selected=null;detailValue=null;cursor=null;retry.hidden=true;}
+  function button(text,handler,cls='quiet'){const b=el('button',text,cls);b.type='button';b.style.cssText='min-height:44px;white-space:normal;text-align:left;overflow-wrap:anywhere';b.addEventListener('click',handler);return b;}
+  async function loadList({append=false}={}){
+    if(!context().runId||!dialog.open)return;const{serial,stamp,c}=begin();if(!append)clear();setMode();
+    try{
+      const value=await request(kind==='worldbook'?'playerWorldbook':'playerRecap',{...args(c),...(kind==='worldbook'?{query,cursor:append?cursor??0:0,limit:30}:{})});
+      if(!active(serial,stamp))return;if(!valid(value,c)){error(serial,stamp,'故事已更新，請重新讀取。');return;}
+      if(!append)list.replaceChildren();else list.querySelector('[data-reader-more]')?.remove();
+      if(kind==='worldbook'){
+        for(const row of value.entries??[]){const section=el('div',undefined,'player-worldbook-row'),b=button(row.title,()=>void loadDetail(row.id));b.dataset.entryId=row.id;section.append(b,el('p',row.bookTitle,'hint'));list.append(section);}
+        cursor=value.nextCursor??null;if(cursor!==null){const more=button('更多設定',()=>void loadList({append:true}));more.dataset.readerMore='true';list.append(more);}
+        status.textContent=value.status==='empty'?'這段故事目前沒有標示為可公開閱讀的世界設定。':value.total===0?'找不到符合的設定。':'選擇一項閱讀完整設定。';
+      }else{
+        for(const row of value.chapters??[]){const section=el('section',undefined,'player-recap-row'),b=button(`${row.order}. ${row.title}`,()=>void loadDetail(row.id));b.dataset.chapterId=row.id;section.append(b,el('p',`第 ${row.startTurn}–${row.endTurn} 回合${row.summaryAvailable?'':' · 尚無摘要'}`,'hint'));list.append(section);}
+        status.textContent=value.chapters?.length?'選擇一章閱讀回顧。':'尚無摘要；故事還沒有可閱讀的章節回顧。';
+      }
+    }catch{error(serial,stamp,'暫時無法讀取，故事與草稿仍保留。可以重新讀取。');}
+  }
+  async function loadDetail(id,{more=false}={}){
+    if(!context().runId||!dialog.open)return;const{serial,stamp,c}=begin();selected=id;
+    try{
+      const value=await request(kind==='worldbook'?'playerWorldbook':'playerRecap',{...args(c),...(kind==='worldbook'?{entryId:id,...(more?{contentOffset:detailValue?.nextContentOffset??0}:{})}:{chapterId:id})});
+      if(!active(serial,stamp))return;if(!valid(value,c)){error(serial,stamp,'故事已更新，請重新讀取。');return;}
+      list.hidden=true;detail.hidden=false;
+      if(!more)detail.replaceChildren(button('返回目錄',()=>{epoch++;selected=null;detail.hidden=true;list.hidden=false;status.textContent=kind==='worldbook'?'選擇一項閱讀完整設定。':'選擇一章閱讀回顧。';}));
+      if(kind==='worldbook'){
+        const row=value.entry;detailValue=row;
+        if(!more)detail.append(el('h3',row.title),el('p',row.bookTitle,'hint'));
+        else detail.querySelector('[data-reader-content-more]')?.remove();
+        const p=el('p',row.content,'player-reader-text');p.style.whiteSpace='pre-wrap';detail.append(p);
+        if(row.nextContentOffset!==null){const b=button('繼續閱讀',()=>void loadDetail(id,{more:true}));b.dataset.readerContentMore='true';detail.append(b);}
+        status.textContent='這是故事固定版本的設定。';
+      }else{
+        const row=value.chapter;detailValue=row;detail.append(el('h3',`${row.order}. ${row.summary?.title??row.title}`),el('p',`第 ${row.startTurn}–${row.endTurn} 回合`,'hint'));
+        if(row.summary){const p=el('p',row.summary.summary,'player-reader-text');p.style.whiteSpace='pre-wrap';detail.append(p);const facts=el('details'),label=el('summary','相關線索');facts.append(label);for(const[field,title]of[['keywords','關鍵詞'],['characters','角色'],['locations','地點'],['plotThreads','未決情節'],['emotionalTone','情緒基調']]){const value=row.summary[field],text=Array.isArray(value)?value.join('、'):value;if(text)facts.append(el('h4',title),el('p',text));}detail.append(facts);status.textContent=row.summaryStatus==='failed'||row.summaryStatus==='pending'?'顯示先前已完成且來源仍有效的摘要。':'這是已保存的逐章摘要。';}
+        else{detail.append(el('p','這一章尚無摘要。閱讀不會自動啟動生成。'));status.textContent='尚無摘要。';}
+        if(row.source?.startCommitId)detail.append(button('回到這一章',()=>{const current=context();if(current.runId!==c.runId||key()!==stamp)return;const target={runId:c.runId,commitId:row.source.startCommitId};closeDialog('navigate');onNavigate(target);}));
+      }
+    }catch{error(serial,stamp,'暫時無法讀取這項內容，故事與草稿仍保留。可以重新讀取。');}
+  }
+  function open(next,b){if(disposed||!context().runId)return;if(document.querySelector('dialog[open]')&&!dialog.open)return;kind=next;openedBy=b;query='';input.value='';clear();list.hidden=false;restoreReading=preserveReading();if(!dialog.open)dialog.showModal();setMode();close.focus({preventScroll:true});void loadList();}
+  function closeDialog(reason='dismiss'){epoch++;if(dialog.open)dialog.close(reason);}
+  const onClose=()=>{epoch++;if(dialog.returnValue!=='navigate'){restoreReading?.();openedBy?.focus({preventScroll:true});}restoreReading=null;};
+  const onCancel=event=>{event.preventDefault();closeDialog();};
+  const onSearch=event=>{event.preventDefault();query=input.value;list.hidden=false;void loadList();};
+  bookButton.addEventListener('click',()=>open('worldbook',bookButton));recapButton.addEventListener('click',()=>open('recap',recapButton));close.addEventListener('click',()=>closeDialog());search.addEventListener('submit',onSearch);dialog.addEventListener('close',onClose);dialog.addEventListener('cancel',onCancel);retry.addEventListener('click',()=>selected?void loadDetail(selected):void loadList());
+  return{update(value){run=value??null;const next=key();bookButton.disabled=recapButton.disabled=!context().runId;if(next!==lastKey){lastKey=next;epoch++;clear();list.hidden=false;if(dialog.open){if(context().runId)void loadList();else{status.textContent='請先開啟一段故事。';closeDialog();}}}},reset(){epoch++;run=null;lastKey='';clear();bookButton.disabled=recapButton.disabled=true;closeDialog();},dispose(){disposed=true;epoch++;closeDialog();restoreReading?.();restoreReading=null;actions.remove();dialog.remove();}};
+}

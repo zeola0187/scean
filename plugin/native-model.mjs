@@ -50,13 +50,16 @@ export function createNativeModelPort({llm,agentDefaultModel,budget,usageLedger=
     },
     async generate({stage,system,input,tools,signal,context={},dispatchBudget}){
       if(signal?.aborted)throw normalizeFailure(signal.reason,signal);
+      // Player inspiration is one explicit optional call. A lost/failed result
+      // never silently dispatches another paid generation.
+      const retries=stage==='ideas'?0:technicalRetries;
       const text=typeof input==='string'?input:JSON.stringify(input);
       const toolDefinitions=(tools??[]).map(t=>t.function??t).map(t=>({name:t.name,description:t.description??'',parameters:t.parameters??t.inputSchema??{type:'object'}}));
       const requestBytes=Buffer.byteLength(String(system??'')+text+JSON.stringify(toolDefinitions),'utf8')+1024;
       const attempts=[];
       const selectionScope=deadline(signal,timeoutMs);let selected;
       try{selected=await selectionScope.run(()=>dispatchBudget?dispatchBudget.resolveSelection(()=>resolveSelection(stage,context)):resolveSelection(stage,context));}catch(e){throw normalizeFailure(e,selectionScope.signal);}finally{selectionScope.close();}
-      for(let attempt=0;attempt<=technicalRetries;attempt++){
+      for(let attempt=0;attempt<=retries;attempt++){
         const scope=deadline(signal,timeoutMs),requestId=randomUUID();
         let reservationId,gateId,route,usage=null,actualCostUsd=null,result,failure,finishKind=null;
         let finalizing=false,reservationPending=false,ledgerSettlement,gateSettlement;
@@ -141,7 +144,7 @@ export function createNativeModelPort({llm,agentDefaultModel,budget,usageLedger=
         }catch{failure=error('MODEL_JOURNAL_SETTLE_FAILED','persistence');}
         if(signal?.aborted)failure=normalizeFailure(signal.reason,signal);
         if(!failure)return {...result,attempts};
-        if(attempt===technicalRetries||failure.category!=='model'||!retryable(failure.code)||dispatchBudget?.remaining===0){failure.attempts=attempts;throw failure;}
+        if(attempt===retries||failure.category!=='model'||!retryable(failure.code)||dispatchBudget?.remaining===0){failure.attempts=attempts;throw failure;}
       }
     }
   };

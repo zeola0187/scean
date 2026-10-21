@@ -38,11 +38,11 @@ export function createNotificationClient({call,getScope=async()=>({}),onTarget=(
       try{
         const notice=new g.Notification('SCEAN',{body:'本輪已保存，點擊查看。',tag:row.eventId,renotify:false,silent:true});
         shown.set(row.eventId,notice);notice.onclick=()=>{notice.close?.();shown.delete(row.eventId);g.focus?.();void click();};
-        notice.onclose=()=>shown.delete(row.eventId);let failed=false;notice.onerror=()=>{if(failed)return;failed=true;problem='desktop_unavailable';changed();showToast({message:'本輪已保存；系統通知無法顯示。',open:click});};
+        notice.onclose=()=>shown.delete(row.eventId);let failed=false;notice.onerror=()=>{if(failed)return;failed=true;problem='desktop_unavailable';changed();showToast({message:'本輪已保存；系統通知無法顯示。',open:click,success:true});};
         return;
       }catch{problem='desktop_unavailable';changed();}
     }
-    showToast({message,open:click});
+    showToast({message,open:click,success:true});
   }
   async function refresh(){
     if(disposed||busy||!settings.destinationId||!settings.enabled&&!settings.stopPending)return lastStatus;
@@ -90,7 +90,7 @@ export function createNotificationClient({call,getScope=async()=>({}),onTarget=(
     if(!enabled||runId)try{await stop(runId);if(!enabled){settings.stopPending=false;save();}}catch{problem='stop_pending';}
     changed();if(enabled||settings.stopPending)void refresh();return capabilities();
   }
-  function scopeChanged(){serial++;for(const notice of shown.values())notice.close?.();shown.clear();if(timer){g.clearTimeout(timer);timer=null;}void refresh();schedule();}
+  function scopeChanged(){serial++;showToast({clear:true});for(const notice of shown.values())notice.close?.();shown.clear();if(timer){g.clearTimeout(timer);timer=null;}void refresh();schedule();}
   const resume=()=>void refresh();for(const event of ['focus','online','pageshow'])g.addEventListener?.(event,resume);
   g.document?.addEventListener?.('visibilitychange',resume);
   function dispose(){disposed=true;serial++;if(timer)g.clearTimeout(timer);for(const notice of shown.values())notice.close?.();shown.clear();for(const event of ['focus','online','pageshow'])g.removeEventListener?.(event,resume);g.document?.removeEventListener?.('visibilitychange',resume);}
@@ -111,9 +111,23 @@ export function mountNotificationControls({request,parent=document.querySelector
   group.append(heading,status,enable,backgroundOff,toggle,mute);parent?.append(group);void perform('capabilities');return {render,element:group};
 }
 
-export function showNotificationToast({message,open,openLabel='查看',error=false},{document:doc=document}={}){
+export function showNotificationToast({message,open,openLabel='查看',error=false,success=false,requiresAction=false,clear=false,placement='composer'},{document:doc=document,now=()=>Date.now(),setTimer=setTimeout,clearTimer=clearTimeout}={}){
+  if(clear){const prior=doc.getElementById('scean-save-toast');prior?.__sceanToastCleanup?.();prior?.remove();return;}
   let region=doc.getElementById('scean-save-toast');if(!region){region=doc.createElement('aside');region.id='scean-save-toast';region.setAttribute('role','status');region.setAttribute('aria-live','polite');region.style.cssText='position:fixed;bottom:calc(var(--scean-composer-height,0px) + 20px + env(safe-area-inset-bottom,0px));right:20px;max-width:min(340px,calc(100vw - 40px));padding:14px;border:1px solid #687e77;border-radius:12px;background:#172b25;color:#fff;font:16px/1.5 system-ui;z-index:2147483000;box-shadow:0 4px 24px #0005';doc.body.append(region);}
+  region.style.top=placement==='top'?'calc(12px + env(safe-area-inset-top,0px))':'auto';region.style.bottom=placement==='top'?'auto':'calc(var(--scean-composer-height,0px) + 20px + env(safe-area-inset-bottom,0px))';
+  region.__sceanToastCleanup?.();
+  const identity={};region.__sceanToastIdentity=identity;
+  let timer=null,remaining=6000,started=0,hover=false,focus=false,disposed=false;
+  const pause=()=>{if(timer!==null){clearTimer(timer);timer=null;remaining=Math.max(0,remaining-(now()-started));}};
+  const remove=()=>{if(region.__sceanToastIdentity!==identity)return;cleanup();region.remove();};
+  const resume=()=>{if(disposed||!success||error||requiresAction||hover||focus||doc.visibilityState==='hidden'||timer!==null)return;started=now();timer=setTimer(remove,remaining);};
+  const enter=()=>{hover=true;pause();},leave=()=>{hover=false;resume();},focusIn=()=>{focus=true;pause();},focusOut=event=>{if(region.contains?.(event.relatedTarget))return;focus=false;resume();},visibility=()=>doc.visibilityState==='hidden'?pause():resume();
+  function cleanup(){if(disposed)return;disposed=true;pause();for(const [event,fn]of [['pointerenter',enter],['pointerleave',leave],['focusin',focusIn],['focusout',focusOut]])region.removeEventListener?.(event,fn);doc.removeEventListener?.('visibilitychange',visibility);}
+  region.__sceanToastCleanup=cleanup;
+  for(const [event,fn]of [['pointerenter',enter],['pointerleave',leave],['focusin',focusIn],['focusout',focusOut]])region.addEventListener(event,fn);
+  doc.addEventListener?.('visibilitychange',visibility);
   region.replaceChildren();const text=doc.createElement('span');text.textContent=message;region.append(text);
   const button=(label,handler)=>{const node=doc.createElement('button');node.type='button';node.textContent=label;node.style.cssText='margin-left:10px;padding:5px 9px;border:1px solid currentColor;border-radius:6px;background:transparent;color:inherit;font:inherit';node.addEventListener('click',handler);region.append(node);};
-  if(open&&!error)button(openLabel,()=>void open());button('關閉',()=>region.remove());
+  if(open&&!error)button(openLabel,()=>void open());button('關閉',remove);resume();
+  return {close:remove,dispose:cleanup};
 }

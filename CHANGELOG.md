@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.5.0 main player experience — 2026-10-21
+
+- Keep successful notifications briefly, preserve manual reading positions, and recover committed-body reads independently from generation.
+- Add optional five-direction ideas, public Snapshot worldbook reading and valid chapter recap navigation.
+- Preview and explicitly apply a saved working-card presentation to an eligible existing story, using separate durable presentation revisions without changing story data.
+- Make the saved per-story automatic chapter-summary preference authoritative, default it ON only for new stories, and separate optional recall services from summary generation.
+- Summarize oversized existing chapters through bounded UTF-8/context-aware batches and one final merge; retain source identities, usage, cancellation, failure and idempotent publication.
+- Preserve Single Writer, privacy, final-body hashes and atomic State/Memory transactions. No post-stat recovery, worldbook hot reload, paid acceptance calls or production RP data changes. See [player guide](docs/PLAYER-EXPERIENCE-20261021.zh-TW.md).
+
 ## 1.5.0 main fixes — 2026-10-20
 
 - Recover the first Stage-to-Studio diagnosis handoff and same-Session reopening when no complete editor view was cached. Keep drafts and source identities separate from display recovery.

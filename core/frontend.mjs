@@ -63,12 +63,12 @@ export function validateFrontend(input,blueprint,characters=[],derivedFacts) {
 }
 export function frontendPackage(input,blueprint,characters,derivedFacts){const v=validateFrontend(input,blueprint,characters,derivedFacts);if(!v)return null;const {tree,safeCss,...saved}=v;return saved;}
 /** Host chooses the Run; card HTML receives no callable RPC or credentials. */
-export function frontendProjection(run){
-  const frontend=validateFrontend(run.snapshot.frontend,run.snapshot.stateBlueprint,run.snapshot.characters,run.snapshot.derivedFacts);if(!frontend)return null;
+export function frontendProjection(run,{frontend:input=run.snapshot.frontend,presentationRevision=0}={}){
+  const frontend=validateFrontend(input,run.snapshot.stateBlueprint,run.snapshot.characters,run.snapshot.derivedFacts);if(!frontend)return null;
   validateBlueprintState(run.snapshot.stateBlueprint,run.state,run.snapshot.characters);
   const values=publicBindingValues(frontend.bindings,run.snapshot.stateBlueprint,run.state),derived=frontend.derivedBindings?.length?projectDerivedFacts(run):null;
   for(const b of frontend.derivedBindings??[]){const f=derived.facts.find(f=>f.id===b.factId);values[b.alias]={status:f.status,type:'boolean',...(f.status==='known'?{value:f.value}:{}),provenance:{factId:f.id,ruleHash:f.ruleHash,config:derived.config,runId:derived.runId,snapshotHash:derived.snapshotHash,canonical:derived.canonical}};}
-  return {projectionApiVersion:1,runId:run.runId,cardId:run.snapshot.cardId,snapshotHash:run.snapshot.hash,frontendHash:frontend.hash,canonical:{version:run.version,head:run.head??run.turns?.at(-1)?.commitId??null},freshness:'current',values};
+  return {projectionApiVersion:1,runId:run.runId,cardId:run.snapshot.cardId,snapshotHash:run.snapshot.hash,frontendHash:frontend.hash,presentationRevision,canonical:{version:run.version,head:run.head??run.turns?.at(-1)?.commitId??null},freshness:'current',values};
 }
 export function frontendPreview(input,blueprint,initialState,characters=[],derivedFacts){
   const frontend=validateFrontend(input,blueprint,characters,derivedFacts),{state}=materializeInitialState(blueprint,initialState,characters);

@@ -1,3 +1,4 @@
+import {HistorySync} from '../isolated/web/history-sync.mjs';
 import {mountWritingMode} from '../isolated/web/writing-mode-ui.mjs';
 import {mountProseStyle} from '../isolated/web/prose-style-ui.mjs';
 import {mountPlayerIdentity} from '../isolated/web/player-identity-ui.mjs';
@@ -25,12 +26,13 @@ function fixture({secure=true,crypto=webcrypto,navigationType='navigate',priorVi
     if(!elements.has(id))elements.set(id,{id,value:'',checked:false,hidden:false,disabled:false,textContent:'',dataset:{},style:{},open:false,files:[],children:[],classList:{add(){},toggle(){}},setAttribute(){},removeAttribute(){},before(){},after(){},remove(){},querySelectorAll(){return [];},replaceChildren(){},append(){},close(){},focus(){},addEventListener(event,fn){listeners.set(`${id}:${event}`,fn);}});
     return elements.get(id);
   };
-  const context={...model,captureReadingAnchor,restoreReadingAnchor,crypto,isSecureContext:secure,performance:{getEntriesByType:()=>[{type:navigationType}]},AbortController,DOMException,console,setTimeout,clearTimeout,setInterval(){},URL,Blob,
+  const context={...model,HistorySync,captureReadingAnchor,restoreReadingAnchor,crypto,isSecureContext:secure,performance:{getEntriesByType:()=>[{type:navigationType}]},AbortController,DOMException,console,setTimeout,clearTimeout,setInterval(){},URL,Blob,
     document:{getElementById:element,createElement:tag=>element('generated-'+elements.size+'-'+tag),querySelector(){return element('queried-label');},querySelectorAll(){return [];},visibilityState:'visible',addEventListener(event,fn){listeners.set(event,fn);}},
     window:{addEventListener(event,fn){windowListeners.set(event,fn);}},
     sessionStorage:{getItem:key=>storage.get(key)??null,setItem:(key,value)=>storage.set(key,value)},
     createNotificationClient:()=>({watch:async()=>{},refresh(){},dispose(){},target:eventId=>targetResolver(eventId)}),mountNotificationControls:()=>({render(){}}),showNotificationToast(){},
-    mountPlayerShell:()=>({show(){},committed(){},atEnd:()=>false,reading:{scrollTop:0,scrollHeight:100,getBoundingClientRect:()=>({top:0,bottom:100})},scrollEnd(){}}),mountStudio(){}};
+    mountPlayerIdeas:()=>({update(){},reset(){},dispose(){}}),mountPlayerReaders:()=>({update(){},reset(){},dispose(){}}),mountPresentationPanel:()=>({update(){},reset(){},dispose(){}}),
+    mountPlayerShell:()=>({show(){},committed(){},atEnd:()=>false,reading:{scrollTop:0,scrollHeight:100,addEventListener(){},getBoundingClientRect:()=>({top:0,bottom:100})},scrollEnd(){}}),mountStudio(){}};
   context.mountCardFrontend=()=>mountCardFrontend({document:context.document,setTimer:()=>0,clearTimer(){}});
   context.mountChapterSettings=options=>mountChapterSettings({...options,document:context.document});
   context.mountWritingMode=options=>mountWritingMode({...options,document:context.document,makeId:()=>webcrypto.randomUUID()});
@@ -39,7 +41,7 @@ function fixture({secure=true,crypto=webcrypto,navigationType='navigate',priorVi
   context.mountOpeningSelection=options=>mountOpeningSelection({...options,document:context.document});
   vm.createContext(context);
   const executable=source.replace(/^import .*;\r?\n/gm,'').replace(/^init\(\);\s*$/m,'');
-  vm.runInContext(executable+`\nconst actualReads={loadHistory,refreshNarrative,refreshChapters,loadInspector};const derivedResults={};const historyCalls=[];loadHistory=async options=>{historyCalls.push(options);};refreshNarrative=async()=>{};renderNarrative=value=>{derivedResults.narrative=value;};renderChapterIndex=value=>{derivedResults.chapters=value;};renderChat=()=>{};refreshModels=async()=>{};refreshRuns=async()=>{};renderRun=run=>{state.run=run;};globalThis.client={state,view,operations,outstandingOperations,viewerId,selectRun,reconcile,openNotificationTarget,actualReads,derivedResults,historyCalls,getHistory:()=>loadedTurns,sendHostOperation,submitTurn,poll,observeOperation,operationText,init,setApi(fn){api=fn;},ready(){initialized=true;},select(runId){view.select(runId);state.run={runId,version:1,head:null,turnCount:0,snapshot:{}};}};`,context);
+  vm.runInContext(executable+`\nconst realLoadHistory=loadHistory;const actualReads={loadHistory:(...args)=>{historySync.want(state.run);return realLoadHistory(...args);},refreshNarrative,refreshChapters,loadInspector};const derivedResults={};const historyCalls=[];loadHistory=async options=>{historyCalls.push(options);historySync.want(state.run);historySync.loaded({runId:state.run.runId,version:state.run.version,head:storyHead(),turns:storyHead()?[{commitId:storyHead()}]:[]});};refreshNarrative=async()=>{};renderNarrative=value=>{derivedResults.narrative=value;};renderChapterIndex=value=>{derivedResults.chapters=value;};renderChat=()=>{};refreshModels=async()=>{};refreshRuns=async()=>{};renderRun=run=>{state.run=run;historySync.want(run);};globalThis.client={state,view,operations,outstandingOperations,viewerId,selectRun,reconcile,openNotificationTarget,actualReads,derivedResults,historyCalls,getHistory:()=>loadedTurns,sendHostOperation,submitTurn,poll,observeOperation,operationText,init,setApi(fn){api=fn;},ready(){initialized=true;},select(runId){view.select(runId);state.run={runId,version:1,head:null,turnCount:0,snapshot:{}};}};`,context);
   return {...context,client:context.client,element,storage,listeners,windowListeners,setTarget(fn){targetResolver=fn;}};
 }
 const failure=()=>Object.assign(new Error('Synthetic disconnected transport'),{code:'CONNECTION_UNKNOWN'});

@@ -136,10 +136,10 @@ export function publicRunView(run,{requestId}={}){
 
 // Trusted player receives an exact, minimal, commit-only projection. Card iframe
 // receives rendered values only and has neither this packet nor an RPC endpoint.
-export function publicFrontend(run){
-  if(!run.snapshot?.frontend)return null;
-  try{const f=validateFrontend(run.snapshot.frontend,run.snapshot.stateBlueprint,run.snapshot.characters,run.snapshot.derivedFacts);
-    return {status:'ready',frontend:{id:f.id,hash:f.hash,tree:f.tree,safeCss:f.safeCss,conditions:f.conditions},projection:frontendProjection(run)};
+export function publicFrontend(run,{frontend=run.snapshot?.frontend,presentationRevision=0}={}){
+  if(!frontend)return null;
+  try{const f=validateFrontend(frontend,run.snapshot.stateBlueprint,run.snapshot.characters,run.snapshot.derivedFacts);
+    return {status:'ready',presentationRevision,frontend:{id:f.id,hash:f.hash,tree:f.tree,safeCss:f.safeCss,conditions:f.conditions},projection:frontendProjection(run,{frontend,presentationRevision})};
   }catch(e){return {status:'unavailable',code:/^FRONTEND_[A-Z_]+$/.test(e.code??'')?e.code:'FRONTEND_UNAVAILABLE'};}
 }
 

@@ -23,6 +23,9 @@ import {HostJobs,JOB_OWNER} from './job-host.mjs';
 import {HostNotifications} from './notification-host.mjs';
 import {FRONTEND_PROFILE} from '../core/frontend.mjs';
 import {CHAPTER_SETTINGS_ACTIONS} from './chapter-settings.mjs';
+import {generatePlayerIdeas} from '../core/player-ideas.mjs';
+import {playerWorldbook,playerRecap} from '../core/player-readers.mjs';
+import {PresentationHost} from './presentation-host.mjs';
 
 function fail(code,message){throw Object.assign(new Error(message),{code});}
 function equal(a,b){if(typeof a!=='string'||typeof b!=='string')return false;const left=Buffer.from(a),right=Buffer.from(b);return left.length===right.length&&timingSafeEqual(left,right);}
@@ -50,6 +53,7 @@ export class SceanHost {
     this.chapterRetrievalEnabled=chapterRetrievalEnabled===true;this.chapterContextArmed=new Set();
     this.chapterProviderSettings=chapterProviderSettings;this.chapterRuntimeFactory=chapterRuntimeFactory;this.onChapterConfigurationChanged=onChapterConfigurationChanged;this.globalSettingsUpdating=false;this.globalSettingsRevision=null;
     this.engine=engine;this.root=root;this.now=now;this.bindingTtlMs=bindingTtlMs;this.openings=new OpeningSelections(this);
+    this.presentations=engine.store?.root?new PresentationHost({store:engine.store,now}):null;this.presentationSaves=new Set();this.ideaJobs=new Map();
     if(!Number.isSafeInteger(maxConcurrentOperations)||maxConcurrentOperations<1||maxConcurrentOperations>16)fail('HOST_CONCURRENCY','Use a Host concurrency limit between 1 and 16.');
     this.maxConcurrentOperations=maxConcurrentOperations;this.auxRunning=new Map();this.jobs=new HostJobs(this,jobLedgerOptions);this.notifications=new HostNotifications(this,notificationOptions);
     this.agentDiagnostics=new AgentDiagnostics(this);this.diagnosticGrants=new Map();this.running=new Map();this.activeOperations=new Map();this.usedOperations=new Set();this.progressByRun=new Map();this.draftQueues=new Map();this.metadata={schemaVersion:1,runs:[],bindings:[],drafts:{}};this.writeQueue=Promise.resolve();
@@ -100,7 +104,7 @@ export class SceanHost {
       let dir;try{dir=await open(this.root,'r');await dir.sync();}catch(error){if(!['EPERM','EISDIR','EINVAL','EACCES','ENOTSUP','EBADF'].includes(error.code))throw error;}finally{await dir?.close();}
     });this.writeQueue=op;await op;
   }
-  capabilities(){return {schemaVersion:1,plugin:'@local/dsh-scean',version:VERSION,hotReload:false,cardFrontend:{apiMajor:1,profiles:[FRONTEND_PROFILE],cardScripts:false,worldActions:false,derivedDisplays:false},independentRunLifecycle:true,hostOwnedOperations:true,operationJournalVersion:1,notificationVersion:1,maxConcurrentOperations:this.maxConcurrentOperations,pageDrafts:true,playerIdentity:{schemaVersion:1,saveBundleVersion:6,macro:'{{user}}',frontendMacros:false},writingModes:{default:'single_writer',choices:['single_writer'],legacyCompatibility:['current','materials'],loading:'host_whitelist_stage_delivery',version:1,modelStagesAdded:0,newStageNames:['writer','writer_repair'],ordinaryNoToolsCalls:{legacy:4,single_writer:3},workflows:{current:['director','draft','prose','post_stat'],materials:['director','draft','prose','post_stat'],single_writer:['director','writer','validation','post_stat']},supplementalLookup:false},inspectionReadOnly:true,traceCoverage:'public_projection_with_authorized_private_diagnostics',availability:['not_recorded','not_called','accepted','running','pending','failed','cancelled','committed','completed','interrupted','unknown']};}
+  capabilities(){return {schemaVersion:1,plugin:'@local/dsh-scean',version:VERSION,hotReload:false,cardFrontend:{apiMajor:1,profiles:[FRONTEND_PROFILE],cardScripts:false,worldActions:false,derivedDisplays:false,presentationOverrides:true,presentationPersistence:'same_host'},independentRunLifecycle:true,hostOwnedOperations:true,operationJournalVersion:1,notificationVersion:1,maxConcurrentOperations:this.maxConcurrentOperations,pageDrafts:true,playerIdentity:{schemaVersion:1,saveBundleVersion:6,macro:'{{user}}',frontendMacros:false},writingModes:{default:'single_writer',choices:['single_writer'],legacyCompatibility:['current','materials'],loading:'host_whitelist_stage_delivery',version:1,modelStagesAdded:0,newStageNames:['writer','writer_repair'],ordinaryNoToolsCalls:{legacy:4,single_writer:3},workflows:{current:['director','draft','prose','post_stat'],materials:['director','draft','prose','post_stat'],single_writer:['director','writer','validation','post_stat']},supplementalLookup:false},inspectionReadOnly:true,traceCoverage:'public_projection_with_authorized_private_diagnostics',availability:['not_recorded','not_called','accepted','running','pending','failed','cancelled','committed','completed','interrupted','unknown']};}
   mutationBusy(runId,job){return this.running.has(runId)||this.summaryRunning.has(runId)||this.chapterRunning.has(runId)||this.auxRunning.has(runId)||this.jobs.active.has(runId)&&this.jobs.active.get(runId)!==job;}
   assertMutationAvailable(runId,job){
     if(this.closing)fail('HOST_CLOSING','Host is closing.');
@@ -118,7 +122,7 @@ export class SceanHost {
     this.chapterModelsEnabled=flags.chapterModelsEnabled;this.chapterRetrievalEnabled=flags.chapterRetrievalEnabled;
     if(this.chapterRuntimeFactory)this.engine.chapterRecall=this.chapterRuntimeFactory(status);
     this.globalSettingsRevision=status.revision;
-    if(disarm){this.chapterAutoArmed.clear();this.chapterContextArmed.clear();this.writerSummaryArmed.clear();this.automaticSummaryFailures.clear();}
+    if(disarm){this.chapterAutoArmed.clear();this.chapterContextArmed.clear();this.writerSummaryArmed.clear();}
   }
   async chapterProviderAction(request,signal,authority){
     if(!authority.principal||authority.allowGlobalSettings!==true)fail('CHAPTER_SETTINGS_DENIED','只有已驗證的舞臺操作者可讀寫全域設定。');
@@ -162,7 +166,7 @@ export class SceanHost {
   }
   async createRun({snapshot,initialState,runId,openingId,modelSelection,stageModelSelections,playerName}={}){
     if(!snapshot||snapshot.schemaVersion!==1)fail('SNAPSHOT','A saved schemaVersion 1 snapshot is required.');
-    const run=await this.engine.createRun({snapshot:plain(snapshot),initialState:initialState??{world:{},characters:{}},...(runId?{runId}:{}),...(openingId!==undefined?{openingId}:{}),...(modelSelection!==undefined?{modelSelection}:{}),...(stageModelSelections!==undefined?{stageModelSelections}:{}),...(playerName!==undefined?{playerName}:{})});
+    const run=await this.engine.createRun({snapshot:plain(snapshot),chapterAutoEnabled:true,initialState:initialState??{world:{},characters:{}},...(runId?{runId}:{}),...(openingId!==undefined?{openingId}:{}),...(modelSelection!==undefined?{modelSelection}:{}),...(stageModelSelections!==undefined?{stageModelSelections}:{}),...(playerName!==undefined?{playerName}:{})});
     const id=run.runId??run.id;
     if(!id)fail('CORE_CONTRACT','Core did not return a run identity.');
     if(!this.metadata.runs.some(r=>r.runId===id))this.metadata.runs.push({runId:id,cardId:snapshot.cardId,revision:snapshot.revision,createdAt:new Date(this.now()).toISOString()});
@@ -297,7 +301,16 @@ export class SceanHost {
   async runView(request){
     this.requireRun(request.runId);if(request.requestId!==undefined)safeId(request.requestId);
     const run=await this.engine.store.read(request.runId),progress=this.progressByRun.get(request.runId);
-    return {...publicRunView(run,request),lastFailure:progress?.lastFailure??null,host:{pending:this.mutationBusy(request.runId),capabilities:this.capabilities()}};
+    const view=this.presentations?await this.presentations.decorate(run,publicRunView(run,request)):publicRunView(run,request);
+    return {...view,lastFailure:progress?.lastFailure??null,host:{pending:this.mutationBusy(request.runId),capabilities:this.capabilities()}};
+  }
+  async playerIdeas(request,signal){
+    this.requireRun(request.runId);if(this.closing)fail('HOST_CLOSING');
+    if(this.ideaJobs.has(request.runId)||this.ideaJobs.size>=this.maxConcurrentOperations)fail('IDEAS_BUSY','正在取得想法，請等候這次結果。');
+    const controller=new AbortController(),owner={controller,promise:null};this.ideaJobs.set(request.runId,owner);
+    const joined=signal?AbortSignal.any([signal,controller.signal]):controller.signal;
+    try{owner.promise=generatePlayerIdeas(this.engine,{...request,signal:joined});return await owner.promise;}
+    finally{if(this.ideaJobs.get(request.runId)===owner)this.ideaJobs.delete(request.runId);}
   }
   async historyReadAction(action,request){
     this.requireRun(request.runId);const run=await this.engine.store.read(request.runId);
@@ -322,10 +335,11 @@ export class SceanHost {
   async chapterStatus(request){
     this.requireRun(request.runId);const run=await this.engine.store.read(request.runId);
     const attempts=await this.engine.store.readAttempts(run.runId),lastRecall=attempts.at(-1)?.assemblyDiagnostics?.chapterRecall??null;
-    return {...chapterSummaryView(run,request.chapterId),enabled:this.chapterModelsEnabled,autoArmed:this.chapterAutoArmed.has(request.runId),writerSummaryEnabled:this.summaryEnabled,writerSummaryArmed:this.writerSummaryArmed.has(request.runId),chapterRetrievalEnabled:this.chapterRetrievalEnabled,chapterContextArmed:this.chapterContextArmed.has(request.runId),chapterPorts:this.engine.chapterRecall?.capabilities()??{embedding:false,rerank:false},lastRecall,automaticFailure:this.automaticSummaryFailures.get(request.runId)??null};
+    const latestJob=this.jobs.ledger.records.findLast(row=>row.runId===run.runId&&['chapterAuto','chapterSummarize'].includes(row.kind)),jobView=latestJob?await this.jobs.view(latestJob,run):null;
+    const chapterFailure=jobView&&!jobView.pending&&!['completed','committed'].includes(jobView.status)&&jobView.failure?{operationId:jobView.operationId,chapterId:latestJob.input?.chapterId??null,status:jobView.status,code:jobView.failure.code}:null;
+    return {...chapterSummaryView(run,request.chapterId),chapterFailure,chapterWork:this.chapterRunning.get(run.runId)?.batching??null,enabled:this.chapterModelsEnabled,autoArmed:run.narrative?.chapterSettings?.autoEnabled===true&&!this.automaticSummaryFailures.has(request.runId),writerSummaryEnabled:this.summaryEnabled,writerSummaryArmed:this.writerSummaryArmed.has(request.runId),chapterRetrievalEnabled:this.chapterRetrievalEnabled,chapterContextArmed:this.chapterContextArmed.has(request.runId),chapterPorts:this.engine.chapterRecall?.capabilities()??{embedding:false,rerank:false},lastRecall,automaticFailure:this.automaticSummaryFailures.get(request.runId)??null};
   }
   async chapterSettings(request,signal){
-    let schedule=false;
     const result=await this.auxiliaryMutation(request,async()=>{
       if(request.writerSummaryEnabled!==undefined&&typeof request.writerSummaryEnabled!=='boolean')fail('INVALID_CHAPTER_SETTINGS','Writer summary consent must be a boolean.');
       if(request.chapterContextEnabled!==undefined&&typeof request.chapterContextEnabled!=='boolean')fail('INVALID_CHAPTER_SETTINGS','Chapter context consent must be a boolean.');
@@ -334,7 +348,6 @@ export class SceanHost {
         if(!this.chapterRetrievalEnabled||request.settings?.autoEnabled!==true)fail('CHAPTER_RECALL_UNAVAILABLE','Chapter retrieval must be enabled by the Host and explicitly armed.');
         const ports=this.engine.chapterRecall?.capabilities();if(!ports?.embedding)fail('CHAPTER_EMBEDDING_UNAVAILABLE','Configure the chapter embedding port.');if(!ports.rerank)fail('CHAPTER_RERANK_UNAVAILABLE','Configure the chapter rerank port.');
       }
-      if(request.settings?.autoEnabled===true&&!this.chapterModelsEnabled)fail('CHAPTER_DISABLED','Chapter model work is not enabled on this Host.');
       if(request.writerSummaryEnabled===true&&(!this.summaryEnabled||request.settings?.autoEnabled!==true))fail('SUMMARY_DISABLED','Automatic Writer compression requires both Host capabilities and explicit automatic chapter opt-in.');
       const replay=(await this.engine.store.read(request.runId)).narrative?.operations?.[request.operationId];
       const result=await updateChapterSettings(this.engine,{...request,signal});
@@ -342,13 +355,14 @@ export class SceanHost {
       if(replay&&(request.writerSummaryEnabled===true||request.chapterContextEnabled===true))return result;
       if(request.settings?.autoEnabled===true)this.chapterAutoArmed.add(request.runId);
       if(request.settings?.autoEnabled===false)this.chapterAutoArmed.delete(request.runId);
-      this.writerSummaryArmed.delete(request.runId);this.automaticSummaryFailures.delete(request.runId);
-      this.chapterContextArmed.delete(request.runId);
-      if(request.writerSummaryEnabled===true){this.writerSummaryArmed.add(request.runId);schedule=true;}
-      if(request.chapterContextEnabled===true){this.chapterContextArmed.add(request.runId);schedule=true;}
+      this.automaticSummaryFailures.delete(request.runId);
+      if(request.settings.autoEnabled===false){this.writerSummaryArmed.delete(request.runId);this.chapterContextArmed.delete(request.runId);}
+      if(request.writerSummaryEnabled===false||request.chapterContextEnabled===true)this.writerSummaryArmed.delete(request.runId);
+      if(request.chapterContextEnabled===false||request.writerSummaryEnabled===true)this.chapterContextArmed.delete(request.runId);
+      if(request.writerSummaryEnabled===true)this.writerSummaryArmed.add(request.runId);
+      if(request.chapterContextEnabled===true)this.chapterContextArmed.add(request.runId);
       await this.refreshRuns();return result;
     });
-    if(schedule){const run=await this.engine.store.read(request.runId);this.scheduleChapterAfterTurn(request.runId,headOf(run));}
     return result;
   }
   async chapterStart(action,request,signal){
@@ -368,7 +382,7 @@ export class SceanHost {
     const work=(async()=>{
       try{
         const workSignal=signal?AbortSignal.any([signal,controller.signal]):controller.signal;
-        const result=await method(this.engine,{...request,signal:workSignal},{enabled:this.chapterModelsEnabled});
+        const result=await method(this.engine,{...request,signal:workSignal,onProgress:event=>{owner.batching=plain(event.batching);request.onProgress?.(event);}},{enabled:this.chapterModelsEnabled});
         if(action==='chapterAuto'&&this.writerSummaryArmed.has(request.runId)&&!this.chapterContextArmed.has(request.runId)){
           if(result.status!=='completed')fail(result.code??'AUTOMATIC_CHAPTER_INCOMPLETE','Automatic chapter work requires explicit recovery.');
           if(result.created)await this.completeAutomaticSummary(request.runId,workSignal);
@@ -410,16 +424,16 @@ export class SceanHost {
     }finally{if(this.summaryRunning.get(runId)===owner)this.summaryRunning.delete(runId);}
   }
   scheduleChapterAfterTurn(runId,commitId){
-    if(!this.chapterModelsEnabled||!this.chapterAutoArmed.has(runId)||this.closing)return;
+    if(!this.chapterModelsEnabled||this.automaticSummaryFailures.has(runId)||this.closing)return;
     // Work starts after the RP controller has released ownership. Its result is
     // independent from the already committed RP response and uses a stable ID.
     const work=new Promise(resolve=>setImmediate(resolve)).then(async()=>{
       // Admission remains reserved through durable job finalization. Let the
       // owning turn finish that bookkeeping before checking background capacity.
       const finishing=this.jobs.active.get(runId);if(['turn','chapterSettings','regenerate'].includes(finishing?.row.kind))await finishing.promise;
-      if(this.closing||!this.chapterAutoArmed.has(runId)||this.mutationBusy(runId))return;
+      if(this.closing||this.automaticSummaryFailures.has(runId)||this.mutationBusy(runId))return;
       const run=await this.engine.store.read(runId);
-      if(headOf(run)!==commitId)return;
+      if(run.narrative?.chapterSettings?.autoEnabled!==true||headOf(run)!==commitId)return;
       // Repair a known closed range first; never analyze it again. One bounded
       // delta per cycle keeps catch-up work and paid calls predictable.
       const catchup=this.writerSummaryArmed.has(runId)?this.automaticSummaryRequest(run):null;
@@ -541,6 +555,36 @@ export class SceanHost {
         }
       }
       switch(request.action){
+        case 'playerIdeas':
+          if(!authority.principal||authority.allowGlobalSettings!==true)fail('PLAYER_ACTION_DENIED','請由已授權的舞臺操作取得想法。');
+          value=await this.playerIdeas(request,signal);break;
+        case 'playerWorldbook':case 'playerRecap':{
+          this.requireRun(request.runId);const run=await this.engine.store.read(request.runId);
+          value=(request.action==='playerWorldbook'?playerWorldbook:playerRecap)(run,request);break;
+        }
+        case 'presentation':case 'presentationSource':case 'presentationPreview':case 'presentationApply':case 'presentationRestore':{
+          if(!authority.principal||authority.allowGlobalSettings!==true)fail('PRESENTATION_DENIED','面板設定只供已驗證的舞臺操作者使用。');
+          this.requireRun(request.runId);if(!this.presentations||this.closing)fail('PRESENTATION_UNAVAILABLE');
+          if(request.action==='presentationSource'){
+            if(!authority.resolvePresentationSource)fail('PRESENTATION_SOURCE_UNAVAILABLE');
+            const run=await this.engine.store.read(request.runId),source=await authority.resolvePresentationSource(request.sessionId,scope,signal,request.runId);
+            if(!source?.frontend||source.source?.documentId!==run.snapshot.cardId)fail('PRESENTATION_SOURCE_UNAVAILABLE');
+            value={...source,runId:run.runId,snapshotHash:run.snapshot.hash,canonical:{version:run.version,head:run.head??null}};break;
+          }
+          if(request.action==='presentation'){value=await this.presentations.view(request);break;}
+          if(request.action==='presentationPreview'){
+            let source=request.source;
+            if(source){
+              if(!authority.resolvePresentationSource)fail('PRESENTATION_SOURCE_UNAVAILABLE');
+              const actual=await authority.resolvePresentationSource(request.sessionId,scope,signal,request.runId);
+              if(actual.source.documentId!==source.documentId||actual.source.revision!==source.revision||hash(actual.frontend)!==hash(request.frontend))fail('PRESENTATION_SOURCE_CHANGED','工作卡已更新，請重新讀取面板。');
+              source=actual.source;
+            }
+            value=await this.presentations.preview({...request,source,signal});break;
+          }
+          const work=this.presentations[request.action==='presentationApply'?'apply':'restore']({...request,signal});
+          this.presentationSaves.add(work);try{value=await work;}finally{this.presentationSaves.delete(work);}break;
+        }
         case 'capabilities':value=this.capabilities();break;
         case 'list':value=authority.requireCardScope?await this.scopedRuns(scope):await this.refreshRuns();break;
         case 'openingPrepare':case 'openingOffer':case 'openingStart':case 'openingCancel':
@@ -595,5 +639,5 @@ export class SceanHost {
       return {ok:true,value};
     }catch(e){const failure=signal?.aborted?safeFailure({code:'CANCELLED'},'request'):e.sceanFailure??safeFailure(e,'request','SCEAN_ERROR');return {ok:false,error:failure,lastFailure:failure};}
   }
-  async close(){this.closing=true;await Promise.allSettled([...(this.proseStyleSaves??[]),...(this.writingModeSaves??[])]);this.chapterProviderSettings?.close();this.chapterAutoArmed.clear();this.writerSummaryArmed.clear();this.chapterContextArmed.clear();const chapterTasks=[...this.chapterRunning.values()].map(o=>o.promise);for(const {controller} of this.chapterRunning.values())controller.abort(Object.assign(new Error('Host closed.'),{code:'CANCELLED'}));for(const {controller} of this.summaryRunning.values())controller.abort();this.agentDiagnostics.rows.clear();this.diagnosticGrants.clear();for(const c of this.running.values())c.abort(Object.assign(new Error('SCEAN plugin unloaded.'),{code:'CANCELLED'}));await this.jobs.close();await Promise.allSettled([...chapterTasks,...(this.chapterBackground??[])]);}
+  async close(){this.closing=true;for(const row of this.ideaJobs.values())row.controller.abort();await Promise.allSettled([...this.ideaJobs.values()].map(row=>row.promise));this.presentations?.close();await Promise.allSettled([...this.presentationSaves,...(this.proseStyleSaves??[]),...(this.writingModeSaves??[])]);this.chapterProviderSettings?.close();this.chapterAutoArmed.clear();this.writerSummaryArmed.clear();this.chapterContextArmed.clear();const chapterTasks=[...this.chapterRunning.values()].map(o=>o.promise);for(const {controller} of this.chapterRunning.values())controller.abort(Object.assign(new Error('Host closed.'),{code:'CANCELLED'}));for(const {controller} of this.summaryRunning.values())controller.abort();this.agentDiagnostics.rows.clear();this.diagnosticGrants.clear();for(const c of this.running.values())c.abort(Object.assign(new Error('SCEAN plugin unloaded.'),{code:'CANCELLED'}));await this.jobs.close();await Promise.allSettled([...chapterTasks,...(this.chapterBackground??[])]);}
 }

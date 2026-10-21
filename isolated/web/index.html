@@ -22,14 +22,14 @@
     <p id="player-default-status" class="hint" role="status"></p>
     <p class="hint">每局可另填姓名；舊局不隨預設變更。只支援故事文字中的 {{user}}，未知宏與 W01 自訂前端宏保持原樣。</p>
   </section>
-  <details id="global-chapter-settings" class="global-chapter-settings" open>
-    <summary>舞臺全域設定：章節、模型與金鑰</summary>
-    <p class="hint">本舞臺所有故事共用，重啟後仍保留。保存設定不會發出模型請求；每個故事的自動工作仍須明確啟用。</p>
+  <details id="global-chapter-settings" class="global-chapter-settings">
+    <summary>進階：摘要服務、章節記憶與金鑰</summary>
+    <p class="hint">自動摘要請使用故事內的「本局自動摘要」開關；新故事預設開啟，舊故事明確關閉的設定保持不變。這裡只管理共用服務，不是另一個故事開關。保存或開啟設定不會發出模型請求。</p>
     <form id="global-chapter-form" autocomplete="off" novalidate>
-      <fieldset><legend>共用功能開關</legend>
-        <label class="consent"><input id="global-chapter-models" type="checkbox"><span>啟用章節分析與摘要：達門檻後可分析自然章界並生成摘要，執行時可能產生模型費用。</span></label>
-        <label class="consent"><input id="global-chapter-retrieval" type="checkbox"><span>啟用章節記憶召回：使用最近三章與最多八章相關舊章；需要章節分析與摘要及向量搜尋。</span></label>
-        <label class="consent"><input id="global-chapter-embedding" type="checkbox"><span>啟用向量搜尋：將章節與查詢送至選定服務；舊章存在時可能產生向量與排序費用。</span></label>
+      <fieldset><legend>進階服務權限（一般不需調整）</legend>
+        <label class="consent"><input id="global-chapter-models" type="checkbox"><span>允許摘要模型服務。關閉會暫停所有故事的自動摘要；仍保留各故事的開關與已保存摘要。</span></label>
+        <label class="consent"><input id="global-chapter-retrieval" type="checkbox"><span>額外使用章節記憶召回（3＋8）：這是獨立進階功能，不是產生摘要的必要條件，可能產生向量與排序費用。</span></label>
+        <label class="consent"><input id="global-chapter-embedding" type="checkbox"><span>允許進階向量搜尋服務；自動摘要本身不需要它。不會因新故事預設開啟摘要而自動啟用。</span></label>
       </fieldset>
       <div class="global-provider-grid">
         <fieldset><legend>章節向量服務</legend>
@@ -113,29 +113,36 @@
         <p id="player-bind-status" role="status"></p>
       </section>
       <details id="longform-panel" class="longform-panel">
-        <summary>長篇摘要、章節與原文查回</summary>
-        <p class="hint">摘要是有來源的敘事壓縮，可能不準確；原文與已提交的世界狀態仍為準。滾動摘要僅手動更新；逐章自動分章預設停用，需在下方設定明確啟用。</p>
+        <summary>章節與故事回顧</summary>
+        <p class="hint">新故事預設開啟自動摘要；舊故事明確關閉的設定保持不變。只在之後新回合達到整理時機才執行，開啟本頁不會補建舊摘要。原文與已保存狀態仍為準。</p>
+        <details id="legacy-summary-tools"><summary>進階：舊式滾動摘要（手動）</summary>
         <div class="longform-actions"><label for="recent-window">摘要暫不壓縮的近期回合數</label><input id="recent-window" type="number" min="1" max="50" value="6"><button id="summary-start" type="button" class="quiet" disabled>更新滾動摘要</button><button id="summary-refresh" type="button" class="quiet" disabled>查詢摘要狀態</button></div>
         <button id="summary-cancel" type="button" class="quiet" hidden>取消本次摘要</button>
         <p id="summary-status" class="hint" role="status">尚未開局。</p><p id="summary-error" class="error" role="alert" hidden></p>
         <div id="summary-content"></div>
+        </details>
         <label for="chapter-title">本章標題</label><input id="chapter-title" maxlength="120" placeholder="例如：抵達研究站">
         <button id="chapter-close" type="button" class="quiet" disabled>結束並歸檔本章</button>
         <nav id="chapters" aria-label="章節原文導覽"></nav>
         <section id="chapter-summary-panel" aria-label="逐章摘要與自動分章設定">
           <h3>逐章摘要</h3>
           <p class="hint">每章摘要獨立保存；缺少摘要的舊章可補建。標題、關鍵詞與情緒基調是敘事參考，不是世界狀態或角色知識。</p>
-          <details id="chapter-settings-panel"><summary>分章設定與啟用狀態</summary>
+          <details id="chapter-settings-panel" open><summary>本局自動摘要</summary>
             <form id="chapter-settings-form">
-              <label class="consent"><input id="chapter-auto-enabled" type="checkbox"> <span>本次啟動自動分章及 3＋8 章節上下文：固定最近3章，舊章經 BM25、向量與 rerank 選最多8章，完整保留未摘要正文。每輪可能產生向量／rerank 費用；重啟後需重新啟用</span></label>
+              <label class="consent"><input id="chapter-auto-enabled" type="checkbox"> <span>自動整理故事摘要</span></label>
+              <p class="hint">這是本局唯一的自動摘要開關，保存後重啟仍有效。達到整理時機會使用摘要模型；不會順便開啟向量、角色記憶或進階章節召回。</p>
+              <details id="chapter-summary-tuning"><summary>進階：整理時機與摘要長度</summary>
               <label for="chapter-token-threshold">未歸檔原文門檻（估算 tokens）</label><input id="chapter-token-threshold" type="number" min="4000" max="32000" step="1000" value="16000" required>
               <label for="chapter-buffer-turns">保護近期完整回合數</label><input id="chapter-buffer-turns" type="number" min="0" max="50" step="1" value="6" required>
               <label for="chapter-detail">章節摘要詳細程度</label><select id="chapter-detail"><option value="concise">精簡 concise</option><option value="auto" selected>自動 auto</option><option value="precise">詳細 precise</option></select>
-              <button id="chapter-settings-save" type="submit" class="quiet" disabled>保存本局分章設定</button>
+              <label class="consent"><input id="chapter-recall-enabled" type="checkbox"><span>本次啟動額外使用章節記憶召回（3＋8）</span></label>
+              <p class="hint">只要故事摘要時不必勾選。這是獨立的進階授權，需要全域已配置向量與排序服務，之後遊玩可能產生相應費用；Host 重啟後需重新確認。保存設定不會立即呼叫模型。</p>
+              </details>
+              <button id="chapter-settings-save" type="submit" class="quiet" disabled>保存本局摘要設定</button>
             </form>
-            <p class="hint">預設停用。匯入保存的啟用旗標不代表已授權此次啟動；模型未啟用時不會生成。門檻只決定是否檢查章界，不保證每次都建立章節。</p>
+            <p class="hint">摘要服務不可用時會明確提示，可到舞臺全域設定檢查。保存開關不會立即發出模型請求，也不會自動補算已歸檔章節。</p>
           </details>
-          <p id="chapter-config-status" class="hint" role="status">尚未讀取分章設定。</p>
+          <p id="chapter-config-status" class="hint" role="status">尚未讀取本局摘要設定。</p>
           <button id="chapter-auto-check" type="button" class="quiet" disabled>立即檢查可歸檔章界</button><button id="chapter-summary-refresh" type="button" class="quiet" disabled>查詢逐章摘要狀態</button><button id="chapter-operation-cancel" type="button" class="quiet" hidden>取消章節操作</button>
           <p id="chapter-operation-status" class="hint" role="status"></p><p id="chapter-error" class="error" role="alert" hidden></p>
           <div id="chapter-summary-list"></div><section id="chapter-summary-detail" hidden></section>

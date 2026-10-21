@@ -79,6 +79,10 @@
       "source": "core/banlist.mjs"
     },
     {
+      "path": "packages/scean/core/chapter-batches.mjs",
+      "source": "core/chapter-batches.mjs"
+    },
+    {
       "path": "packages/scean/core/chapter-recall.mjs",
       "source": "core/chapter-recall.mjs"
     },
@@ -143,12 +147,20 @@
       "source": "core/narrative.mjs"
     },
     {
+      "source": "core/player-ideas.mjs",
+      "path": "packages/scean/core/player-ideas.mjs"
+    },
+    {
       "path": "packages/scean/core/player-identity.mjs",
       "source": "core/player-identity.mjs"
     },
     {
       "path": "packages/scean/core/player-literal.mjs",
       "source": "core/player-literal.mjs"
+    },
+    {
+      "source": "core/player-readers.mjs",
+      "path": "packages/scean/core/player-readers.mjs"
     },
     {
       "path": "packages/scean/core/player-text.mjs",
@@ -161,6 +173,10 @@
     {
       "path": "packages/scean/core/prompt-r3.mjs",
       "source": "core/prompt-r3.mjs"
+    },
+    {
+      "source": "core/prose-style.mjs",
+      "path": "packages/scean/core/prose-style.mjs"
     },
     {
       "path": "packages/scean/core/public-state-bindings.mjs",
@@ -187,6 +203,18 @@
       "source": "core/worldbook.mjs"
     },
     {
+      "source": "core/writer-workflow.mjs",
+      "path": "packages/scean/core/writer-workflow.mjs"
+    },
+    {
+      "source": "core/writing-mode.mjs",
+      "path": "packages/scean/core/writing-mode.mjs"
+    },
+    {
+      "path": "packages/scean/core/writing-style-library.mjs",
+      "source": "core/writing-style-library.mjs"
+    },
+    {
       "path": "packages/scean/isolated/web/card-frontend.mjs",
       "source": "isolated/web/card-frontend.mjs"
     },
@@ -203,8 +231,36 @@
       "source": "isolated/web/frontend-runtime.mjs"
     },
     {
+      "source": "isolated/web/history-sync.mjs",
+      "path": "packages/scean/isolated/web/history-sync.mjs"
+    },
+    {
+      "source": "isolated/web/player-ideas-ui.mjs",
+      "path": "packages/scean/isolated/web/player-ideas-ui.mjs"
+    },
+    {
+      "source": "isolated/web/player-readers-ui.mjs",
+      "path": "packages/scean/isolated/web/player-readers-ui.mjs"
+    },
+    {
       "path": "packages/scean/isolated/web/player-text.mjs",
       "source": "core/player-literal.mjs"
+    },
+    {
+      "source": "isolated/web/presentation-panel-ui.mjs",
+      "path": "packages/scean/isolated/web/presentation-panel-ui.mjs"
+    },
+    {
+      "source": "isolated/web/prose-style-ui.mjs",
+      "path": "packages/scean/isolated/web/prose-style-ui.mjs"
+    },
+    {
+      "path": "packages/scean/isolated/web/summary-settings-ui.mjs",
+      "source": "isolated/web/summary-settings-ui.mjs"
+    },
+    {
+      "source": "isolated/web/writing-mode-ui.mjs",
+      "path": "packages/scean/isolated/web/writing-mode-ui.mjs"
     },
     {
       "path": "packages/scean/licenses/aventuras-chapter-provenance.json",
@@ -229,6 +285,10 @@
     {
       "path": "packages/scean/plugin/README.md",
       "source": "plugin/README.md"
+    },
+    {
+      "path": "packages/scean/plugin/agent-diagnostics.mjs",
+      "source": "plugin/agent-diagnostics.mjs"
     },
     {
       "path": "packages/scean/plugin/card-scope.mjs",
@@ -295,6 +355,10 @@
       "source": "plugin/player-native-bridge.mjs"
     },
     {
+      "source": "plugin/presentation-host.mjs",
+      "path": "packages/scean/plugin/presentation-host.mjs"
+    },
+    {
       "path": "packages/scean/plugin/protocol.mjs",
       "source": "plugin/protocol.mjs"
     },
@@ -309,6 +373,22 @@
     {
       "path": "packages/scean/release-source.json",
       "source": "release-source.json"
+    },
+    {
+      "source": "runtime-skills/scene-materials/SKILL.md",
+      "path": "packages/scean/runtime-skills/scene-materials/SKILL.md"
+    },
+    {
+      "source": "runtime-skills/scene-writing/SKILL.md",
+      "path": "packages/scean/runtime-skills/scene-writing/SKILL.md"
+    },
+    {
+      "source": "runtime-skills/single-director/SKILL.md",
+      "path": "packages/scean/runtime-skills/single-director/SKILL.md"
+    },
+    {
+      "source": "runtime-skills/single-writer/SKILL.md",
+      "path": "packages/scean/runtime-skills/single-writer/SKILL.md"
     },
     {
       "path": "packages/studio/COPYRIGHT",
@@ -419,6 +499,10 @@
       "source": "sources/card-studio/cardstudio-bundle/lib/codec.js"
     },
     {
+      "path": "packages/studio/lib/diagnosis-consent.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/diagnosis-consent.js"
+    },
+    {
       "path": "packages/studio/lib/document-projection.js",
       "source": "sources/card-studio/cardstudio-bundle/lib/document-projection.js"
     },
@@ -485,6 +569,10 @@
     {
       "path": "packages/studio/lib/scean-audit-control.js",
       "source": "sources/card-studio/cardstudio-bundle/lib/scean-audit-control.js"
+    },
+    {
+      "path": "packages/studio/lib/scean-diagnosis.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/scean-diagnosis.js"
     },
     {
       "path": "packages/studio/lib/scean-integration.js",
@@ -825,58 +913,6 @@
     {
       "path": "packages/studio/skills/tavern-card-format-preservation/references/worldbook-and-edits.md",
       "source": "sources/card-studio/cardstudio-bundle/skills/tavern-card-format-preservation/references/worldbook-and-edits.md"
-    },
-    {
-      "path": "packages/scean/plugin/agent-diagnostics.mjs",
-      "source": "plugin/agent-diagnostics.mjs"
-    },
-    {
-      "path": "packages/studio/lib/scean-diagnosis.js",
-      "source": "sources/card-studio/cardstudio-bundle/lib/scean-diagnosis.js"
-    },
-    {
-      "path": "packages/studio/lib/diagnosis-consent.js",
-      "source": "sources/card-studio/cardstudio-bundle/lib/diagnosis-consent.js"
-    },
-    {
-      "source": "core/prose-style.mjs",
-      "path": "packages/scean/core/prose-style.mjs"
-    },
-    {
-      "source": "isolated/web/prose-style-ui.mjs",
-      "path": "packages/scean/isolated/web/prose-style-ui.mjs"
-    },
-    {
-      "source": "core/writing-mode.mjs",
-      "path": "packages/scean/core/writing-mode.mjs"
-    },
-    {
-      "source": "runtime-skills/scene-materials/SKILL.md",
-      "path": "packages/scean/runtime-skills/scene-materials/SKILL.md"
-    },
-    {
-      "source": "runtime-skills/scene-writing/SKILL.md",
-      "path": "packages/scean/runtime-skills/scene-writing/SKILL.md"
-    },
-    {
-      "source": "isolated/web/writing-mode-ui.mjs",
-      "path": "packages/scean/isolated/web/writing-mode-ui.mjs"
-    },
-    {
-      "source": "core/writer-workflow.mjs",
-      "path": "packages/scean/core/writer-workflow.mjs"
-    },
-    {
-      "source": "runtime-skills/single-director/SKILL.md",
-      "path": "packages/scean/runtime-skills/single-director/SKILL.md"
-    },
-    {
-      "source": "runtime-skills/single-writer/SKILL.md",
-      "path": "packages/scean/runtime-skills/single-writer/SKILL.md"
-    },
-    {
-      "path": "packages/scean/core/writing-style-library.mjs",
-      "source": "core/writing-style-library.mjs"
     }
   ]
 }

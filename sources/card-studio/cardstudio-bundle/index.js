@@ -1,5 +1,5 @@
 import {createSceanDiagnosis,diagnosisGuidance} from './lib/scean-diagnosis.js';
-import { createSceanControl, resolveSceanCardContext } from './lib/scean-integration.js';
+import { createSceanControl, resolveSceanCardContext,resolveSceanFrontendSource } from './lib/scean-integration.js';
 import { createSceanAuditControl } from './lib/scean-audit-control.js';
 import { CardStudioBridge } from './lib/bridge.js';
 import { defineTool } from '@deepseek-ai/dsh-tools';
@@ -111,6 +111,7 @@ export async function apply(ctx,config = {}) {
   };
   const bridge=new CardStudioBridge(ctx,dispatch,async(agent,request,signal)=>{try{return {ok:true,value:await loader.setAuthoringScope(agent,request,signal)};}catch(error){return errorResult(error);}},async(agent,request,signal)=>{try{return await loader.reviewMaterials(agent,request,signal);}catch(error){return errorResult(error);}},async(agent,request,signal)=>{try{return {ok:true,value:await loader.setCharacterMethod(agent,request,signal)};}catch(error){return errorResult(error);}},async(agent,request,signal)=>{try{return {ok:true,value:await loader.setLibraryRoot(agent,request,signal)};}catch(error){return errorResult(error);}});
   bridge.resolveSceanScope=sessionId=>resolveSceanCardContext(loader,sessionId);
+  bridge.resolveSceanFrontendSource=(sessionId,scope)=>resolveSceanFrontendSource(loader,sessionId,scope);
   bridge.humanDownload=async(agent,request,signal)=>{try{return {ok:true,value:await loader.downloadExport(agent,request,signal)};}catch(error){return errorResult(error);}};
   bridge.humanScean=async(agent,request,signal)=>{try{return {ok:true,value:await (request.mode?.startsWith('diagnosis_')?sceanDiagnosis.human(agent,request,signal):sceanControl(agent,request,signal))};}catch(error){return errorResult(error);}};
   // Keep the explicit human command for compatibility, but background/UI RPCs

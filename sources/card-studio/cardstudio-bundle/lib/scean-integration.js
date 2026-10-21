@@ -20,6 +20,17 @@ export async function resolveSceanCardContext(loader, sessionId) {
   await loader.validate(agent,r,null);
   return {schemaVersion:1,provider:'@local/dsh-card-studio-scean-test',cardId:selected.document_id,authoringSessionId:sessionId,generation:r.generation,savedRevision:saved.revision,savedSha256:saved.sha256,title:String(saved.card?.data?.name??selected.document_id).slice(0,500)};
 }
+/** Human-only player source reader: exact selected saved card, never a Run mutation. */
+export async function resolveSceanFrontendSource(loader,sessionId,expectedScope){
+  const before=await resolveSceanCardContext(loader,sessionId);
+  if(!before||before.cardId!==expectedScope?.cardId||before.authoringSessionId!==expectedScope.authoringSessionId||before.generation!==expectedScope.generation)fail('PRESENTATION_SOURCE_CHANGED','目前對話或工作卡已變更，請重新讀取。');
+  const saved=await loader.workspace.service.read(before.cardId);
+  const after=await resolveSceanCardContext(loader,sessionId);
+  if(!after||after.cardId!==before.cardId||after.generation!==before.generation||after.savedRevision!==saved.revision||after.savedSha256!==saved.sha256||saved.revision!==before.savedRevision)fail('PRESENTATION_SOURCE_CHANGED','工作卡已更新，請重新讀取面板。');
+  const frontend=saved.card?.data?.extensions?.scean?.frontend;
+  if(!frontend)fail('PRESENTATION_SOURCE_UNAVAILABLE','請先讓 Card Studio Agent 製作並保存工作卡面板。');
+  return {frontend:copy(frontend),source:{documentId:before.cardId,revision:saved.revision,label:before.title.slice(0,160)}};
+}
 /** A card title or natural-language description cannot prove a single actor. */
 export function resolveRoster(card, characters) {
   const roster=characters??card?.data?.extensions?.scean?.characters;
