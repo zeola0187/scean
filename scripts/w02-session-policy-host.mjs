@@ -93,7 +93,7 @@ if(process.argv[2]!=='--worker'){
     toolBusy=true;
     try{
       await fs.unlink(path.join(out,'tool-request.json'));
-      if(!['cardstudio_scean_diagnose','card_patch_fields','card_read'].includes(input.name))throw Error('FIXTURE_TOOL_DENIED');
+      if(!['cardstudio_scean_diagnose','card_patch_fields','card_read','card_bind_scean_character'].includes(input.name))throw Error('FIXTURE_TOOL_DENIED');
       const agent=app.ctx.get('agents').get(input.sessionId),tool=app.ctx.get('tools').get(input.name,agent);
       if(!agent||!tool||!agent.session.header.cwd.startsWith(workspace))throw Error('SYNTHETIC_SESSION_REQUIRED');
       const result=await tool.execute(input.args,{agent,signal:new AbortController().signal});

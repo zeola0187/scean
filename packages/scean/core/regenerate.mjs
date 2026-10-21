@@ -11,14 +11,16 @@ export async function regenerateLast(engine,request){
     if(checked.receipt)return checked.receipt;
     if(run.receipts?.[request.requestId])throw new SceanError(run.receipts[request.requestId].status==='retired'?'REQUEST_RETIRED':'IDEMPOTENCY_CONFLICT');
     const original=run.turns.at(-1),attempts=new Map();
+    const proseStyle=await engine.proseStyle(run.runId),writingMode=await engine.writingMode(run.runId);
     let candidate=retireHead(run,{operationId:request.operationId,reason:'regenerate'});
     // Version stays at current v; only context is from the preceding story head.
     const virtual={
-      withRunLock:async(_id,fn)=>fn(),read:async()=>clone(candidate),recoverAttempts:async()=>{},readAttempts:async()=>[],
+      root:engine.store.root,
+      withRunLock:async(_id,fn)=>fn(),read:async()=>({...clone(candidate),proseStyle:clone(proseStyle),writingMode:clone(writingMode)}),recoverAttempts:async()=>{},readAttempts:async()=>engine.store.readAttempts(run.runId),
       writeAttempt:async(_id,attempt)=>{attempts.set(attempt.attemptId,clone(attempt));},
-      commit:async(_id,version,next,{signal}={})=>{checkAbort(signal);if(version!==run.version||next.version!==run.version+1)throw new SceanError('VERSION_CONFLICT');candidate=clone(next);return clone(next);},
+      commit:async(_id,version,next,{signal}={})=>{checkAbort(signal);if(version!==run.version||next.version!==run.version+1)throw new SceanError('VERSION_CONFLICT');candidate=clone(next);for(const key of ['proseStyle','writingMode']){if(Object.hasOwn(run,key))candidate[key]=clone(run[key]);else delete candidate[key];}return clone(candidate);},
     };
-    const isolated=new engine.constructor({store:virtual,model:engine.model,memory:engine.memory,chapterRecall:engine.chapterRecall,recentWindow:engine.recentWindow});
+    const isolated=new engine.constructor({store:virtual,model:engine.model,memory:engine.memory,chapterRecall:engine.chapterRecall,recentWindow:engine.recentWindow,unconfiguredWritingMode:engine.unconfiguredWritingMode});
     const progress=event=>{try{request.onProgress?.({...event,provisional:true,...(event.stage==='commit'&&event.status==='committed'?{status:'validated'}:{})});}catch{}};
     const persistAttempts=async status=>{for(const attempt of attempts.values()){
       attempt.status=status;attempt.provisional=status!=='committed';

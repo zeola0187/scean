@@ -27,7 +27,7 @@ async function fixture({enabled=false,rollingEnabled=false,turns=16,bodyRepeats=
     if(args.stage==='post_stat')return {text:JSON.stringify({contractVersion:2,stateChanges:[],memories:[],playerHistory:[]})};
     throw Error('Unexpected synthetic stage '+args.stage);
   }};
-  const engine=new SceanEngine({store,model,memory:{async retrieve({records}){return {records:copy(records)};}}});
+  const engine=new SceanEngine({unconfiguredWritingMode:'current',store,model,memory:{async retrieve({records}){return {records:copy(records)};}}});
   let run;if(!empty){run=syntheticLongrun({turns,bodyRepeats,runId:'synthetic-df-host'});await store.create(run);}
   const hostRoot=join(root,'host'),host=await new SceanHost({engine,root:hostRoot,chapterModelsEnabled:enabled,summaryEnabled:rollingEnabled}).init();
   return {root,hostRoot,host,engine,store,model,run,calls};

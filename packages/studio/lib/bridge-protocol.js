@@ -69,7 +69,7 @@ cardstudioRemote.descriptors.push({
         if(value.mode==='diagnosis_grant'&&typeof value.runId!=='string'||value.mode==='diagnosis_consent'&&!Number.isSafeInteger(value.expected_revision))throw new TypeError('Exact Run or saved repair revision is required.');
         return value;
       }
-      const keys=['mode','claim','document_id','expected_revision','worldbook_document_id','worldbook_revision','preset','characters','runId','binding','request_id'];
+      const keys=['mode','claim','document_id','expected_revision','worldbook_document_id','worldbook_revision','preset','characters','characters_revision','runId','binding','request_id'];
       if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).some(k=>!keys.includes(k))||!['start','inspect','attach'].includes(value.mode)||!value.claim)throw new TypeError('Expected a current human SCEAN control request.');
       if(value.mode==='start'&&(typeof value.document_id!=='string'||!Number.isSafeInteger(value.expected_revision)))throw new TypeError('Select a saved revision.');
       if(value.mode!=='start'&&(typeof value.runId!=='string'||!value.binding))throw new TypeError('Explicit inspection binding is required.');

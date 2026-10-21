@@ -1,7 +1,9 @@
+import {mountWritingMode} from './writing-mode-ui.mjs';
+import {mountProseStyle} from './prose-style-ui.mjs';
 import {mountPlayerIdentity} from './player-identity-ui.mjs';
 import {mountCardFrontend} from './card-frontend.mjs';
 import {captureReadingAnchor,restoreReadingAnchor} from './reading-layout.mjs';
-import { SelectionEpoch, OperationOwnership, PrivateDiagnosticsSession, generationAvailability, interactiveEnableRequest, progressText, titleOf, requestForInput, shouldSubmit, committedMessages, worldLabels, valueText, blueprintStateRows, activeDraftReceipt } from './view-model.mjs';
+import { SelectionEpoch, OperationOwnership, PrivateDiagnosticsSession, generationAvailability, interactiveEnableRequest, progressText, inspectorStageRoute, titleOf, requestForInput, shouldSubmit, committedMessages, worldLabels, valueText, blueprintStateRows, activeDraftReceipt } from './view-model.mjs';
 import { mountStudio } from './studio.mjs';
 import { mountPlayerShell } from './player-shell.mjs';
 import {createNotificationClient,mountNotificationControls,showNotificationToast} from './notifications.mjs';
@@ -41,8 +43,10 @@ let pageSerial=0,pageController=null,pageBusy=false,historyPageState=null,loaded
 let narrativeSerial=0,narrativeController=null,narrativeBusy=false,narrativeData=null,recallSerial=0;
 let inspectorSerial=0,activeNarrativeOperation=null;
 let chapterData=null,chapterSerial=0,chapterDetailSerial=0,chapterSettingsDirty=false,selectedChapterId=null;
-const state = { token:null, mode:null, generationBlocked:false, interactive:null, enableBusy:false, catalog:[], run:null, draft:null, pending:false, submitting:false, localTurn:null, lastOperation:null, failure:null, composing:false, pollBusy:false, operationUnknown:false, disconnected:false, nextPollAt:0, pollFailures:0, draftTimer:null, draftQueue:Promise.resolve(), chatKey:null };
+const state = { token:null, mode:null, generationBlocked:false,writingMode:'single_writer', interactive:null, enableBusy:false, catalog:[], run:null, draft:null, pending:false, submitting:false, localTurn:null, lastOperation:null, failure:null, composing:false, pollBusy:false, operationUnknown:false, disconnected:false, nextPollAt:0, pollFailures:0, draftTimer:null, draftQueue:Promise.resolve(), chatKey:null };
 const globalChapterSettings=mountChapterSettings({secureContext:secureClient,request:(action,payload,signal)=>api(action,payload,signal),onSaved:()=>{if(view.runId)void refreshChapters();}});
+const writingMode=mountWritingMode({onMode:(mode,runId)=>{if(state.run?.runId===runId){state.writingMode=mode;void refreshModels().catch(()=>{});}},request:(action,payload)=>api(action,payload),secureContext:secureClient});
+const proseStyle=mountProseStyle({request:(action,payload)=>api(action,payload),secureContext:secureClient});
 const openingSelection=mountOpeningSelection({enabled:!!native,request:(action,payload)=>api(action,payload),onCreated:async result=>{await refreshRuns();await selectRun(result.runId);shell.committed();},onOffer:()=>shell.show('library'),openStudio:()=>native.openStudio()});
 
 const playerIdentity=mountPlayerIdentity({request:(action,payload)=>api(action,payload),onBound:async()=>{await reconcile();await refreshRuns();}});
@@ -61,7 +65,7 @@ async function clearPrivateDiagnostics(message='詳細內容已清除；未授�
   if(prior){try{await api('diagnosticsRevoke',prior);}catch{if(privateDiagnostics.serial===clearedSerial)$('diagnostics-status').textContent='本機詳細內容已清除；伺服器撤銷尚未確認，授權將在期限到達後失效。';}}
 }
 function updateModels(models){
-  const scripted=/script|mock|offline/i.test(state.mode??'');const availability=generationAvailability(state.mode,models);
+  const scripted=/script|mock|offline/i.test(state.mode??'');const availability=generationAvailability(state.mode,models,state.writingMode);
   if(state.interactive?.activationToken!==models.interactive?.activationToken||models.interactive?.enabled===true)$('interactive-consent').checked=false;
   state.interactive=state.mode==='interactive'?models.interactive??null:null;
   state.generationBlocked=availability.blocked;
@@ -143,7 +147,7 @@ async function refreshRuns(){
   return rows;
 }
 function clearNativeView(){
-  cardFrontend.clear();
+  writingMode.select(null);proseStyle.select(null);cardFrontend.clear();
   openingSelection.reset();
   openingSelection.setRun(null);
   view.select(null);operations.reset();resetLongform(false);clearTimeout(state.draftTimer);
@@ -231,7 +235,7 @@ async function readCanonicalSnapshot(selected,owner,serial,{includeDraft=false}=
 }
 function renderRun(run){
   openingSelection.setRun(run);
-  state.run=run;cardFrontend.update(run);
+  state.run=run;cardFrontend.update(run);proseStyle.select(run.runId);writingMode.select(run.runId);
   if(!banListDirty)$('banlist-input').value=(run.banList??[]).map(x=>typeof x==='string'?x:x.text??x.phrase??'').join('\n');
   $('run-title').textContent=titleOf(run.snapshot);
   $('run-version').textContent=`固定版本 ${run.snapshot?.revision??'—'} · Run ${run.runId} · 摘要 ${run.snapshot?.hash?.slice(0,12)??'未記錄'} · ${run.turnCount??run.turns?.length??0} 回合`;
@@ -326,7 +330,7 @@ async function loadHistory({earlier=false,anchorCommitId,priorHead,readingBefore
 async function loadInspector(){
   if(!view.runId||!$('inspector').open)return;
   const selected=view.capture(),baseline=canonicalStamp(),serial=++inspectorSerial;$('inspection').textContent='正在讀取公開 Inspector…';
-  try{const result=await api('inspect',{runId:selected.runId});if(serial===inspectorSerial&&relatedReadCurrent(selected,baseline,result)&&$('inspector').open)$('inspection').textContent=JSON.stringify(result,null,2);}
+  try{const result=await api('inspect',{runId:selected.runId});if(serial===inspectorSerial&&relatedReadCurrent(selected,baseline,result)&&$('inspector').open){$('inspection').textContent=JSON.stringify(result,null,2);$('inspection-route').textContent=inspectorStageRoute(result);}}
   catch(error){if(serial===inspectorSerial&&relatedReadCurrent(selected,baseline))$('inspection').textContent=`Inspector 讀取失敗：${error.message} (${error.code??'unknown'})`;}
 }
 function renderNarrative(value){
@@ -498,6 +502,7 @@ async function selectRun(runId){
   }
   if(contextSerial!==nativeContextSerial||navigation!==navigationSerial)return;
   banListDirty=false;$('banlist-status').textContent='';
+  writingMode.select(null);proseStyle.select(null);
   const token=view.select(runId);operations.reset();historyBusy=false;clearTimeout(state.draftTimer);resetLongform();
   cardFrontend.clear();state.run=null;state.draft=null;state.pending=false;state.submitting=false;state.operationUnknown=false;state.failure=null;state.localTurn=null;state.lastOperation=null;state.chatKey=null;regenInput=null;
   historyTarget=null;$('history-dialog').close();$('export-consent').checked=false;$('history-status').textContent='僅可操作最後有效已提交回合。';setError('history-error',null);

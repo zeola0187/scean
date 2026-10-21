@@ -12,7 +12,7 @@ import {createNativeBridge} from '../plugin/player-native-bridge.mjs';
 const snapshot=(cardId,revision,source=true)=>({schemaVersion:1,cardId,revision,card:{data:{name:'Same display name',first_mes:`${cardId} opening`}},worldbook:{entries:[]},preset:{},characters:[{id:'actor',name:'Actor',description:'Synthetic background'}],...(source?{source:{provider:STUDIO_PROVIDER,card:{id:cardId,revision}}}:{})});
 test('canonical card lineage scopes every native read/write; revisions and old bytes survive restart',async t=>{
   const base=new URL('../.test-data/',import.meta.url);await mkdir(base,{recursive:true});const root=await mkdtemp(new URL('card-scope-',base));let calls=0;
-  const engine=new SceanEngine({store:new DurableStore({root:join(root,'store')}),memory:new Memory(),model:{generate(){calls++;throw Error('MODEL_FORBIDDEN');}}});
+  const engine=new SceanEngine({unconfiguredWritingMode:'current',store:new DurableStore({root:join(root,'store')}),memory:new Memory(),model:{generate(){calls++;throw Error('MODEL_FORBIDDEN');}}});
   let host=await new SceanHost({engine,root:join(root,'host')}).init();t.after(()=>host.close());
   const ids=[];for(const [id,rev,source] of [['card-A',1,true],['card-A',2,true],['card-B',1,true],['card-B',2,true],['card-A',0,false]])ids.push((await host.createRun({snapshot:snapshot(id,rev,source)})).runId);
   const files=ids.map(id=>join(engine.store.runDir(id),'current.json')),before=await Promise.all(files.map(f=>readFile(f,'utf8')));
@@ -37,7 +37,7 @@ test('canonical card lineage scopes every native read/write; revisions and old b
   await host.close();host=await new SceanHost({engine,root:join(root,'host')}).init();
   selected={...selected,cardId:'card-A',authoringSessionId:'session-reopen',generation:'generation-reopen'};
   assert.equal((await invoke('list')).value.length,2);
-  const restoreEngine=new SceanEngine({store:new DurableStore({root:join(root,'restore-store')}),memory:new Memory(),model:{generate(){throw Error('MODEL_FORBIDDEN');}}});
+  const restoreEngine=new SceanEngine({unconfiguredWritingMode:'current',store:new DurableStore({root:join(root,'restore-store')}),memory:new Memory(),model:{generate(){throw Error('MODEL_FORBIDDEN');}}});
   const restoreHost=await new SceanHost({engine:restoreEngine,root:join(root,'restore-host')}).init();
   try{
     const restored=await restoreHost.request({action:'importRun',sessionId:selected.authoringSessionId,cardScope:selected,bundle:encodeRunBundle(await engine.store.read(ids[0])),acknowledgement:'import-private-run-data'},undefined,authority);

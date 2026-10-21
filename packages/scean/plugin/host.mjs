@@ -1,3 +1,5 @@
+import {writingStyleLibraryView,styleSelectionAvailability,importWritingStylePack} from '../core/writing-style-library.mjs';
+import {writingModeAvailability} from '../core/writing-mode.mjs';
 import {playerName,bindPlayerIdentity} from '../core/player-identity.mjs';
 import {headOf} from '../core/history.mjs';
 import {VERSION} from './version.mjs';
@@ -98,7 +100,7 @@ export class SceanHost {
       let dir;try{dir=await open(this.root,'r');await dir.sync();}catch(error){if(!['EPERM','EISDIR','EINVAL','EACCES','ENOTSUP','EBADF'].includes(error.code))throw error;}finally{await dir?.close();}
     });this.writeQueue=op;await op;
   }
-  capabilities(){return {schemaVersion:1,plugin:'@local/dsh-scean',version:VERSION,hotReload:false,cardFrontend:{apiMajor:1,profiles:[FRONTEND_PROFILE],cardScripts:false,worldActions:false,derivedDisplays:false},independentRunLifecycle:true,hostOwnedOperations:true,operationJournalVersion:1,notificationVersion:1,maxConcurrentOperations:this.maxConcurrentOperations,pageDrafts:true,playerIdentity:{schemaVersion:1,saveBundleVersion:4,macro:'{{user}}',frontendMacros:false},inspectionReadOnly:true,traceCoverage:'public_projection_with_authorized_private_diagnostics',availability:['not_recorded','not_called','accepted','running','pending','failed','cancelled','committed','completed','interrupted','unknown']};}
+  capabilities(){return {schemaVersion:1,plugin:'@local/dsh-scean',version:VERSION,hotReload:false,cardFrontend:{apiMajor:1,profiles:[FRONTEND_PROFILE],cardScripts:false,worldActions:false,derivedDisplays:false},independentRunLifecycle:true,hostOwnedOperations:true,operationJournalVersion:1,notificationVersion:1,maxConcurrentOperations:this.maxConcurrentOperations,pageDrafts:true,playerIdentity:{schemaVersion:1,saveBundleVersion:6,macro:'{{user}}',frontendMacros:false},writingModes:{default:'single_writer',choices:['single_writer'],legacyCompatibility:['current','materials'],loading:'host_whitelist_stage_delivery',version:1,modelStagesAdded:0,newStageNames:['writer','writer_repair'],ordinaryNoToolsCalls:{legacy:4,single_writer:3},workflows:{current:['director','draft','prose','post_stat'],materials:['director','draft','prose','post_stat'],single_writer:['director','writer','validation','post_stat']},supplementalLookup:false},inspectionReadOnly:true,traceCoverage:'public_projection_with_authorized_private_diagnostics',availability:['not_recorded','not_called','accepted','running','pending','failed','cancelled','committed','completed','interrupted','unknown']};}
   mutationBusy(runId,job){return this.running.has(runId)||this.summaryRunning.has(runId)||this.chapterRunning.has(runId)||this.auxRunning.has(runId)||this.jobs.active.has(runId)&&this.jobs.active.get(runId)!==job;}
   assertMutationAvailable(runId,job){
     if(this.closing)fail('HOST_CLOSING','Host is closing.');
@@ -449,7 +451,7 @@ export class SceanHost {
   async exportRun(request,authority,signal){
     this.requireSaveAuthority('export',request,authority);this.requireRun(request.runId);
     if(this.mutationBusy(request.runId))fail('RUN_BUSY','Wait for the Run operation to finish.');
-    return this.engine.store.withRunLock(request.runId,async()=>{signal?.throwIfAborted();const run=await this.engine.store.read(request.runId);const bundle=encodeRunBundle(run);signal?.throwIfAborted();return bundle;},{signal});
+    return this.engine.store.withRunLock(request.runId,async()=>{signal?.throwIfAborted();const run=await this.engine.store.read(request.runId);const style=await this.engine.proseStyle(request.runId);const mode=await this.engine.writingMode(request.runId);const bundle=encodeRunBundle({...run,...(style.revision>0?{proseStyle:style}:{}),...(mode.revision>0?{writingMode:mode}:{})});signal?.throwIfAborted();return bundle;},{signal});
   }
   async importRun(request,authority,signal){
     this.requireSaveAuthority('import',request,authority);signal?.throwIfAborted();
@@ -576,11 +578,22 @@ export class SceanHost {
         case 'diagnosticsGrant':value=this.diagnosticsGrant(request,authority);break;
         case 'diagnosticsRead':value=await this.diagnosticsRead(request,authority,signal);break;
         case 'diagnosticsRevoke':value=this.diagnosticsRevoke(request,authority);break;
+        case 'writingMode':case 'writingModeSave':
+          if(!authority.principal||authority.allowGlobalSettings!==true)fail('WRITING_MODE_DENIED','寫作方式只供已驗證的舞臺操作者使用。');
+          this.requireRun(request.runId);if(this.closing)fail('HOST_CLOSING');
+          if(request.action==='writingMode')value={...await this.engine.writingMode(request.runId),availability:await writingModeAvailability()};
+          else{const work=this.engine.updateWritingMode({...request,signal});this.writingModeSaves??=new Set();this.writingModeSaves.add(work);try{value=await work;}finally{this.writingModeSaves.delete(work);}}break;
+        case 'proseStyle':case 'proseStyleSave':case 'writingStylesImport':
+          if(!authority.principal||authority.allowGlobalSettings!==true)fail('PROSE_STYLE_DENIED','文風設定只供已驗證的舞臺操作者使用。');
+          this.requireRun(request.runId);if(this.closing)fail('HOST_CLOSING');
+          if(request.action==='proseStyle'){const config=await this.engine.proseStyle(request.runId);value={...config,library:await writingStyleLibraryView(this.engine.store),selectionAvailability:await styleSelectionAvailability(this.engine.store,config.skill)};}
+          else if(request.action==='writingStylesImport'){const work=importWritingStylePack(this.engine.store,{...request,signal});this.proseStyleSaves??=new Set();this.proseStyleSaves.add(work);try{value=await work;}finally{this.proseStyleSaves.delete(work);}}
+          else{const work=this.engine.updateProseStyle({...request,signal});this.proseStyleSaves??=new Set();this.proseStyleSaves.add(work);try{value=await work;}finally{this.proseStyleSaves.delete(work);}}break;
         case 'banList':value=await this.auxiliaryMutation(request,async()=>publicInspection(await this.engine.updateBanList({runId:request.runId,banList:request.banList,expectedVersion:request.expectedVersion})));break;
         default:fail('ACTION','Unknown SCEAN operation.');
       }
       return {ok:true,value};
     }catch(e){const failure=signal?.aborted?safeFailure({code:'CANCELLED'},'request'):e.sceanFailure??safeFailure(e,'request','SCEAN_ERROR');return {ok:false,error:failure,lastFailure:failure};}
   }
-  async close(){this.closing=true;this.chapterProviderSettings?.close();this.chapterAutoArmed.clear();this.writerSummaryArmed.clear();this.chapterContextArmed.clear();const chapterTasks=[...this.chapterRunning.values()].map(o=>o.promise);for(const {controller} of this.chapterRunning.values())controller.abort(Object.assign(new Error('Host closed.'),{code:'CANCELLED'}));for(const {controller} of this.summaryRunning.values())controller.abort();this.agentDiagnostics.rows.clear();this.diagnosticGrants.clear();for(const c of this.running.values())c.abort(Object.assign(new Error('SCEAN plugin unloaded.'),{code:'CANCELLED'}));await this.jobs.close();await Promise.allSettled([...chapterTasks,...(this.chapterBackground??[])]);}
+  async close(){this.closing=true;await Promise.allSettled([...(this.proseStyleSaves??[]),...(this.writingModeSaves??[])]);this.chapterProviderSettings?.close();this.chapterAutoArmed.clear();this.writerSummaryArmed.clear();this.chapterContextArmed.clear();const chapterTasks=[...this.chapterRunning.values()].map(o=>o.promise);for(const {controller} of this.chapterRunning.values())controller.abort(Object.assign(new Error('Host closed.'),{code:'CANCELLED'}));for(const {controller} of this.summaryRunning.values())controller.abort();this.agentDiagnostics.rows.clear();this.diagnosticGrants.clear();for(const c of this.running.values())c.abort(Object.assign(new Error('SCEAN plugin unloaded.'),{code:'CANCELLED'}));await this.jobs.close();await Promise.allSettled([...chapterTasks,...(this.chapterBackground??[])]);}
 }

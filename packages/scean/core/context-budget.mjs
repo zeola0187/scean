@@ -43,15 +43,17 @@ const topFields = {
   chapter_analysis: ['range', 'turns', 'instructions'],
   chapter_summary: ['detail', 'range', 'turns', 'previousChapters', 'instructions'],
   summary: ['previousSummary', 'turns', 'sourceRange', 'instructions'],
-  director: ['assembly', 'conversation'],
-  character: ['character', 'question', 'publicWorld', 'ownState', 'memory', 'playerInput', 'currentEvent', 'lastCommittedTurn', 'characterIdentities', 'worldbook'],
+  director: ['assembly', 'conversation', 'writingSkill', 'handoffContract'],
+  character: ['outputContract', 'correction', 'character', 'question', 'publicWorld', 'ownState', 'memory', 'playerInput', 'currentEvent', 'lastCommittedTurn', 'characterIdentities', 'worldbook'],
   adjudicate: ['mode', 'action', 'state', 'worldbook', 'playerInput', 'recentDialogue', 'characterIdentities', 'stateBlueprint'],
-  draft: ['context', 'directorBrief'],
-  prose: ['draft', 'playerInput', 'preset', 'characterIdentities'],
+  draft: ['context', 'directorBrief', 'writingSkill'],
+  prose: ['draft', 'playerInput', 'preset', 'characterIdentities', 'proseStyle'],
+  writer: ['context','directorHandoff','preset','proseStyle','writingSkill'],
+  writer_repair: ['bodyHash','ranges','bannedTerms'],
   prose_repair: ['bodyHash', 'ranges', 'bannedTerms'],
-  post_stat: ['finalBody', 'previousState', 'characters', 'stateBlueprint', 'outputContract'],
+  post_stat: ['bodyHash','finalBody', 'previousState', 'characters', 'stateBlueprint', 'outputContract'],
 };
-for(const stage of ['director','character','adjudicate','draft','prose','prose_repair','post_stat'])topFields[stage].push('playerIdentity');
+for(const stage of ['director','character','adjudicate','draft','prose','prose_repair','writer','writer_repair','post_stat'])topFields[stage].push('playerIdentity');
 const assemblyFields = new Set(['playerInput', 'writingGuidance', 'sources', 'chapterSummary', 'rollingSummary', 'chapterContext', 'recentDialogue', 'worldState', 'memory', 'characters', 'characterIdentities', 'stateBlueprint', 'derivedFacts']);
 const sourceFields = new Set(['snapshot', 'card', 'worldbook', 'preset', 'selectedOpening']);
 const escapePath = value => String(value).replaceAll('~', '~0').replaceAll('/', '~1');
@@ -105,7 +107,9 @@ export function budgetStage(stage, prompt, options = {}) {
   }
   function visit(value, path) {
     const key = path.at(-1);
-    const visibility = owner && (path.includes('character') || path.includes('ownState') || path.includes('memory')) ? `character:${owner}` : 'public';
+    if(key==='writingSkill')return record(value,path,{visibility:'system'});
+    if(key==='proseStyle')return record(value,path,{visibility:'restricted'});
+    const visibility = owner && (path.includes('character') || path.includes('ownState') || path.includes('memory') || path.includes('correction')) ? `character:${owner}` : 'public';
     if (key === 'chapterSummary' || key === 'rollingSummary') return record(value, path, { mandatory: key === 'rollingSummary' && options.requireNarrativeCoverage === true, priority: 80, visibility });
     if (Array.isArray(value) && ['recentDialogue', 'memory', 'records', 'worldbook', 'entries'].includes(key)) {
       if (!value.length) return record(value, path, { visibility });

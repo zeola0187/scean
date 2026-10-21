@@ -8,6 +8,10 @@ advanced-tavern-card-authoring Skill retains its MIT grant. See [LICENSE](LICENS
 
 **完整對應原碼／Source:** https://github.com/zeola0187/scean/tree/main
 
+## 2026-10-21：Single Writer 與文風切換
+
+新／未設定故事預設採單一 Writer；已明確保存的舊流程維持原選擇。本局文風可匯入、下拉選擇或自由改寫，從下一新請求生效，重試與既有資料保持原值。公開版只附原創方法與通用能力，不包含私人第三方文風包。使用方式、驗證與限制見 [本批說明](docs/WRITER-MAIN-20261021.zh-TW.md)。
+
 ## 1.5.0：Card Studio 診斷回修
 
 編輯室方案 A 與舞臺診斷閉環：檢查這局 → 和 AI 討論 → 明確同意修卡 → 保存新版 → 用新版另開局。來源身份、明確範圍讀取、expectedRevision與開局回執均有核對。診斷與修卡同意沒有固定倒數，僅限同一受控對話、對象與範圍，直到你撤銷或生命週期失效；不跨重啟繼承舊授權。來源缺失暫採唯讀；實體手機與Safari仍待驗收。

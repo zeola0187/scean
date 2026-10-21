@@ -74,7 +74,7 @@ async function engineFixture(kind,{badPost}={}){
   if(a.stage==='post_stat')return {text:JSON.stringify(badPost?badPost(post()):post())};
   assert.fail('Unexpected stage '+a.stage);
  }};
- const store=new DurableStore({root:join(dir,'store')}),engine=new SceanEngine({store,model,memory}),run=await engine.createRun({snapshot:fixed});
+ const store=new DurableStore({root:join(dir,'store')}),engine=new SceanEngine({unconfiguredWritingMode:'current',store,model,memory}),run=await engine.createRun({snapshot:fixed});
  return {engine,store,run,ids,calls,embedded,dir,card};
 }
 for(const kind of ['ship','market'])test(kind+' durable turn: owner ACL, UI, provenance, idempotency and rollback',async()=>{

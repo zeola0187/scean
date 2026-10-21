@@ -56,11 +56,11 @@ test('after reload cancellation uses actual active Host operation; run-only and 
   owners.observe({runId:'run-a',pending:false},owners.capture());assert.equal(owners.target('run-a'),null);
   owners.observe({runId:'run-a',pending:true},owners.capture());assert.equal(owners.target('run-a'),null);
 });
-test('native remaining generation allowance below four blocks new rounds; scripted remains usable',()=>{
+test('default Single Writer requires three remaining generations; scripted remains usable',()=>{
   const limited=generationAvailability('native',{generationGate:{remaining:2}});
   assert.equal(limited.blocked,true);assert.match(limited.message,/剩餘 2 次生成.*不足完整新輪.*新授權/);
   assert.equal(generationAvailability('native',{remaining:0}).blocked,true);
-  assert.equal(generationAvailability('native',{remaining:3}).blocked,true);
+  assert.equal(generationAvailability('native',{remaining:3}).blocked,false);
   assert.equal(generationAvailability('native',{remaining:4}).blocked,false);
   assert.equal(generationAvailability('scripted',{remaining:0}).blocked,false);
   assert.equal(generationAvailability('native',{}).blocked,false);

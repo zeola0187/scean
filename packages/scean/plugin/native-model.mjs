@@ -21,7 +21,7 @@ function normalizeFailure(e,signal){
 }
 function deadline(parent,timeoutMs){
   const controller=new AbortController();
-  const cancel=()=>controller.abort(error('CANCELLED','cancelled'));
+  const cancel=()=>controller.abort(parent?.reason?.code==='MODEL_TIMEOUT'?error('MODEL_TIMEOUT'):error('CANCELLED','cancelled'));
   parent?.addEventListener('abort',cancel,{once:true});if(parent?.aborted)cancel();
   const timer=setTimeout(()=>controller.abort(error('MODEL_TIMEOUT')),timeoutMs);
   let rejectAbort;const aborted=new Promise((_,reject)=>{rejectAbort=reject;});
@@ -42,25 +42,31 @@ export function createNativeModelPort({llm,agentDefaultModel,budget,usageLedger=
     return {requested:selection(chosen?chosen[0]:await agentDefaultModel?.currentSelection()),selectionSource:chosen?chosen[1]:'dsh_current_selection'};
   }
   return {
-    async describe({stage='director',context={},signal}={}){
+    managesDispatchBudget:true,timeoutMs,
+    async describe({stage='director',context={},signal,dispatchBudget}={}){
       const scope=deadline(signal,timeoutMs);
-      try{return await scope.run(async()=>{const route=await resolveSelection(stage,context);const info=await llm.resolveModelInfo(route.requested.provider,route.requested.model,scope.signal);const outputLimit=rpStage(stage)?describedLimit(info.defaultMaxTokens):limit(stage);return {...route,capabilities:{outputLimit,outputLimitSource:rpStage(stage)?outputLimit===null?'adapter_default_unknown':'dsh_model_default':backgroundSource(stage),outputLimitPhase:'model_description',providerFinalOutputLimit:null,contextWindow:info.context?.contextWindow??null,defaultMaxTokens:info.defaultMaxTokens??null,reasoningEfforts:info.reasoning?.efforts?.map(x=>x.id)??[],defaultReasoningEffort:info.reasoning?.defaultEffort??null,toolUpdate:info.toolUpdate??null}};});}
+      try{return await scope.run(async()=>{const route=await (dispatchBudget?dispatchBudget.resolveSelection(()=>resolveSelection(stage,context)):resolveSelection(stage,context));const info=await llm.resolveModelInfo(route.requested.provider,route.requested.model,scope.signal);const outputLimit=rpStage(stage)?describedLimit(info.defaultMaxTokens):limit(stage);return {...route,capabilities:{outputLimit,outputLimitSource:rpStage(stage)?outputLimit===null?'adapter_default_unknown':'dsh_model_default':backgroundSource(stage),outputLimitPhase:'model_description',providerFinalOutputLimit:null,contextWindow:info.context?.contextWindow??null,defaultMaxTokens:info.defaultMaxTokens??null,reasoningEfforts:info.reasoning?.efforts?.map(x=>x.id)??[],defaultReasoningEffort:info.reasoning?.defaultEffort??null,toolUpdate:info.toolUpdate??null}};});}
       catch(e){throw normalizeFailure(e,scope.signal);}finally{scope.close();}
     },
-    async generate({stage,system,input,tools,signal,context={}}){
-      if(signal?.aborted)throw error('CANCELLED','cancelled');
+    async generate({stage,system,input,tools,signal,context={},dispatchBudget}){
+      if(signal?.aborted)throw normalizeFailure(signal.reason,signal);
       const text=typeof input==='string'?input:JSON.stringify(input);
       const toolDefinitions=(tools??[]).map(t=>t.function??t).map(t=>({name:t.name,description:t.description??'',parameters:t.parameters??t.inputSchema??{type:'object'}}));
       const requestBytes=Buffer.byteLength(String(system??'')+text+JSON.stringify(toolDefinitions),'utf8')+1024;
       const attempts=[];
       const selectionScope=deadline(signal,timeoutMs);let selected;
-      try{selected=await selectionScope.run(()=>resolveSelection(stage,context));}catch(e){throw normalizeFailure(e,selectionScope.signal);}finally{selectionScope.close();}
+      try{selected=await selectionScope.run(()=>dispatchBudget?dispatchBudget.resolveSelection(()=>resolveSelection(stage,context)):resolveSelection(stage,context));}catch(e){throw normalizeFailure(e,selectionScope.signal);}finally{selectionScope.close();}
       for(let attempt=0;attempt<=technicalRetries;attempt++){
         const scope=deadline(signal,timeoutMs),requestId=randomUUID();
         let reservationId,gateId,route,usage=null,actualCostUsd=null,result,failure,finishKind=null;
+        let finalizing=false,reservationPending=false,ledgerSettlement,gateSettlement;
+        const settlement=()=>({actualCostUsd,usage,status:failure?(failure.code==='CANCELLED'?'cancelled':'failed'):scope.signal.aborted?(scope.signal.reason?.code==='MODEL_TIMEOUT'?'failed':'cancelled'):'completed'});
+        const settleLedger=()=>reservationId===undefined?undefined:ledgerSettlement??=(async()=>usageLedger.settle(reservationId,settlement()))();
+        const settleGate=()=>gateId===undefined?undefined:gateSettlement??=(async()=>generationGate.settle(gateId,settlement()))();
+        const lateAdmission=async()=>{if(!finalizing)return;await settleLedger();await settleGate();await onTrace({...safeContext(context),requestId,stage,lateAdmission:true,reservationId:reservationId??null,gateId:gateId??null,status:settlement().status});};
         try{
           result=await scope.run(async()=>{
-            const requested=selected.requested;
+            const requested=dispatchBudget?.effectiveSelection??selected.requested;
             // Omit RP maxTokens: the SDK owns provider/model defaults and any
             // protocol-specific context/thinking adjustments. Never substitute
             // the historical stage defaults or a guessed provider hard limit.
@@ -77,6 +83,7 @@ export function createNativeModelPort({llm,agentDefaultModel,budget,usageLedger=
               effective={...config,...effort===undefined?{}:{reasoningEffort:effort},...output===null?{}:{maxTokens:output}};
             }
             const sdkLimit=describedLimit(effective.maxTokens);
+            dispatchBudget?.pinEffective(selection(effective));
             const outputSource=rpStage(stage)?sdkLimit===null?'adapter_default_unknown':prepared?'dsh_sdk_prepared':'dsh_model_default_legacy':backgroundSource(stage);
             // DSH contextWindow is total context metadata; defaultMaxTokens is
             // a generation default, not a maximum-output reservation. Heuristic
@@ -86,7 +93,11 @@ export function createNativeModelPort({llm,agentDefaultModel,budget,usageLedger=
             scope.signal.throwIfAborted();
             const request={kind:'generation',caseId:`${context.requestId??'interactive'}:${stage}`,requestId,retry:attempt,meta:{...safeContext(context),provider:effective.provider,model:effective.model,stage,inputBytes:requestBytes,maxTokens:sdkLimit}};
             // Durable reservations are awaited before provider dispatch; pending counts survive a crash.
-            try{if(generationGate)gateId=await generationGate.reserve(request);reservationId=await usageLedger.reserve(request);}catch(e){throw error(e?.code==='GENERATION_LIMIT_REACHED'?'GENERATION_LIMIT_REACHED':'MODEL_JOURNAL_RESERVE_FAILED','persistence');}
+            if(dispatchBudget)request.meta.consultationDispatch=await dispatchBudget.take();
+            try{
+              if(generationGate){reservationPending=true;try{gateId=await generationGate.reserve(request);}finally{reservationPending=false;}await lateAdmission();scope.signal.throwIfAborted();}
+              reservationPending=true;try{reservationId=await usageLedger.reserve(request);}finally{reservationPending=false;}await lateAdmission();
+            }catch(e){if(scope.signal.aborted)throw e;throw error(e?.code==='GENERATION_LIMIT_REACHED'?'GENERATION_LIMIT_REACHED':'MODEL_JOURNAL_RESERVE_FAILED','persistence');}
             scope.signal.throwIfAborted();
             const options={...effective,system:String(system??''),messages:[{role:'user',content:[{type:'text',text}]}],signal:scope.signal,purpose:'scean',sessionId:'scean-'+requestId,...toolDefinitions.length?{tools:toolDefinitions}:{}};
             const blocks=new Map();let finish;
@@ -120,18 +131,17 @@ export function createNativeModelPort({llm,agentDefaultModel,budget,usageLedger=
             if(stage!=='director'&&toolCalls.length)throw error('UNEXPECTED_TOOL');
             return {text:publicBlocks.filter(b=>b.type==='text').map(b=>b.text).join(''),...toolCalls.length?{toolCalls}:{},usage,model:effective.provider+'/'+effective.model,route};
           });
-        }catch(e){failure=normalizeFailure(e,scope.signal);}finally{scope.close();}
+        }catch(e){failure=normalizeFailure(e,scope.signal);}finally{finalizing=true;scope.close();}
         const status=failure?(failure.code==='CANCELLED'?'cancelled':'failed'):'completed';
-        const receipt={requestId,attempt,reservationId:reservationId??null,stage,status,...failure?{code:failure.code}:{},finishKind,route:route??null,usage,actualCostUsd};
+        const receipt={requestId,attempt,reservationId:reservationId??null,stage,status,...failure?{code:failure.code}:{},...(reservationPending?{reservationPending:true}:{}),finishKind,route:route??null,usage,actualCostUsd};
         attempts.push(receipt);
         try{
-          if(reservationId!==undefined)await usageLedger.settle(reservationId,{actualCostUsd,usage,status});
-          if(gateId!==undefined)await generationGate.settle(gateId,{actualCostUsd,usage,status});
+          await settleLedger();await settleGate();
           await onTrace({...safeContext(context),...receipt});
         }catch{failure=error('MODEL_JOURNAL_SETTLE_FAILED','persistence');}
-        if(signal?.aborted)failure=error('CANCELLED','cancelled');
+        if(signal?.aborted)failure=normalizeFailure(signal.reason,signal);
         if(!failure)return {...result,attempts};
-        if(attempt===technicalRetries||failure.category!=='model'||!retryable(failure.code)){failure.attempts=attempts;throw failure;}
+        if(attempt===technicalRetries||failure.category!=='model'||!retryable(failure.code)||dispatchBudget?.remaining===0){failure.attempts=attempts;throw failure;}
       }
     }
   };

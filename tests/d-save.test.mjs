@@ -88,7 +88,7 @@ test('D save research ship three chapters, rolling summaries, rollback/regen, cl
   const original=await a.store.read(a.run.runId),bundle=encodeRunBundle(original),restored=validateRunBundle(JSON.stringify(bundle));
   assert.equal(restored.narrative.chapters.length,3);assert.equal(restored.narrative.chapters[1].status,'stale');assert.equal(restored.narrative.chapters[2].status,'completed');
   const root=await mkdtemp(join(tmpdir(),'scean-d-save-destination-')),store=new DurableStore({root});await store.create(restored);
-  const restarted=new DurableStore({root}),model=historyModel(),memory=syntheticHistoryMemory(),engine=new SceanEngine({store:restarted,model,memory});
+  const restarted=new DurableStore({root}),model=historyModel(),memory=syntheticHistoryMemory(),engine=new SceanEngine({unconfiguredWritingMode:'current',store:restarted,model,memory});
   assert.deepEqual(await restarted.read(restored.runId),restored);assert.equal(model.calls.length,0);assert.equal((await restarted.listRuns())[0].runId,restored.runId);
   for(const field of ['snapshot','turns','state','memories','playerHistory','stateProvenance','version','head','retired','narrative'])assert.deepEqual(restored[field],original[field]);
   assert.deepEqual(await recoverNarrative(engine,restored.runId),{status:'unchanged'});assert.equal(model.calls.length,0);
@@ -105,7 +105,7 @@ test('D save pending summary restore marks interruption without an automatic mod
   const job=updateSummary(a.engine,request,{enabled:true,model:{async generate(){entered();await wait;return{text:'A late synthetic summary.'};}}});
   await ready;const restored=validateRunBundle(encodeRunBundle(await a.store.read(a.run.runId)));assert.equal(restored.narrative.operations['pending-summary'].status,'pending');
   controller.abort();release();await assert.rejects(job);
-  const root=await mkdtemp(join(tmpdir(),'scean-d-pending-import-')),store=new DurableStore({root});await store.create(restored);const model=historyModel(),engine=new SceanEngine({store:new DurableStore({root}),model,memory:syntheticHistoryMemory()});
+  const root=await mkdtemp(join(tmpdir(),'scean-d-pending-import-')),store=new DurableStore({root});await store.create(restored);const model=historyModel(),engine=new SceanEngine({unconfiguredWritingMode:'current',store:new DurableStore({root}),model,memory:syntheticHistoryMemory()});
   assert.equal((await recoverNarrative(engine,restored.runId)).status,'recovered');assert.equal(model.calls.length,0);
   const retried=await updateSummary(engine,{...request,signal:undefined},{enabled:true,model});assert.equal(retried.status,'failed');assert.equal(model.calls.length,0);
   const current=await engine.store.read(restored.runId);for(const field of ['turns','state','memories','playerHistory','snapshot'])assert.deepEqual(current[field],restored[field]);validateRunBundle(encodeRunBundle(current));

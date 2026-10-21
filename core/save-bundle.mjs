@@ -1,3 +1,5 @@
+import {validateWritingMode,validateWritingModeReference} from './writing-mode.mjs';
+import {validateProseStyle,validateProseStyleReference} from './prose-style.mjs';
 import {validatePlayerIdentity} from './player-identity.mjs';
 import { SceanError, clone, hash, json, safeId, validateSnapshot, validateState } from './contracts.mjs';
 import { validateMemoryPolicy } from './memory-policy.mjs';
@@ -8,7 +10,7 @@ import { validateNarrative } from './narrative.mjs';
 
 export const SAVE_FORMAT = 'scean.run';
 export const SAVE_LIMITS = Object.freeze({ bytes: 16 * 1024 * 1024, depth: 64, nodes: 300000, turns: 1000, retired: 256, receipts: 4096, records: 100000 });
-const ROOT = ['schemaVersion','runId','version','head','snapshot','openingId','baselineState','baselineProvenance','state','stateProvenance','memories','playerHistory','turns','receipts','operationReceipts','retired','banList','createdAt','updatedAt'];
+const ROOT = ['schemaVersion','runId','version','head','snapshot','openingId','baselineState','baselineProvenance','state','stateProvenance','memories','playerHistory','turns','receipts','operationReceipts','retired','banList','proseStyle','writingMode','createdAt','updatedAt'];
 const ROOT_D = [...ROOT, 'narrative'];
 const fail = code => { throw new SceanError(code); };
 const plain = v => v && typeof v === 'object' && !Array.isArray(v) && [Object.prototype, null].includes(Object.getPrototypeOf(v));
@@ -89,6 +91,8 @@ function checkSources(records, turns, run, kind) {
 
 function validateRun(run, { narrative=false, player=false }={}) {
   fields(run,[...(narrative?ROOT_D:ROOT),...(player?['playerIdentity']:[])],['schemaVersion','runId','version','head','snapshot','state','memories','playerHistory','turns','receipts','operationReceipts','retired','banList','createdAt','updatedAt']);
+  if(run.writingMode!==undefined)validateWritingMode(run.writingMode,run.runId);
+  if(run.proseStyle!==undefined)validateProseStyle(run.proseStyle,run.runId);
   if(run.schemaVersion!==1)fail('SAVE_RUN_VERSION');safeId(run.runId);if(!integer(run.version))fail('SAVE_RUN_VERSION');
   if(player){if(!Object.hasOwn(run,'playerIdentity'))fail('INVALID_PLAYER_IDENTITY');validatePlayerIdentity(run.playerIdentity,run);}
   if(run.openingId!==undefined)safeId(run.openingId);
@@ -190,14 +194,17 @@ function validateRun(run, { narrative=false, player=false }={}) {
 
 function checkTrace(trace,attemptId){
   if(trace===undefined)return;
-  fields(trace,['attemptId','operationId','stages'],['attemptId','stages']);
+  fields(trace,['attemptId','operationId','stages','proseStyle','writingMode'],['attemptId','stages']);
+  if(trace.writingMode!==undefined)validateWritingModeReference(trace.writingMode);
+  if(trace.proseStyle!==undefined)validateProseStyleReference(trace.proseStyle);
   if(trace.attemptId!==attemptId)fail('SAVE_RECEIPT');safeId(trace.attemptId);if(trace.operationId!==undefined)safeId(trace.operationId);
   if(!Array.isArray(trace.stages)||trace.stages.length>256)fail('SAVE_RECEIPT');
-  for(const stage of trace.stages){fields(stage,['stage','status'],['stage','status']);if(!['director','character','adjudicate','draft','prose','prose_repair','post_stat'].includes(stage.stage)||stage.status!=='completed')fail('SAVE_RECEIPT');}
+  for(const stage of trace.stages){fields(stage,['stage','status'],['stage','status']);if(!['director','character','adjudicate','draft','prose','prose_repair','writer','writer_repair','validation','post_stat'].includes(stage.stage)||stage.status!=='completed')fail('SAVE_RECEIPT');}
 }
 function portableReceipt(receipt) {
   const out=clone(receipt);
-  if(out.result?.trace)out.result.trace={attemptId:out.result.trace.attemptId,...(out.result.trace.operationId?{operationId:out.result.trace.operationId}:{}),stages:(out.result.trace.stages??[]).map(s=>({stage:s.stage,status:s.status}))};
+  if(out.result?.trace?.proseStyle?.revision===0)delete out.result.trace.proseStyle;
+  if(out.result?.trace)out.result.trace={...(out.result.trace.writingMode?{writingMode:clone(out.result.trace.writingMode)}:{}),...(out.result.trace.proseStyle?{proseStyle:clone(out.result.trace.proseStyle)}:{}),attemptId:out.result.trace.attemptId,...(out.result.trace.operationId?{operationId:out.result.trace.operationId}:{}),stages:(out.result.trace.stages??[]).map(s=>({stage:s.stage,status:s.status}))};
   return out;
 }
 export function encodeRunBundle(run) {
@@ -208,14 +215,17 @@ export function encodeRunBundle(run) {
   portable.receipts=Object.fromEntries(Object.entries(portable.receipts??{}).map(([key,value])=>[key,portableReceipt(value)]));
   portable.operationReceipts=Object.fromEntries(Object.entries(portable.operationReceipts).map(([key,value])=>[key,portableReceipt(value)]));
   bounded(portable);validateRun(portable,{narrative:hasNarrative,player:hasPlayer});
-  const bundle={format:SAVE_FORMAT,schemaVersion:hasPlayer?4:hasNarrative?(portable.narrative.schemaVersion===2?3:2):1,manifest:{runId:portable.runId,version:portable.version,head:portable.head,snapshotHash:portable.snapshot.hash,sha256:hash(portable)},run:portable};
+  const bundle={format:SAVE_FORMAT,schemaVersion:(portable.writingMode!==undefined||Object.values(portable.receipts).some(r=>r.result?.trace?.writingMode!==undefined))?6:(portable.proseStyle!==undefined||Object.values(portable.receipts).some(r=>r.result?.trace?.proseStyle!==undefined))?5:hasPlayer?4:hasNarrative?(portable.narrative.schemaVersion===2?3:2):1,manifest:{runId:portable.runId,version:portable.version,head:portable.head,snapshotHash:portable.snapshot.hash,sha256:hash(portable)},run:portable};
   bounded(bundle);return bundle;
 }
 export function validateRunBundle(value) {
   const bundle=typeof value==='string'?parseRunBundle(value):value;bounded(bundle);
-  fields(bundle,['format','schemaVersion','manifest','run'],['format','schemaVersion','manifest','run']);if(bundle.format!==SAVE_FORMAT||![1,2,3,4].includes(bundle.schemaVersion)||(bundle.schemaVersion===2&&bundle.run?.narrative?.schemaVersion!==1)||(bundle.schemaVersion===3&&bundle.run?.narrative?.schemaVersion!==2))fail('SAVE_FORMAT_VERSION');
+  fields(bundle,['format','schemaVersion','manifest','run'],['format','schemaVersion','manifest','run']);if(bundle.format!==SAVE_FORMAT||![1,2,3,4,5,6].includes(bundle.schemaVersion)||(bundle.schemaVersion===2&&bundle.run?.narrative?.schemaVersion!==1)||(bundle.schemaVersion===3&&bundle.run?.narrative?.schemaVersion!==2))fail('SAVE_FORMAT_VERSION');
+  const styleDomain=Object.hasOwn(bundle.run??{},'proseStyle')||Object.values(bundle.run?.receipts??{}).some(r=>r?.result?.trace?.proseStyle!==undefined);
+  const modeDomain=Object.hasOwn(bundle.run??{},'writingMode')||Object.values(bundle.run?.receipts??{}).some(r=>r?.result?.trace?.writingMode!==undefined);
+  if(bundle.schemaVersion===6?!modeDomain:modeDomain||(bundle.schemaVersion===5)!==styleDomain)fail('SAVE_FORMAT_VERSION');
   const m=bundle.manifest;fields(m,['runId','version','head','snapshotHash','sha256'],['runId','version','head','snapshotHash','sha256']);
   if(!digest(m.sha256)||m.sha256!==hash(bundle.run))fail('SAVE_DIGEST');
   if(m.runId!==bundle.run.runId||m.version!==bundle.run.version||m.head!==bundle.run.head||m.snapshotHash!==bundle.run.snapshot.hash)fail('SAVE_MANIFEST');
-  return validateRun(bundle.run,{narrative:bundle.schemaVersion===4?Object.hasOwn(bundle.run,'narrative'):bundle.schemaVersion>=2,player:bundle.schemaVersion===4});
+  return validateRun(bundle.run,{narrative:bundle.schemaVersion>=4?Object.hasOwn(bundle.run,'narrative'):bundle.schemaVersion>=2,player:bundle.schemaVersion===4||bundle.schemaVersion>=5&&Object.hasOwn(bundle.run,'playerIdentity')});
 }

@@ -81,7 +81,7 @@ async function setup({ consult = false } = {}) {
       return { text: story };
     },
   };
-  const engine = new SceanEngine({ store, model, memory: {
+  const engine = new SceanEngine({unconfiguredWritingMode:'current', store, model, memory: {
     async retrieve({ records }) { return { records: copy(records), status: 'synthetic_offline' }; },
   } });
   const snapshot = {

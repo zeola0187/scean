@@ -1,3 +1,5 @@
+import {mountWritingMode} from '../isolated/web/writing-mode-ui.mjs';
+import {mountProseStyle} from '../isolated/web/prose-style-ui.mjs';
 import {mountPlayerIdentity} from '../isolated/web/player-identity-ui.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -31,6 +33,8 @@ function fixture({secure=true,crypto=webcrypto,navigationType='navigate',priorVi
     mountPlayerShell:()=>({show(){},committed(){},atEnd:()=>false,reading:{scrollTop:0,scrollHeight:100,getBoundingClientRect:()=>({top:0,bottom:100})},scrollEnd(){}}),mountStudio(){}};
   context.mountCardFrontend=()=>mountCardFrontend({document:context.document,setTimer:()=>0,clearTimer(){}});
   context.mountChapterSettings=options=>mountChapterSettings({...options,document:context.document});
+  context.mountWritingMode=options=>mountWritingMode({...options,document:context.document,makeId:()=>webcrypto.randomUUID()});
+  context.mountProseStyle=options=>mountProseStyle({...options,document:context.document,makeId:()=>webcrypto.randomUUID()});
   context.mountPlayerIdentity=options=>mountPlayerIdentity({...options,document:context.document,makeId:()=>webcrypto.randomUUID()});
   context.mountOpeningSelection=options=>mountOpeningSelection({...options,document:context.document});
   vm.createContext(context);

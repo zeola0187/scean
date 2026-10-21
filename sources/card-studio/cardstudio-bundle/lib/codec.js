@@ -118,8 +118,14 @@ export function validateCard(card) {
 // Preservation compatibility only: imported optional nulls are retained, not
 // interpreted as zero/false or claimed to satisfy the normative CC interface.
 export const nullableBookSettings = ['scan_depth','token_budget','recursive_scanning'];
+export function selectiveSecondaryWarning(entry) {
+  const secondary=entry?.secondary_keys??entry?.keysecondary;
+  return entry?.selective===true&&entry.enabled!==false&&entry.disable!==true&&entry.constant!==true&&typeof entry.content==='string'&&!!entry.content.trim()&&(!Array.isArray(secondary)||!secondary.some(k=>typeof k==='string'&&k.trim()))
+    ? {code:'SELECTIVE_SECONDARY_EMPTY',effect:'A primary hit still excludes this active nonconstant entry in SCEAN; no secondary keys are configured.',choices:['add_secondary_keys','disable_selective_for_this_entry','keep_current_behavior'],automaticChange:false}:null;
+}
 export function compatibilityWarnings(card) {
-  return [...legacyAliasWarnings(card),...tavernBookIssues(card.data?.character_book).map(issue=>({...issue,path:'/data/character_book/entries',exportBlocked:true})),...nullableBookSettings.filter(k=>card.data?.character_book?.[k]===null)
+  const entries=card.data?.character_book?.entries??[],rows=Array.isArray(entries)?entries:Object.values(entries);
+  return [...rows.flatMap((e,i)=>{const w=selectiveSecondaryWarning(e);return w?[{...w,path:'/data/character_book/entries/'+(Array.isArray(entries)?i:e.uid),entryId:e.id??e.uid??i}]:[];}),...legacyAliasWarnings(card),...tavernBookIssues(card.data?.character_book).map(issue=>({...issue,path:'/data/character_book/entries',exportBlocked:true})),...nullableBookSettings.filter(k=>card.data?.character_book?.[k]===null)
     .map(k=>({code:'PRESERVED_NULL_BOOK_SETTING',path:'/data/character_book/'+k}))];
 }
 export function validateBook(book,{version=3}={}) {

@@ -1,6 +1,6 @@
-export const stageNames = Object.freeze({ memory:'讀取可用記憶', director:'構思', character:'角色諮詢', adjudicate:'行動裁定', draft:'草稿', prose:'正文', prose_repair:'局部校修', banlist:'禁詞檢查', post_stat:'結算世界與記憶', commit:'保存' });
+export const stageNames = Object.freeze({ memory:'讀取可用記憶', director:'構思', character:'角色諮詢', adjudicate:'行動裁定', writer:'單一 Writer 正文',writer_repair:'正文局部校修',validation:'本機正文檢查',draft:'草稿', prose:'正文', prose_repair:'局部校修', banlist:'禁詞檢查', post_stat:'結算世界與記憶', commit:'保存' });
 export const statusNames = Object.freeze({ pending:'進行中', completed:'完成', failed:'失敗', cancelled:'已取消', committed:'已提交', not_called:'未呼叫', not_recorded:'未記錄' });
-export function generationAvailability(mode, models) {
+export function generationAvailability(mode, models, writingMode='single_writer') {
   const actualMode=String(mode??models?.mode??'');
   const scripted=/script|mock|offline/i.test(actualMode);
   if(actualMode==='interactive'){
@@ -8,7 +8,7 @@ export function generationAvailability(mode, models) {
     return {blocked,remaining:null,requiresActivation:blocked,message:blocked?'使用者互動模式尚未啟用模型連線。可先查看保存內容；欲生成新回合，請在輸入區確認本次啟動的模型使用授權。':''};
   }
   const remaining=models?.remaining??models?.generationGate?.remaining;
-  const blocked=!scripted&&Number.isFinite(remaining)&&remaining<4;
+  const blocked=!scripted&&Number.isFinite(remaining)&&remaining<(writingMode==='single_writer'?3:4);
   return {blocked,remaining:Number.isFinite(remaining)?remaining:null,requiresActivation:false,message:blocked?`本次授權剩餘 ${remaining} 次生成，不足完整新輪；可查看保存內容，追加真模型需新授權。`:''};
 }
 export function interactiveEnableRequest(mode, interactive, acknowledged) {
@@ -119,3 +119,4 @@ export function activeDraftReceipt(run, requestId) {
   if(receipt.status!=='committed'&&receipt.result?.status!=='committed')return false;
   return (run.turns??[]).some(turn=>turn.commitId===receipt.commitId)||run.lastTurn?.commitId===receipt.commitId||receipt.active===true;
 }
+export function inspectorStageRoute(value){const stages=value?.attempts?.at(-1)?.stages??[];return stages.length?'實際流程：'+stages.map(s=>(stageNames[s.stage]??'未識別階段')+(s.modelCall===false?'（本機）':'')+'·'+(statusNames[s.status]??'未知')).join(' → '):'尚無生成階段紀錄。';}

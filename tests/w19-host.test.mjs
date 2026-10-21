@@ -23,7 +23,7 @@ async function fixture(options={}){
     if(args.stage==='chapter_analysis')return {text:JSON.stringify({shouldCreateChapter:false,optimalEndTurn:args.input.range.endTurn,suggestedTitle:null,keywords:[],characters:[],locations:[],plotThreads:[],emotionalTone:'quiet',significantEvents:[]}),model:'synthetic-w19'};
     return {text:args.stage==='post_stat'?JSON.stringify({contractVersion:2,stateChanges:[],memories:[],playerHistory:[]}):'The synthetic captain watches the quiet deck.'};
   }};
-  const engine=new SceanEngine({store,model,memory:new Memory()});
+  const engine=new SceanEngine({unconfiguredWritingMode:'current',store,model,memory:new Memory()});
   if(options.longrun)await store.create(syntheticLongrun({turns:16,bodyRepeats:20,runId:'w19-longrun'}));
   const hostRoot=join(root,'host'),host=await new SceanHost({engine,root:hostRoot,summaryEnabled:options.enabled??false,chapterModelsEnabled:options.enabled??false,maxConcurrentOperations:options.maxConcurrentOperations??4,jobLedgerOptions:options.jobLedgerOptions??{}}).init();
   const runId=options.longrun?'w19-longrun':(await host.createRun({snapshot})).runId;
@@ -99,7 +99,7 @@ test('W19 restart reconciles accepted/running evidence to committed or interrupt
   const path=join(f.hostRoot,'operations.json'),data=JSON.parse(await readFile(path,'utf8'));
   data.records[0].status='running';delete data.records[0].finishedAt;
   data.records.push({...data.records[0],operationId:'accepted-before-crash',requestId:'never-started-request',inputHash:hash('Never started.'),fingerprint:hash('synthetic-accepted-record'),baseVersion:1,baseHead:done.canonical.head,status:'accepted'});
-  await writeFile(path,JSON.stringify(data));let calls=0;const engine=new SceanEngine({store:f.store,model:{generate(){calls++;throw Error('REPLAY_FORBIDDEN');}},memory:new Memory()}),host=await new SceanHost({engine,root:f.hostRoot}).init();
+  await writeFile(path,JSON.stringify(data));let calls=0;const engine=new SceanEngine({unconfiguredWritingMode:'current',store:f.store,model:{generate(){calls++;throw Error('REPLAY_FORBIDDEN');}},memory:new Memory()}),host=await new SceanHost({engine,root:f.hostRoot}).init();
   const restored=(await host.request({action:'operationStatus',runId:f.runId,operationId:request.operationId})).value;assert.equal(restored.status,'committed');assert.equal(restored.result.commitId,done.result.commitId);
   const interrupted=(await host.request({action:'operationStatus',runId:f.runId,operationId:'accepted-before-crash'})).value;assert.equal(interrupted.status,'interrupted');assert.equal(interrupted.recovery,'host_interrupted_no_replay');assert.equal(calls,0);await host.close();
 });
@@ -155,14 +155,14 @@ test('W19 abrupt Host process exit before and after canonical publication never 
       const store=new DurableStore({root:${JSON.stringify(join(f.root,'store'))}}),model={async generate({stage}){
         if(${JSON.stringify(phase)}==='running')process.exit(23);
         return {text:stage==='post_stat'?JSON.stringify({contractVersion:2,stateChanges:[],memories:[],playerHistory:[]}):'Synthetic restart witness.'};
-      }},engine=new SceanEngine({store,model,memory:new Memory()}),host=await new SceanHost({engine,root:${JSON.stringify(f.hostRoot)}}).init();
+      }},engine=new SceanEngine({unconfiguredWritingMode:'current',store,model,memory:new Memory()}),host=await new SceanHost({engine,root:${JSON.stringify(f.hostRoot)}}).init();
       host.jobs.ledger.fault=point=>{if(point==='beforeRename'&&host.jobs.ledger.records.at(-1)?.status==='committed')process.exit(24);};
       await host.request({action:'operationSubmit',kind:'turn',runId:${JSON.stringify(f.runId)},requestId:'process-request',operationId:'process-operation',baseVersion:0,baseHead:null,input:'Synthetic restart request.'});
       await host.jobs.active.get(${JSON.stringify(f.runId)})?.promise;
     `;
     const exit=await new Promise((resolve,reject)=>{const child=spawn(process.execPath,['--input-type=module','--eval',code],{stdio:['ignore','pipe','pipe'],windowsHide:true});let stderr='';const timer=setTimeout(()=>{child.kill();reject(Error('Synthetic restart child timed out'));},15000);child.stderr.on('data',value=>stderr+=value);child.once('error',reject);child.once('exit',code=>{clearTimeout(timer);resolve({code,stderr});});});
     assert.equal(exit.code,phase==='running'?23:24,exit.stderr);
-    let modelCalls=0;const engine=new SceanEngine({store:f.store,model:{generate(){modelCalls++;throw Error('REPLAY_FORBIDDEN');}},memory:new Memory()}),host=await new SceanHost({engine,root:f.hostRoot}).init();
+    let modelCalls=0;const engine=new SceanEngine({unconfiguredWritingMode:'current',store:f.store,model:{generate(){modelCalls++;throw Error('REPLAY_FORBIDDEN');}},memory:new Memory()}),host=await new SceanHost({engine,root:f.hostRoot}).init();
     const status=(await host.request({action:'operationStatus',runId:f.runId,operationId:'process-operation'})).value;
     assert.equal(status.status,phase==='running'?'interrupted':'committed');assert.equal(status.canonical.version,phase==='running'?0:1);assert.equal(modelCalls,0);
     const replay=await host.request({action:'operationSubmit',kind:'turn',runId:f.runId,requestId:'process-request',operationId:'process-operation',baseVersion:0,baseHead:null,input:'Synthetic restart request.'});assert.equal(replay.value.status,status.status);assert.equal(modelCalls,0);await host.close();

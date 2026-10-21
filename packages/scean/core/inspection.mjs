@@ -9,6 +9,7 @@ const pick=(value,keys)=>Object.fromEntries(keys.filter(key=>value?.[key]!==unde
 // A content hash is an identifying fingerprint, not a redaction. Canonical hashes
 // and provenance remain available only through the existing private grant.
 const restricted=()=>({status:'restricted'});
+const publicWritingMode=value=>({...pick(value,['schemaVersion','mode','revision','version','loading','hash']),skills:(value.skills??[]).map(row=>pick(row,['id','stage','version','sha256','bytes','estimatedTokens']))});
 const stateView=value=>value?publicStateForModel(value):{world:{},characters:{}};
 const publicMemory=(memory,runId)=>eligibleMemory(memory,{runId,audience:'public'})?publicData(memory):{
   content:restricted(),
@@ -49,6 +50,7 @@ function publicAssemblyDiagnostics(value){
 }
 function publicStage(stage){
   const result=pick(stage,['stage','status','startedAt','finishedAt','error']);
+  if(stage.modelCall===false){result.modelCall=false;result.checks=(stage.checks??[]).filter(c=>['nonempty_text','well_formed_unicode','literal_banlist'].includes(c));}
   if(stage.access)result.access=stage.access.kind==='character_private'?{kind:'character_private',status:'restricted'}:pick(stage.access,['kind']);
   if(stage.derivedFactsUse)result.derivedFactsUse=pick(stage.derivedFactsUse,['stage','status','providerDispatch','providedFactIds','config','canonical','snapshotHash']);
   if(stage.contextBudget)result.contextBudget=publicContextBudget(stage.contextBudget);
@@ -67,6 +69,8 @@ export function publicSnapshot(snapshot){
 }
 function publicTool(tool){
   const base=pick(tool,['id','name','arguments','kind','status','startedAt','finishedAt','error']);
+  if(tool.consultation)base.consultation=pick(tool.consultation,['dispatchLimit','dispatches','formatCorrections','validation']);
+  if(['format_limit','dispatch_limit','output_too_large','not_applicable','timeout','cancelled','generation_failed'].includes(tool.consultation?.stopReason))base.consultation.stopReason=tool.consultation.stopReason;
   if(tool.name==='consult_character'){
     // A.1 only forwards the explicit public advice envelope. Legacy untyped text
     // remains in authorized detailed diagnostics, never treated as a new grant.
@@ -82,11 +86,13 @@ export function publicTurnResult(result){
   if(result.state)projected.state=stateView(result.state);
   if(result.memories)projected.memories=result.memories.map(m=>publicMemory(m,result.runId??m.source?.runId));
   if(result.playerHistory)projected.playerHistory={status:'restricted',count:result.playerHistory.length};
-  if(result.trace)projected.trace={...pick(result.trace,['attemptId','operationId']),stages:(result.trace.stages??[]).map(publicStage),tools:(result.trace.tools??[]).map(publicTool)};
+  if(result.trace)projected.trace={...(result.trace.writingMode?{writingMode:publicWritingMode(result.trace.writingMode)}:{}),...(result.trace.proseStyle?{proseStyle:pick(result.trace.proseStyle,['schemaVersion','revision','source'])}:{}),...pick(result.trace,['attemptId','operationId']),stages:(result.trace.stages??[]).map(publicStage),tools:(result.trace.tools??[]).map(publicTool)};
   return projected;
 }
 function publicAttempt(attempt,runId){
   const result=pick(attempt,['schemaVersion','attemptId','runId','requestId','operationId','baseVersion','status','startedAt','finishedAt','input','inputSnapshot','directorComplete','requestOutcome','commitId','error','recovery']);
+  if(attempt.writingMode)result.writingMode=publicWritingMode(attempt.writingMode);
+  if(attempt.proseStyle)result.proseStyle={...pick(attempt.proseStyle,['schemaVersion','revision','source']),text:restricted()};
   if(attempt.assemblyDiagnostics)result.assemblyDiagnostics=publicAssemblyDiagnostics(attempt.assemblyDiagnostics);
   if(attempt.contextPreflights)result.contextPreflights=attempt.contextPreflights.map(publicContextBudget);
   if(attempt.assembly)result.assembly=restricted(attempt.assembly);

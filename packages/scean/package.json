@@ -15,6 +15,7 @@
     "authoring/skills/scean-compatibility-audit",
     "plugin",
     "core",
+    "runtime-skills",
     "adapters",
     "licenses",
     "isolated",

@@ -40,11 +40,11 @@ async function sdkFixture(t,portOptions={}){
   return f;
 }
 
-test('all seven RP paths omit former plugin/stage caps and inherit the exact prepared SDK value',async t=>{
-  const f=await sdkFixture(t,{maxTokens:99,stageMaxTokens:{director:101,character:102,adjudicate:103,draft:104,prose:105,post_stat:106}});
-  assert.deepEqual(RP_MODEL_STAGES,['director','character','adjudicate','draft','prose','prose_repair','post_stat']);
+test('all RP paths, including Writer and local repair, omit former plugin/stage caps and inherit the exact prepared SDK value',async t=>{
+  const f=await sdkFixture(t,{maxTokens:99,stageMaxTokens:{director:101,character:102,adjudicate:103,draft:104,prose:105,post_stat:106,writer:107,writer_repair:108}});
+  assert.deepEqual(RP_MODEL_STAGES,['director','character','adjudicate','draft','prose','prose_repair','writer','writer_repair','post_stat']);
   for(const stage of RP_MODEL_STAGES){const r=await f.run(stage);assert.equal(r.route.effective.maxTokens,12000,stage);assert.equal(r.route.outputBudget.sdkResolvedMaxTokens,12000);assert.equal(r.route.outputBudget.adapterDefaultApplied,true);assert.equal(r.route.outputBudget.snapshotBound,true);assert.equal(r.route.outputBudget.policy,'dsh_rp_inheritance');assert.equal(r.attempts[0].finishKind,'stop');}
-  assert(f.proposals.every(p=>!Object.hasOwn(p,'maxTokens')));assert(f.calls.every(c=>c.options.maxTokens===12000&&c.options.reasoningEffort==='low'));assert.equal(f.reserves.length,7);
+  assert(f.proposals.every(p=>!Object.hasOwn(p,'maxTokens')));assert(f.calls.every(c=>c.options.maxTokens===12000&&c.options.reasoningEffort==='low'));assert.equal(f.reserves.length,RP_MODEL_STAGES.length);
 });
 
 test('saving DSH model defaults affects the next request and description, without reconstructing the port',async t=>{
@@ -111,11 +111,21 @@ test('isolated Core/Store flow reconciles changed prepared budgets on failure an
   const f=await sdkFixture(t),history=await createHistoryFixture({root:await mkdtemp(temporary+'history-')}),oracle=history.model;let fail=true;
   f.handler=async request=>request.stage==='post_stat'&&fail?{text:'PRIVATE_PARTIAL_STATE',finishKind:'max-tokens',usage:{inputTokens:8,outputTokens:18000,totalTokens:18008}}:oracle.generate(request);
   const originalDescribe=f.enginePort.describe;f.enginePort.describe=async args=>{const result=await originalDescribe(args);if(args.stage==='post_stat')f.save('a',{maxTokens:18000});return result;};
-  const engine=new SceanEngine({store:history.store,model:f.enginePort,memory:history.memory}),before=await history.store.read(history.run.runId);
+  const engine=new SceanEngine({unconfiguredWritingMode:'current',store:history.store,model:f.enginePort,memory:history.memory}),before=await history.store.read(history.run.runId);
   await assert.rejects(engine.turn({runId:history.run.runId,requestId:'truncated-state',input:'Synthetic offline continuation'}),{code:'MODEL_OUTPUT_TRUNCATED'});
   assert.deepEqual(await history.store.read(history.run.runId),before);
   const failed=(await history.store.readAttempts(history.run.runId)).at(-1).stages.at(-1);assert.equal(failed.stage,'post_stat');assert.equal(failed.contextBudget.outputReserve,18000);assert.equal(failed.contextBudget.outputReservePhase,'sdk_prepared');assert.equal(failed.contextBudget.sdkFinishKind,'max-tokens');assert.equal(failed.contextBudget.actualUsage.outputTokens,18000);assert.equal(failed.contextBudget.providerFinalOutputReserve,null);
   const projected=publicInspection(await engine.inspect(history.run.runId));assert(!JSON.stringify(projected).includes('PRIVATE_PARTIAL_STATE'));assert(!JSON.stringify(projected).includes('SYNTHETIC_KALT_PRIVATE_CALIBRATION'));
   fail=false;const result=await engine.turn({runId:history.run.runId,requestId:'complete-state',input:'Synthetic offline continuation'});assert.equal(result.version,1);const completed=(await history.store.readAttempts(history.run.runId)).find(a=>a.attemptId===result.trace.attemptId),postStat=completed.stages.find(s=>s.stage==='post_stat');assert.equal(postStat.contextBudget.outputReserve,18000);assert.equal(postStat.contextBudget.sdkFinishKind,'stop');
   assert.deepEqual((await history.store.read(history.run.runId)).snapshot,before.snapshot);
+});
+
+test('Single Writer runs the complete scheduler through the actual SDK port with three inherited dispatches',async t=>{
+  const temporary=fileURLToPath(new URL('../evidence/rp-output-inheritance/',import.meta.url));await mkdir(temporary,{recursive:true});
+  const f=await sdkFixture(t),history=await createHistoryFixture({root:await mkdtemp(temporary+'single-')}),seen=[];
+  f.handler=async request=>{seen.push({stage:request.stage,input:structuredClone(request.input)});if(request.stage==='director')return {text:JSON.stringify({handoffVersion:1,sceneIntent:'An ordinary supported exchange.',knownFacts:[],effectiveConstraints:[],expressedCommitmentsOrRefusals:[],characterPositions:[],unknowns:[]})};if(request.stage==='writer')return {text:'A synthetic character waits beside the workbench.'};if(request.stage==='post_stat')return {text:JSON.stringify({contractVersion:2,stateChanges:[],memories:[]})};assert.fail('Unexpected fixed or supplemental stage '+request.stage);};
+  const engine=new SceanEngine({unconfiguredWritingMode:'current',store:history.store,model:f.enginePort,memory:history.memory});await engine.updateWritingMode({runId:history.run.runId,mode:'single_writer',expectedRevision:0,operationId:'single-sdk'});
+  const result=await engine.turn({runId:history.run.runId,requestId:'single-sdk',input:'Synthetic ordinary continuation'});
+  assert.deepEqual(seen.map(x=>x.stage),['director','writer','post_stat']);assert.equal(f.reserves.length,3);assert.equal(f.settles.length,3);assert(f.calls.every(x=>x.options.maxTokens===12000&&x.options.reasoningEffort==='low'));assert.equal(seen[1].input.writingSkill.id,'single-writer');
+  const attempt=(await engine.inspect(history.run.runId)).attempts.at(-1),writer=attempt.stages.find(x=>x.stage==='writer');assert.deepEqual(writer.prompt.input,seen[1].input);assert.equal(writer.contextBudget.outputSnapshotBound,true);assert.equal(writer.contextBudget.outputReserve,12000);assert.equal(result.body,seen[2].input.finalBody);assert.equal(attempt.stages.find(x=>x.stage==='validation').modelCall,false);
 });

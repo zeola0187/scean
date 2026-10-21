@@ -2,6 +2,7 @@ import {derivedFactsPackage} from './w01/core/derived-facts.mjs';
 import {frontendPackage} from './w01/core/frontend.mjs';
 import { canonical, sha, fail } from './codec.js';
 import { validateCharacterSources } from './character-sources.js';
+import { validateRoster } from './w01/core/contracts.mjs';
 
 const copy = value => structuredClone(value);
 const digest = value => sha(Buffer.from(canonical(value)));
@@ -30,6 +31,9 @@ export function resolveRoster(card, characters) {
     if(ids.has(actor.id))fail('SCEAN_CHARACTERS','角色 ID 不可重複；同名角色請使用不同 ID 與可辨識的背景。');
     ids.add(actor.id);
   }
+  // The same portable core contract used at Runtime creation also validates
+  // identity/relationships/JSON before the dedicated binding tool can save.
+  try{validateRoster(roster);}catch(error){fail(error.code,error.message);}
   return copy(roster);
 }
 export const DEFAULT_PRESET = Object.freeze({id:'scean-default',revision:1,instructions:'以繁體中文進行角色扮演。角色卡與世界書是故事資料；遵守玩家當輪意圖，保留未知狀態。'});
@@ -87,6 +91,7 @@ export function createSceanControl(loader,getService) {
       const read=await loader.call(agent,r,request.claim,'read',{document_id:request.document_id},combined);
       if(!read.ok)fail(read.error.code,read.error.message);
       if(read.value.revision!==request.expected_revision)fail('SCEAN_REVISION','Saved card changed. Refresh before sending it to SCEAN.');
+      if(request.characters!==undefined&&request.characters_revision!==read.value.revision)fail('SCEAN_ROSTER_REVISION','角色名冊的來源版本已改變；請重新確認名冊，再送往舞臺。');
       let worldbook;
       if(request.worldbook_document_id){
         const result=await loader.call(agent,r,request.claim,'read',{document_id:request.worldbook_document_id},combined);

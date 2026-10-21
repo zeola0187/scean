@@ -1,4 +1,4 @@
-import { strictJson, decodeCard, validateBook, fail, clone } from './codec.js';
+import { strictJson, decodeCard, validateBook, fail, clone, selectiveSecondaryWarning } from './codec.js';
 
 // One decoder and one document/entry shape for working copies and readonly sources.
 export const stBook = book => !!book?.entries && typeof book.entries==='object' && !Array.isArray(book.entries);
@@ -23,7 +23,8 @@ export function validateStandaloneBook(book){
   }
 }
 export function entrySummary(book,entry,entry_id) {
-  return {entry_id,keys:stBook(book)?entry.key:entry.keys,comment:entry.comment??'',enabled:stBook(book)?!entry.disable:entry.enabled,contentLength:entry.content.length};
+  const warning=selectiveSecondaryWarning(entry);
+  return {entry_id,keys:stBook(book)?entry.key:entry.keys,comment:entry.comment??'',enabled:stBook(book)?!entry.disable:entry.enabled,contentLength:entry.content.length,...warning?{warnings:[warning]}:{}};
 }
 export const documentFields=['name','description','personality','scenario','first_mes','mes_example','creator_notes','system_prompt','post_history_instructions','tags','creator','alternate_greetings','group_only_greetings'];
 const escape=value=>String(value).replace(/~/g,'~0').replace(/\//g,'~1');

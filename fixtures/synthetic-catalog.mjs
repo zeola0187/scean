@@ -35,10 +35,12 @@ export function createScriptedModel({delayMs=50}={}) {
       if(playerInput.includes('[test:fail]'))throw Object.assign(Error('MODEL_TRANSPORT_ERROR'),{code:'MODEL_TRANSPORT_ERROR'});
       if(playerInput.includes('[test:fail-once]')&&!failedOnce.has(context.requestId)){failedOnce.add(context.requestId);throw Object.assign(Error('MODEL_TRANSPORT_ERROR'),{code:'MODEL_TRANSPORT_ERROR'});}
       if(/諮詢.*卡爾特|consult.*kalt/i.test(playerInput)&&!input.conversation?.length)return {text:'',toolCalls:[{id:'synthetic-consult-kalt',name:'consult_character',arguments:{characterId:'kalt',question:'如何安排低負載檢查？'}}]};
+      if(input.handoffContract)return {text:JSON.stringify({handoffVersion:1,sceneIntent:'A synthetic ordinary exchange; no new player decision is invented.',knownFacts:[],effectiveConstraints:[],expressedCommitmentsOrRefusals:[],characterPositions:[],unknowns:[]})};
       return {text:'在艙室給出簡短的日常回應，保留玩家決定。'};
     }
     if(stage==='character')return {text:JSON.stringify({adviceVersion:1,characterId:input.character.id,observable:{attitude:'謹慎',intent:'建議先確認設備的低負載讀數'},publicUtterances:['先確認低負載讀數吧。'],withheld:[],internal:{notes:[]},intendedDisclosures:[]})};
     if(stage==='adjudicate')return {text:'這是日常檢查，不需要擲骰。'};
+    if(stage==='writer')return {text:'卡爾特把銀色鑰匙放在桌上的星圖旁。希歐點頭，兩人等待你的回答。'};
     if(stage==='draft')return {text:'卡爾特把銀色鑰匙放在桌上的星圖旁。希歐點頭，兩人等待你的回答。'};
     if(stage==='prose')return {text:input.draft};
     if(stage==='post_stat')return {text:JSON.stringify({contractVersion:2,stateChanges:[{scope:'world',category:'facts',key:'silverKey',operation:'set',value:'星圖旁'}],memories:[{schemaVersion:2,text:'卡爾特把銀色鑰匙放在星圖旁。',characterIds:['kalt','sio'],visibility:'characters',access:{kind:'known_event'},knowers:['kalt','sio'],epistemic:{kind:'fact'},credibility:'confirmed',participants:{speakers:[],actors:['kalt'],decisionMakers:['kalt']}}]})};

@@ -23,7 +23,7 @@ async function oldRun(){
     await closeChapter(f.engine,{...await historyArgs(f,'old-chapter-'+chapter),title:'Original manual chapter '+chapter});
   }return f.store.read(f.run.runId);})();return copy(await oldFixture);
 }
-async function source(){const run=await oldRun(),root=await mkdtemp(join(tmpdir(),'scean-df-save-')),store=new DurableStore({root});await store.create(run);const model=historyModel(),memory=syntheticHistoryMemory(),engine=new SceanEngine({store,model,memory});return{root,store,engine,model,memory,run};}
+async function source(){const run=await oldRun(),root=await mkdtemp(join(tmpdir(),'scean-df-save-')),store=new DurableStore({root});await store.create(run);const model=historyModel(),memory=syntheticHistoryMemory(),engine=new SceanEngine({unconfiguredWritingMode:'current',store,model,memory});return{root,store,engine,model,memory,run};}
 async function backfill(f,chapterId,operationId,model=chapterModel()) {return backfillChapterSummary(f.engine,{...await historyArgs(f,operationId),chapterId,detail:'precise'},{enabled:true,model});}
 async function upgraded(){const f=await source();await updateChapterSettings(f.engine,{...await historyArgs(f,'chapter-settings'),settings});await backfill(f,f.run.narrative.chapters[0].id,'backfill-first');return f;}
 async function freshStore(prefix='scean-df-import-'){const root=await mkdtemp(join(tmpdir(),prefix));return{root,store:new DurableStore({root})};}
@@ -32,7 +32,7 @@ test('D-final original three-manual-chapter v2 stays byte-equivalent through val
   const run=await oldRun(),bundle=encodeRunBundle(run),restored=validateRunBundle(JSON.stringify(bundle));
   assert.equal(bundle.schemaVersion,2);assert.equal(restored.narrative.schemaVersion,1);assert.equal(restored.narrative.chapters.length,3);
   assert(!Object.hasOwn(restored.narrative,'chapterSummaries'));assert.deepEqual(encodeRunBundle(restored),bundle);assert.equal(restored.snapshot.hash,run.snapshot.hash);
-  const f=await freshStore();await f.store.create(restored);const model=historyModel(),engine=new SceanEngine({store:new DurableStore({root:f.root}),model,memory:syntheticHistoryMemory()});
+  const f=await freshStore();await f.store.create(restored);const model=historyModel(),engine=new SceanEngine({unconfiguredWritingMode:'current',store:new DurableStore({root:f.root}),model,memory:syntheticHistoryMemory()});
   assert.deepEqual(await recoverNarrative(engine,restored.runId),{status:'unchanged'});assert.equal(model.calls.length,0);assert.deepEqual((await engine.store.read(restored.runId)).narrative,run.narrative);
 });
 
@@ -88,14 +88,14 @@ test('D-final rollback retires affected chapter summary, preserves previous chap
   const f=await source();for(const [i,c]of f.run.narrative.chapters.entries())await backfill(f,c.id,'fill-'+i);
   await f.engine.rollback(await historyArgs(f,'retire-last'));const run=await f.store.read(f.run.runId),restored=validateRunBundle(encodeRunBundle(run));
   const rows=restored.narrative.chapterSummaries;assert.equal(rows.filter(s=>s.current).length,2);assert.equal(rows[2].status,'stale');assert.equal(rows[2].current,false);
-  const imported=await freshStore();await imported.store.create(restored);const model=historyModel(),engine=new SceanEngine({store:new DurableStore({root:imported.root}),model,memory:syntheticHistoryMemory()});await recoverNarrative(engine,restored.runId);assert.equal(model.calls.length,0);
+  const imported=await freshStore();await imported.store.create(restored);const model=historyModel(),engine=new SceanEngine({unconfiguredWritingMode:'current',store:new DurableStore({root:imported.root}),model,memory:syntheticHistoryMemory()});await recoverNarrative(engine,restored.runId);assert.equal(model.calls.length,0);
   assert.deepEqual((await engine.store.read(restored.runId)).narrative,restored.narrative);
   const forged=encodeRunBundle(restored);forged.run.narrative.chapterSummaries[2].status='completed';forged.run.narrative.chapterSummaries[2].current=true;resign(forged);assert.throws(()=>validateRunBundle(forged));
 });
 
 test('D-final imported enabled preference is data only, replay returns existing receipt and preserves private ACL',async()=>{
   const f=await upgraded(),run=await f.store.read(f.run.runId),bundle=encodeRunBundle(run),restored=validateRunBundle(bundle),destination=await freshStore();await destination.store.create(restored);
-  const model=historyModel(),memory=syntheticHistoryMemory(),engine=new SceanEngine({store:new DurableStore({root:destination.root}),model,memory});await recoverNarrative(engine,run.runId);
+  const model=historyModel(),memory=syntheticHistoryMemory(),engine=new SceanEngine({unconfiguredWritingMode:'current',store:new DurableStore({root:destination.root}),model,memory});await recoverNarrative(engine,run.runId);
   assert.equal(model.calls.length,0);assert.equal(restored.narrative.chapterSettings.autoEnabled,true);assert.equal((await engine.store.listRuns())[0].runId,run.runId);
   const operation=restored.narrative.operations['backfill-first'];const result=await backfillChapterSummary(engine,copy(operation.request),{enabled:true,model});assert.deepEqual(result,operation.result);assert.equal(model.calls.length,0);
   const recall=actor=>memory.retrieve({query:'pump seal fault',records:restored.memories,runId:restored.runId,characterId:actor,audience:'owner'});assert(JSON.stringify(await recall('kalt')).includes(HISTORY_C.privateText));assert(!JSON.stringify(await recall('sio')).includes(HISTORY_C.privateText));
@@ -107,7 +107,7 @@ test('D-final pending chapter backfill restore terminalizes without paid retry o
   const request={...await historyArgs(f,'pending-backfill'),chapterId:f.run.narrative.chapters[0].id,detail:'auto',signal:controller.signal};
   const job=backfillChapterSummary(f.engine,request,{enabled:true,model:{async generate(){entered();await wait;return{text:JSON.stringify(payload(1))};}}});await ready;
   const run=validateRunBundle(encodeRunBundle(await f.store.read(f.run.runId)));controller.abort();release();await assert.rejects(job);
-  const destination=await freshStore();await destination.store.create(run);const model=historyModel(),engine=new SceanEngine({store:new DurableStore({root:destination.root}),model,memory:syntheticHistoryMemory()});await recoverNarrative(engine,run.runId);
+  const destination=await freshStore();await destination.store.create(run);const model=historyModel(),engine=new SceanEngine({unconfiguredWritingMode:'current',store:new DurableStore({root:destination.root}),model,memory:syntheticHistoryMemory()});await recoverNarrative(engine,run.runId);
   const restored=await engine.store.read(run.runId);assert.equal(restored.narrative.operations['pending-backfill'].status,'failed');assert.equal(model.calls.length,0);
   for(const key of ['turns','state','memories','playerHistory','snapshot'])assert.deepEqual(restored[key],run[key]);validateRunBundle(encodeRunBundle(restored));
 });

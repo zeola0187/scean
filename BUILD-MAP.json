@@ -837,6 +837,46 @@
     {
       "path": "packages/studio/lib/diagnosis-consent.js",
       "source": "sources/card-studio/cardstudio-bundle/lib/diagnosis-consent.js"
+    },
+    {
+      "source": "core/prose-style.mjs",
+      "path": "packages/scean/core/prose-style.mjs"
+    },
+    {
+      "source": "isolated/web/prose-style-ui.mjs",
+      "path": "packages/scean/isolated/web/prose-style-ui.mjs"
+    },
+    {
+      "source": "core/writing-mode.mjs",
+      "path": "packages/scean/core/writing-mode.mjs"
+    },
+    {
+      "source": "runtime-skills/scene-materials/SKILL.md",
+      "path": "packages/scean/runtime-skills/scene-materials/SKILL.md"
+    },
+    {
+      "source": "runtime-skills/scene-writing/SKILL.md",
+      "path": "packages/scean/runtime-skills/scene-writing/SKILL.md"
+    },
+    {
+      "source": "isolated/web/writing-mode-ui.mjs",
+      "path": "packages/scean/isolated/web/writing-mode-ui.mjs"
+    },
+    {
+      "source": "core/writer-workflow.mjs",
+      "path": "packages/scean/core/writer-workflow.mjs"
+    },
+    {
+      "source": "runtime-skills/single-director/SKILL.md",
+      "path": "packages/scean/runtime-skills/single-director/SKILL.md"
+    },
+    {
+      "source": "runtime-skills/single-writer/SKILL.md",
+      "path": "packages/scean/runtime-skills/single-writer/SKILL.md"
+    },
+    {
+      "path": "packages/scean/core/writing-style-library.mjs",
+      "source": "core/writing-style-library.mjs"
     }
   ]
 }

@@ -45,7 +45,7 @@ async function fixture(output, { prepared = false, controller, blueprint } = {})
   if (prepared) llm.prepareCall = async config => ({ config, stream });
   const model = createNativeModelPort({ llm, agentDefaultModel: { currentSelection: () => ({ provider: 'offline', model: 'synthetic' }) },
     usageLedger: { async reserve() { return 'synthetic'; }, async settle(_id, entry) { settlements.push(entry); } } });
-  const engine = new SceanEngine({ store, model, memory: { async retrieve() { return { records: [], status: 'synthetic' }; } } });
+  const engine = new SceanEngine({unconfiguredWritingMode:'current', store, model, memory: { async retrieve() { return { records: [], status: 'synthetic' }; } } });
   const run = await engine.createRun({ snapshot: { schemaVersion: 1, cardId: 'synthetic-scope', revision: 1, card: { name: 'Synthetic' }, worldbook: {}, preset: {}, characters, ...(blueprint ? { stateBlueprint: blueprint } : {}) }, ...(blueprint ? {} : { initialState: previous() }) });
   return { root, store, engine, run, requests, settlements, turn: () => engine.turn({ runId: run.runId, requestId: 'scope-test', input: 'Enter the bridge.', signal: controller?.signal }) };
 }

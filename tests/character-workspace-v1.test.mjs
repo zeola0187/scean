@@ -43,7 +43,7 @@ test('no CR still writes memory; fresh port packets include canonical context an
   if(a.stage==='character')return {text:JSON.stringify(advice('alpha'))};
   if(a.stage==='post_stat')return {text:JSON.stringify(step===0?{...empty(),memories:[{schemaVersion:2,text:'Alpha repaired the lamp.',access:{kind:'known_event'},knowers:['alpha'],characterIds:['alpha'],visibility:'characters',epistemic:{kind:'fact'},credibility:'confirmed',participants:{speakers:[],actors:['alpha'],decisionMakers:[]}}]}:empty())};
   return {text:step===0?'Alpha repaired the lamp.':'The crew rests quietly.'};}};
- const store=new DurableStore({root}),engine=new SceanEngine({store,model,memory:new Memory()}),c=fixtureCard();
+ const store=new DurableStore({root}),engine=new SceanEngine({unconfiguredWritingMode:'current',store,model,memory:new Memory()}),c=fixtureCard();
  const run=await engine.createRun({snapshot:saved(c),initialState:{world:{place:'PUBLIC_HARBOR'},characters:{alpha:{private:{fact:'OWN_STATE'}},beta:{private:{fact:'OTHER_STATE'}}}}});
  await engine.turn({runId:run.runId,requestId:'one',input:'repair lamp'});
  assert.deepEqual(calls.map(c=>c.stage),['director','draft','prose','post_stat']);

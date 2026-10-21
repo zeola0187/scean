@@ -63,7 +63,7 @@ async function setup(){
    if(mode==='fail')throw Error('synthetic failure');if(mode==='hold')await new Promise((resolve,reject)=>signal.addEventListener('abort',()=>reject(signal.reason),{once:true}));
    return {text:JSON.stringify({contractVersion:2,stateChanges:[{scope:'world',category:'facts',key:'check_1',operation:'set',value:mode==='on'}],memories:[]})};
  }return {text:stage==='director'?'Observe the public test light.':'The synthetic archivist records the observation.'};}};
- const engine=new SceanEngine({store,model,memory:{async retrieve(){return {records:[],status:'offline'};}}}),run=await engine.createRun({snapshot:f.snapshot});
+ const engine=new SceanEngine({unconfiguredWritingMode:'current',store,model,memory:{async retrieve(){return {records:[],status:'offline'};}}}),run=await engine.createRun({snapshot:f.snapshot});
  return {...f,root,store,engine,run,model,setMode:m=>mode=m,calls:()=>calls};
 }
 test('W01 formal commits update projection; fail/cancel and uncommitted proposals preserve it; restart/rollback/regenerate align',async()=>{
@@ -73,7 +73,7 @@ test('W01 formal commits update projection; fail/cancel and uncommitted proposal
  f.setMode('hold');const abort=new AbortController(),pending=f.engine.turn({runId,input:'Observe.',requestId:'cancelled',signal:abort.signal});
  await new Promise(r=>setTimeout(r,100));assert.deepEqual(frontendProjection(await f.store.read(runId)),initial);abort.abort();await assert.rejects(pending);assert.deepEqual(frontendProjection(await f.store.read(runId)),initial);
  f.setMode('off');await turn('committed');let saved=await f.store.read(runId);assert.equal(frontendProjection(saved).values.check_1.value,false);
- const engine2=new SceanEngine({store:new DurableStore({root:f.root}),model:f.model,memory:{async retrieve(){return {records:[],status:'offline'};}}});assert.deepEqual(frontendProjection(await engine2.store.read(runId)),frontendProjection(saved));
+ const engine2=new SceanEngine({unconfiguredWritingMode:'current',store:new DurableStore({root:f.root}),model:f.model,memory:{async retrieve(){return {records:[],status:'offline'};}}});assert.deepEqual(frontendProjection(await engine2.store.read(runId)),frontendProjection(saved));
  await engine2.rollback({runId,operationId:'rollback',expectedVersion:saved.version,expectedHead:saved.head});saved=await f.store.read(runId);assert.equal(frontendProjection(saved).values.check_1.value,true);assert(saved.version>initial.canonical.version);
  await turn('again');saved=await f.store.read(runId);f.setMode('on');await engine2.regenerate({runId,operationId:'regenerate',expectedVersion:saved.version,expectedHead:saved.head,requestId:'regen-result'});saved=await f.store.read(runId);assert.equal(frontendProjection(saved).values.check_1.value,true);
  const packet=JSON.stringify(publicRunView(saved));assert(!packet.includes('RESTRICTED_LABEL_CANARY'));assert(!packet.includes('RESTRICTED_VALUE_CANARY'));

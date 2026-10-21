@@ -2,7 +2,7 @@ import { randomUUID, createHash } from 'node:crypto';
 
 // Provider maximum is a validation ceiling, not a request default or a price limit.
 export const MODEL_OUTPUT_LIMIT = 384000;
-export const DEFAULT_STAGE_MAX_TOKENS = Object.freeze({ director:4096, character:4096, adjudicate:4096, draft:4096, prose:8192, post_stat:4096, summary:4096, chapter_analysis:4096, chapter_summary:4096, chapter_rerank:4096 });
+export const DEFAULT_STAGE_MAX_TOKENS = Object.freeze({ director:4096, character:4096, adjudicate:4096, draft:4096, prose:8192, writer:8192, writer_repair:4096, post_stat:4096, summary:4096, chapter_analysis:4096, chapter_summary:4096, chapter_rerank:4096 });
 export const VERIFIED_PRICING = Object.freeze({ verifiedAt:'2026-10-15', source:'https://api-docs.deepseek.com/quick_start/pricing/', model:'deepseek-flash', servedModel:'DeepSeek-V4.1-Flash', maxOutput:MODEL_OUTPUT_LIMIT, billing:'provider-reported-only; unknown remains null' });
 export function outputLimits({maxTokens,stageMaxTokens={},providerOutputLimit}={}) {
   if(!stageMaxTokens||typeof stageMaxTokens!=='object'||Array.isArray(stageMaxTokens))throw safeError('INVALID_MAX_TOKENS');
@@ -11,6 +11,28 @@ export function outputLimits({maxTokens,stageMaxTokens={},providerOutputLimit}={
   return stage=>stageMaxTokens[stage]??maxTokens??DEFAULT_STAGE_MAX_TOKENS[stage]??4096;
 }
 export function safeError(code,message=code){return Object.assign(new Error(message),{code,safeMessage:message});}
+/** Host-only, per-consultation dispatch allowance shared by transport and format
+ * recovery. Reservations are conservative and checkpointed before any dispatch.
+ * Never serialize this object into a model packet or a public diagnostic. */
+export function createDispatchBudget({signal,timeoutMs=180000,onReserve=async()=>{}}={}){
+  if(!Number.isSafeInteger(timeoutMs)||timeoutMs<1||timeoutMs>600000)throw safeError('INVALID_CALL_TIMEOUT');
+  const controller=new AbortController();let used=0,closed=false,route,effective;
+  const cancel=()=>controller.abort(safeError('CANCELLED','Consultation cancelled.'));
+  signal?.addEventListener('abort',cancel,{once:true});if(signal?.aborted)cancel();
+  const timer=setTimeout(()=>controller.abort(safeError('MODEL_TIMEOUT','Consultation deadline exceeded.')),timeoutMs);
+  let rejectAbort;const aborted=new Promise((_,reject)=>{rejectAbort=reject;});aborted.catch(()=>{});
+  const onAbort=()=>rejectAbort(controller.signal.reason);controller.signal.addEventListener('abort',onAbort,{once:true});if(controller.signal.aborted)onAbort();
+  const check=()=>{if(controller.signal.aborted)throw controller.signal.reason;if(closed)throw safeError('CANCELLED');};
+  return {
+    signal:controller.signal,limit:2,get used(){return used;},get remaining(){return closed||controller.signal.aborted?0:2-used;},check,
+    async resolveSelection(resolve){check();route??=Promise.resolve().then(resolve);return structuredClone(await route);},
+    get effectiveSelection(){return effective?structuredClone(effective):null;},
+    pinEffective(value){check();effective??=structuredClone(value);return structuredClone(effective);},
+    async take(){check();if(used>=2)throw safeError('CONSULTATION_DISPATCH_LIMIT','Consultation dispatch allowance exhausted.');const index=++used;try{await onReserve(index);}catch{throw Object.assign(safeError('CONSULTATION_CHECKPOINT_FAILED','Consultation checkpoint failed; request was not dispatched.'),{category:'persistence'});}check();return index;},
+    run(operation){check();return Promise.race([Promise.resolve().then(()=>{check();return operation();}),aborted]);},
+    close(){if(closed)return;closed=true;clearTimeout(timer);signal?.removeEventListener('abort',cancel);controller.abort(safeError('CANCELLED'));controller.signal.removeEventListener('abort',onAbort);},
+  };
+}
 export function safeFailure(error,signal){
   if(signal?.aborted||error?.name==='AbortError')return safeError('CANCELLED','Request was cancelled; this turn was not committed.');
   if(error?.name==='TimeoutError')return safeError('MODEL_TIMEOUT','Model request timed out; this turn was not committed.');
@@ -41,22 +63,24 @@ export class DeepSeekModel {
   constructor({budget,usageLedger=budget,fetchImpl=fetch,baseUrl=process.env.DEEPSEEK_BASE_URL||'https://api.deepseek.com',apiKey=process.env.DEEPSEEK_API_KEY,model='deepseek-flash',caseId='interactive',maxTokens,stageMaxTokens,timeoutMs=180000,onTrace=async()=>{}}={}){
     if(!usageLedger||!apiKey)throw safeError('MODEL_CONFIGURATION_MISSING');
     if(!['deepseek-v4-flash','deepseek-flash'].includes(model))throw safeError('UNAUTHORIZED_MODEL');
-    this.limit=outputLimits({maxTokens,stageMaxTokens,providerOutputLimit:MODEL_OUTPUT_LIMIT});this.ledger=usageLedger;this.fetch=fetchImpl;this.baseUrl=validateBase(baseUrl);this.apiKey=apiKey;this.model=model;this.caseId=caseId;this.timeoutMs=timeoutMs;this.onTrace=onTrace;
+    this.limit=outputLimits({maxTokens,stageMaxTokens,providerOutputLimit:MODEL_OUTPUT_LIMIT});this.ledger=usageLedger;this.fetch=fetchImpl;this.baseUrl=validateBase(baseUrl);this.apiKey=apiKey;this.model=model;this.caseId=caseId;this.timeoutMs=timeoutMs;this.onTrace=onTrace;this.managesDispatchBudget=true;
   }
   async describe({stage='director'}={}){return {capabilities:{contextWindow:null,outputLimit:this.limit(stage)},capacitySource:'unreported_no_platform_quota'};}
-  async generate({stage,system,input,tools,signal,context={}}){
+  async generate({stage,system,input,tools,signal,context={},dispatchBudget}){
     if(signal?.aborted)throw safeError('ABORTED_BEFORE_REQUEST');
     const maxTokens=this.limit(stage);
-    const body={model:this.model,messages:[{role:'system',content:system},{role:'user',content:typeof input==='string'?input:JSON.stringify(input)}],max_tokens:maxTokens,temperature:0.7,stream:false,thinking:{type:'disabled'}};
+    const selected=dispatchBudget?await dispatchBudget.resolveSelection(()=>({requested:{model:this.model}})):null;
+    const body={model:selected?.requested.model??this.model,messages:[{role:'system',content:system},{role:'user',content:typeof input==='string'?input:JSON.stringify(input)}],max_tokens:maxTokens,temperature:0.7,stream:false,thinking:{type:'disabled'}};
     if(tools?.length){body.tools=tools;body.tool_choice='auto';}
     const inputBytes=Buffer.byteLength(JSON.stringify(body),'utf8');
-    const id=await this.ledger.reserve({kind:'generation',caseId:this.caseId,requestId:randomUUID(),meta:{provider:'deepseek-official',model:this.model,stage,inputBytes,maxTokens,...safeContext(context)}});
+    const dispatch=dispatchBudget?await dispatchBudget.take():null;
+    const id=await this.ledger.reserve({kind:'generation',caseId:this.caseId,requestId:randomUUID(),meta:{provider:'deepseek-official',model:body.model,stage,inputBytes,maxTokens,...dispatch?{consultationDispatch:dispatch}:{},...safeContext(context)}});
     let response,data,parsed,failure;
     try{
-      response=await this.fetch(this.baseUrl+'/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${this.apiKey}`},body:JSON.stringify(body),signal:signal?AbortSignal.any([signal,AbortSignal.timeout(this.timeoutMs)]):AbortSignal.timeout(this.timeoutMs)});
+      dispatchBudget?.check();response=await this.fetch(this.baseUrl+'/chat/completions',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${this.apiKey}`},body:JSON.stringify(body),signal:signal?AbortSignal.any([signal,AbortSignal.timeout(this.timeoutMs)]):AbortSignal.timeout(this.timeoutMs)});
       if(!response.ok)throw safeError('PROVIDER_HTTP_'+response.status,'Provider returned HTTP '+response.status+'; this turn was not committed.');
       data=await response.json();parsed=parseCompletion(data);return parsed;
-    }catch(error){failure=safeFailure(error,signal);throw failure;}
+    }catch(error){failure=dispatchBudget?.signal.aborted?dispatchBudget.signal.reason:safeFailure(error,signal);throw failure;}
     finally{
       const usage=safeUsage(data?.usage),actualCostUsd=reportedCost(data?.usage);
       await this.ledger.settle(id,{actualCostUsd,usage,status:failure?'failed':'completed'});

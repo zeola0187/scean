@@ -38,7 +38,7 @@ async function fixture({targets=[],reveal=false,postStat,body='卡爾特把工�
     if(args.stage==='post_stat')return{text:JSON.stringify(postStat?postStat(args):{contractVersion:2,stateChanges:[],memories:[]})};
     throw Error('Unexpected stage '+args.stage);
   }};
-  const engine=new SceanEngine({store,model,memory});const run=await engine.createRun({snapshot:snapshot(),initialState:initial});
+  const engine=new SceanEngine({unconfiguredWritingMode:'current',store,model,memory});const run=await engine.createRun({snapshot:snapshot(),initialState:initial});
   const records=seeded(run.runId);await store.withRunLock(run.runId,()=>store.commit(run.runId,0,{...run,version:1,memories:records}));
   return {engine,store,memory,runId:run.runId,calls,rankInputs,root,records};
 }

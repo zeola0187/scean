@@ -141,8 +141,10 @@ export class DurableStore {
       catch (error) { if (error.code === 'ENOENT') continue; if (['EPERM', 'EACCES', 'EBUSY'].includes(error.code)) return; throw error; }
     }
   }
-  async withRunLock(runId, fn, { signal } = {}) {
-    const dir = path.join(this.runDir(runId), 'writer-tickets'); await mkdir(dir, { recursive: true }); checkAbort(signal);
+  async withRunLock(runId, fn, { signal, namespace } = {}) {
+    if(namespace!==undefined&&!['prose-style','writing-mode','writing-styles'].includes(namespace))throw new SceanError('LOCK_NAMESPACE');
+    const lockKey=namespace?namespace+':'+runId:runId;
+    const dir = namespace==='writing-styles'?path.join(this.root,'settings-locks','writing-styles'):path.join(this.runDir(runId), namespace?namespace+'-tickets':'writer-tickets'); await mkdir(dir, { recursive: true }); checkAbort(signal);
     const token = randomUUID(); const phaseFile = phase => path.join(dir, `${token}.${phase}.json`);
     const owner = { pid: process.pid, token, ticket: null, phase: 'choosing', createdAt: new Date().toISOString() };
     let acquired = false;
@@ -157,9 +159,9 @@ export class DurableStore {
       const competitors = (await this.activeTickets(dir)).filter(t => t.token !== token);
       if (competitors.some(t => t.ticket === null || t.ticket < owner.ticket || (t.ticket === owner.ticket && t.token < token))) throw new SceanError('RUN_BUSY');
       acquired = true;
-      this.held.add(runId); checkAbort(signal); return await fn();
+      this.held.add(lockKey); checkAbort(signal); return await fn();
     } finally {
-      if (acquired) this.held.delete(runId);
+      if (acquired) this.held.delete(lockKey);
       await this.atomic(phaseFile('x'), { ...owner, phase: 'released' });
       await this.clearTicketFiles(dir, token);
     }

@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "license": "AGPL-3.0-only",
-  "status": "PUBLIC_BRANCH_WITH_DETACHED_PUBLICATION_RECEIPT",
+  "status": "MAIN_SOURCE_UPDATE_WITH_DETACHED_VERIFICATION",
   "sourceUrl": "https://github.com/zeola0187/scean/tree/main",
   "revision": null,
   "sourceArchiveSha256": null,
   "networkSourceNoticeReady": false,
   "anonymousSourceAccessVerified": false,
-  "note": "Public source is provided on the repository default branch; exact commit and package/source hashes are recorded in the detached publication receipt. No tag or GitHub Release is required for this push."
+  "note": "Single Writer and style-import main update authorized on 2026-10-21. Exact public revision, clean-source archive hash and anonymous readback are recorded in the detached publication receipt after push; no new tag or Release. Private third-party style data is excluded."
 }

@@ -18,7 +18,7 @@ export async function fixture(t){
   const base=new URL('../.test-data/',import.meta.url);await mkdir(base,{recursive:true});const root=await mkdtemp(new URL('w02-',base));
   const clock={value:100000},calls=[];
   const model={async generate(args){calls.push(args.stage);if(args.stage==='director')return {text:'Observe independently.'};if(['draft','prose'].includes(args.stage))return {text:'She disagreed and inspected the lamp.'};if(args.stage==='post_stat')return {text:JSON.stringify({contractVersion:2,stateChanges:[],memories:[]})};throw Error('Unexpected offline stage '+args.stage);}};
-  const engine=new SceanEngine({store:new DurableStore({root:join(root,'store')}),model,memory:new Memory()});
+  const engine=new SceanEngine({unconfiguredWritingMode:'current',store:new DurableStore({root:join(root,'store')}),model,memory:new Memory()});
   const host=await new SceanHost({engine,root:join(root,'host'),now:()=>clock.value}).init();
   const workspace=join(root,'studio');await mkdir(workspace);
   const agent={id:'w02-session',status:'idle',session:{header:{cwd:workspace},snapshotEvents:()=>[]},whenIdle:async()=>{},cancel(){}};
@@ -43,6 +43,24 @@ export async function fixture(t){
   const human=args=>diagnosis.human(agent,{claim,...args});
   return {root,workspace,clock,calls,engine,host,loader,agent,r,claim,id,invoke,importCard,saved,scope,start,grant,tool,human,control,runtime,diagnosis};
 }
+
+test('C2 binding rejects invalid Runtime identity/relationships before any saved revision and preserves metadata',async t=>{
+ const f=await fixture(t),before=await f.saved(),valid={id:'keeper',name:'Keeper',description:'Independent station keeper.',customMetadata:{kept:true},relationships:{peer:{trust:2}}},args={document_id:f.id,expected_revision:before.revision,sources:[{kind:'card_field',path:'/data/description'}]};
+ for(const character of [{...valid,identity:'string'},{...valid,identity:{source:'inferred',gender:'unknown'}},{...valid,relationships:4}]){
+   const r=await f.invoke('scean_character',{...args,character});assert(!r.ok);assert.match(r.error.code,/INVALID_ACTOR_(IDENTITY|RELATIONSHIPS)/);const after=await f.saved();assert.equal(after.revision,before.revision);assert.equal(after.sha256,before.sha256);
+ }
+ const saved=await f.invoke('scean_character',{...args,character:valid});assert(saved.ok,JSON.stringify(saved));const current=await f.saved();assert.equal(current.revision,before.revision+1);assert.deepEqual(current.card.data.extensions.scean.characters[0].customMetadata,{kept:true});
+ assert.equal((await f.invoke('scean_character',{...args,character:valid})).error.code,'REVISION_CONFLICT');
+});
+
+test('C1 stage handoff requires the roster source revision and still checks card expectedRevision',async t=>{
+ const f=await fixture(t),saved=await f.saved(),characters=structuredClone(saved.card.data.extensions.scean.characters),base={claim:f.claim,mode:'start',document_id:f.id,expected_revision:saved.revision,request_id:'roster-version-fixture',characters};
+ await assert.rejects(f.control(f.agent,base),{code:'SCEAN_ROSTER_REVISION'});
+ await assert.rejects(f.control(f.agent,{...base,characters_revision:saved.revision+1}),{code:'SCEAN_ROSTER_REVISION'});assert.equal(f.host.metadata.runs.length,0);
+ const result=await f.control(f.agent,{...base,characters_revision:saved.revision});assert.equal(result.openingRequired,true);
+ await f.invoke('patch',{document_id:f.id,expected_revision:saved.revision,patches:[{op:'replace',path:'/data/scenario',value:'Updated fixture'}]});
+ await assert.rejects(f.control(f.agent,{...base,characters_revision:saved.revision}),{code:'SCEAN_REVISION'});
+});
 
 test('record pagination is distinct from turn authorization; default reads of the exact granted turn work and private data stays denied',async t=>{
  const f=await fixture(t),started=await f.start();await f.host.turn({runId:started.runId,requestId:'pagination-proof',input:'Look at the lamp',expectedVersion:0});await f.grant(started.runId,{fromTurn:1,toTurn:1});
@@ -69,7 +87,7 @@ test('Snapshot and large record cursors have explicit distinct UTF-16 units, bou
  await assert.rejects(f.tool({section:'snapshot',offset:joined.length+1}),e=>e.code==='DIAG_QUERY_CURSOR');await assert.rejects(f.tool({offset:1}),e=>e.code==='DIAG_QUERY_PAGE');
  for(const value of [-1,1.5,'1'])await assert.rejects(f.tool({section:'story',text_offset:value}),e=>e.code==='DIAG_QUERY_CURSOR');
  const inspect=f.engine.inspect.bind(f.engine),body='乙🙂'.repeat(20000);f.engine.inspect=async(...args)=>{const r=await inspect(...args);r.turns[0].body=body;return r;};
- let textOffset=0,fragments='';do{last=(await f.tool({section:'story',turn:1,offset:0,limit:1,text_offset:textOffset})).value;assert.equal(last.pagination.offsetUnit,'records');assert.equal(last.data.encoding,'json-fragment');assert(last.data.text.length<=48000);fragments+=last.data.text;textOffset=last.data.nextTextOffset;}while(textOffset!==null);assert.equal(JSON.parse(fragments)[0].body,body);
+ let textOffset=0,fragments='',pageHash;do{last=(await f.tool({section:'story',turn:1,offset:0,limit:1,text_offset:textOffset,...pageHash?{page_hash:pageHash}:{}})).value;assert.equal(last.pagination.offsetUnit,'records');assert.equal(last.data.encoding,'json-fragment');assert(last.data.text.length<=12000);assert(Buffer.byteLength(JSON.stringify([{type:'text',text:JSON.stringify({ok:true,value:last})}]))<=16000);fragments+=last.data.text;textOffset=last.data.nextTextOffset;pageHash=last.pageHash;}while(textOffset!==null);assert.equal(JSON.parse(fragments)[0].body,body);
  await assert.rejects(f.tool({section:'story',limit:1,text_offset:fragments.length+1}),e=>e.code==='DIAG_QUERY_CURSOR');f.engine.inspect=inspect;await assert.rejects(f.tool({section:'story',text_offset:1}),e=>e.code==='DIAG_QUERY_CURSOR');
 });
 
@@ -77,7 +95,7 @@ test('all Snapshot source enums and worldbook ID bounds retain no_data/denied/qu
  const f=await fixture(t),run=await f.start();await f.host.turn({runId:run.runId,requestId:'entry-boundary',input:'Look at the lamp',expectedVersion:0});await f.grant(run.runId);
  for(const field of ['card','worldbook','characters','opening','preset','stateBlueprint','initialState','source']){const v=(await f.tool({section:'snapshot',field})).value;assert(['available','no_data'].includes(v.status),field);}
  for(const entry_id of ['',123,'x'.repeat(513)])await assert.rejects(f.tool({section:'worldbook',entry_id}),e=>e.code==='DIAG_QUERY_ENTRY');
- const runtime=(await f.tool({section:'runtime',turn:1})).value,entry=runtime.data.flatMap(a=>a.assemblyDiagnostics?.worldbook?.entries??[])[0];assert(entry);assert.equal((await f.tool({section:'worldbook',entry_id:String(entry.entryId),turn:1})).value.status,'available');
+ const runtime=(await f.tool({section:'runtime',turn:1})).value,entry=runtime.data.flatMap(a=>a.worldbook?.examples??[])[0];assert(entry);assert.equal((await f.tool({section:'worldbook',entry_id:String(entry.entryId),turn:1})).value.status,'available');
  assert.equal((await f.tool({section:'worldbook',entry_id:'x'.repeat(512),turn:1})).value.status,'no_data');
  for(const args of [{offset:-1},{offset:8000001},{limit:0},{limit:11}])await assert.rejects(f.tool({section:'story',...args}),e=>e.code==='DIAG_QUERY_PAGE');
  await assert.rejects(f.tool({section:'private_context',text_offset:-1}),e=>e.code==='DIAG_DENIED');
@@ -91,8 +109,8 @@ test('W02 full offline service loop: real committed Runtime evidence → discuss
  await f.grant(old.runId);
  const context=(await f.tool({})).value;assert.equal(context.sourceRevision,0);assert.equal(context.editTarget.target.revision,1);assert(context.changedFields.includes('scenario'));
  const story=(await f.tool({section:'story',turn:1})).value;assert.equal(story.data[0].body,'She disagreed and inspected the lamp.');
- const runtime=(await f.tool({section:'runtime',turn:1})).value;assert.equal(runtime.status,'available');assert(runtime.data.some(a=>a.commit));assert(runtime.data[0].assemblyDiagnostics.worldbook.entries.some(e=>e.status));
- const miss=runtime.data[0].assemblyDiagnostics.worldbook.entries.find(e=>e.reason==='primary_miss');assert(miss);assert.equal((await f.tool({section:'worldbook',turn:1,entry_id:String(miss.entryId)})).value.status,'not_triggered');assert.equal((await f.tool({section:'worldbook',turn:1,entry_id:'absent-entry'})).value.status,'no_data');
+ const runtime=(await f.tool({section:'runtime',turn:1})).value;assert.equal(runtime.status,'available');assert(runtime.data.some(a=>a.commit));assert(runtime.data[0].worldbook.examples.some(e=>e.status));
+ const miss=runtime.data[0].worldbook.examples.find(e=>e.reason==='primary_miss');assert(miss);assert.equal((await f.tool({section:'worldbook',turn:1,entry_id:String(miss.entryId)})).value.status,'not_triggered');assert.equal((await f.tool({section:'worldbook',turn:1,entry_id:'absent-entry'})).value.status,'no_data');
  const denied=await f.invoke('patch',{document_id:f.id,expected_revision:1,patches:[{op:'replace',path:'/data/description',value:'Forbidden automatic repair.'}]},false);assert.equal(denied.error.code,'DIAG_EDIT_CONSENT');
  const replacement=await f.invoke('create',{name:'Unapproved replacement'},false);assert.equal(replacement.error.code,'DIAG_EDIT_CONSENT');
  await f.tool({action:'prepare_edit',direction:'Reduce excessive compliance; preserve the independent personality.'});
