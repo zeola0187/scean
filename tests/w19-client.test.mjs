@@ -1,4 +1,5 @@
 import {HistorySync} from '../isolated/web/history-sync.mjs';
+import {mountTurnDuration} from '../isolated/web/turn-duration.mjs';
 import {mountWritingMode} from '../isolated/web/writing-mode-ui.mjs';
 import {mountProseStyle} from '../isolated/web/prose-style-ui.mjs';
 import {mountPlayerIdentity} from '../isolated/web/player-identity-ui.mjs';
@@ -31,8 +32,9 @@ function fixture({secure=true,crypto=webcrypto,navigationType='navigate',priorVi
     window:{addEventListener(event,fn){windowListeners.set(event,fn);}},
     sessionStorage:{getItem:key=>storage.get(key)??null,setItem:(key,value)=>storage.set(key,value)},
     createNotificationClient:()=>({watch:async()=>{},refresh(){},dispose(){},target:eventId=>targetResolver(eventId)}),mountNotificationControls:()=>({render(){}}),showNotificationToast(){},
-    mountPlayerIdeas:()=>({update(){},reset(){},dispose(){}}),mountPlayerReaders:()=>({update(){},reset(){},dispose(){}}),mountPresentationPanel:()=>({update(){},reset(){},dispose(){}}),
+    mountPlayerIdeas:()=>({update(){},reset(){},dispose(){}}),mountPlayerReaders:()=>({update(){},reset(){},dispose(){}}),renderDialogueBody:(el,item)=>{el.textContent=item.body;return {status:'neutral'};},mountRunRecycle:()=>({update(){},reset(){},addAction(){},lookup(){}}),mountPresentationPanel:()=>({update(){},reset(){},dispose(){}}),
     mountPlayerShell:()=>({show(){},committed(){},atEnd:()=>false,reading:{scrollTop:0,scrollHeight:100,addEventListener(){},getBoundingClientRect:()=>({top:0,bottom:100})},scrollEnd(){}}),mountStudio(){}};
+  context.mountTurnDuration=options=>mountTurnDuration({...options,now:()=>0,interval:()=>0,clear(){}});
   context.mountCardFrontend=()=>mountCardFrontend({document:context.document,setTimer:()=>0,clearTimer(){}});
   context.mountChapterSettings=options=>mountChapterSettings({...options,document:context.document});
   context.mountWritingMode=options=>mountWritingMode({...options,document:context.document,makeId:()=>webcrypto.randomUUID()});

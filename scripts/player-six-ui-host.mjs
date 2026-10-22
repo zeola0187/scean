@@ -42,9 +42,18 @@ if(!process.argv.includes('--worker')){
   const {SceanHost}=await import(pathToFileURL(path.join(installed,'packages/scean/plugin/host.mjs')).href),original=SceanHost.prototype.request;
   let fixtureHost;const counts={historyFailures:0,readerFailures:0,requests:[]};
   SceanHost.prototype.request=async function(request,signal,authority){
-    fixtureHost=this;counts.requests.push({action:request.action,runId:request.runId??null});
+    fixtureHost=this;
+    if(!this.durationFixtureWrapped){this.durationFixtureWrapped=true;const generate=this.engine.model.generate.bind(this.engine.model);this.engine.model.generate=async args=>{
+      if(args.stage==='writer')for(let i=0;i<600&&await fs.stat(path.join(out,'hold-writer')).catch(()=>null);i++){args.signal?.throwIfAborted();await new Promise(r=>setTimeout(r,100));}
+      return generate(args);
+    };}
+    counts.requests.push({action:request.action,runId:request.runId??null});
     for(const[action,marker,field]of[['historyPage','fail-next-history','historyFailures'],['playerWorldbook','fail-next-worldbook','readerFailures']])if(request.action===action&&await fs.stat(path.join(out,marker)).catch(()=>null)){
       await fs.unlink(path.join(out,marker));counts[field]++;await fs.writeFile(path.join(out,'faults.json'),JSON.stringify(counts));return{ok:false,error:{code:'SYNTHETIC_READ_FAILURE',message:'Synthetic one-shot read failure.'}};
+    }
+    if(request.action==='runTrash'&&await fs.stat(path.join(out,'fail-next-run-trash-ack')).catch(()=>null)){
+      await fs.unlink(path.join(out,'fail-next-run-trash-ack'));const result=await original.call(this,request,signal,authority);
+      if(result.ok)return {ok:false,error:{code:'CONNECTION_UNKNOWN',message:'Synthetic acknowledgement lost after canonical publication.'}};return result;
     }
     return original.call(this,request,signal,authority);
   };

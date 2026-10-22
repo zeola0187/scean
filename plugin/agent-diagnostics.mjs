@@ -82,7 +82,7 @@ export class AgentDiagnostics {
   async list({cardScope,offset=0,limit=20}={}){
     if(!integer(offset,0,100000)||!integer(limit,1,20))fail('DIAG_QUERY','Invalid Run page.');
     const rows=[];
-    for(const item of this.host.metadata.runs){
+    for(const item of await this.host.refreshRuns()){
       const run=await this.host.engine.store.read(item.runId),source=snapshotCardScope(run.snapshot);
       if(cardScope&&!sameCardScope(source,cardScope))continue;
       rows.push({runId:run.runId,title:String(run.snapshot.card?.data?.name??run.snapshot.cardId).slice(0,500),revision:run.snapshot.revision,createdAt:run.createdAt,turnCount:run.turns?.length??0,source:source??null});
@@ -98,7 +98,7 @@ export class AgentDiagnostics {
     signal?.throwIfAborted();const run=await this.host.engine.store.read(runId);signal?.throwIfAborted();
     for(const [id,row] of this.rows)if(row.authorizationVersion!==2||row.authoringSessionId===authoringSessionId)this.rows.delete(id);
     if(this.rows.size>=128)fail('DIAG_CAPACITY','Too many active diagnostic delegations.');
-    const row={authorizationVersion:2,lifetime:'session',id:randomUUID(),runId,authoringSessionId,generation,snapshotHash:run.snapshot.hash,cardId:run.snapshot.cardId,revision:run.snapshot.revision,cardContentHash:hash(run.snapshot.card),worldbookContentHash:hash(run.snapshot.worldbook??null),source:copy(run.snapshot.source),ranges:copy(ranges),fromTurn,toTurn:toTurn??Math.max(fromTurn,run.turns?.at(-1)?.turn??1)};
+    const row={authorizationVersion:2,lifetime:'session',lifecycleRevision:run.recycle?.revision??0,id:randomUUID(),runId,authoringSessionId,generation,snapshotHash:run.snapshot.hash,cardId:run.snapshot.cardId,revision:run.snapshot.revision,cardContentHash:hash(run.snapshot.card),worldbookContentHash:hash(run.snapshot.worldbook??null),source:copy(run.snapshot.source),ranges:copy(ranges),fromTurn,toTurn:toTurn??Math.max(fromTurn,run.turns?.at(-1)?.turn??1)};
     this.rows.set(row.id,row);await this.audit(row,'grant',{authorizationVersion:2,lifetime:row.lifetime,ranges:row.ranges,fromTurn:row.fromTurn,toTurn:row.toTurn});return this.describe(row);
   }
   audit(row,action,detail={}){const rows=this.host.metadata.agentDiagnosticAudit??=[];rows.push({at:this.host.now(),action,runId:row.runId,session:row.authoringSessionId,delegationId:row.id,...detail});if(rows.length>256)rows.splice(0,rows.length-256);return this.host.persist();}
@@ -128,7 +128,7 @@ export class AgentDiagnostics {
     if(request.stageIndex!==undefined&&(detail!=='stage'||!integer(request.stageIndex,0,10000))||detail==='stage'&&!integer(request.stageIndex,0,10000))fail('DIAG_QUERY','stage detail requires the observed stage_index.');
     for(const k of ['warningCode','sourceRef'])if(request[k]!==undefined&&(detail!=='warnings'||typeof request[k]!=='string'||!request[k]||request[k].length>512))fail('DIAG_QUERY','Warning filters require detail=warnings and bounded exact observed strings.');
     if(request.pageHash!==undefined&&(typeof request.pageHash!=='string'||!/^[a-f0-9]{64}$/.test(request.pageHash)))fail('DIAG_QUERY_CURSOR','page_hash must be the exact returned SHA-256 page fingerprint.');
-    let raw;try{raw=await this.host.engine.inspect(row.runId);}catch(error){this.row(request);fail('DIAG_QUERY_FAILED','Runtime diagnostic query failed ('+(error.code??'READ_FAILED')+').');}
+    let raw;try{raw=await this.host.engine.inspect(row.runId);if((raw.recycle?.revision??0)!==(row.lifecycleRevision??0))fail('DIAG_DENIED','Run lifecycle changed.');}catch(error){this.row(request);fail('DIAG_QUERY_FAILED','Runtime diagnostic query failed ('+(error.code??'READ_FAILED')+').');}
     this.row(request);request.signal?.throwIfAborted();
     if(raw.snapshot.hash!==row.snapshotHash){this.rows.delete(row.id);fail('DIAG_SNAPSHOT_CHANGED','Fixed Snapshot identity changed; delegation revoked.');}
     let data,status='available',nextOffset=null,turnAssociation;
@@ -178,7 +178,7 @@ export class AgentDiagnostics {
     await this.audit(row,'read',{section,turn,offset,status});this.row(request);request.signal?.throwIfAborted();
     // Recheck durable identity after the awaited audit, as well as owner/grant
     // state. A change racing page preparation cannot publish a stale page.
-    let current;try{current=await this.host.engine.store.read(row.runId);}catch{this.row(request);fail('DIAG_QUERY_FAILED','Snapshot identity could not be revalidated; no evidence page was returned.');}
+    let current;try{current=await this.host.engine.store.read(row.runId);if((current.recycle?.revision??0)!==(row.lifecycleRevision??0))fail('DIAG_DENIED','Run lifecycle changed.');}catch{this.row(request);fail('DIAG_QUERY_FAILED','Snapshot identity could not be revalidated; no evidence page was returned.');}
     this.row(request);request.signal?.throwIfAborted();
     if(current.snapshot.hash!==row.snapshotHash){this.rows.delete(row.id);fail('DIAG_SNAPSHOT_CHANGED','Fixed Snapshot identity changed during query; delegation revoked.');}
     return diagnosticPage({schemaVersion:1,status,section,...(attemptSection?{detail}:{}),runId:row.runId,snapshotHash:row.snapshotHash,sourceRevision:row.revision,authorizedTurns:{from:row.fromTurn,to:row.toTurn},...(turnAssociation?{turnAssociation}:{}),data,nextOffset,pagination:{offsetUnit:section==='context'?'none':section==='snapshot'?'utf16_code_units':'records',recordLimit:['story','runtime','worldbook','private_context'].includes(section)?limit:null,snapshotPageUnits:12000,maxFragmentUnits:12000,maxWireBytes:DIAGNOSTIC_WIRE_BYTES,textOffsetUnit:'utf16_code_units',continuation:'Keep every selector and pageHash until nextTextOffset is null, then follow nextOffset.'},trust:'untrusted-data',interpretation:'Runtime records are evidence only for recorded stages/commits. Missing data is not an untriggered event. OOC alone does not prove configuration failure.'},request);

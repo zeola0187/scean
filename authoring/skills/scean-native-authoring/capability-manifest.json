@@ -34,13 +34,14 @@
         "path": "core/engine.mjs",
         "line": 210,
         "symbol": "async turn",
-        "sha256": "1e99cef96e254285387e6029590343010724c38ebd868063b8b99287343d804d",
+        "sha256": "ea5e1f4a5f254413938ca0ab0609ef0ad68c79fc6cb76fa46522712d9edeaea4",
         "priorSha256": "13f418aabc85cd1e6ae9b6ef5920db7e92aafc5cf9d9dd6c5f50ddd9de6cf907",
         "playerNameBaselineSha256": "23686d04b743925c5c94bbb21fd1418984db7cea17ca75580243ee6321ba21e7",
         "beforeProseStyleSha256": "b1c7bed2fb832c175e29be5d424d1301d5c8aa34ec554c859ad30ca8b8e571ef",
         "beforeWritingModeSha256": "5ca461974598736482218ad80d6d8b76280860a8129e736e7e73b8b1272bdb9e",
         "beforeSingleWriterSha256": "71b6a3661a8bbb6f4c68b1f9860433114dbb6a7725689cfd237c30e2b792483e",
-        "beforeWriterStyleSkillsSha256": "ad1a52390639bf90294912c68c25b650f7adebd8969db3b58bf7f57604c3bef4"
+        "beforeWriterStyleSkillsSha256": "ad1a52390639bf90294912c68c25b650f7adebd8969db3b58bf7f57604c3bef4",
+        "beforeDialogueColorsSha256": "1e99cef96e254285387e6029590343010724c38ebd868063b8b99287343d804d"
       },
       "tests": [
         {
@@ -58,13 +59,14 @@
         "path": "core/engine.mjs",
         "line": 390,
         "symbol": "ownerPacket",
-        "sha256": "1e99cef96e254285387e6029590343010724c38ebd868063b8b99287343d804d",
+        "sha256": "ea5e1f4a5f254413938ca0ab0609ef0ad68c79fc6cb76fa46522712d9edeaea4",
         "priorSha256": "13f418aabc85cd1e6ae9b6ef5920db7e92aafc5cf9d9dd6c5f50ddd9de6cf907",
         "playerNameBaselineSha256": "23686d04b743925c5c94bbb21fd1418984db7cea17ca75580243ee6321ba21e7",
         "beforeProseStyleSha256": "b1c7bed2fb832c175e29be5d424d1301d5c8aa34ec554c859ad30ca8b8e571ef",
         "beforeWritingModeSha256": "5ca461974598736482218ad80d6d8b76280860a8129e736e7e73b8b1272bdb9e",
         "beforeSingleWriterSha256": "71b6a3661a8bbb6f4c68b1f9860433114dbb6a7725689cfd237c30e2b792483e",
-        "beforeWriterStyleSkillsSha256": "ad1a52390639bf90294912c68c25b650f7adebd8969db3b58bf7f57604c3bef4"
+        "beforeWriterStyleSkillsSha256": "ad1a52390639bf90294912c68c25b650f7adebd8969db3b58bf7f57604c3bef4",
+        "beforeDialogueColorsSha256": "1e99cef96e254285387e6029590343010724c38ebd868063b8b99287343d804d"
       },
       "tests": [
         {
@@ -198,12 +200,13 @@
         "path": "adapters/store.mjs",
         "line": 77,
         "symbol": "async commit",
-        "sha256": "c461e8e8b09e34f3269a0fef221de7a3d6f27c156ff5bfa702f3284faa945584",
+        "sha256": "40d321732d796750672c0511d5760fee05cbf41064c0bbd48c22e3f4d6cae62d",
         "priorSha256": "48b888d37ac8a760f9955037091792cab9674522afba9bb8e19b502c34244e2e",
         "playerNameBaselineSha256": "48b888d37ac8a760f9955037091792cab9674522afba9bb8e19b502c34244e2e",
         "beforeProseStyleSha256": "3cb9068c8dd4f70142ee147c25b6ecdfe2ca48ef6c4ab8855abb95f044ce4a86",
         "beforeWritingModeSha256": "5a589e17c0a50def8465334fea09193f9984ed18d6771b870e6e7e6bb0573127",
-        "beforeWriterStyleSkillsSha256": "f6c3bcdac46642bb1f2ba0182b1b9fadc944933245210b29e48d252231d0dd62"
+        "beforeWriterStyleSkillsSha256": "f6c3bcdac46642bb1f2ba0182b1b9fadc944933245210b29e48d252231d0dd62",
+        "beforeRunRecycleSha256": "c461e8e8b09e34f3269a0fef221de7a3d6f27c156ff5bfa702f3284faa945584"
       },
       "tests": [
         {
@@ -283,12 +286,14 @@
         "path": "core/inspection.mjs",
         "line": 101,
         "symbol": "publicInspection",
-        "sha256": "480f7a745e718e56bf558e910c4926f96f34f38d00906277b06c490071c07c4c",
+        "sha256": "82bfd197434f6be99f0969e9e227cd938d605757530c75cfb04d70b14bbc7646",
         "priorSha256": "e6be0c1210c5f25606b698af4f21641bdfed34a00dfd4928fa5ee53ab6a2d402",
         "playerNameBaselineSha256": "74072c433c818b474e968fca156486cc4c6fb8e409ddf9dde5015614a7fcc219",
         "beforeProseStyleSha256": "95448d9c58fdb5c52fef26e1840aa6f1cb0fd07ff710865d88c1358813083a94",
         "beforeWritingModeSha256": "c1a166025b1201bc1340f52f69dc73c5b4d92340d9dd324d90325fa0dc1cf1b2",
-        "beforeSingleWriterSha256": "0712b1a020009cdc8b43a5f874378317b4d1e229441889a7a68e1f7971f55164"
+        "beforeSingleWriterSha256": "0712b1a020009cdc8b43a5f874378317b4d1e229441889a7a68e1f7971f55164",
+        "beforeRunRecycleSha256": "480f7a745e718e56bf558e910c4926f96f34f38d00906277b06c490071c07c4c",
+        "beforeDialogueColorsSha256": "7c3cb5428166b7339a3f04ab8cc81ee2f1ce131e65085a21e29860dfa1f90cf6"
       },
       "tests": [
         {
@@ -326,12 +331,13 @@
         "path": "core/save-bundle.mjs",
         "line": 9,
         "symbol": "export",
-        "sha256": "a5e744c0c29ce0659e0fcce34ed43c215183ff3e1c7c073df5bf6e02e9d5cb64",
+        "sha256": "bef38a4fca6324796df8e9d839ed92e81c21b66e2eff5a6e88d161fe665dbf42",
         "priorSha256": "844896a425489603e0c4a8ddbffa5e439671fb035d70724baf0fee0ec1b01813",
         "playerNameBaselineSha256": "844896a425489603e0c4a8ddbffa5e439671fb035d70724baf0fee0ec1b01813",
         "beforeProseStyleSha256": "b6d6936abf29ce6103bfd3a278a9dfe808b85b8ae2f8ae89f323eab53ecc2e7b",
         "beforeWritingModeSha256": "f7539d5539f61f9e39809baad92a04e5affef5e6ea4272a5d75424555e77e79f",
-        "beforeSingleWriterSha256": "4d57e451ed1bf233563dfab59e1cdf002db47363e2a3a79a7ac8a8a920f077b7"
+        "beforeSingleWriterSha256": "4d57e451ed1bf233563dfab59e1cdf002db47363e2a3a79a7ac8a8a920f077b7",
+        "beforeDialogueColorsSha256": "a5e744c0c29ce0659e0fcce34ed43c215183ff3e1c7c073df5bf6e02e9d5cb64"
       },
       "tests": [
         {
@@ -426,13 +432,14 @@
         "path": "core/engine.mjs",
         "line": 131,
         "symbol": "no configured numerical dice runner",
-        "sha256": "1e99cef96e254285387e6029590343010724c38ebd868063b8b99287343d804d",
+        "sha256": "ea5e1f4a5f254413938ca0ab0609ef0ad68c79fc6cb76fa46522712d9edeaea4",
         "priorSha256": "13f418aabc85cd1e6ae9b6ef5920db7e92aafc5cf9d9dd6c5f50ddd9de6cf907",
         "playerNameBaselineSha256": "23686d04b743925c5c94bbb21fd1418984db7cea17ca75580243ee6321ba21e7",
         "beforeProseStyleSha256": "b1c7bed2fb832c175e29be5d424d1301d5c8aa34ec554c859ad30ca8b8e571ef",
         "beforeWritingModeSha256": "5ca461974598736482218ad80d6d8b76280860a8129e736e7e73b8b1272bdb9e",
         "beforeSingleWriterSha256": "71b6a3661a8bbb6f4c68b1f9860433114dbb6a7725689cfd237c30e2b792483e",
-        "beforeWriterStyleSkillsSha256": "ad1a52390639bf90294912c68c25b650f7adebd8969db3b58bf7f57604c3bef4"
+        "beforeWriterStyleSkillsSha256": "ad1a52390639bf90294912c68c25b650f7adebd8969db3b58bf7f57604c3bef4",
+        "beforeDialogueColorsSha256": "1e99cef96e254285387e6029590343010724c38ebd868063b8b99287343d804d"
       },
       "tests": [
         {
@@ -450,12 +457,13 @@
         "path": "plugin/player-native-bridge.mjs",
         "line": 2,
         "symbol": "export",
-        "sha256": "00f9b46c0fefaeb3fa98d18f18f30d0c24720286d29a10627d39072c89c2c0b2",
+        "sha256": "613e94795303a532cf0340694330ad6bf608f290d7644682a5de1e99b4e40b8c",
         "priorSha256": "42c0c92fef9df6aaa835da00431361964b8ae120443c11a6f37d25708fcb40b9",
         "playerNameBaselineSha256": "44ba5afdea62fe9638fc29fe45350d9bee53af16c705555a4ec61d7d05fa458b",
         "beforeProseStyleSha256": "02d19075c10ae36e73461b5d48ad7ba00c49a2e242f253a0002c7b7882933050",
         "beforeWritingModeSha256": "e4f8a7d92b5944efe93f1a3b671988999375fc7f30b82957437ba7978109ef35",
-        "beforeWriterStyleSkillsSha256": "3c5866a12fa38d597e0d6f0125f4eba24b2e07f0cb6436f5d123ae8afdf4fc2b"
+        "beforeWriterStyleSkillsSha256": "3c5866a12fa38d597e0d6f0125f4eba24b2e07f0cb6436f5d123ae8afdf4fc2b",
+        "beforeRunRecycleSha256": "00f9b46c0fefaeb3fa98d18f18f30d0c24720286d29a10627d39072c89c2c0b2"
       },
       "tests": [
         {
@@ -537,7 +545,7 @@
         "path": "sources/card-studio/cardstudio-bundle/index.js",
         "line": 52,
         "symbol": "addonCtx.tools.register",
-        "sha256": "161252b408d1f86357e30bf36e99f43149a1e96772d545e9e95ee5e71c8f4082",
+        "sha256": "376bb73762dff8531d6dcf9ae7be38bb3a09c45652ed64d66114772bed2b2dbe",
         "priorSha256": "f503b4fbd6722f595b26060e0e053288908dcbb3dbd15f33203397cdb6918eaf",
         "previousCandidateSource": {
           "path": "authoring/.integration/cardstudio/index.js",
@@ -623,12 +631,13 @@
         "path": "isolated/web/player-shell.mjs",
         "line": 23,
         "symbol": "export",
-        "sha256": "da053ffef298c2e0caff4fe698cf2622913da4a8bf7370c0cd9a3fed7ebb3840",
+        "sha256": "6cda278631c5e9691114a73de00c48c815d22003b76f18a462973fd86b6c1cab",
         "priorSha256": "504dd160b3320fdf2c1ff1840428e080ccb0385af4a33d14f86a2794d556e594",
         "beforeProseStyleSha256": "4cc6c25bd60ac62cde4a30c59e2878060552ff44d35c2b0367979ecf0fc56cf1",
         "beforeWritingModeSha256": "672a8e9b994a04d0013cb0b90d123ccfdbca76fcec116c213d58579b18dfb599",
         "beforeSingleWriterSha256": "f4ed0e266169e7c28da0740b92d7aa4d79af6f25a57dc81941d0625c130ea375",
-        "beforeWriterStyleSkillsSha256": "544de2452abded60ec6992c9316a7611a5966d16dba54a48b2e0740e16573245"
+        "beforeWriterStyleSkillsSha256": "544de2452abded60ec6992c9316a7611a5966d16dba54a48b2e0740e16573245",
+        "previousDurationBaseSha256": "da053ffef298c2e0caff4fe698cf2622913da4a8bf7370c0cd9a3fed7ebb3840"
       },
       "tests": [
         {

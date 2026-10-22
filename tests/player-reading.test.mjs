@@ -5,6 +5,7 @@ import {readFile} from 'node:fs/promises';
 import {webcrypto} from 'node:crypto';
 import * as model from '../isolated/web/view-model.mjs';
 import {HistorySync} from '../isolated/web/history-sync.mjs';
+import {mountTurnDuration} from '../isolated/web/turn-duration.mjs';
 import {captureReadingAnchor,restoreReadingAnchor} from '../isolated/web/reading-layout.mjs';
 import {showNotificationToast} from '../isolated/web/notifications.mjs';
 
@@ -19,8 +20,9 @@ function fixture({follow=true}={}){
  const noop=()=>{},module=()=>({update:noop,reset:noop,dispose:noop});
  const context={...model,HistorySync,captureReadingAnchor,restoreReadingAnchor,crypto:webcrypto,isSecureContext:true,performance:{getEntriesByType:()=>[]},AbortController,DOMException,console,setTimeout,clearTimeout,setInterval(){},URL,Blob,
  document:{getElementById:element,createElement:tag=>element('created-'+elements.size+'-'+tag),querySelector:()=>element('queried'),querySelectorAll:()=>[],visibilityState:'visible',addEventListener(){}},window:{addEventListener(){}},sessionStorage:{getItem:k=>storage.get(k)??null,setItem:(k,v)=>storage.set(k,v)},
- createNotificationClient:()=>({watch:async()=>{},refresh(){},dispose(){}}),mountNotificationControls:()=>({render(){}}),showNotificationToast(){},mountPlayerIdeas:module,mountPlayerReaders:module,mountPresentationPanel:module,
+ createNotificationClient:()=>({watch:async()=>{},refresh(){},dispose(){}}),mountNotificationControls:()=>({render(){}}),showNotificationToast(){},mountPlayerIdeas:module,mountPlayerReaders:module,renderDialogueBody:(el,item)=>{el.textContent=item.body;return {status:'neutral'};},mountRunRecycle:()=>({update(){},reset(){},addAction(){},lookup(){}}),mountPresentationPanel:module,
  mountPlayerShell:()=>({show(){},committed(){},atEnd:()=>follow,reading,scrollEnd(){ends++;}}),mountStudio(){},mountCardFrontend:()=>({clear:noop,update:noop,history:noop,heartbeat:noop}),mountChapterSettings:()=>({refresh:noop}),mountWritingMode:()=>({select:noop}),mountProseStyle:()=>({select:noop}),mountPlayerIdentity:()=>({isBusy:()=>false,update:noop,refreshDefaults:noop}),mountOpeningSelection:()=>({setRun:noop,reset:noop,refresh:async()=>false}),fetch:()=>{throw Error('OFFLINE_ONLY');}};
+ context.mountTurnDuration=options=>mountTurnDuration({...options,now:()=>0,interval:()=>0,clear(){}});
  vm.createContext(context);vm.runInContext(source.replace(/^import .*;\r?\n/gm,'').replace(/^init\(\);\s*$/m,'')+`
  refreshNarrative=async()=>{};refreshModels=async()=>{};refreshRuns=async()=>{};
  renderRun=run=>{state.run=run;historySync.want(run);};renderChat=()=>{};

@@ -1,0 +1,5 @@
+/* Original fixed palette. Model output never chooses styles or CSS values. */
+:root{--dialogue-0:#005a9c;--dialogue-1:#7a284d;--dialogue-2:#24613a;--dialogue-3:#744d00;--dialogue-4:#59399a;--dialogue-5:#006369;--dialogue-6:#8b3528;--dialogue-7:#4a4f55}
+:root[data-theme=dark]{--dialogue-0:#83c5ff;--dialogue-1:#ffa8d1;--dialogue-2:#94d8aa;--dialogue-3:#f3c76d;--dialogue-4:#cdb0ff;--dialogue-5:#78d5d7;--dialogue-6:#ffac98;--dialogue-7:#c4ccd5}
+.scean-dialogue-color-0{color:var(--dialogue-0)}.scean-dialogue-color-1{color:var(--dialogue-1)}.scean-dialogue-color-2{color:var(--dialogue-2)}.scean-dialogue-color-3{color:var(--dialogue-3)}.scean-dialogue-color-4{color:var(--dialogue-4)}.scean-dialogue-color-5{color:var(--dialogue-5)}.scean-dialogue-color-6{color:var(--dialogue-6)}.scean-dialogue-color-7{color:var(--dialogue-7)}
+@media print{.scean-dialogue{color:inherit}}

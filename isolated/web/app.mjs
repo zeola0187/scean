@@ -14,6 +14,9 @@ import {HistorySync} from './history-sync.mjs';
 import {mountPlayerIdeas} from './player-ideas-ui.mjs';
 import {mountPlayerReaders} from './player-readers-ui.mjs';
 import {mountPresentationPanel} from './presentation-panel-ui.mjs';
+import {mountTurnDuration} from './turn-duration.mjs';
+import {renderDialogueBody} from './dialogue-colors.mjs';
+import {mountRunRecycle} from './run-recycle-ui.mjs';
 const shell=mountPlayerShell();
 const cardFrontend=mountCardFrontend({preserveReading:()=>{
   const reading=shell.reading,anchor=captureReadingAnchor(reading),top=reading.scrollTop;
@@ -25,6 +28,7 @@ let banListDirty=false,banListBusy=false;
 native?.onSelect(selection=>{nativeSelection=selection?.runId??null;nativeNotificationTarget=selection?.notificationTarget??null;if(initialized)void syncNativeContext(nativeSelection).then(()=>openNotificationTarget(nativeNotificationTarget)).catch(error=>setError('turn-error',error));});
 
 const $ = id => document.getElementById(id);
+const turnDuration=mountTurnDuration({element:$('turn-duration')});
 const view = new SelectionEpoch();
 const operations = new OperationOwnership();
 // Never replace secure browser randomness with an insecure LAN fallback.
@@ -63,11 +67,15 @@ const playerContext=()=>state.run?{...state.run,epoch:nativeContextSerial+':'+vi
 const playerIdeas=mountPlayerIdeas({document,request:(action,payload,signal)=>api(action,payload,signal),getContext:playerContext,preserveReading:preservePlayerReading});
 const playerReaders=mountPlayerReaders({document,request:(action,payload,signal)=>api(action,payload,signal),getContext:playerContext,preserveReading:preservePlayerReading,onNavigate:target=>{if(target.runId===view.runId){shell.show('story');return loadHistory({anchorCommitId:target.commitId});}}});
 const presentationPanel=mountPresentationPanel({document,request:(action,payload,signal)=>api(action,payload,signal),getContext:playerContext,preserveReading:preservePlayerReading});
+const runRecycle=mountRunRecycle({document,request:(action,payload)=>api(action,payload),getCurrent:()=>state.run,getScopeKey:()=>{if(!native)return 'isolated';try{const s=JSON.parse(nativeScopeKey??'null');return JSON.stringify([s?.provider,s?.cardId,s?.authoringSessionId,s?.generation]);}catch{return '';}},isBusy:()=>state.pending||state.submitting||historyBusy||backupBusy||state.operationUnknown||state.composing,beforeTrash:()=>saveDraft(),onChanged:async value=>{
+  if(value.status==='trashed'&&view.runId===value.runId){clearNativeView({preserveRecycle:true});try{sessionStorage.removeItem('scean-selected-run');}catch{}}
+  await refreshRuns();shell.show('library');
+}});
 const newBodyOpen=node('button','查看新正文','quiet');newBodyOpen.type='button';newBodyOpen.id='new-body-open';newBodyOpen.hidden=true;document.querySelector('.composer-actions').append(newBodyOpen);
 newBodyOpen.addEventListener('click',()=>{if(storyHead())void loadHistory({anchorCommitId:storyHead()});});
 function node(tag, text, className) { const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(className)e.className=className;return e; }
 function setError(id,error) { const el=$(id);el.textContent=error ? `${error.message ?? '操作未完成。'}${error.code ? `（${error.category ? error.category+' / ':''}${error.code}）` : ''}` : '';el.hidden=!error; }
-function connection(ok){if(!ok)cardFrontend.heartbeat(false);state.disconnected=!ok;$('connection').textContent=ok?(native?'舞台已連線':'本機隔離環境已連線'):'連線中斷 · 可重新查詢';}
+function connection(ok){if(!ok)cardFrontend.heartbeat(false);state.disconnected=!ok;turnDuration.connection(ok);$('connection').textContent=ok?(native?'舞台已連線':'本機隔離環境已連線'):'連線中斷 · 可重新查詢';}
 function diagnosticsControls(){
   $('diagnostics-grant').disabled=!state.run||diagnosticsBusy||!!privateDiagnostics.grant||!$('diagnostics-consent').checked;
   $('diagnostics-consent').disabled=diagnosticsBusy||!!privateDiagnostics.grant;
@@ -93,6 +101,7 @@ function updateModels(models){
 }
 async function refreshModels(){updateModels(await api('models'));}
 async function api(action,payload={},signal) {
+  if(payload.runId&&state.run?.runId===payload.runId)payload={expectedLifecycleRevision:state.run.lifecycleRevision??0,...payload};
   const controller=new AbortController(),abort=()=>controller.abort(signal?.reason);
   if(signal?.aborted)abort();else signal?.addEventListener('abort',abort,{once:true});
   const timer=setTimeout(()=>controller.abort(new DOMException('Host response timed out','TimeoutError')),action==='playerIdeas'?180000:12000);
@@ -157,11 +166,12 @@ async function refreshRuns(){
     button.type='button';button.dataset.runId=row.runId;button.setAttribute('aria-current',String(view.runId===row.runId));
     if(row.playerName)button.append(node('small','主角：'+row.playerName));
     button.append(node('small',`${row.revision??'—'} · ${row.runId}`));
-    button.addEventListener('click',()=>selectRun(row.runId).catch(e=>setError('turn-error',e)));$('runs').append(button);
+    button.addEventListener('click',()=>selectRun(row.runId).catch(e=>setError('turn-error',e)));const item=node('div',undefined,'run-entry');item.append(button);runRecycle.addAction(item,row);$('runs').append(item);
   }
   return rows;
 }
-function clearNativeView(){
+function clearNativeView({preserveRecycle=false}={}){
+  if(!preserveRecycle)runRecycle.reset();
   playerIdeas.reset();playerReaders.reset();presentationPanel.reset();showNotificationToast({clear:true});
   writingMode.select(null);proseStyle.select(null);cardFrontend.clear();
   openingSelection.reset();
@@ -174,7 +184,7 @@ function clearNativeView(){
   $('history-dialog').close();for(const dialog of document.querySelectorAll('dialog[open]'))dialog.close();
   for(const id of ['input','banlist-input'])$(id).value='';
   for(const id of ['chat','runs','state-summary'])$(id).replaceChildren();
-  $('run-title').textContent='目前卡片的故事';$('run-version').textContent='';$('progress').textContent='';$('draft-status').textContent='';
+  turnDuration.clear();$('run-title').textContent='目前卡片的故事';$('run-version').textContent='';$('progress').textContent='';$('draft-status').textContent='';
   $('inspection').textContent='尚未展開讀取。';$('export-consent').checked=false;$('import-consent').checked=false;$('run-import-file').value='';
   setError('turn-error',null);controls();shell.show('library');
 }
@@ -193,6 +203,7 @@ async function syncNativeContext(runId){
   if(scope&&await openingSelection.refresh()&&serial===nativeContextSerial)shell.show('library');
 }
 function controls(){
+  runRecycle.update();
   const hasRun=!!state.run, busy=state.pending||state.submitting||historyBusy||backupBusy||playerIdentity.isBusy();
   playerIdentity.update(state.run,state.pending||state.submitting||historyBusy||backupBusy);
   $('input').disabled=!hasRun||busy;
@@ -273,7 +284,7 @@ function renderChat(){
     if(!article){article=node('article',undefined,`message ${item.kind}`);article.dataset.messageKey=key;
       if(item.commitId)article.dataset.commitId=item.commitId;
       const header=node('header',item.label);if(item.commitId)header.append(node('small','已提交'));
-      article.append(header,node('div',item.body,'body'));
+      const storyBody=node('div',item.body,'body');if(item.kind==='story')renderDialogueBody(storyBody,item,{runId:state.run.runId,snapshotHash:state.run.snapshot.hash,actors:state.run.snapshot.characters??[]});article.append(header,storyBody);
     }
     // Keep existing nodes in place: summary/status changes never reconstruct chat.
     const next=previous?previous.nextElementSibling:$('chat').firstElementChild;
@@ -538,7 +549,7 @@ async function selectRun(runId){
   banListDirty=false;$('banlist-status').textContent='';
   writingMode.select(null);proseStyle.select(null);
   const token=view.select(runId);operations.reset();historyBusy=false;clearTimeout(state.draftTimer);resetLongform();
-  cardFrontend.clear();state.run=null;state.draft=null;state.pending=false;state.submitting=false;state.operationUnknown=false;state.failure=null;state.localTurn=null;state.lastOperation=null;state.chatKey=null;regenInput=null;
+  cardFrontend.clear();turnDuration.clear();state.run=null;state.draft=null;state.pending=false;state.submitting=false;state.operationUnknown=false;state.failure=null;state.localTurn=null;state.lastOperation=null;state.chatKey=null;regenInput=null;
   historyTarget=null;$('history-dialog').close();$('export-consent').checked=false;$('history-status').textContent='僅可操作最後有效已提交回合。';setError('history-error',null);
   $('input').value='';$('progress').textContent='讀取已保存的 Run…';setError('turn-error',null);controls();
   const serial=++runReadSerial,owner=operations.capture();let snapshot;selectionRead=token;
@@ -573,6 +584,9 @@ function operationText(receipt,progress){
 }
 function observeOperation(receipt,progress){
   const runId=view.runId,tracked=outstandingOperations.get(runId);
+  const timing=receipt?.generationTiming;
+  const newerGeneration=progress?.pending&&progress.operationId!==timing?.operationId&&!['summary','chapter_summary','chapter_analysis'].includes(progress.stage)&&!progress.kind?.startsWith('chapter')&&progress.kind!=='summaryStart';
+  turnDuration.update(newerGeneration?null:timing,{runId,disconnected:state.disconnected});
   const missing=receipt?.status==='not_found'||receipt?.status==='not_recorded';
   const terminal=receipt&&!receipt.pending&&!missing;
   if(tracked&&(terminal||receipt?.status==='not_found')&&receipt.operationId===tracked.operationId)forgetOperation(tracked);
@@ -621,6 +635,7 @@ async function reconcile(){
 async function sendHostOperation(kind,payload={},base={}){
   const selected=view.capture(),operation={...operations.start(selected.runId,payload.requestId),kind};
   const ownership=operations.capture();state.localTurn=operation;state.pending=true;state.submitting=true;state.operationUnknown=false;state.failure=null;
+  if(['turn','regenerate'].includes(kind))turnDuration.clear();
   if(kind==='summaryStart'||kind.startsWith('chapter')){activeNarrativeOperation=operation;narrativeBusy=true;}
   rememberOperation(operation);controls();
   try{

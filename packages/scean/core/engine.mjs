@@ -1,3 +1,5 @@
+import {decodeWriterDialogue,makeDialoguePresentation} from './dialogue.mjs';
+import {publicSnapshot} from './inspection.mjs';
 import {SINGLE_WRITER_SYSTEM,publicToolEvidence,writerHandoffContract,buildWriterHandoff,prepareSingleWriterInput,freezeWriterBody,assertWriterBodyHash} from './writer-workflow.mjs';
 import {readRunWritingMode,saveRunWritingMode,captureWritingMode,validateWritingModePin,writingModeReference,systemsForWritingMode,defaultWritingMode} from './writing-mode.mjs';
 import {readRunProseStyle,saveRunProseStyle,pinProseStyle,captureRunProseStyle,validateProseStylePin,proseStyleReference,defaultProseStyle} from './prose-style.mjs';
@@ -487,14 +489,14 @@ export class SceanEngine {
           }
         }
         if (!brief) throw new SceanError('MISSING_DIRECTOR_BRIEF');
-        let body;
+        let body,dialogueOutput=null,dialogueBodyHash=null;
         if(singleWriter){
           activeStage='writer_handoff';
           const handoff=buildWriterHandoff(brief,{assembly,tools:attempt.tools,snapshotHash:run.snapshot.hash,turn:run.turns.length+1});
           attempt.writerHandoff=clone(handoff);await checkpoint();
           const writerInput=prepareSingleWriterInput({assembly,handoff,preset:projectPlayerPreset(stripWorldbookContainers(publicSources(run.snapshot.preset)),identity?.name),proseStyle});
           await preflight('writer',writerInput);
-          body=text((await call('writer',writerInput)).text);
+          dialogueOutput=decodeWriterDialogue((await call('writer',writerInput)).text);body=text(dialogueOutput.body);dialogueBodyHash=hash(body);
         }else{
           const draft = text((await call('draft', { context: assembly, directorBrief: brief })).text);
           body = text((await call('prose', { draft, playerInput: input, preset: projectPlayerPreset(stripWorldbookContainers(publicSources(run.snapshot.preset)),identity?.name), characterIdentities: characterIdentities(run.snapshot), ...(proseStyle.text!==null?{proseStyle:clone(proseStyle)}:{}) })).text);
@@ -518,6 +520,8 @@ export class SceanEngine {
         const proposal = parseObject((await call('post_stat', { ...(frozen?{bodyHash:frozen.bodyHash}:{}),outputContract: postStatOutputContract(run.snapshot.characters), ...(run.snapshot.stateBlueprint ? { stateBlueprint: publicBlueprint(run.snapshot.stateBlueprint) } : {}), finalBody: body, previousState: publicStateForModel(run.state), characters: characterIdentities(run.snapshot) })).text);
         if(frozen)assertWriterBodyHash(body,frozen.bodyHash);
         const turn = run.turns.length + 1, commitId = id('commit'), bodyHash = hash(body);
+        let dialoguePresentation;try{if(dialogueBodyHash===bodyHash)dialoguePresentation=makeDialoguePresentation({body,entries:dialogueOutput?.entries,runId,snapshotHash:run.snapshot.hash,commitId,bodyHash,actors:publicSnapshot(run.snapshot).characters});}catch{}
+        if(singleWriter)attempt.dialoguePresentation={status:dialoguePresentation?'accepted':dialogueOutput?.entries?'ignored_or_body_changed':'not_provided',spans:dialoguePresentation?.spans.length??0};
         const { state, memories: proposedMemories, stateChanges, playerHistory: proposedPlayerHistory = [] } = applyStatProposal(proposal, run.state, run.snapshot.characters, body, { publicView: true });
         const stateProvenance = validateBlueprintStateChanges(run.snapshot.stateBlueprint, proposal.stateChanges, run.snapshot.characters, { source: { id: commitId, version: run.version + 1 }, publicView: true });
         validateBlueprintState(run.snapshot.stateBlueprint, state, run.snapshot.characters);
@@ -526,7 +530,7 @@ export class SceanEngine {
         const result = { runId, requestId, version: run.version + 1, turn, body, state, memories, playerHistory, commitId, status: 'committed', trace: { ...(writingMode.revision>0?{writingMode:modeRef}:{}), ...(proseStyle.revision>0?{proseStyle:styleRef}:{}), attemptId: attempt.attemptId, ...(operationId ? { operationId } : {}), tools: clone(attempt.tools), stages: attempt.stages.map(s => ({ stage: s.stage, status: s.status })) } };
         const now = new Date().toISOString();
         const next = { ...run, head: commitId, version: run.version + 1, state, ...(run.snapshot.stateBlueprint ? { stateProvenance: [...(run.stateProvenance ?? []), ...stateProvenance] } : {}), memories: [...run.memories, ...memories], playerHistory: [...(run.playerHistory ?? []), ...playerHistory], updatedAt: now,
-          turns: [...run.turns, { turn, requestId, commitId, commitVersion: run.version+1, ...(run.snapshot.stateBlueprint ? {stateProvenanceBefore:clone(run.stateProvenance??[]),stateProvenanceAfter:[...(run.stateProvenance??[]),...stateProvenance]} : {}), input, body, bodyHash, stateBefore: clone(run.state), stateAfter: clone(state), memoryIds: memories.map(m => m.id), playerHistoryIds: playerHistory.map(entry => entry.id), attemptId: attempt.attemptId, committedAt: now }],
+          turns: [...run.turns, { turn, requestId, commitId, commitVersion: run.version+1, ...(run.snapshot.stateBlueprint ? {stateProvenanceBefore:clone(run.stateProvenance??[]),stateProvenanceAfter:[...(run.stateProvenance??[]),...stateProvenance]} : {}), input, body, bodyHash, ...(dialoguePresentation?{dialoguePresentation}:{}), stateBefore: clone(run.state), stateAfter: clone(state), memoryIds: memories.map(m => m.id), playerHistoryIds: playerHistory.map(entry => entry.id), attemptId: attempt.attemptId, committedAt: now }],
           receipts: { ...run.receipts, [requestId]: { inputHash: hash(input), commitId, attemptId: attempt.attemptId, result } } };
         if (next.narrative) { next.narrative = clone(next.narrative); invalidateNarrative(next); }
         activeStage = 'commit'; progress('commit', 'pending');

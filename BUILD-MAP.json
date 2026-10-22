@@ -263,6 +263,10 @@
       "source": "isolated/web/summary-settings-ui.mjs"
     },
     {
+      "path": "packages/scean/isolated/web/turn-duration.mjs",
+      "source": "isolated/web/turn-duration.mjs"
+    },
+    {
       "source": "isolated/web/writing-mode-ui.mjs",
       "path": "packages/scean/isolated/web/writing-mode-ui.mjs"
     },
@@ -917,6 +921,18 @@
     {
       "path": "packages/studio/skills/tavern-card-format-preservation/references/worldbook-and-edits.md",
       "source": "sources/card-studio/cardstudio-bundle/skills/tavern-card-format-preservation/references/worldbook-and-edits.md"
+    },
+    {
+      "source": "core/run-lifecycle.mjs",
+      "path": "packages/scean/core/run-lifecycle.mjs"
+    },
+    {
+      "source": "core/dialogue.mjs",
+      "path": "packages/scean/core/dialogue.mjs"
+    },
+    {
+      "source": "core/dialogue-projection.mjs",
+      "path": "packages/scean/core/dialogue-projection.mjs"
     }
   ]
 }

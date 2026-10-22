@@ -19,72 +19,112 @@ window.__ModuleLoader__.load({
     mark('factory-enter');
     const React=require('react'),h=React.createElement;
     mark('factory-ready');
-    /** View lifetime controller: no React/DOM, no inference, no session rebinding. */
+    /** Session views outlive their bounded connection leases. Never replay a write. */
 class WorkspaceClient {
-  constructor({root,send,sendScope,sendReview,sendMethod,sendLibrary,sendScean,sendDownload,pageId,present=()=>{},show,hide,notify,setTimer=setInterval,clearTimer=clearInterval}) {
+  constructor({root,send,sendScope,sendReview,sendMethod,sendLibrary,sendScean,sendDownload,pageId,present=()=>{},show,hide,notify,connectionChanged=()=>{},setTimer=setInterval,clearTimer=clearInterval,setDelay=setTimeout,clearDelay=clearTimeout,now=Date.now,isVisible=()=>true,rpcTimeoutMs=15000}) {
     this.root=root?.toLowerCase().replace(/\\/g,'/').replace(/\/+$/,'')??null;this.discoverySequence=0;this.send=send;this.sendScope=sendScope;this.authoringScope=null;this.pageId=pageId;
-    this.present=present;this.show=show;this.hide=hide;this.notify=notify;this.sendReview=sendReview;
+    this.present=present;this.show=show;this.hide=hide;this.notify=notify;this.sendReview=sendReview;this.connectionChanged=connectionChanged;
     this.sendScean=sendScean;this.sendLibrary=sendLibrary;this.librarySettings=null;this.librarySequence=0;this.sendMethod=sendMethod;this.characterMethod=null;
     this.sendDownload=sendDownload;this.selectionStatus=null;
-    // Window timers reject a WorkspaceClient receiver. Keep both default and
-    // injected timer functions as ordinary calls instead of object methods.
-    this.setTimer=(...args)=>setTimer(...args);this.clearTimer=(...args)=>clearTimer(...args);
-    this.heartbeatSequence=null;this.sequence=0;this.current=null;this.claim=null;this.phase='inactive';this.timer=null;this.disposed=false;this.pending=new Set();
+    this.setTimer=(...args)=>setTimer(...args);this.clearTimer=(...args)=>clearTimer(...args);this.setDelay=(...args)=>setDelay(...args);this.clearDelay=(...args)=>clearDelay(...args);
+    this.now=now;this.isVisible=isVisible;this.rpcTimeoutMs=rpcTimeoutMs;
+    this.sequence=0;this.current=null;this.claim=null;this.phase='inactive';this.timer=null;this.retryTimer=null;this.disposed=false;this.pending=new Set();
+    this.connectionEpoch=0;this.flight=null;this.discovery=null;this.observedRow=null;this.presented=false;this.failures=0;this.retryAt=0;this.blocked=false;this.lastError=null;this.validUntil=0;
   }
   task(p){this.pending.add(p);p.finally(()=>this.pending.delete(p)).catch(()=>{});return p;}
   matches(row){return row?.cwd?.toLowerCase().replace(/\\/g,'/').replace(/\/+$/,'')===this.root;}
+  error(value){return Object.assign(new Error(`${value?.code??'CONNECTION'}: ${value?.message??'Card Studio connection failed.'}`),{code:value?.code??'CONNECTION',details:value?.details});}
+  changed(){this.connectionChanged({phase:this.phase,blocked:this.blocked,errorCode:this.lastError?.code??null});}
+  currentFlight(f){return !this.disposed&&f.sequence===this.sequence&&f.epoch===this.connectionEpoch&&this.flight===f;}
+  cancelFlight(){const f=this.flight;this.flight=null;++this.connectionEpoch;f?.controller.abort(Object.assign(new Error('Connection superseded.'),{code:'CONNECTION_SUPERSEDED'}));}
+  clearRetry(){this.clearDelay(this.retryTimer);this.retryTimer=null;}
+  // Only lifecycle RPCs have an automatic deadline. Story/card writes never replay.
+  bounded(session,request,signal,timeout=this.rpcTimeoutMs){
+    const controller=new AbortController(),abort=()=>controller.abort(signal.reason),at=this.now();
+    if(signal?.aborted)controller.abort(signal.reason);else signal?.addEventListener('abort',abort,{once:true});
+    const timer=this.setDelay(()=>controller.abort(Object.assign(new Error('Card Studio connection timed out.'),{code:'CONNECTION_TIMEOUT'})),timeout);timer?.unref?.();
+    let raw;try{controller.signal.throwIfAborted();raw=Promise.resolve(this.send(session,request,controller.signal));}catch(error){raw=Promise.reject(error);}
+    // A carrier can ignore cancellation. Retire only the exact late lease it returned.
+    if(request.action==='acquire')raw.then(result=>{if(controller.signal.aborted&&result?.ok&&result.value)this.releaseClaim(session,result.value);},()=>{});
+    let off;
+    const aborted=new Promise((_,reject)=>{off=()=>reject(controller.signal.reason);if(controller.signal.aborted)off();else controller.signal.addEventListener('abort',off,{once:true});});
+    return Promise.race([raw,aborted]).finally(()=>{this.clearDelay(timer);signal?.removeEventListener('abort',abort);controller.signal.removeEventListener('abort',off);}).then(result=>({result,at}));
+  }
+  releaseClaim(session,claim){if(!claim)return Promise.resolve();return this.task(this.bounded(session,{action:'release',claim},undefined,3000).catch(()=>{}));}
+  scheduleRetry(){
+    this.clearRetry();if(this.disposed||!this.current&&!this.observedRow||this.blocked)return;
+    const sequence=this.sequence,delay=Math.max(1,this.retryAt-this.now());
+    this.retryTimer=this.setDelay(()=>{this.retryTimer=null;if(sequence!==this.sequence||this.disposed)return;if(!this.isVisible()){this.retryAt=this.now()+30000;this.scheduleRetry();return;}return this.task(!this.root?this.transition(this.observedRow):this.heartbeat(sequence));},delay);this.retryTimer?.unref?.();
+  }
+  connectionFailure(error,claim=this.claim){
+    if(claim&&claim!==this.claim)return;
+    const first=this.phase==='ready'||this.failures===0;this.claim=null;this.validUntil=0;this.phase='error';this.lastError=error;
+    this.blocked=['SESSION_ARCHIVED','WORKSPACE','SESSION','AUTHORING_SCOPE_STORE'].includes(error.code);
+    this.failures++;this.retryAt=this.now()+Math.min(30000,1000*2**Math.min(5,this.failures-1));this.changed();this.scheduleRetry();
+    if(first)this.notify(error);
+  }
+  connectionError(error){return !error?.code||['CONNECTION','CONNECTION_TIMEOUT','STALE_LEASE','STALE_WORKSPACE','LEASE','CLOSING','SESSION_ARCHIVED','WORKSPACE','SESSION'].includes(error.code)||/^(?:gateway|remote)\//.test(error.code);}
+  lost(error,claim){if(!this.disposed&&claim===this.claim&&this.connectionError(error)){this.cancelFlight();this.connectionFailure(error,claim);}}
   async transition(row){
-    if(this.disposed)return;
-    const discovery=++this.discoverySequence;
-    if(!this.root && row?.id){
-      try{
-        const result=await this.send(row.id,{action:'workspace'});
-        if(this.disposed || discovery!==this.discoverySequence)return;
-        if(!result.ok)throw new Error(result.error.message);
-        const root=result.value?.workspace;
-        if(typeof root!=='string' || !/^(?:[A-Za-z]:[\\/]|[\\/])/.test(root))throw new Error('Host returned an invalid Card Studio workspace.');
-        this.root=root.toLowerCase().replace(/\\/g,'/').replace(/\/+$/,'');
-      }catch(error){if(!this.disposed && discovery===this.discoverySequence)this.notify(error);return;}
+    if(this.disposed)return;this.observedRow=row?.id?{id:row.id,cwd:row.cwd}:null;
+    if(!this.root&&row?.id){
+      if(this.discovery?.id===row.id)return this.discovery.promise;
+      this.discovery?.controller.abort();const d={id:row.id,controller:new AbortController(),sequence:++this.discoverySequence,promise:null};this.discovery=d;this.clearRetry();
+      d.promise=(async()=>{try{const {result}=await this.bounded(row.id,{action:'workspace'},d.controller.signal);if(this.disposed||this.discovery!==d||this.observedRow?.id!==row.id)return;if(!result.ok)throw this.error(result.error);const root=result.value?.workspace;if(typeof root!=='string'||!/^(?:[A-Za-z]:[\\/]|[\\/])/.test(root))throw Error('Host returned an invalid Card Studio workspace.');this.root=root.toLowerCase().replace(/\\/g,'/').replace(/\/+$/,'');await this.transition(row);}
+        catch(error){if(!this.disposed&&this.discovery===d&&this.observedRow?.id===row.id)this.connectionFailure(error);}
+        finally{if(this.discovery===d)this.discovery=null;}})();return d.promise;
     }
-    const identity=this.matches(row)?row.id:null;
-    if(this.current?.id===identity)return;
-    const sequence=++this.sequence,old=this.current,claim=this.claim;
-    this.current=identity?{id:identity}:null;this.claim=null;this.authoringScope=null;this.characterMethod=null;this.selectionStatus=null;this.phase='inactive';this.hide();this.clearTimer(this.timer);this.timer=null;
-    if(old&&claim)this.task(this.send(old.id,{action:'release',claim}).catch(()=>{}));
-    if(!identity)return;
-    this.phase='connecting';
-    try{
-      this.present();
-      const result=await this.send(identity,{action:'acquire',page_id:this.pageId});
-      if(sequence!==this.sequence || this.disposed){if(result.ok)await this.send(identity,{action:'release',claim:result.value});return;}
-      if(!result.ok)throw new Error(`${result.error.code}: ${result.error.message}`);
-      this.claim=result.value;this.authoringScope=result.value.authoring_scope??null;
-      this.characterMethod=result.value.character_method??null;
-      this.updateSelection(result.value.selection_status,true);
-      const capabilities=await this.send(identity,{action:'capabilities',claim:this.claim});
-      if(sequence!==this.sequence || this.disposed)return;
-      if(!capabilities.ok)throw new Error(`${capabilities.error.code}: ${capabilities.error.message}`);
-      this.authoringScope=capabilities.value.authoring_scope??this.authoringScope;
-      this.characterMethod=capabilities.value.character_method??this.characterMethod;
-      this.updateLibrary(capabilities.value.library_settings,true);this.phase='ready';this.show(capabilities.value);
-      this.timer=this.setTimer(()=>this.task(this.heartbeat(sequence)),20000);
-    }catch(e){if(sequence===this.sequence && !this.disposed){
-      const failedClaim=this.claim;this.claim=null;this.phase='error';
-      if(failedClaim)this.task(this.send(identity,{action:'release',claim:failedClaim}).catch(()=>{}));
-      this.notify(e);
-    }}
+    this.discovery?.controller.abort();this.discovery=null;++this.discoverySequence;
+    const identity=this.matches(row)?row.id:null;if(this.current?.id===identity)return;
+    const old=this.current,claim=this.claim;this.cancelFlight();++this.sequence;this.clearRetry();this.clearTimer(this.timer);this.timer=null;
+    this.current=identity?{id:identity}:null;this.claim=null;this.authoringScope=null;this.characterMethod=null;this.selectionStatus=null;this.phase='inactive';this.validUntil=0;this.presented=false;this.failures=0;this.retryAt=0;this.blocked=false;this.lastError=null;this.hide();
+    if(old&&claim)this.releaseClaim(old.id,claim);if(!identity)return;
+    const sequence=this.sequence;this.timer=this.setTimer(()=>this.task(this.heartbeat(sequence)),20000);this.timer?.unref?.();await this.connect(sequence);
   }
-  async retry(){
-    if(this.disposed || !this.current || this.phase!=='error')return;
-    const row={...this.current,cwd:this.root};this.current=null;
-    await this.transition(row);
+  async connect(sequence){
+    if(this.disposed||sequence!==this.sequence||!this.current||!this.isVisible()||this.blocked)return;
+    if(this.flight)return this.flight.promise;this.clearRetry();
+    const session=this.current.id,claim=this.claim,f={sequence,epoch:++this.connectionEpoch,controller:new AbortController(),kind:claim?'renew':'acquire',promise:null};this.flight=f;
+    f.promise=(async()=>{
+      let acquired;
+      try{
+        if(!claim){
+          this.phase='connecting';this.changed();if(!this.presented){this.present();this.presented=true;}
+          // Distinct page identities ensure a delayed old acquire cannot replace the new lease.
+          const pageId=String(this.pageId).slice(0,72)+'-'+f.epoch;
+          const opening=await this.bounded(session,{action:'acquire',page_id:pageId},f.controller.signal);if(!opening.result.ok)throw this.error(opening.result.error);acquired=opening.result.value;
+          if(!this.currentFlight(f)){this.releaseClaim(session,acquired);return;}
+          const {result}=await this.bounded(session,{action:'capabilities',claim:acquired},f.controller.signal);if(!result.ok)throw this.error(result.error);
+          if(!this.currentFlight(f)){this.releaseClaim(session,acquired);return;}
+          this.claim=acquired;this.authoringScope=result.value.authoring_scope??acquired.authoring_scope??null;this.characterMethod=result.value.character_method??acquired.character_method??null;
+          this.updateSelection(acquired.selection_status,true);this.updateLibrary(result.value.library_settings,true);this.validUntil=opening.at+(acquired.lease_ms??90000);this.phase='ready';this.failures=0;this.retryAt=0;this.lastError=null;this.show(result.value);this.changed();
+        }else{
+          const {result,at}=await this.bounded(session,{action:'renew',claim},f.controller.signal);if(!result.ok)throw this.error(result.error);if(result.value?.active===false)throw this.error({code:'STALE_WORKSPACE',message:'Card Studio capability is no longer active.'});if(!this.currentFlight(f)||this.claim!==claim)return;
+          this.validUntil=at+(result.value?.lease_ms??claim.lease_ms??90000);this.updateLibrary(result.value?.library_settings);this.updateSelection(result.value?.selection_status);this.authoringScope=result.value?.authoring_scope??this.authoringScope;this.scopeChanged?.(this.authoringScope);this.characterMethod=result.value?.character_method??this.characterMethod;this.methodChanged?.(this.characterMethod,result.value?.skills);
+        }
+      }catch(error){if(acquired)this.releaseClaim(session,acquired);if(this.currentFlight(f))this.connectionFailure(error,claim);}
+      finally{if(this.flight===f)this.flight=null;}
+    })();
+    return f.promise;
   }
-  async heartbeat(sequence){
-    if(sequence!==this.sequence || !this.current || !this.claim || this.heartbeatSequence===sequence)return;
-    this.heartbeatSequence=sequence;
-    try{const r=await this.send(this.current.id,{action:'renew',claim:this.claim});if(sequence!==this.sequence||this.disposed)return;if(!r.ok)throw new Error(r.error.message);this.updateLibrary(r.value?.library_settings);this.updateSelection(r.value?.selection_status);this.authoringScope=r.value?.authoring_scope??this.authoringScope;this.scopeChanged?.(this.authoringScope);this.characterMethod=r.value?.character_method??this.characterMethod;this.methodChanged?.(this.characterMethod,r.value?.skills);}
-    catch(e){if(sequence===this.sequence){const old=this.current;this.current=null;this.claim=null;this.hide();this.clearTimer(this.timer);this.timer=null;await this.transition({...old,cwd:this.root});if(this.sequence===sequence+1&&this.phase==='ready')this.notify(e);}}
-    finally{if(this.heartbeatSequence===sequence)this.heartbeatSequence=null;}
+  async heartbeat(sequence=this.sequence,{force=false}={}){
+    if(this.disposed||sequence!==this.sequence||!this.current||!this.isVisible()||this.blocked)return;
+    if(this.flight)return;if(!force&&this.now()<this.retryAt)return;
+    const previous=this.claim;if(previous&&this.now()>=this.validUntil){this.claim=null;this.validUntil=0;this.phase='connecting';this.changed();this.releaseClaim(this.current.id,previous);}
+    const renewing=!!this.claim;await this.connect(sequence);
+    // One answered renewal failure may immediately handshake; acquire failures back off.
+    if(renewing&&!this.claim&&!this.blocked&&!this.disposed&&sequence===this.sequence)await this.connect(sequence);
+  }
+  resume(){if(!this.root&&this.observedRow&&!this.blocked&&this.isVisible())return this.task(this.transition(this.observedRow));return this.task(this.heartbeat(this.sequence,{force:true}));}
+  async retry(){if(this.disposed||!this.current)return;this.blocked=false;this.retryAt=0;return this.heartbeat(this.sequence,{force:true});}
+  assertReady(){
+    if(this.claim&&this.now()>=this.validUntil){const claim=this.claim;this.lost(this.error({code:'STALE_LEASE',message:'Card Studio is reconnecting; your draft is preserved.'}),claim);}
+    if(!this.current||!this.claim||this.phase!=='ready')throw this.error({code:'STUDIO_RECONNECTING',message:'編輯室正在重新連線，未保存文字仍保留；連線恢復後再確認操作。'});
+  }
+  async human(sender,request,expectedSequence,label){
+    if(this.disposed||expectedSequence!==this.sequence||!sender)throw Object.assign(Error(label+' page is not ready.'),{code:'CONNECTION_SUPERSEDED'});this.assertReady();const sequence=this.sequence,session=this.current.id,claim=this.claim;
+    try{const result=await sender(session,{...request,claim});if(this.disposed||sequence!==this.sequence)throw Object.assign(Error('Discarded response from previous Session.'),{code:'CONNECTION_SUPERSEDED'});if(!result.ok)throw this.error(result.error);return result.value;}
+    catch(error){this.lost(error,claim);throw error;}
   }
   bind(sequence=this.sequence){
     // A continuation from an old Panel must not start its next RPC in a newly
@@ -94,10 +134,10 @@ class WorkspaceClient {
   async call(action,args={},expectedSequence=this.sequence){
     const sequence=this.sequence,session=this.current,claim=this.claim,librarySequence=this.librarySequence;
     if(this.disposed||expectedSequence!==sequence)throw new Error('Discarded operation from previous workspace/session.');
-    if(!session || !claim || this.phase!=='ready')throw new Error('Card Studio workspace is not ready.');
-    const result=await this.send(session.id,{action,args,claim});
+    this.assertReady();let result;
+    try{result=await this.send(session.id,{action,args,claim});if(!result.ok)throw this.error(result.error);}catch(error){this.lost(error,claim);throw error;}
     if(this.disposed || sequence!==this.sequence)throw new Error('Discarded response from previous workspace/session.');
-    this.updateSelection(result.selection_status);
+    if(claim===this.claim)this.updateSelection(result.selection_status);
     if(action.startsWith('library')){this.updateLibrary(result.value?.library_settings);if(librarySequence!==this.librarySequence)throw new Error('Discarded response from previous Library root.');}
     if(!result.ok)throw Object.assign(new Error(`${result.error.code}: ${result.error.message}`),{details:result.error.details});if(result.value?.authoring_scope){this.authoringScope=result.value.authoring_scope;this.scopeChanged?.(this.authoringScope);}if(result.value?.character_method){this.characterMethod=result.value.character_method;this.methodChanged?.(this.characterMethod,result.value.skills);}return result.value;
   }
@@ -115,55 +155,47 @@ class WorkspaceClient {
   }
   async downloadExport(request,expectedSequence=this.sequence){
     const sequence=this.sequence,session=this.current,claim=this.claim;
-    if(this.disposed||expectedSequence!==sequence||this.phase!=='ready'||!session||!claim||!this.sendDownload)throw new Error('Export download page is not ready.');
-    const result=await this.sendDownload(session.id,{...request,claim});
+    const result=await this.human(this.sendDownload,request,expectedSequence,'Export download');
     if(this.disposed||sequence!==this.sequence||this.claim!==claim)throw new Error('Discarded download response from previous Session or page lease.');
-    if(!result.ok)throw new Error(result.error.code+': '+result.error.message);return result.value;
+    return result;
   }
   async sceanControl(request,expectedSequence=this.sequence){
-    const sequence=this.sequence,session=this.current,claim=this.claim;
-    if(this.disposed||expectedSequence!==sequence||this.phase!=='ready'||!session||!claim||!this.sendScean)throw new Error('SCEAN human page is not ready.');
-    const result=await this.sendScean(session.id,{...request,claim});
-    if(this.disposed||sequence!==this.sequence)throw new Error('Discarded SCEAN response from previous Session.');
-    if(!result.ok)throw new Error(result.error.code+': '+result.error.message);
-    return result.value;
+    try{return await this.human(this.sendScean,request,expectedSequence,'SCEAN human');}
+    catch(error){if(request.mode==='start'&&this.connectionError(error)&&!['STALE_LEASE','STALE_WORKSPACE','LEASE','STUDIO_RECONNECTING','SESSION_ARCHIVED','WORKSPACE','SESSION'].includes(error.code))throw this.error({code:'HANDOFF_UNCONFIRMED',message:'尚未收到開局回執。連線恢復不會自動重送；請先到舞臺核對，再由你決定是否用相同請求確認。',details:{request_id:request.request_id}});throw error;}
   }
   async setLibraryRoot(path,expectedSequence=this.sequence){
     const sequence=this.sequence,session=this.current,claim=this.claim;
     if(this.disposed||expectedSequence!==sequence||this.phase!=='ready'||!session||!claim||!this.sendLibrary)throw new Error('Human Library control is not ready.');
-    const result=await this.sendLibrary(session.id,{path,expected_revision:this.librarySettings?.revision??0,claim});
+    const value=await this.human(this.sendLibrary,{path,expected_revision:this.librarySettings?.revision??0},expectedSequence,'Human Library');
     if(this.disposed||sequence!==this.sequence)throw new Error('Discarded Library setting response from previous Session.');
-    if(!result.ok)throw new Error(result.error.code+': '+result.error.message);
-    this.updateLibrary(result.value);return result.value;
+    this.updateLibrary(value);return value;
   }
   async setAuthoringScope(mode,expectedSequence=this.sequence){
     const sequence=this.sequence,session=this.current,claim=this.claim;
     if(expectedSequence!==sequence||this.phase!=='ready'||!session||!claim||!this.sendScope||!this.authoringScope)throw new Error('Human scope control is not ready.');
-    const result=await this.sendScope(session.id,{mode,expected_epoch:this.authoringScope.epoch,claim});
+    const value=await this.human(this.sendScope,{mode,expected_epoch:this.authoringScope.epoch},expectedSequence,'Human scope');
     if(this.disposed||sequence!==this.sequence)throw new Error('Discarded scope response from previous Session.');
-    if(!result.ok)throw new Error(result.error.code+': '+result.error.message);
-    this.authoringScope=result.value.authoring_scope;this.scopeChanged?.(this.authoringScope);return this.authoringScope;
+    if(claim===this.claim){this.authoringScope=value.authoring_scope;this.scopeChanged?.(this.authoringScope);}return value.authoring_scope;
   }
   async setCharacterMethod(name,expectedSequence=this.sequence){
     const sequence=this.sequence,session=this.current,claim=this.claim;
     if(expectedSequence!==sequence||this.phase!=='ready'||!session||!claim||!this.sendMethod||!this.characterMethod)throw new Error('Human character method control is not ready.');
-    const result=await this.sendMethod(session.id,{name,expected_epoch:this.characterMethod.epoch,claim});
+    const value=await this.human(this.sendMethod,{name,expected_epoch:this.characterMethod.epoch},expectedSequence,'Human character method');
     if(this.disposed||sequence!==this.sequence)throw new Error('Discarded method response from previous Session.');
-    if(!result.ok)throw new Error(result.error.code+': '+result.error.message);
-    this.characterMethod=result.value.character_method;this.methodChanged?.(this.characterMethod,result.value.skills);return this.characterMethod;
+    if(claim===this.claim){this.characterMethod=value.character_method;this.methodChanged?.(this.characterMethod,value.skills);}return value.character_method;
   }
   async close(){
-    this.disposed=true;++this.sequence;++this.discoverySequence;this.phase='inactive';this.hide();this.clearTimer(this.timer);this.timer=null;
+    this.disposed=true;++this.sequence;++this.discoverySequence;this.discovery?.controller.abort();this.discovery=null;this.observedRow=null;this.cancelFlight();this.clearRetry();this.phase='inactive';this.hide();this.clearTimer(this.timer);this.timer=null;
     const old=this.current,claim=this.claim;this.current=null;this.claim=null;
-    if(old&&claim)await this.send(old.id,{action:'release',claim}).catch(()=>{});
+    if(old&&claim)await this.releaseClaim(old.id,claim);
     await Promise.allSettled([...this.pending]);
   }
   async reviewMaterials(request,expectedSequence=this.sequence){
     const sequence=this.sequence,session=this.current,claim=this.claim;
     if(expectedSequence!==sequence||this.phase!=='ready'||!session||!claim||!this.sendReview||!this.authoringScope)throw new Error('Human review page is not ready.');
-    const result=await this.sendReview(session.id,{...request,expected_epoch:this.authoringScope.epoch,claim});
+    const value=await this.human(this.sendReview,{...request,expected_epoch:this.authoringScope.epoch},expectedSequence,'Human review');
     if(this.disposed||sequence!==this.sequence)throw new Error('Discarded review response from previous Session.');
-    if(!result.ok)throw new Error(result.error.code+': '+result.error.message);return result.value;
+    return value;
   }
 }
 
@@ -447,7 +479,7 @@ function createMaterialComponents({React,h,ctx,t,controller,useUpdates,css,Scope
     Object.assign(translations.en,{pngCompatibility:'This PNG contains other different or unreadable character data. The main data follows SillyTavern selection. Edits update only that version; other chunks and the image remain in the PNG.',compatibilityDismiss:'Got it',pngExportHint:'Use .png to retain the image and all metadata chunks, or .json to export the selected main data.'});
     Object.assign(translations.en,{createCard:'Create a new card',createName:'Character name',createFormat:'Card format',createNow:'Create working copy',authoring:'Frontend and Visual State',source:'Frontend fragment',fixture:'Authoring fixture',visual:'Visual contract',assets:'Local image assets',preview:'Isolated preview',inspectFrontend:'Inspect fragments',readComponent:'Read fragment',createFrontend:'Create fragment',patchFrontend:'Save fragment edit',sourceTarget:'Host source target',sourceCode:'HTML / CSS fragment',localPatch:'Apply exact local replacement',oldText:'Exact text to replace',newText:'Replacement text',saveFixture:'Save fixture',fixtureJSON:'Typed fixture JSON',sample:'Use sample fixture',readContract:'Read contract',createContract:'Create contract',saveContract:'Save contract',validateState:'Validate sample state',contractJSON:'Visual contract JSON',stateJSON:'State update JSON',characterId:'Stable character ID',expression:'Expression',uploadAsset:'Import raster image',linkAsset:'Link selected expression',unlinkAsset:'Unlink selected expression',renderPreview:'Refresh preview',bundleExport:'Export card + authoring bundle',authoringHint:'Design samples only. Card JavaScript, EJS, MVU and remote scripts are not executed. Preview does not certify SillyTavern runtime compatibility.',assetHint:'Choose a local PNG, JPEG or WebP. Imported bytes are validated by the host; cards and images are not sent to a provider.',noComponents:'No safely identified frontend fragments. Create an explicit fragment in a host-supported target.',previewHint:'Opaque-origin frame; no scripts, host bridge or network. Viewport changes require refresh with the same fixture.',discardAuthoring:'Discard unsaved authoring edits',previewWarnings:'Preview omitted unsupported content; review diagnostics below.',diagnostics:'Unsupported features and diagnostics',entryId:'Worldbook entry ID / regex ID',variant:'Selected visual state',resetVisual:'Reset sample to neutral',newFragment:'New fragment draft',contractSample:'Six-expression contract draft',highAffection:'High affection',longInventory:'Long inventory',hideNumbers:'Labels without numbers'});
     Object.assign(translations.zh,{createCard:'從零建立角色卡',createName:'角色名稱',createFormat:'角色卡格式',createNow:'建立工作副本',authoring:'前端與視覺狀態',source:'前端片段',fixture:'製卡樣本狀態',visual:'視覺契約',assets:'本地圖片素材',preview:'隔離預覽',inspectFrontend:'檢查前端片段',readComponent:'讀取片段',createFrontend:'新增片段',patchFrontend:'儲存片段修改',sourceTarget:'宿主定位目標',sourceCode:'HTML / CSS 片段',localPatch:'套用精確局部替換',oldText:'要替換的精確文字',newText:'替換文字',saveFixture:'儲存樣本狀態',fixtureJSON:'型別樣本 JSON',sample:'載入樣本草稿',readContract:'讀取契約',createContract:'建立契約',saveContract:'儲存契約',validateState:'驗證樣本狀態',contractJSON:'視覺契約 JSON',stateJSON:'狀態更新 JSON',characterId:'角色穩定 ID',expression:'表情',uploadAsset:'匯入點陣圖片',linkAsset:'連結至所選表情',unlinkAsset:'取消所選表情連結',renderPreview:'更新預覽',bundleExport:'匯出角色卡與製卡套件',authoringHint:'這裡使用製卡樣本。卡內 JavaScript、EJS、MVU 和遠端腳本不執行；預覽不等於酒館 runtime 相容性驗證。',assetHint:'選擇本地 PNG、JPEG 或 WebP；宿主驗證圖片內容，不傳送至生圖供應商。',noComponents:'尚無可安全識別的前端片段；可在宿主支援的目標新增明確片段。',previewHint:'不透明來源 iframe，禁止腳本、宿主橋接及網路；修改寬度後以同一樣本更新預覽。',discardAuthoring:'捨棄尚未儲存的製卡修改',previewWarnings:'預覽已略過不支援的內容；請查看下方診斷。',diagnostics:'不支援項目與診斷',entryId:'世界書條目 ID／regex ID',variant:'所選視覺狀態',resetVisual:'樣本回到 neutral',newFragment:'新增片段草稿',contractSample:'六表情契約草稿',highAffection:'高好感樣本',longInventory:'長物品清單',hideNumbers:'以文字取代數字'});
-    Object.assign(translations.zh,{targetCheck:'檢查酒館目標',targetExport:'匯出酒館可交付套件',targetPreview:'預覽目標版型',targetRebuild:'重建目標內容',generatedArm:'接收下一張生圖並連結',generatedStatus:'查看自動入卡結果',generatedCancel:'取消等待生圖',viewportLabel:'預覽寬度',mobile:'手機',desktop:'桌面',previewTitle:'Card Studio 隔離製卡預覽',source_first_mes:'開場白',source_worldbook_entry:'世界書條目',source_regex:'正規表示式替換',expr_neutral:'平靜',expr_happy:'開心',expr_angry:'生氣',expr_sad:'難過',expr_embarrassed:'害羞',expr_surprised:'驚訝',scene_locations:'場景地點',scene_lighting:'場景光線',sceneDefault:'預設',diagnosticGeneric:'此項目無法完成；請依代碼檢查來源或重新整理工作副本。',diagnosticPreview:'隔離預覽已略過此功能；原卡內容仍保留。',diagnosticTarget:'酒館目標尚未完成；請檢查狀態脚本、未轉換標記、圖片和目標設定。',diagnosticRevision:'工作副本已變更，請重新讀取後再修改。',diagnosticAsset:'圖片未通過驗證或找不到，請檢查素材與連結。',diagnosticSession:'目前對話的工作區能力已失效，請重新開啟。'});
+    Object.assign(translations.zh,{targetCheck:'檢查酒館目標',targetExport:'匯出酒館可交付套件',targetPreview:'預覽目標版型',targetRebuild:'重建目標內容',generatedArm:'接收下一張生圖並連結',generatedStatus:'查看自動入卡結果',generatedCancel:'取消等待生圖',viewportLabel:'預覽寬度',mobile:'手機',desktop:'桌面',previewTitle:'Card Studio 隔離製卡預覽',source_first_mes:'開場白',source_worldbook_entry:'世界書條目',source_regex:'正規表示式替換',expr_neutral:'平靜',expr_happy:'開心',expr_angry:'生氣',expr_sad:'難過',expr_embarrassed:'害羞',expr_surprised:'驚訝',scene_locations:'場景地點',scene_lighting:'場景光線',sceneDefault:'預設',diagnosticGeneric:'此項目無法完成；請依代碼檢查來源或重新整理工作副本。',diagnosticPreview:'隔離預覽已略過此功能；原卡內容仍保留。',diagnosticTarget:'酒館目標尚未完成；請檢查狀態脚本、未轉換標記、圖片和目標設定。',diagnosticRevision:'工作副本已變更，請重新讀取後再修改。',diagnosticAsset:'圖片未通過驗證或找不到，請檢查素材與連結。',diagnosticSession:'編輯室連線暫時無法使用；正在自動恢復，未保存文字仍保留。恢復連線不會重送修改或開局。'});
     Object.assign(translations.en,{targetCheck:'Check target',targetExport:'Export target bundle',targetPreview:'Preview target template',targetRebuild:'Rebuild target content',generatedArm:'Link the next generated image',generatedStatus:'Generated image receipt',generatedCancel:'Cancel image waiting',viewportLabel:'Preview viewport',mobile:'mobile',desktop:'desktop',previewTitle:'Card Studio isolated authoring preview',source_first_mes:'First message',source_worldbook_entry:'Worldbook entry',source_regex:'Regex replacement',expr_neutral:'Neutral',expr_happy:'Happy',expr_angry:'Angry',expr_sad:'Sad',expr_embarrassed:'Embarrassed',expr_surprised:'Surprised',scene_locations:'Location',scene_lighting:'Lighting',sceneDefault:'Default',diagnosticGeneric:'Check this diagnostic and refresh the working copy.',diagnosticPreview:'Unsupported preview feature was omitted; source is preserved.',diagnosticTarget:'Review the target writer, bindings, images and configuration.',diagnosticRevision:'Read the changed working copy before editing.',diagnosticAsset:'Review image validation and links.',diagnosticSession:'Reopen the workspace in this Session.'});
     Object.assign(translations.zh,{backupOptions:'製卡備份（不供直接遊玩）',rawBackup:'匯出原始卡備份',bundleExport:'匯出製卡備份套件',targetExport:'匯出酒館遊玩套件',targetDeliveryHint:'主要交付：酒館目標套件。請依套件步驟安裝圖片並在酒館驗收。',prepareTargetHint:'這張卡仍有製卡標記；請先建立酒館目標，再交付遊玩。'});
     Object.assign(translations.en,{backupOptions:'Authoring backups (not for play)',rawBackup:'Export raw card backup',bundleExport:'Export authoring backup bundle',targetExport:'Export Tavern play package',targetDeliveryHint:'Primary delivery: the Tavern target package. Follow its image installation steps and verify in Tavern.',prepareTargetHint:'This card still has authoring bindings. Prepare a Tavern target before delivering it for play.'});
@@ -483,22 +515,22 @@ function createMaterialComponents({React,h,ctx,t,controller,useUpdates,css,Scope
       const diagnosticText=(code,message)=>{
         const language=String(ctx.locale.getLocale?.()?.active??'en').toLowerCase();
         if(!language.startsWith('zh')||/[\u3400-\u9fff]/.test(message??''))return message;
-        const kind=/REVISION|CONFLICT/.test(code)?'Revision':/TARGET/.test(code)?'Target':/ASSET|IMAGE|RASTER|UPLOAD|GENERATED/.test(code)?'Asset':/SESSION|LEASE|WORKSPACE/.test(code)?'Session':/CSS|HTML|SCRIPT|MACRO|EJS|MVU|EXTERNAL|UNSUPPORTED|PREVIEW/.test(code)?'Preview':'Generic';
+        const kind=/REVISION|CONFLICT/.test(code)?'Revision':/TARGET/.test(code)?'Target':/ASSET|IMAGE|RASTER|UPLOAD|GENERATED/.test(code)?'Asset':/SESSION|LEASE|WORKSPACE|RECONNECT|CONNECTION/.test(code)?'Session':/CSS|HTML|SCRIPT|MACRO|EJS|MVU|EXTERNAL|UNSUPPORTED|PREVIEW/.test(code)?'Preview':'Generic';
         return t('diagnostic'+kind);
       };
       const presentDiagnostics=value=>Array.isArray(value)?value.map(presentDiagnostics):value&&typeof value==='object'?Object.fromEntries(Object.entries(value).map(([k,v])=>[k,k==='message'&&typeof v==='string'&&value.code?diagnosticText(value.code,v):presentDiagnostics(v)])):value;
-      const notify=error=>{markError('operation-error',error);const code=/^([A-Z_]+):/.exec(error.message??'')?.[1]??'OPERATION';notice=diagnosticText(code,error.message)+' ('+code+')';changed();};
+      const notify=error=>{markError('operation-error',error);const code=error.code??/^([A-Z_]+):/.exec(error.message??'')?.[1]??'OPERATION';notice=diagnosticText(code,error.message)+' ('+code+')';changed();};
       function useUpdates(){const [,rerender]=React.useState(0);React.useEffect(()=>{const fn=()=>rerender(x=>x+1);listeners.add(fn);return()=>listeners.delete(fn);},[]);}
       const contextChanged=sessionId=>window.dispatchEvent(new CustomEvent('scean:context',{detail:{authoringSessionId:sessionId}}));
-      const send=async(sessionId,request)=>{
+      const send=async(sessionId,request,signal)=>{
         const changesSelection=['open','import','upload_finish','create','library_copy'].includes(request.action);
         if(changesSelection)contextChanged(sessionId);
         const observed=['workspace','acquire','capabilities','imports','documents','renew','release'].includes(request.action);
         if(observed)mark('bridge-'+request.action+'-sent');
         try{
-        const result=await ctx.remote.cardstudioScean.request(sessionId,request);
+        const result=await ctx.remote.cardstudioScean.request(sessionId,request,...signal?[signal]:[]);
         if(observed)mark('bridge-'+request.action+'-reply',{rpcOk:result.ok===true,hasValue:!!result.value,hasText:false});
-        if(!result.ok)throw new Error(result.error.message);
+        if(!result.ok)throw Object.assign(new Error(result.error.message),{code:result.error.code,details:result.error.details});
         if(!result.value)throw new Error('Card Studio RPC unavailable.');
         const decoded=result.value;
         if(changesSelection||request.action==='acquire')contextChanged(sessionId);
@@ -506,12 +538,12 @@ function createMaterialComponents({React,h,ctx,t,controller,useUpdates,css,Scope
         }catch(error){if(observed)markError('bridge-'+request.action+'-error',error);throw error;}
       };
       function hide(){for(const dispose of disposers.splice(0).reverse())dispose();capabilities={skills:[],tools:[]};notice='';}
-      const sendScope=async(sessionId,request)=>{const result=await ctx.remote.cardstudioScean.setAuthoringScope(sessionId,request);if(!result.ok)throw new Error(result.error.message);return result.value;};
-      const sendReview=async(sessionId,request)=>{const result=await ctx.remote.cardstudioScean.reviewMaterials(sessionId,request);if(!result.ok)throw new Error(result.error.message);return result.value;};
-      const sendMethod=async(sessionId,request)=>{const result=await ctx.remote.cardstudioScean.setCharacterMethod(sessionId,request);if(!result.ok)throw new Error(result.error.message);return result.value;};
-      const sendScean=async(sessionId,request)=>{const result=await ctx.remote.cardstudioScean.sceanControl(sessionId,request);if(!result.ok)throw new Error(result.error.message);return result.value;};
-      const sendLibrary=async(sessionId,request)=>{const result=await ctx.remote.cardstudioScean.setLibraryRoot(sessionId,request);if(!result.ok)throw new Error(result.error.message);return result.value;};
-      const sendDownload=async(sessionId,request)=>{const result=await ctx.remote.cardstudioScean.downloadExport(sessionId,request);if(!result.ok)throw new Error(result.error.message);return result.value;};
+      const sendScope=async(sessionId,request)=>{const result=await ctx.remote.cardstudioScean.setAuthoringScope(sessionId,request);if(!result.ok)throw Object.assign(new Error(result.error.message),{code:result.error.code,details:result.error.details});return result.value;};
+      const sendReview=async(sessionId,request)=>{const result=await ctx.remote.cardstudioScean.reviewMaterials(sessionId,request);if(!result.ok)throw Object.assign(new Error(result.error.message),{code:result.error.code,details:result.error.details});return result.value;};
+      const sendMethod=async(sessionId,request)=>{const result=await ctx.remote.cardstudioScean.setCharacterMethod(sessionId,request);if(!result.ok)throw Object.assign(new Error(result.error.message),{code:result.error.code,details:result.error.details});return result.value;};
+      const sendScean=async(sessionId,request)=>{const result=await ctx.remote.cardstudioScean.sceanControl(sessionId,request);if(!result.ok)throw Object.assign(new Error(result.error.message),{code:result.error.code,details:result.error.details});return result.value;};
+      const sendLibrary=async(sessionId,request)=>{const result=await ctx.remote.cardstudioScean.setLibraryRoot(sessionId,request);if(!result.ok)throw Object.assign(new Error(result.error.message),{code:result.error.code,details:result.error.details});return result.value;};
+      const sendDownload=async(sessionId,request)=>{const result=await ctx.remote.cardstudioScean.downloadExport(sessionId,request);if(!result.ok)throw Object.assign(new Error(result.error.message),{code:result.error.code,details:result.error.details});return result.value;};
       // A failed editor render must not take down the surrounding conversation.
       // Retrying remounts only this view; cached drafts and Host data stay intact.
       class StudioPanelBoundary extends React.Component{
@@ -522,7 +554,7 @@ function createMaterialComponents({React,h,ctx,t,controller,useUpdates,css,Scope
           h('h2',null,'編輯室暫時無法顯示'),h('p',null,'工作卡、未保存草稿與遊玩紀錄仍保留。可以重試，或先回到對話。'),
           h('button',{onClick:()=>this.setState({failed:false})},'重新開啟編輯室'),h('button',{onClick:()=>ctx.layout.selectPanel(null)},'回到對話')):this.props.children;}
       }
-      const controller=new WorkspaceClient({send,sendScope,sendReview,sendMethod,sendLibrary,sendScean,sendDownload,pageId:crypto.randomUUID(),notify,hide,present(){
+      const controller=new WorkspaceClient({send,sendScope,sendReview,sendMethod,sendLibrary,sendScean,sendDownload,pageId:crypto.randomUUID(),notify,hide,connectionChanged:()=>changed(),isVisible:()=>document.visibilityState!=='hidden',present(){
         mark('entry-requested');
         const sequence=controller.sequence,SessionPanel=()=>h(StudioPanelBoundary,{key:sequence},h(Panel,{key:sequence,sequence}));
         try{
@@ -532,7 +564,7 @@ function createMaterialComponents({React,h,ctx,t,controller,useUpdates,css,Scope
       },show(value){capabilities=value;notice='';changed();}});
       controller.libraryChanged=()=>changed();
       controller.selectionChanged=()=>changed();
-      const resumeStudio=()=>{if(document.visibilityState!=='hidden')void controller.heartbeat(controller.sequence);};
+      const resumeStudio=()=>{if(document.visibilityState!=='hidden')void controller.resume();};
       window.addEventListener('focus',resumeStudio);window.addEventListener('pageshow',resumeStudio);window.addEventListener('online',resumeStudio);document.addEventListener('visibilitychange',resumeStudio);
 
       controller.scopeChanged=value=>{capabilities={...capabilities,authoring_scope:value};changed();};
@@ -700,7 +732,7 @@ function createMaterialComponents({React,h,ctx,t,controller,useUpdates,css,Scope
         const [v,setView]=React.useState(initial),[editorBusy,setBusy]=React.useState(false),[diagnosisBusy,setDiagnosisBusy]=React.useState(false),[status,setStatus]=React.useState(''),[dialog,setDialog]=React.useState(null),[drag,setDrag]=React.useState(false),[folderAvailable,setFolderAvailable]=React.useState(false),[upload,setUpload]=React.useState(null),[verifiedDownload,setVerifiedDownload]=React.useState(null);
         const busy=editorBusy||diagnosisBusy,diagnosisLock=React.useRef(false);
         const live=React.useRef(true),lock=React.useRef(false),state=React.useRef(v),bookList=React.useRef(null),fileInput=React.useRef(null),dialogRef=React.useRef(null),uploadRef=React.useRef(null),assetUploadRef=React.useRef(null);
-        const downloadRef=React.useRef(null),dialogState=React.useRef(dialog);dialogState.current=dialog;
+        const downloadRef=React.useRef(null),initialLoad=React.useRef(false),dialogState=React.useRef(dialog);dialogState.current=dialog;
         if(!downloadRef.current)downloadRef.current=createVerifiedDownload({createURL:blob=>URL.createObjectURL(blob),revokeURL:url=>URL.revokeObjectURL(url),onChange:value=>{if(live.current)setVerifiedDownload(value);}});
         React.useEffect(()=>{const cached=sessionView(sessionId);if(cached!==state.current){state.current=cached;setView(cached);}});
         state.current=v;const transportCall=controller.bind(sequence),call=async(...args)=>{const result=await transportCall(...args);if(result?.preflight)setV({preflight:result.preflight});return result;},selection=controller.selectionStatus,selectionStale=!!v.doc&&!!selection&&(v.doc.id!==selection.document_id||v.doc.revision!==selection.revision),ready=controller.phase==='ready'&&!selectionStale,valid=()=>live.current&&sequence===controller.sequence;
@@ -734,7 +766,8 @@ function createMaterialComponents({React,h,ctx,t,controller,useUpdates,css,Scope
         const lists=async()=>{const current=state.current;const [files,documents]=await Promise.all([call('imports'),call('documents',{offset:current.documents.offset,limit:12})]);setV({files,documents});if(current.allOpen)await refreshAll();if(state.current.route==='picker')await names(documents);return documents;};
         const read=async(id,{select=true,route='overview'}={})=>{if(state.current.doc?.id!==id&&rosterDraftDirty(state.current)){setDialog({message:'切換工作卡會捨棄未保存名冊；目前編輯仍保留，確定切換？',fn:()=>{setV({sceanCharacters:state.current.sceanCharactersBase??savedRosterText(state.current.doc)});return run(()=>read(id,{select,route}));}});return;}const doc=await call(select?'open':'read',{document_id:id});const [book,config]=await Promise.all([call('book_list',{document_id:id}),call('book_config',{document_id:id})]);if(!valid())return;const previous=state.current,changed=previous.doc?.id!==id;setV({doc,entries:book.entries,config:json(config.config??{}),configBase:json(config.config??{}),route,entry:null,text:doc.card.data[state.current.field]??'',exportName:`cardstudio-${id.slice(0,8)}-r${doc.revision}.${doc.format==='png'?'png':'json'}`,...changed?{sceanRun:null,sceanPending:null,stageReceipt:'',saveReceipt:state.current.saveReceipt?.documentId===id?state.current.saveReceipt:null,sceanOpeningPending:false,sceanInspector:null,query:'',scroll:0,output:'',preflight:null,authoring:authoringBlank(),}:{},...reconcileRoster(previous,doc)});if(select){try{await lists();}catch(error){if(valid())setV({listWarning:'已選取工作卡；清單更新失敗，請重新整理。'});}}};
         const refresh=async({restore=false}={})=>{const documents=await lists(),current=state.current;if(!valid())return;const id=restore?documents.selectedId:current.doc?.id;if(restore&&isDirty(current)&&current.doc?.id!==documents.selectedId){notify(new Error('此對話的選卡已在另一頁變更；未保存文字已保留，請先複製文字後重新讀取。'));return;}if(id&&!isDirty(current)){await read(id,{select:false,route:current.route==='entry'?'book':current.route});if(current.route==='authoring')await loadAuthoring();}};
-        React.useEffect(()=>{if(ready)run(()=>refresh({restore:true}),t('refreshing'));},[ready]);
+        // A connection epoch must not remount or refresh an existing editor under the caret/IME.
+        React.useEffect(()=>{if(ready&&!initialLoad.current){initialLoad.current=true;if(!state.current.doc)run(()=>refresh({restore:true}),t('refreshing')).then(ok=>{if(!ok)initialLoad.current=false;});}},[ready]);
         const args=()=>({document_id:state.current.doc.id,expected_revision:state.current.doc.revision});
         const sceanRequest=async request=>{const documentId=state.current.doc?.id,result=await controller.sceanControl(request,sequence);if(!valid()||documentId!==state.current.doc?.id)throw new Error('Discarded SCEAN response from previous card.');return result;};
         const sectionTitle=(title,back)=>h('div',{className:'csscean-row csscean-view-title'},h('button',{className:'csscean-button',disabled:busy,onClick:()=>go(back)},'← '+t(back)),h('h3',{style:{margin:0}},title),h('span',{className:'csscean-spacer'}),isDirty(v)?h('span',{className:'csscean-badge csscean-notice'},t('unsaved')):null);
@@ -946,6 +979,8 @@ function createMaterialComponents({React,h,ctx,t,controller,useUpdates,css,Scope
           selectionStale?h('section',{role:'alert',className:'csscean-box csscean-warn','data-w19-selection-conflict':true},h('p',null,'選卡或保存版本已變更，草稿仍保留。請先讀取新版再決定要保存的內容。'),v.route==='field'&&v.doc.id===selection.document_id?h('button',{'data-recover-draft':true,className:'csscean-button',disabled:busy||controller.phase!=='ready',onClick:()=>run(async()=>{const text=state.current.text,id=state.current.doc.id,field=state.current.field;await read(id,{select:false,route:'field'});setV({text,recoveryDiff:{field,saved:state.current.doc.card.data[field]??''}});})},'保留草稿並讀取新版'):null,h('button',{className:'csscean-button',disabled:busy,onClick:()=>guard(()=>run(async()=>{const list=await lists();if(list.selectedId)await read(list.selectedId,{select:false});else setV({doc:null,entry:null,sceanInspector:null});}))},'重新讀取目前選卡')):null,
           h('div',{className:'csscean-row csscean-head csscean-toolbar'},h('h2',null,'Card Studio · 編輯室'),h('span',{className:'csscean-spacer'}),h('button',{className:'csscean-button',disabled:busy,onClick:()=>guard(()=>ctx.layout.selectPanel(null))},t('back')),h('details',null,h('summary',null,'更多 ⋯'),h('div',{className:'csscean-row'},h('button',{className:'csscean-button',disabled:busy,onClick:()=>guard(()=>ctx.layout.selectPanel('local-cardstudio-scean-materials'))},t('materials')),h('button',{className:'csscean-button',disabled:busy,onClick:()=>guard(()=>ctx.layout.selectPanel('local-cardstudio-scean-library'))},t('externalCards')),h('button',{'data-editor-refresh':true,className:'csscean-button',disabled:busy||controller.phase!=='ready',onClick:()=>guard(()=>run(async()=>{discardDraft();await refresh({restore:true});},t('refreshing')))},t('refresh')),controller.phase==='error'?button('retry',()=>controller.retry(),false,false):null),h('p',{className:'csscean-muted',id:'studio-source-offer'},'1.4.2 · 私人 A 版候選 · AGPL-3.0-only · ',h('a',{href:'https://github.com/zeola0187/scean/tree/main',target:'_blank',rel:'noopener noreferrer'},'穩定版原碼與授權')))),
           h('header',{className:'csscean-identity'},h('div',null,h('h2',{'data-working-title':true},v.doc?.card.data.name||'選一張工作卡，繼續創作'),h('span',{className:'csscean-badge'},v.doc?t('saved')+' r'+v.doc.revision:controller.phase==='ready'?'已連線':t(controller.phase==='error'?'connectionError':'connecting')),isDirty(v)?h('span',{className:'csscean-badge'},t('unsaved')):null,v.doc?h('details',{'data-details':'identity'},h('summary',null,t('identity')),h('p',{className:'csscean-path'},v.doc.id+' · '+v.doc.type+' · '+v.doc.format),h('p',{className:'csscean-path'},v.doc.source??v.doc.librarySource?.relative_path??'獨立工作副本'),h('p',{className:'csscean-path'},v.doc.sha256),[...v.documents.items,...v.allDocuments.items].find(d=>d.id===v.doc.id)?.shared?h('p',{className:'csscean-notice'},t('shared')):null):null),h('button',{'data-working-picker':true,className:'csscean-button',disabled:busy||!ready,onClick:()=>guard(()=>run(async()=>{setV({route:'picker'});await lists();}))},t('chooseCard'))),
+          controller.phase!=='ready'?h('p',{'data-studio-connection':controller.phase,role:'status','aria-live':'polite',className:'csscean-muted'},controller.blocked?'編輯室暫時無法連線；請確認對話未封存，並仍在原製卡工作區。未保存文字仍保留。':'編輯室正在自動重新連線；未保存文字仍保留，不會自動重送修改或開局。'):null,
+          selectionStale?h('p',{'data-studio-selection-stale':true,role:'status',className:'csscean-muted'},'已保存的工作卡或版本有變更；本頁草稿仍保留，請比較後再重新讀取。'):null,
           notice?h('div',{role:'alert',className:'csscean-error'},t('error')+': '+notice):null,h('p',{role:'status','aria-live':'polite',className:'csscean-muted csscean-status'+(status.startsWith(t('done'))?' csscean-complete':'')},status),v.listWarning?h('p',{role:'alert'},v.listWarning):null,
           v.saveReceipt&&v.doc&&v.saveReceipt.revision>v.doc.revision?h('p',{className:'csscean-receipt','data-save-receipt':true},'保存回執 · r'+v.saveReceipt.revision+' · '+v.saveReceipt.time):null,
           v.recoveryDiff?h('details',{'data-recovery-diff':true,open:true},h('summary',null,'草稿已保留 · 請比較新版內容後保存'),h('p',null,'後端目前已保存的欄位：'),h('pre',null,v.recoveryDiff.saved)):null,

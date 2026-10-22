@@ -2,6 +2,7 @@ import { mkdir, open, readFile, rename, unlink, readdir } from 'node:fs/promises
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { safeId, json, clone, checkAbort, SceanError } from '../core/contracts.mjs';
+import {assertRunActive,runLifecycle} from '../core/run-lifecycle.mjs';
 
 // One aggregate is the authority for body, state, memories and idempotency receipts.
 // Indexes and attempt audit files are explicitly non-authoritative.
@@ -12,6 +13,7 @@ export class DurableStore {
     this.root = path.resolve(options.root); this.fault = options.fault; this.held = new Set();
   }
   runDir(runId) { return path.join(this.root, 'runs', safeId(runId)); }
+  currentFile(runId) { return path.join(this.runDir(runId),'current.json'); }
   async inject(point, detail) { await this.fault?.(point, detail); }
   async retrySharingViolation(operation) {
     // Windows readers/antivirus may briefly hold a delete-denying handle.
@@ -48,28 +50,29 @@ export class DurableStore {
       await handle?.close(); await unlink(temporary).catch(error => { if (error.code !== 'ENOENT') throw error; });
     }
   }
-  async read(runId) {
+  async read(runId,{includeTrashed=false}={}) {
     try {
       const run = JSON.parse(await this.retrySharingViolation(() => readFile(path.join(this.runDir(runId), 'current.json'), 'utf8')));
       if (run.runId !== runId || !Number.isSafeInteger(run.version)) throw new SceanError('CORRUPT_RUN');
-      return run;
+      runLifecycle(run);return includeTrashed?run:assertRunActive(run);
     } catch (error) { if (error.code === 'ENOENT') throw new SceanError('RUN_NOT_FOUND'); throw error; }
   }
-  async listRuns() {
+  async listRuns({trashed=false}={}) {
     const dir = path.join(this.root, 'runs'); let entries;
     try { entries = await readdir(dir, { withFileTypes: true }); } catch (error) { if (error.code === 'ENOENT') return []; throw error; }
     const summaries = [];
     for (const entry of entries.filter(e => e.isDirectory())) {
       try {
-        const run = await this.read(entry.name);
-        summaries.push({ runId: run.runId, version: run.version, cardId: run.snapshot.cardId, revision: run.snapshot.revision, ...(run.playerIdentity?{playerName:run.playerIdentity.name}:{}), createdAt: run.createdAt, updatedAt: run.updatedAt, turnCount: run.turns.length });
+        const run = await this.read(entry.name,{includeTrashed:true}),life=runLifecycle(run);
+        if((life.status==='trashed')!==trashed)continue;
+        summaries.push({ runId: run.runId, version: run.version, head:run.head??null, lifecycleRevision:life.revision,...(life.changedAt?{lifecycleChangedAt:life.changedAt}:{}),cardId: run.snapshot.cardId, revision: run.snapshot.revision, ...(run.playerIdentity?{playerName:run.playerIdentity.name}:{}), createdAt: run.createdAt, updatedAt: run.updatedAt, turnCount: run.turns.length });
       } catch (error) { if (error.code !== 'RUN_NOT_FOUND') throw error; }
     }
     return summaries.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   }
   async create(run,options={}) {
     return this.withRunLock(run.runId, async () => {
-      try { await this.read(run.runId); throw new SceanError('RUN_EXISTS'); }
+      try { await this.read(run.runId,{includeTrashed:true}); throw new SceanError('RUN_EXISTS'); }
       catch (error) { if (error.code !== 'RUN_NOT_FOUND') throw error; }
       await this.atomic(path.join(this.runDir(run.runId), 'current.json'), run, { ...options, commit: true }); return clone(run);
     },options);
@@ -77,6 +80,7 @@ export class DurableStore {
   async commit(runId, expectedVersion, next, options = {}) {
     if (!this.held.has(runId)) throw new SceanError('LOCK_REQUIRED');
     const prior = await this.read(runId);
+    if(json(prior.recycle??null)!==json(next.recycle??null))throw new SceanError('RUN_LIFECYCLE_CHANGED');
     if (prior.version !== expectedVersion || !Number.isSafeInteger(next.version) || next.version !== expectedVersion + 1 || next.runId !== runId) throw new SceanError('VERSION_CONFLICT');
     await this.atomic(path.join(this.runDir(runId), 'current.json'), next, { ...options, commit: true });
     return clone(next);

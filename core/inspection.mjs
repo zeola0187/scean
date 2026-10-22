@@ -1,3 +1,4 @@
+import {publicTurnDialogue} from './dialogue-projection.mjs';
 import {openingDisplay} from './player-identity.mjs';
 import {projectDerivedFacts} from './derived-facts.mjs';
 import {frontendProjection,validateFrontend} from './frontend.mjs';
@@ -114,7 +115,7 @@ export function publicInspection(run){
     ...(run.snapshot?.stateBlueprint ? {worldView:publicBlueprintState(run.snapshot.stateBlueprint,run.state)} : {}),
     memories:(run.memories??[]).map(m=>publicMemory(m,run.runId)),
     playerHistory:{status:'restricted',count:run.playerHistory?.length??0},
-    turns:(run.turns??[]).map(turn=>({...pick(turn,['turn','requestId','commitId','input','body','bodyHash','attemptId','committedAt']),
+    turns:(run.turns??[]).map(turn=>({...publicTurnDialogue(run,turn),...pick(turn,['turn','requestId','commitId','input','body','bodyHash','attemptId','committedAt']),
       memoryIds:(turn.memoryIds??[]).filter(id=>publicIds.has(id)),restrictedMemoryCount:(turn.memoryIds??[]).filter(id=>!publicIds.has(id)).length,
       playerHistory:{status:'restricted',count:turn.playerHistoryIds?.length??0},
       stateBefore:stateView(turn.stateBefore),stateAfter:stateView(turn.stateAfter)})),
@@ -126,10 +127,10 @@ export function publicInspection(run){
 /** Bounded ordinary view: never walks attempts or transmits the story aggregate. */
 export function publicRunView(run,{requestId}={}){
   const last=run.turns?.at(-1),receipt=requestId?run.receipts?.[requestId]:null;
-  return {...pick(run,['schemaVersion','runId','version','head','createdAt','updatedAt','banList']),
+  return {...pick(run,['schemaVersion','runId','version','head','createdAt','updatedAt','banList']),lifecycleRevision:run.recycle?.revision??0,
     turnCount:run.turns?.length??0,...(run.snapshot?.derivedFacts?{derivedFacts:projectDerivedFacts(run)}:{}),cardFrontend:publicFrontend(run),...(run.playerIdentity?{playerIdentity:pick(run.playerIdentity,['schemaVersion','name','boundVersion','afterTurn']),openingDisplay:openingDisplay(run)}:{}),snapshot:publicSnapshot(run.snapshot),state:stateView(run.state),
     ...(run.snapshot?.stateBlueprint?{worldView:publicBlueprintState(run.snapshot.stateBlueprint,run.state)}:{}),
-    lastTurn:last?{...pick(last,['turn','requestId','commitId','input','body']),stateBefore:stateView(last.stateBefore),stateAfter:stateView(last.stateAfter)}:null,
+    lastTurn:last?{...publicTurnDialogue(run,last),...pick(last,['turn','requestId','commitId','input','body']),stateBefore:stateView(last.stateBefore),stateAfter:stateView(last.stateAfter)}:null,
     ...(receipt?{requestReceipt:{requestId,commitId:receipt.commitId,status:receipt.status==='retired'?'retired':run.turns.some(t=>t.commitId===receipt.commitId&&t.requestId===requestId)?'committed':'unknown'}}:{}),
     history:{retiredCount:run.retired?.length??0},diagnostics:{scope:'public',privateContext:'restricted'}};
 }

@@ -92,7 +92,7 @@ export function committedMessages(run) {
   if(opening)messages.push({kind:'opening',label:'固定開場',body:opening});
   for(const turn of run?.turns??[]) {
     messages.push({kind:'player',label:`你 · 第 ${turn.turn} 回合`,body:turn.input,commitId:turn.commitId});
-    messages.push({kind:'story',label:`故事 · 第 ${turn.turn} 回合`,body:turn.body,commitId:turn.commitId});
+    messages.push({...(turn.dialoguePresentation?{dialoguePresentation:turn.dialoguePresentation,bodyHash:turn.bodyHash}:{}),kind:'story',label:`故事 · 第 ${turn.turn} 回合`,body:turn.body,commitId:turn.commitId});
   }
   return messages;
 }

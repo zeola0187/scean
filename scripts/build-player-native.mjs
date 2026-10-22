@@ -11,6 +11,7 @@ const root=path.resolve(import.meta.dirname,'..'),web=path.join(root,'isolated/w
 export async function compileNativePlayer(){
   await fs.copyFile(path.join(root,'core/condition-ast.mjs'),path.join(web,'condition-ast.mjs'));
   await fs.copyFile(path.join(root,'core/player-literal.mjs'),path.join(web,'player-text.mjs'));
+  await fs.copyFile(path.join(root,'core/dialogue.mjs'),path.join(web,'dialogue.mjs'));
   const modules=new Map(),sources=[];
   async function compile(name){
     if(modules.has(name))return modules.get(name);

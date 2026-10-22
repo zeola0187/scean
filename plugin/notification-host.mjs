@@ -73,7 +73,7 @@ export class HostNotifications {
   async reconcile(row){
     if(row.status==='suppressed')return row;
     if(this.host.now()>row.expiresAt)return {...row,status:'suppressed',reason:'expired'};
-    let result;try{result=this.canonical(row,await this.host.engine.store.read(row.runId));}catch{return {...row,status:row.status==='consumed'?'consumed':'watching',reason:'outcome_unknown'};}
+    let result;try{result=this.canonical(row,await this.host.engine.store.read(row.runId));}catch(error){if(error.code==='RUN_TRASHED')return {...row,status:'suppressed',reason:'run_recycled'};return {...row,status:row.status==='consumed'?'consumed':'watching',reason:'outcome_unknown'};}
     if(result.status==='unknown')return {...row,status:row.status==='consumed'?'consumed':'watching',reason:'outcome_unknown'};
     if(result.status==='suppressed')return {...row,...result};
     if(row.status==='consumed')return row;

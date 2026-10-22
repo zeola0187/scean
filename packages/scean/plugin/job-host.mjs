@@ -51,7 +51,9 @@ export class HostJobs {
     await this.ledger.init();
     for(const row of this.ledger.records)if(JOB_PENDING.has(row.status)||row.status==='unknown'){
       const run=await this.host.engine.store.read(row.runId),outcome=this.outcome(row,run);
-      Object.assign(row,{status:outcome?.status??'interrupted',finishedAt:new Date(this.host.now()).toISOString(),recovery:outcome?'canonical_receipt_reconciled':'host_interrupted_no_replay'});
+      // Recovery time is not the time an interrupted operation finished.
+      if(!row.finishedAt)row.timingEndMissing=true;
+      Object.assign(row,{status:outcome?.status??'interrupted',finishedAt:row.finishedAt??new Date(this.host.now()).toISOString(),recovery:outcome?'canonical_receipt_reconciled':'host_interrupted_no_replay'});
       if(outcome?.binding)Object.assign(row,outcome.binding);
       if(!outcome)row.failure=safeFailure({code:'HOST_INTERRUPTED_NO_AUTORETRY'},'request');
     }
@@ -86,6 +88,16 @@ export class HostJobs {
     const result=operation.result;if(!result)return null;
     return {status:result.status,result:row.kind==='regenerate'?{...publicTurnResult(result),...Object.fromEntries(['kind','operationId','head','retiredCommitId','retiredBy','retiredAtVersion'].filter(k=>result[k]!==undefined).map(k=>[k,result[k]]))}:copy(result)};
   }
+  generationTiming(row,run){
+    // A later background summary must not extend or replace the last turn's clock.
+    const target=['turn','regenerate'].includes(row?.kind)?row:this.ledger.records.findLast(r=>r.runId===run.runId&&['turn','regenerate'].includes(r.kind));
+    if(!target)return null;
+    const outcome=this.outcome(target,run),progress=this.host.progressByRun.get(run.runId);
+    const attemptId=outcome?.binding?.attemptId??target.attemptId??(progress?.operationId===target.operationId&&progress?.requestId===target.requestId?progress.attemptId:null);
+    const finishing=outcome?.status==='committed'&&!target.finishedAt&&this.active.get(run.runId)?.row===target;
+    return {scope:'host_operation',runId:run.runId,operationId:target.operationId,requestId:target.requestId,attemptId:attemptId??null,kind:target.kind,
+      status:finishing?'running':outcome?.status??target.status,startedAt:target.acceptedAt,finishedAt:target.timingEndMissing?null:target.finishedAt??null,serverNow:new Date(this.host.now()).toISOString()};
+  }
   async view(row,run){
     run??=await this.host.engine.store.read(row?.runId);
     const outcome=row?this.outcome(row,run):null,requestOutcome=row?.kind==='turn'?this.turnRequestOutcome(row,run):null,owner=this.active.get(run.runId),progress=this.host.progressByRun.get(run.runId);
@@ -95,7 +107,7 @@ export class HostJobs {
     return {runId:run.runId,operationId:row?.operationId??null,requestId:row?.requestId??null,kind:row?.kind??null,status,pending:!!row&&JOB_PENDING.has(status),canonical:{version:run.version,head:headOf(run)},
       ...(row?{acceptedAt:row.acceptedAt,...(row.finishedAt?{finishedAt:row.finishedAt}:{}),...(row.recovery?{recovery:row.recovery}:{}),...(!['committed','completed','retired'].includes(status)&&row.failure?{failure:copy(row.failure)}:{})}:{}),
       ...(outcome?.result?{result:outcome.result}:{}),...(requestOutcome?{requestOutcome}:{}),...(ownedProgress?{attemptId:ownedProgress.attemptId??null,stage:ownedProgress.stage,sequence:ownedProgress.sequence}:row?.attemptId?{attemptId:row.attemptId}:{}),
-      ...(row?{}:{pending:this.host.mutationBusy(run.runId)})};
+      generationTiming:this.generationTiming(row,run),...(row?{}:{pending:this.host.mutationBusy(run.runId)})};
   }
   async status(request){
     this.host.requireRun(request.runId);if(request.operationId!==undefined)safeId(request.operationId);if(request.requestId!==undefined)safeId(request.requestId);
@@ -106,7 +118,7 @@ export class HostJobs {
       if(op&&['summary','chapter_auto'].includes(op.kind))return {runId:run.runId,operationId:op.operationId,requestId:null,kind:op.kind==='summary'?'summaryStart':'chapterAuto',status:op.status,pending:op.status==='pending',canonical:{version:run.version,head:headOf(run)},...(op.result?{result:copy(op.result)}:{})};
     }
     const view=await this.view(identified?row:records.at(-1)??null,await this.host.engine.store.read(request.runId));
-    return identified&&!row?{...view,status:'not_found',pending:false,operationId:request.operationId??null,requestId:request.requestId??null}:view;
+    return identified&&!row?{...view,status:'not_found',pending:false,operationId:request.operationId??null,requestId:request.requestId??null,generationTiming:null}:view;
   }
   submit(request,signal){
     const admission=this.admissions.catch(()=>{}).then(()=>this.admit(request,signal));this.admissions=admission;return admission;
@@ -128,6 +140,9 @@ export class HostJobs {
     this.host.assertMutationAvailable(row.runId);
     const run=await this.host.engine.store.withRunLock(row.runId,async()=>{
       signal?.throwIfAborted();const run=await this.host.engine.store.read(row.runId),outcome=this.outcome(row,run),requestOutcome=row.kind==='turn'?this.turnRequestOutcome(row,run):null;
+      // Admission may have waited behind another Run. A delete+restore during
+      // that wait must not admit a stale page even when story head is unchanged.
+      if((request.expectedLifecycleRevision??0)!==(run.recycle?.revision??0))fail('RUN_LIFECYCLE_CHANGED');
       if(requestOutcome?.status==='retired')fail('REQUEST_RETIRED');
       if(!outcome&&!requestOutcome){if(run.version!==row.baseVersion)fail('VERSION_CONFLICT');if(headOf(run)!==row.baseHead)fail('HISTORY_HEAD_CONFLICT');}
       return run;

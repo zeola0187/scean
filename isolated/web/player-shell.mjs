@@ -85,7 +85,7 @@ export function mountPlayerShell(){
   const help=document.querySelector('.help');help.open=true;about.append(help,el('p','模型由目前啟動的既有設定提供；此介面沒有切換模型的接口。','hint'));
 
   const runHeader=document.querySelector('.run-header'),runTitle=$('run-title'),saveStatus=$('save-status');const brand=top.firstElementChild;brand.className='stage-brand';brand.querySelector('p')?.remove();
-  runTitle.classList.add('stage-title');top.append(runTitle,saveStatus);
+  runTitle.classList.add('stage-title');const turnStatus=el('div',undefined,'stage-status'),duration=el('span');duration.id='turn-duration';duration.hidden=true;turnStatus.append(saveStatus,duration);top.append(runTitle,turnStatus);
   const settingsOpen=el('button','設定','quiet');settingsOpen.id='settings-open';settingsOpen.type='button';settingsOpen.setAttribute('aria-haspopup','dialog');settingsOpen.setAttribute('aria-controls','settings-dialog');top.append(settingsOpen,$('connection'));runHeader.remove();
   reading.append(document.querySelector('.history-pagination'),$('history-page-error'),$('chat'),$('provisional'));main.insertBefore(reading,document.querySelector('.composer'));
   const jump=el('button','↓ 回到故事末尾','quiet jump-latest');jump.id='jump-latest';jump.type='button';jump.hidden=true;main.insertBefore(jump,document.querySelector('.composer'));

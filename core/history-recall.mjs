@@ -1,4 +1,5 @@
 import {SceanError,hash,safeId} from './contracts.mjs';
+import {publicTurnDialogue} from './dialogue-projection.mjs';
 import {bm25,tokenizeForSparseRecall} from './memory.mjs';
 import {headOf,HISTORY_LIMITS} from './history.mjs';
 
@@ -32,7 +33,7 @@ function targetId(run,options){
   try{safeId(id);}catch{fail('HISTORY_LOCATOR_INVALID');}return id;
 }
 function locate(run,turns,id){const index=turns.findIndex(t=>t.commitId===id);if(index<0)fail((run.retired??[]).some(t=>t.commitId===id)?'HISTORY_COMMIT_RETIRED':'HISTORY_COMMIT_NOT_FOUND');return index;}
-function publicTurn(run,t){return {runId:run.runId,turn:t.turn,commitId:t.commitId,active:true,locator:historyLocator(run.runId,t.commitId),input:t.input,body:t.body};}
+function publicTurn(run,t,presentation=false){return {...(presentation?publicTurnDialogue(run,t):{}),runId:run.runId,turn:t.turn,commitId:t.commitId,active:true,locator:historyLocator(run.runId,t.commitId),input:t.input,body:t.body};}
 const base=(kind,run)=>({kind,label:HISTORY_REFERENCE_LABEL,runId:run.runId,head:headOf(run)});
 function positions(text,terms,caseSensitive){
   const found=[];
@@ -88,8 +89,9 @@ export function pageHistory(run,options={}){
   if(options.cursor!==undefined){const c=decodeCursor(options.cursor);if(c.runId!==run.runId)fail('HISTORY_CROSS_RUN');if(c.head!==headOf(run)||c.digest!==digest)fail('HISTORY_CURSOR_STALE');end=turns.findIndex(t=>t.commitId===c.beforeCommitId);if(end<0)fail('HISTORY_CURSOR_STALE');}
   if(options.anchorCommitId!==undefined)end=locate(run,turns,options.anchorCommitId)+1;
   let start=Math.max(0,end-limit);
-  const response=()=>({...base('history_page',run),status:end>0?'page':turns.length?'end':'empty',turns:turns.slice(start,end).map(t=>publicTurn(run,t)),hasMore:start>0,beforeCursor:start>0?encodeCursor(run,digest,turns[start].commitId):null,anchorCommitId:options.anchorCommitId??null,totalActive:turns.length});
-  let result=response();
+  let presentation=options.presentation===true;
+  const response=()=>({...base('history_page',run),status:end>0?'page':turns.length?'end':'empty',turns:turns.slice(start,end).map(t=>publicTurn(run,t,presentation)),hasMore:start>0,beforeCursor:start>0?encodeCursor(run,digest,turns[start].commitId):null,anchorCommitId:options.anchorCommitId??null,totalActive:turns.length});
+  let result=response();if(presentation&&bytes(result)>HISTORY_RECALL_LIMITS.pageBytes){presentation=false;result=response();}
   while(bytes(result)>HISTORY_RECALL_LIMITS.pageBytes&&end-start>1){start++;result=response();}
   if(bytes(result)>HISTORY_RECALL_LIMITS.pageBytes)fail('HISTORY_PAGE_TURN_TOO_LARGE');
   return result;
