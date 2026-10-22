@@ -1,11 +1,13 @@
 {
   "schemaVersion": 1,
   "license": "AGPL-3.0-only",
-  "status": "MAIN_SOURCE_UPDATE_WITH_DETACHED_VERIFICATION",
-  "sourceUrl": "https://github.com/zeola0187/scean/tree/v1.4.2",
+  "status": "RELEASE_WITH_DETACHED_VERIFICATION",
+  "sourceUrl": "https://github.com/zeola0187/scean/tree/main",
   "revision": null,
   "sourceArchiveSha256": null,
   "networkSourceNoticeReady": false,
   "anonymousSourceAccessVerified": false,
-  "note": "Single Writer and style-import main update authorized on 2026-10-21. Exact public revision, clean-source archive hash and anonymous readback are recorded in the detached publication receipt after push; no new tag or Release. Private third-party style data is excluded."
+  "note": "SCEAN 1.5.0 versioned release. The detached source receipt records the exact clean public commit, full source ZIP hash, anonymous access and artifact verification without a circular self-hash. Public main remains the prominent source offer. No private history, third-party private styles or RP data are distributed.",
+  "releaseTag": "v1.5.0",
+  "releaseUrl": "https://github.com/zeola0187/scean/releases/tag/v1.5.0"
 }

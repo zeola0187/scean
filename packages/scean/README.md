@@ -18,7 +18,7 @@ advanced-tavern-card-authoring Skill retains its MIT grant. See [LICENSE](LICENS
 
 2026-10-20 main 修正首次診斷進入／重開，以及工作卡載入時無法操作診斷授權；使用者已回報可用。詳細測試邊界見 [修正說明](docs/W02-REPAIRS-20261020.zh-TW.md)。
 
-詳見 [玩家操作與工具契約](docs/W02-USER-GUIDE.zh-TW.md) 與 [Changelog](CHANGELOG.md)。本次更新公開main分支，不另建立GitHub Release；舊標籤維持原內容。
+詳見 [玩家操作與工具契約](docs/W02-USER-GUIDE.zh-TW.md) 與 [Changelog](CHANGELOG.md)。1.5.0 的版本化下載與完整來源見 [GitHub Release](https://github.com/zeola0187/scean/releases/tag/v1.5.0)；精確 commit、附件雜湊與驗證限制由該版 detached receipt 記錄。
 
 ## 安裝與更新
 

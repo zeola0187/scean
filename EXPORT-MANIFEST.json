@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
-  "title": "SCEAN 1.5.0 accepted Studio chat repair, saved-panel preview and bookshelf readers",
-  "publicReleaseStatus": "USER_ACCEPTED_MAIN_SYNC_AUTHORIZED_NO_TAG_OR_RELEASE",
+  "title": "SCEAN 1.5.0 public Release clean source",
+  "publicReleaseStatus": "VERSIONED_RELEASE_AUTHORIZED_WITH_DETACHED_VERIFICATION",
   "skill": {
     "name": "scean-opening-authoring",
     "version": "1.0.0",
@@ -51,13 +51,13 @@
     },
     {
       "path": "README.md",
-      "bytes": 5044,
-      "sha256": "415010da37286568f9e91e5fa945558e0e9fa6eaa661b63c79f7fbad89f3473a"
+      "bytes": 5154,
+      "sha256": "b8e3fb259258fd21826abcc64846518f041053c927ceab54e1c3516dc6ce9e44"
     },
     {
       "path": "SOURCE-AVAILABILITY.md",
-      "bytes": 1591,
-      "sha256": "218425faf36490bc72ef762a95b260683a3d9a225bb33788a27f7a3e0ea29f20"
+      "bytes": 1698,
+      "sha256": "a885bbd61cd982981bd3d7308df1c46d23ec8b196a49312e3eabc4fabbe539d2"
     },
     {
       "path": "THIRD-PARTY-LICENSES.json",
@@ -986,13 +986,13 @@
     },
     {
       "path": "packages/scean/README.md",
-      "bytes": 5044,
-      "sha256": "415010da37286568f9e91e5fa945558e0e9fa6eaa661b63c79f7fbad89f3473a"
+      "bytes": 5154,
+      "sha256": "b8e3fb259258fd21826abcc64846518f041053c927ceab54e1c3516dc6ce9e44"
     },
     {
       "path": "packages/scean/SOURCE-AVAILABILITY.md",
-      "bytes": 1591,
-      "sha256": "218425faf36490bc72ef762a95b260683a3d9a225bb33788a27f7a3e0ea29f20"
+      "bytes": 1698,
+      "sha256": "a885bbd61cd982981bd3d7308df1c46d23ec8b196a49312e3eabc4fabbe539d2"
     },
     {
       "path": "packages/scean/THIRD-PARTY-LICENSES.json",
@@ -1476,8 +1476,8 @@
     },
     {
       "path": "packages/scean/release-source.json",
-      "bytes": 646,
-      "sha256": "672fee468726c02d3eef248400e7edd2f65a38a6422959f8af3614ca84b4c1bc"
+      "bytes": 727,
+      "sha256": "066fd99c9e428b850a9e5f240f3e5b601858b106e7a504aa3d56b06d065c9866"
     },
     {
       "path": "packages/scean/runtime-skills/scene-materials/SKILL.md",
@@ -1517,12 +1517,12 @@
     {
       "path": "packages/studio/README.md",
       "bytes": 1999,
-      "sha256": "1b43c4da56fbb5a51f303504812e156f44da1c0f5ab3620e562bc25678f8359f"
+      "sha256": "0748ecfca289fae6c811faf566ac59242a8d49952aee9a394a8d1a7108624ae4"
     },
     {
       "path": "packages/studio/SOURCE-AVAILABILITY.md",
-      "bytes": 1591,
-      "sha256": "218425faf36490bc72ef762a95b260683a3d9a225bb33788a27f7a3e0ea29f20"
+      "bytes": 1698,
+      "sha256": "a885bbd61cd982981bd3d7308df1c46d23ec8b196a49312e3eabc4fabbe539d2"
     },
     {
       "path": "packages/studio/THIRD-PARTY-LICENSES.json",
@@ -1881,8 +1881,8 @@
     },
     {
       "path": "packages/studio/release-source.json",
-      "bytes": 604,
-      "sha256": "4e2c250b0a11e107240600181cdf2922585213156782bd253a9b35363e7d508f"
+      "bytes": 740,
+      "sha256": "d6aaa9f38b249cbce63a327cdfb7a636ab18c070de9536c19a7c6d3650a83e31"
     },
     {
       "path": "packages/studio/rollback-recycle.js",
@@ -2281,8 +2281,8 @@
     },
     {
       "path": "release-source.json",
-      "bytes": 646,
-      "sha256": "672fee468726c02d3eef248400e7edd2f65a38a6422959f8af3614ca84b4c1bc"
+      "bytes": 727,
+      "sha256": "066fd99c9e428b850a9e5f240f3e5b601858b106e7a504aa3d56b06d065c9866"
     },
     {
       "path": "runtime-skills/scene-materials/SKILL.md",
@@ -2502,12 +2502,12 @@
     {
       "path": "sources/card-studio/cardstudio-bundle/README.md",
       "bytes": 1999,
-      "sha256": "1b43c4da56fbb5a51f303504812e156f44da1c0f5ab3620e562bc25678f8359f"
+      "sha256": "0748ecfca289fae6c811faf566ac59242a8d49952aee9a394a8d1a7108624ae4"
     },
     {
       "path": "sources/card-studio/cardstudio-bundle/SOURCE-AVAILABILITY.md",
-      "bytes": 1591,
-      "sha256": "218425faf36490bc72ef762a95b260683a3d9a225bb33788a27f7a3e0ea29f20"
+      "bytes": 1698,
+      "sha256": "a885bbd61cd982981bd3d7308df1c46d23ec8b196a49312e3eabc4fabbe539d2"
     },
     {
       "path": "sources/card-studio/cardstudio-bundle/THIRD-PARTY-LICENSES.json",
@@ -2866,8 +2866,8 @@
     },
     {
       "path": "sources/card-studio/cardstudio-bundle/release-source.json",
-      "bytes": 604,
-      "sha256": "4e2c250b0a11e107240600181cdf2922585213156782bd253a9b35363e7d508f"
+      "bytes": 740,
+      "sha256": "d6aaa9f38b249cbce63a327cdfb7a636ab18c070de9536c19a7c6d3650a83e31"
     },
     {
       "path": "sources/card-studio/cardstudio-bundle/rollback-recycle.js",

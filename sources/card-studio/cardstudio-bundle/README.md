@@ -1,4 +1,4 @@
-# SCEAN Studio 1.4.1
+# SCEAN Studio 1.5.0
 
 Native authoring bundle for the SCEAN suite. The stable package identity
 @local/dsh-card-studio-scean-test is retained for compatibility. Nine active
