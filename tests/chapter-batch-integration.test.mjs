@@ -174,10 +174,10 @@ test('impossible configured context fails planning before model dispatch without
  assert.equal(f.calls.length,0);assert.equal(f.descriptions.length,1);assert.equal(f.capabilities.outputLimit,4096);assertNoPartial(await f.read(),f,'failed');
 });
 
-test('existing fifty-turn source bound rejects a larger manual chapter before any model or pending write',async()=>{
- const f=await fixture({turns:51,bytes:null}),before=await readFile(join(f.store.runDir(f.run.runId),'current.json'),'utf8');
- await assert.rejects(perform(f),code('CHAPTER_SOURCE_LIMIT'));assert.equal(f.calls.length,0);assert.equal(f.descriptions.length,0);
- assert.equal(await readFile(join(f.store.runDir(f.run.runId),'current.json'),'utf8'),before);portable(await f.read());
+test('a legitimate 51-turn chapter is bounded by bytes/context rather than an arbitrary turn count',async()=>{
+ const f=await fixture({turns:51,bytes:null}),before=await f.read();
+ const result=await perform(f);assert.equal(result.status,'completed');assert.equal(result.created,true);assert.equal(f.descriptions.length,1);assert(f.calls.length>=1);
+ const after=await f.read();assert.deepEqual(authority(after),authority(before));portable(after);
 });
 
 test('Host duplicate clicks share one bounded batch operation; live counts and final usage remain readable',async t=>{

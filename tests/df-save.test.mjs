@@ -131,8 +131,8 @@ test('D-final auto chapter v3 preserves separate source endpoint and captured he
   assert.deepEqual(restored.narrative,run.narrative);
   for(const mutate of [
     c=>{c.boundary.sourceEndCommitId=c.baseHead;},
-    c=>{c.boundary.bufferTurns=0;},
-    c=>{c.boundary.eligibleEndTurn=8;},
+    c=>{c.boundary.bufferTurns+=1;},
+    c=>{c.boundary.eligibleEndTurn+=1;},
     c=>{c.provenance.algorithm='explicit-host-close-v1';},
   ]){const bad=copy(bundle);mutate(bad.run.narrative.chapters[0]);resign(bad);assert.throws(()=>validateRunBundle(bad));}
   const legacy=encodeRunBundle(await oldRun());legacy.run.narrative.chapters[0].baseHead=legacy.run.head;resign(legacy);assert.throws(()=>validateRunBundle(legacy));

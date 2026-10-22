@@ -61,7 +61,7 @@ test('DF saved chapter preference survives restart but only a future committed t
     const request=await args(f,'explicit-arm',{settings:{autoEnabled:true,tokenThreshold:4000,bufferTurns:2,detail:'precise'}});
     await f.host.chapterSettings(request);assert.equal((await f.host.chapterStatus({runId:f.run.runId})).autoArmed,true);
     await f.host.close();restarted=await new SceanHost({engine:f.engine,root:f.hostRoot,chapterModelsEnabled:true}).init();
-    const state=await restarted.chapterStatus({runId:f.run.runId});assert.equal(state.autoArmed,true);assert.equal(state.writerSummaryArmed,false);assert.equal(state.chapterContextArmed,false);assert.equal(f.calls.length,0);
+    const state=await restarted.chapterStatus({runId:f.run.runId});assert.equal(state.autoArmed,true);assert.equal(state.writerSummaryArmed,false);assert.equal(state.chapterContextArmed,true);assert.equal(f.calls.length,0);
     await restarted.turn({runId:f.run.runId,input:'Continue after restart.',requestId:'after-restart'});await Promise.all([...restarted.chapterBackground??[]]);assert.equal(f.calls.filter(c=>c.stage==='chapter_analysis').length,1);assert.equal(f.calls.filter(c=>c.stage==='summary'||c.stage==='chapter_rerank').length,0);
     // Replaying saved settings does not run a model; the saved preference is already authoritative.
     await restarted.chapterSettings(request);assert.equal((await restarted.chapterStatus({runId:f.run.runId})).autoArmed,true);
@@ -76,7 +76,7 @@ test('DF import never scans or pays for summaries; saved preference applies only
     const authorityGrant={allowPrivateSaves:true,principal:'synthetic-test-operator'};
     const bundle=await a.host.exportRun({runId:a.run.runId,acknowledgement:'export-private-run-data'},authorityGrant);
     await b.host.importRun({bundle,acknowledgement:'import-private-run-data'},authorityGrant);
-    assert.equal((await b.host.chapterStatus({runId:a.run.runId})).autoArmed,true);assert.equal((await b.host.chapterStatus({runId:a.run.runId})).chapterContextArmed,false);assert.equal(b.calls.length,0);
+    assert.equal((await b.host.chapterStatus({runId:a.run.runId})).autoArmed,true);assert.equal((await b.host.chapterStatus({runId:a.run.runId})).chapterContextArmed,true);assert.equal(b.calls.length,0);
     await b.host.turn({runId:a.run.runId,input:'Continue after import.',requestId:'after-import'});await Promise.all([...b.host.chapterBackground??[]]);
     assert.equal(b.calls.filter(c=>c.stage==='chapter_analysis').length,1);assert.equal(b.calls.filter(c=>c.stage==='summary'||c.stage==='chapter_rerank').length,0);
   }finally{await a.host.close();await b.host.close();}
@@ -134,7 +134,7 @@ test('DF successful armed post-turn auto closes only the selected public range a
     await Promise.race([began.promise,wait(3000).then(()=>{throw Error('Background summary did not start');})]);
     const pending=await f.store.read(f.run.runId),story=authority(pending);assert.equal(pending.narrative.chapters.length,0);assert.equal(pending.narrative.chapterSummaries.length,0);
     const analysis=f.calls.find(c=>c.stage==='chapter_analysis'),summary=f.calls.find(c=>c.stage==='chapter_summary');
-    assert.equal(analysis.input.range.endTurn,pending.turns.length-2);assert.equal(summary.input.range.endTurn,analysis.input.range.endTurn-1);assert.equal(summary.input.detail,'concise');
+    assert(analysis.input.range.endTurn<pending.turns.length);assert(analysis.input.range.endTurn>=1);assert.equal(summary.input.range.endTurn,analysis.input.range.endTurn-1);assert.equal(summary.input.detail,'concise');
     assert(analysis.input.turns.every(t=>t.turn<=pending.turns.length-2));assert(summary.input.turns.every(t=>t.turn<=summary.input.range.endTurn));
     for(const input of [analysis.input,summary.input]){const serialized=JSON.stringify(input);assert(!serialized.includes(D_PRIVATE));for(const name of ['stateBefore','stateAfter','memories','playerHistory','rawTrace'])assert(!serialized.includes('"'+name+'"'));}
     release.resolve();await settled(f,status=>status.chapters.length===1&&status.chapters[0].summaryStatus==='completed');

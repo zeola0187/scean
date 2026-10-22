@@ -64,3 +64,22 @@
 @media(max-height:579px) and (max-width:600px){
  .player-shell #turn-form{grid-template-columns:minmax(0,1fr) auto}.player-shell .composer-actions{width:auto;flex-direction:row;gap:6px}.player-shell .composer-actions button{width:44px;min-width:44px}
 }
+
+/* Optional ideas float above the composer; opening never changes the reading layout. */
+#player-ideas{display:inline-flex;flex:none}
+#player-ideas-panel{position:fixed;z-index:8;box-sizing:border-box;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);box-shadow:0 8px 32px #0004;overflow-wrap:anywhere}
+#player-ideas-panel[hidden]{display:none}
+#player-ideas-panel header{display:flex;align-items:center;justify-content:space-between;gap:8px;position:sticky;top:-12px;background:var(--surface);z-index:1;padding:4px 0}
+#player-ideas-panel h2{font-size:16px;margin:0}
+#player-ideas-panel button{min-height:44px}
+#player-ideas-list{display:grid;gap:8px;max-width:100%}
+#player-ideas-panel .hint:empty{display:none}
+.player-readers-actions{border-top:1px solid var(--line);margin-top:16px;padding-top:12px!important}
+@media(max-width:600px){
+ .player-shell #turn-form{grid-template-columns:minmax(0,1fr)}
+ .player-shell .composer-actions{width:100%;flex-direction:row;gap:4px}
+ .player-shell .composer-actions button{width:auto;min-width:44px;max-width:none;flex:1;white-space:normal}
+ .player-shell .composer-actions #player-ideas{flex:none}
+ .player-shell #player-ideas-toggle{width:44px}
+ .player-shell #agent-diagnose{font-size:11px}
+}

@@ -8,7 +8,7 @@ import { SceanError, clone, id, safeId, json, hash, checkAbort, text, parseObjec
 import {headOf,assertHistoryCapacity,rollbackLast} from './history.mjs';
 import {regenerateLast} from './regenerate.mjs';
 import {selectNarrative,invalidateNarrative} from './narrative.mjs';
-import {chapterContextSources} from './chapter-recall.mjs';
+import {ChapterRecall,chapterContextSources,originalChapterContext} from './chapter-recall.mjs';
 import {seedNewRunChapterSettings} from './chapter-summary.mjs';
 import {searchHistory,readHistory,HISTORY_REFERENCE_LABEL} from './history-recall.mjs';
 import { normalizeBanList, findBans, repairRanges, applyLocalRepairs } from './banlist.mjs';
@@ -239,7 +239,7 @@ export class SceanEngine {
     const recalled = await this.memory.retrieve({ query, records: clone(records), runId: run.runId, ...(characterId ? { characterId } : {}), audience, signal });
     return audience === 'owner' ? ownerData(recalled, characterId) : publicData(recalled);
   }
-  async turn({ runId, input, requestId, signal, onProgress, operationId, writingGuidance, baseVersion, baseHead, chapterContextEnabled=false }) {
+  async turn({ runId, input, requestId, signal, onProgress, operationId, writingGuidance, baseVersion, baseHead, chapterContextEnabled }) {
     safeId(runId); safeId(requestId); text(input, 20000); if (operationId !== undefined) safeId(operationId);
     return this.store.withRunLock(runId, async () => {
       const run = await this.store.read(runId); await this.store.recoverAttempts(runId);
@@ -260,6 +260,8 @@ export class SceanEngine {
       validatePlayerIdentity(run.playerIdentity,run);
       const identity=playerContext(run),bindingHash=identity?hash(identity):null;
       const priorAttempts = await this.store.readAttempts(runId);
+      const chapterContextPin={schemaVersion:1,enabled:chapterContextEnabled??run.narrative?.chapterSettings?.autoEnabled===true,settingsVersion:run.narrative?.chapterSettings?.version??0};
+      for(const prior of priorAttempts.filter(a=>a.requestId===requestId))if(prior.chapterContextPin&&hash(prior.chapterContextPin)!==hash(chapterContextPin))throw new SceanError('CHAPTER_CONTEXT_REQUEST_CHANGED');
       if(priorAttempts.some(a=>a.requestId===requestId&&(a.playerBindingHash??null)!==bindingHash))throw new SceanError('PLAYER_CONTEXT_CHANGED');
       if (priorAttempts.some(a => a.requestId === requestId && typeof a.input === 'string' && hash(a.input) !== hash(input))) throw new SceanError('IDEMPOTENCY_CONFLICT');
       const matchingStyles=priorAttempts.filter(a=>a.requestId===requestId).map(a=>a.proseStyle?validateProseStylePin(a.proseStyle):pinProseStyle(defaultProseStyle(runId)));
@@ -271,7 +273,7 @@ export class SceanEngine {
       if(priorModes.some(p=>p&&hash(p)!==hash(writingMode)||p===null&&writingMode.mode!=='current'))throw new SceanError('WRITING_MODE_REQUEST_CONFLICT');
       const modeRef=writingModeReference(writingMode),systems=systemsForWritingMode(SYSTEMS,writingMode),singleWriter=writingMode.mode==='single_writer';
       const withMethod=(stage,payload)=>{const skill=writingMode.skills.find(s=>s.stage===stage);return skill?{...payload,writingSkill:clone(skill)}:payload;};
-      const attempt = { writingMode:clone(writingMode), proseStyle:clone(proseStyle), schemaVersion: 1, attemptId: id('attempt'), runId, requestId, ...(operationId ? { operationId } : {}), baseVersion: run.version,
+      const attempt = { chapterContextPin:clone(chapterContextPin), writingMode:clone(writingMode), proseStyle:clone(proseStyle), schemaVersion: 1, attemptId: id('attempt'), runId, requestId, ...(operationId ? { operationId } : {}), baseVersion: run.version,
         turnIdentity:{schemaVersion:1,turn:run.turns.length+1,baseHead:headOf(run),snapshotHash:run.snapshot.hash},
         playerBindingHash:bindingHash, status: 'pending', startedAt: new Date().toISOString(), input, inputSnapshot: { cardId: run.snapshot.cardId, revision: run.snapshot.revision, hash: run.snapshot.hash }, stages: [], tools: [], directorComplete: false };
       let sequence = 0;
@@ -330,6 +332,7 @@ export class SceanEngine {
             const packet = payload.assembly ?? payload.context;
             const rolling = packet?.rollingSummary;
             event.narrativeUse = { stage, status: 'assembled_for_port', providerDispatch: 'not_recorded', selectedSummaryId: attempt.assemblyDiagnostics.narrative.selectedSummaryId, deliveredSummaryId: rolling?.id ?? null, summaryStatus: rolling ? 'included' : attempt.assemblyDiagnostics.narrative.selectedSummaryId && ['director', 'draft', 'writer'].includes(stage) ? 'pruned' : 'not_selected_for_stage', recentCount: packet?.recentDialogue?.length ?? 0 };
+            if(['director','draft','writer'].includes(stage)){const chapter=packet?.chapterContext;Object.assign(event.narrativeUse,{contextMode:chapter?.mode??'legacy_rolling',chapterStatus:chapter?.status??null,recentSummaryIds:chapter?.recent.map(r=>r.summaryId)??[],retrievedSummaryIds:chapter?.retrieved.map(r=>r.summaryId)??[],originalCommitIds:packet?.recentDialogue?.map(t=>t.commitId).filter(Boolean)??[],originalsHash:hash(packet?.recentDialogue??[])});}
             (attempt.assemblyDiagnostics.narrative.stageUse ??= []).push(event.narrativeUse);
           }
           if(attempt.assemblyDiagnostics?.derivedFacts&&['director','draft','writer'].includes(stage)){
@@ -366,14 +369,17 @@ export class SceanEngine {
         const recentDialogue = publicData([...clone(run.snapshot.recentDialogue ?? []), ...run.turns.map(t => ({ turn: t.turn, input: t.input, body: t.body }))]);
         const selected = selectWorldbooks(run.snapshot, { playerInput: input, recentDialogue, config: run.snapshot.worldbookSelection ?? {},playerName:run.playerIdentity?.name });
         let narrative = selectNarrative(run, { recentWindow: this.recentWindow }),chapters=null;
-        if(chapterContextEnabled){
-          if(!this.chapterRecall)throw new SceanError('CHAPTER_RECALL_UNAVAILABLE');
+        if(chapterContextPin.enabled){
+          const recall=this.chapterRecall??new ChapterRecall();
           const sources=chapterContextSources(run);
           attempt.assemblyDiagnostics={...assembled.diagnostics,worldbook:selected.diagnostics,chapterRecall:{...sources.diagnostics,status:'pending'}};
           activeStage='chapter_recall';progress(activeStage,'pending');
-          try{chapters=await this.chapterRecall.retrieve({run,query:input,sources,signal,context:{runId,requestId,attemptId:attempt.attemptId,...(run.modelSelection?{modelSelection:clone(run.modelSelection)}:{}),...(run.stageModelSelections?{stageModelSelections:clone(run.stageModelSelections)}:{})}});}
-          catch(error){if(error.chapterRecallDiagnostics)attempt.assemblyDiagnostics.chapterRecall=clone(error.chapterRecallDiagnostics);throw error;}
-          narrative={summary:null,recentDialogue:chapters.recentDialogue,diagnostics:{...sources.diagnostics,recentCount:chapters.recentDialogue.length,selectedSummaryId:null,unsummarizedOmittedTurns:0,source:'active_chapter_archives_and_uncovered_originals'}};
+          try{chapters=await recall.retrieve({run,query:input,sources,signal,context:{runId,requestId,attemptId:attempt.attemptId,...(run.modelSelection?{modelSelection:clone(run.modelSelection)}:{}),...(run.stageModelSelections?{stageModelSelections:clone(run.stageModelSelections)}:{})}});}
+          catch(error){
+            if(signal?.aborted||['CANCELLED','CHAPTER_RECALL_STALE'].includes(error.code))throw error;
+            chapters=originalChapterContext(run,{...sources.diagnostics,...error.chapterRecallDiagnostics,failureCode:/^[A-Z0-9_]{1,64}$/.test(error.code??'')?error.code:'CHAPTER_RECALL_FAILED'});
+          }
+          narrative={summary:null,recentDialogue:chapters.recentDialogue,diagnostics:{...sources.diagnostics,recentCount:chapters.recentDialogue.length,selectedSummaryId:null,unsummarizedOmittedTurns:0,source:chapters.diagnostics.status==='degraded'?'all_committed_originals_after_recall_failure':'active_chapter_archives_and_uncovered_originals'}};
           progress(activeStage,'completed');
         }
         const selectedSummary = narrative.summary?.visibility === 'public' && narrative.summary?.perspective === 'public_story' ? narrative.summary : null;
@@ -390,7 +396,7 @@ export class SceanEngine {
           ...(writingGuidance?{writingGuidance:text(writingGuidance,10000)}:{}),
           sources: stageSources,
           chapterSummary: publicData(run.snapshot.chapterSummary ?? ''),
-          ...(chapters?{chapterContext:{mode:'chapter_3_plus_8',label:HISTORY_REFERENCE_LABEL,recent:clone(chapters.recent),retrieved:clone(chapters.retrieved)}}:{}),
+          ...(chapters?{chapterContext:{mode:'chapter_3_plus_8',label:HISTORY_REFERENCE_LABEL,status:chapters.diagnostics.status,recent:clone(chapters.recent),retrieved:clone(chapters.retrieved)}}:{}),
           ...(selectedSummary ? { rollingSummary: { id: selectedSummary.id, version: selectedSummary.version, text: selectedSummary.text, startTurn: selectedSummary.startTurn, endTurn: selectedSummary.endTurn, startCommitId: selectedSummary.commitIds[0], endCommitId: selectedSummary.commitIds.at(-1), label: HISTORY_REFERENCE_LABEL } } : {}),
           recentDialogue: publicData([...seed, ...narrative.recentDialogue]),
           ...(run.snapshot.stateBlueprint ? { stateBlueprint: publicBlueprint(run.snapshot.stateBlueprint) } : {}),

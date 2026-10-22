@@ -2,8 +2,9 @@
 // checkpoint or receipt writes; the existing chapter transaction owns publish.
 import {SceanError,clone,hash,json,checkAbort} from './contracts.mjs';
 import {budgetStage} from './context-budget.mjs';
+import {MAX_CHAPTER_TURNS} from './chapter-target.mjs';
 
-export const CHAPTER_BATCH_LIMITS=Object.freeze({turns:50,batches:16,bytes:200000,mapOutputChars:2400,minMapOutputChars:512});
+export const CHAPTER_BATCH_LIMITS=Object.freeze({turns:MAX_CHAPTER_TURNS,batches:16,bytes:200000,mapOutputChars:2400,minMapOutputChars:512});
 const fail=(code,message)=>{throw new SceanError(code,message??code);};
 const integer=(n,min,max)=>Number.isSafeInteger(n)&&n>=min&&n<=max;
 const textBytes=text=>Buffer.byteLength(text,'utf8');
@@ -22,7 +23,7 @@ function sourceFor(turns,source){
   if(!t||Object.keys(t).some(k=>!['turn','commitId','input','body'].includes(k))||t.turn!==source.startTurn+i||typeof t.commitId!=='string'||!t.commitId||seen.has(t.commitId)||!scalar(t.input)||!scalar(t.body)||source.commitIds[i]!==t.commitId||source.sourceHashes[i]!==hash({commitId:t.commitId,input:t.input,body:t.body}))fail('CHAPTER_BATCH_SOURCE_MISMATCH');
   seen.add(t.commitId);
  }
- if(source.sourceHash!==hash({commitIds:source.commitIds,sourceHashes:source.sourceHashes})||textBytes(json(source))>20000)fail('CHAPTER_BATCH_SOURCE_MISMATCH');
+ if(source.sourceHash!==hash({commitIds:source.commitIds,sourceHashes:source.sourceHashes})||textBytes(json(source))>200000)fail('CHAPTER_BATCH_SOURCE_MISMATCH');
  return clone(source);
 }
 function bounds(options){

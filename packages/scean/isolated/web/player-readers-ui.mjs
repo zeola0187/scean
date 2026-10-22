@@ -4,7 +4,8 @@ export function mountPlayerReaders({document=globalThis.document,request,getCont
   const actions=el('nav',undefined,'player-readers-actions');actions.setAttribute('aria-label','故事閱讀');actions.style.cssText='display:flex;gap:8px;flex-wrap:wrap;padding:4px 0';
   const bookButton=el('button','世界書','quiet'),recapButton=el('button','故事回顧','quiet');bookButton.id='player-worldbook-open';recapButton.id='player-recap-open';
   for(const b of[bookButton,recapButton]){b.type='button';b.disabled=true;b.setAttribute('aria-haspopup','dialog');b.style.minHeight='44px';actions.append(b);}
-  const composer=document.querySelector('.composer');if(composer)composer.insertBefore(actions,composer.firstChild);else(document.querySelector('main')??document.body).append(actions);
+  // Reuse the bookshelf; these read-only tools do not consume story/composer space.
+  (document.querySelector('#library-pane')??document.querySelector('.library')??document.querySelector('main')??document.body).append(actions);
   const dialog=el('dialog',undefined,'tool-dialog player-reader-dialog');dialog.id='player-reader-dialog';dialog.setAttribute('aria-labelledby','player-reader-title');dialog.style.cssText='width:min(720px,calc(100vw - 20px));max-width:calc(100vw - 20px);max-height:calc(100dvh - 24px);box-sizing:border-box;overflow:auto;overscroll-behavior:contain';
   const header=el('header',undefined,'tool-heading'),heading=el('h2');heading.id='player-reader-title';const close=el('button','返回故事','quiet');close.type='button';close.style.minHeight='44px';header.append(heading,close);
   const note=el('p','此處只閱讀這段故事已保存的公開內容，不會啟動生成。','hint'),status=el('p',undefined,'hint');status.id='player-reader-status';status.setAttribute('role','status');

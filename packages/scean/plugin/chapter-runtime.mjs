@@ -9,8 +9,8 @@ export function createChapterConfiguration({ctx,config,dataRoot,usageLedger,lega
   const nativeModel=createNativeModelPort({llm:ctx.llm,agentDefaultModel:ctx.agentDefaultModel,usageLedger,stageMaxTokens:config.stageMaxTokens,timeoutMs:config.timeoutMs,technicalRetries:config.technicalRetries});
   const ports=configuredChapterPorts({settings,nativeModel,legacyNativeModel,usageLedger,fetchImpl});
   const runtimeFactory=status=>{
-    if(!status.settings.flags.chapterRetrievalEnabled)return undefined;
-    const embeddingEnabled=status.settings.flags.chapterEmbeddingEnabled&&status.embeddingKey.configured,rerankEnabled=status.rerankKey.configured;
+    if(!status.settings.flags.chapterModelsEnabled)return undefined;
+    const embeddingEnabled=status.embeddingKey.configured,rerankEnabled=status.rerankKey.configured;
     const identity=createHash('sha256').update(JSON.stringify({revision:status.revision,embedding:status.settings.embedding})).digest('hex');
     return new ChapterRecall({embed:embeddingEnabled?ports.embed:undefined,rerankModel:rerankEnabled?ports.rerankModel:undefined,embeddingModel:'configured-chapter-'+identity});
   };

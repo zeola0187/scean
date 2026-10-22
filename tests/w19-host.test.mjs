@@ -181,7 +181,7 @@ test('W19 accepted turn releases reservation before saved automatic chapters; re
   const f=await fixture({longrun:true,enabled:true});
   await f.host.request(await submit(f,'chapterSettings',{operationId:'auto-settings',settings:{autoEnabled:true,tokenThreshold:4000,bufferTurns:2,detail:'auto'}}));assert.equal((await finish(f,'auto-settings')).status,'completed');
   const request=await submit(f,'turn');await f.host.request(request);assert.equal((await finish(f)).status,'committed');
-  await Promise.allSettled([...f.host.chapterBackground??[]]);assert.equal(f.calls.filter(c=>c.stage==='chapter_analysis').length,1);assert.equal(f.calls.filter(c=>c.stage==='chapter_summary').length,0);
+  await Promise.allSettled([...f.host.chapterBackground??[]]);assert.equal(f.calls.filter(c=>c.stage==='chapter_analysis').length,1);assert.equal(f.calls.filter(c=>c.stage==='chapter_summary').length,1);
   await f.host.request(request);await Promise.allSettled([...f.host.chapterBackground??[]]);assert.equal(f.calls.filter(c=>c.stage==='chapter_analysis').length,1);await f.host.close();
   const restarted=await new SceanHost({engine:f.engine,root:f.hostRoot,chapterModelsEnabled:true}).init();assert.equal((await restarted.chapterStatus({runId:f.runId})).autoArmed,true);await restarted.close();
 });

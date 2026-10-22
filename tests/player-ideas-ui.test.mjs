@@ -21,7 +21,7 @@ class Element{
 function fixture(custom){
   const composer=new Element('section'),form=new Element('form'),input=new Element('textarea');form.id='turn-form';input.id='input';form.append(input);composer.append(form);
   const find=(node,id)=>node.id===id?node:node.children.map(child=>find(child,id)).find(Boolean);
-  const doc={createElement:tag=>new Element(tag),getElementById:id=>find(composer,id),defaultView:{Event:class{constructor(type,options){this.type=type;Object.assign(this,options);}}}};
+  const doc={body:composer,createElement:tag=>new Element(tag),getElementById:id=>find(composer,id),defaultView:{Event:class{constructor(type,options){this.type=type;Object.assign(this,options);}}}};
   const calls=[];let context={runId:'run-one',version:1,head:'commit-one',snapshot:{hash:'snapshot-one'}},preserved=0,submitted=0;
   form.addEventListener('submit',()=>submitted++);
   const request=custom??(async(_action,args)=>result(context));
@@ -50,14 +50,19 @@ test('errors and invalid result preserve draft and never retry automatically',as
 test('same run and head in a new session selection stamp cannot accept an old result',async()=>{
   let release;const f=fixture(()=>new Promise(r=>release=r));f.context={...f.context,selectionStamp:'session-one'};f.ui.update(f.context);f.click('player-ideas-generate');await tick();const prior=structuredClone(f.context);f.context={...f.context,selectionStamp:'session-two'};f.ui.update(f.context);release(result(prior));await tick();assert.equal(f.options().length,0);assert.equal(f.input.value,'');
 });
-test('mobile results are height-bounded and collapse/reopen preserves draft, caret and reading without generation',async()=>{
-  const f=fixture();f.input.value='My current draft';f.input.selectionStart=f.input.selectionEnd=3;f.click('player-ideas-generate');await tick();
-  const list=f.doc.getElementById('player-ideas-list'),toggle=f.doc.getElementById('player-ideas-toggle'),options=[...f.options()],before=f.preserved;
-  assert.match(list.style.cssText,/max-height:min\(40dvh,320px\)/);assert.match(list.style.cssText,/overflow:auto/);assert.equal(toggle.hidden,false);
-  f.click('player-ideas-toggle');assert.equal(list.hidden,true);assert.equal(toggle['aria-expanded'],'false');assert.equal(toggle.textContent,'展開想法');
-  f.click('player-ideas-toggle');assert.equal(list.hidden,false);assert.equal(toggle['aria-expanded'],'true');assert.equal(toggle.textContent,'收起想法');
-  assert.deepEqual(f.options(),options);assert.equal(f.calls.length,1);assert.equal(f.input.value,'My current draft');assert.equal(f.input.selectionStart,3);assert.equal(f.submitted,0);assert.equal(f.preserved,before+2);
-  f.ui.reset();assert.equal(toggle.hidden,true);assert.equal(list.hidden,false);assert.equal(f.input.value,'My current draft');
+test('open/close and Escape retain results, draft and caret without requesting or focusing the input',async()=>{
+  const f=fixture(),toggle=f.doc.getElementById('player-ideas-toggle'),panel=f.doc.getElementById('player-ideas-panel');
+  f.input.value='My current draft';f.input.selectionStart=f.input.selectionEnd=3;
+  assert.equal(panel.hidden,true);f.click('player-ideas-toggle');assert.equal(panel.hidden,false);assert.equal(f.calls.length,0);assert.equal(f.input.focused,undefined);
+  f.click('player-ideas-generate');await tick();const options=[...f.options()];
+  f.click('player-ideas-close');assert.equal(panel.hidden,true);assert.equal(toggle['aria-expanded'],'false');
+  f.click('player-ideas-toggle');assert.equal(panel.hidden,false);assert.equal(toggle['aria-expanded'],'true');
+  let prevented=false;panel.fire('keydown',{key:'Escape',preventDefault(){prevented=true;}});assert(prevented);assert.equal(panel.hidden,true);assert.equal(toggle.focused.preventScroll,true);assert.equal(f.input.focused,undefined);
+  assert.deepEqual(f.options(),options);assert.equal(f.calls.length,1);assert.equal(f.input.value,'My current draft');assert.equal(f.input.selectionStart,3);assert.equal(f.submitted,0);
+  f.ui.reset();assert.equal(panel.hidden,true);assert.equal(f.input.value,'My current draft');
+});
+test('cancel aborts just the optional request and discards its late result without retry',async()=>{
+  let release;const f=fixture(()=>new Promise(r=>release=r));f.input.value='Keep draft';f.click('player-ideas-generate');await tick();f.click('player-ideas-generate');assert.equal(f.calls.length,1);const signal=f.calls[0][2];f.click('player-ideas-cancel');assert(signal.aborted);release(result(f.context));await tick();assert.equal(f.options().length,0);assert.equal(f.calls.length,1);assert.equal(f.input.value,'Keep draft');assert.equal(f.doc.getElementById('player-ideas-generate').disabled,false);
 });
 test('disabled composer, length limits, reset and dispose do not create hidden work',async()=>{
   const f=fixture();f.context={...f.context,disabled:true};f.ui.update(f.context);f.click('player-ideas-generate');await tick();assert.equal(f.calls.length,0);f.context={...f.context,disabled:false};f.ui.update(f.context);f.click('player-ideas-generate');await tick();f.input.value='retain';f.input.maxLength=6;f.options()[0].fire('click');assert.equal(f.input.value,'retain');f.ui.reset();assert.equal(f.options().length,0);assert.equal(f.input.value,'retain');f.ui.dispose();assert.equal(f.doc.getElementById('player-ideas'),undefined);assert.equal(f.calls.length,1);

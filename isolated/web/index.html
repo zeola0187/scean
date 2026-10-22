@@ -28,8 +28,9 @@
     <form id="global-chapter-form" autocomplete="off" novalidate>
       <fieldset><legend>進階服務權限（一般不需調整）</legend>
         <label class="consent"><input id="global-chapter-models" type="checkbox"><span>允許摘要模型服務。關閉會暫停所有故事的自動摘要；仍保留各故事的開關與已保存摘要。</span></label>
-        <label class="consent"><input id="global-chapter-retrieval" type="checkbox"><span>額外使用章節記憶召回（3＋8）：這是獨立進階功能，不是產生摘要的必要條件，可能產生向量與排序費用。</span></label>
-        <label class="consent"><input id="global-chapter-embedding" type="checkbox"><span>允許進階向量搜尋服務；自動摘要本身不需要它。不會因新故事預設開啟摘要而自動啟用。</span></label>
+        <input id="global-chapter-retrieval" type="checkbox" hidden aria-hidden="true">
+        <input id="global-chapter-embedding" type="checkbox" hidden aria-hidden="true">
+        <p class="hint">各故事的主開關統一控制摘要與 3＋8 上下文。此處只管理共用模型／向量／排序服務；已配置路由按實際使用計費，缺少設定會明確提示並保留原文。</p>
       </fieldset>
       <div class="global-provider-grid">
         <fieldset><legend>章節向量服務</legend>
@@ -129,14 +130,13 @@
           <p class="hint">每章摘要獨立保存；缺少摘要的舊章可補建。標題、關鍵詞與情緒基調是敘事參考，不是世界狀態或角色知識。</p>
           <details id="chapter-settings-panel" open><summary>本局自動摘要</summary>
             <form id="chapter-settings-form">
-              <label class="consent"><input id="chapter-auto-enabled" type="checkbox"> <span>自動整理故事摘要</span></label>
-              <p class="hint">這是本局唯一的自動摘要開關，保存後重啟仍有效。達到整理時機會使用摘要模型；不會順便開啟向量、角色記憶或進階章節召回。</p>
+              <label class="consent"><input id="chapter-auto-enabled" type="checkbox"> <span>自動整理摘要並用於後續遊玩</span></label>
+              <p class="hint">這是本局唯一開關，保存後重啟仍有效。約 16,000 估算 tokens 尋找自然章界，生成名稱與摘要。後續每輪使用未壓縮原文、最近三章與 BM25＋向量挑出的最多八章摘要。會按已配置路由產生摘要、向量與排序費用；不變更角色私人記憶。</p>
               <details id="chapter-summary-tuning"><summary>進階：整理時機與摘要長度</summary>
               <label for="chapter-token-threshold">未歸檔原文門檻（估算 tokens）</label><input id="chapter-token-threshold" type="number" min="4000" max="32000" step="1000" value="16000" required>
-              <label for="chapter-buffer-turns">保護近期完整回合數</label><input id="chapter-buffer-turns" type="number" min="0" max="50" step="1" value="6" required>
+              <label for="chapter-buffer-turns">偏好保留近期回合數（大段原文時自動縮減）</label><input id="chapter-buffer-turns" type="number" min="0" max="50" step="1" value="6" required>
               <label for="chapter-detail">章節摘要詳細程度</label><select id="chapter-detail"><option value="concise">精簡 concise</option><option value="auto" selected>自動 auto</option><option value="precise">詳細 precise</option></select>
-              <label class="consent"><input id="chapter-recall-enabled" type="checkbox"><span>本次啟動額外使用章節記憶召回（3＋8）</span></label>
-              <p class="hint">只要故事摘要時不必勾選。這是獨立的進階授權，需要全域已配置向量與排序服務，之後遊玩可能產生相應費用；Host 重啟後需重新確認。保存設定不會立即呼叫模型。</p>
+              <p class="hint">近期回合是保留偏好，最多保留約四分之一目標大小，避免六個長回合永遠無法摘要。優先選自然停頓；長場景超過門檻 1.5 倍時，可用完整回合結尾歸檔並保留未決情節。這不是宣告場景結束；摘要成功後才替代涵蓋原文。保存設定不立即呼叫模型。</p>
               </details>
               <button id="chapter-settings-save" type="submit" class="quiet" disabled>保存本局摘要設定</button>
             </form>

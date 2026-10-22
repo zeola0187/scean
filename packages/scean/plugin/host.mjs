@@ -7,7 +7,7 @@ import {normalizeStudioHandoffSnapshot} from './studio-handoff.mjs';
 import {OpeningSelections} from './opening-selection.mjs';
 import {snapshotCardScope,sameCardScope,sameCardContext} from './card-scope.mjs';
 import {updateSummary,closeChapter,recoverNarrative,narrativeView,selectNarrative,invalidateNarrative} from '../core/narrative.mjs';
-import {updateChapterSettings,chapterEligibility,autoChapter,backfillChapterSummary,chapterSummaryView} from '../core/chapter-summary.mjs';
+import {updateChapterSettings,chapterEligibility,autoChapter,backfillChapterSummary,chapterSummaryView,legacyChapterEligibility} from '../core/chapter-summary.mjs';
 import {chapterContextSources} from '../core/chapter-recall.mjs';
 import {searchHistory,readHistory,pageHistory} from '../core/history-recall.mjs';
 import {randomUUID,timingSafeEqual} from 'node:crypto';
@@ -50,7 +50,7 @@ export class SceanHost {
     this.summaryEnabled=summaryEnabled===true;this.summaryRunning=new Map();
     this.chapterModelsEnabled=chapterModelsEnabled===true;this.chapterRunning=new Map();this.chapterAutoArmed=new Set();this.closing=false;
     this.writerSummaryArmed=new Set();this.automaticSummaryFailures=new Map();
-    this.chapterRetrievalEnabled=chapterRetrievalEnabled===true;this.chapterContextArmed=new Set();
+    this.chapterRetrievalEnabled=chapterModelsEnabled===true;this.chapterContextArmed=new Set();
     this.chapterProviderSettings=chapterProviderSettings;this.chapterRuntimeFactory=chapterRuntimeFactory;this.onChapterConfigurationChanged=onChapterConfigurationChanged;this.globalSettingsUpdating=false;this.globalSettingsRevision=null;
     this.engine=engine;this.root=root;this.now=now;this.bindingTtlMs=bindingTtlMs;this.openings=new OpeningSelections(this);
     this.presentations=engine.store?.root?new PresentationHost({store:engine.store,now}):null;this.presentationSaves=new Set();this.ideaJobs=new Map();
@@ -119,7 +119,7 @@ export class SceanHost {
   }
   applyChapterProviderConfiguration(status,disarm=true){
     const flags=status.settings.flags;
-    this.chapterModelsEnabled=flags.chapterModelsEnabled;this.chapterRetrievalEnabled=flags.chapterRetrievalEnabled;
+    this.chapterModelsEnabled=flags.chapterModelsEnabled;this.chapterRetrievalEnabled=flags.chapterModelsEnabled;
     if(this.chapterRuntimeFactory)this.engine.chapterRecall=this.chapterRuntimeFactory(status);
     this.globalSettingsRevision=status.revision;
     if(disarm){this.chapterAutoArmed.clear();this.chapterContextArmed.clear();this.writerSummaryArmed.clear();}
@@ -275,7 +275,7 @@ export class SceanHost {
     const progress={runId,requestId,operationId,attemptId:null,stage:'memory',status:'pending',sequence:0,events:[]};this.progressByRun.set(runId,progress);
     try{
       await this.draftSave({runId,input,requestId,...(viewerId===undefined?{}:{viewerId})},controller);
-      const result=await this.engine.turn({runId,input,requestId,operationId,baseVersion,baseHead,chapterContextEnabled:this.chapterContextArmed.has(runId),signal:signal?AbortSignal.any([controller.signal,signal]):controller.signal,onProgress:event=>{owner.attemptId=event.attemptId;const owned={...event,operationId};Object.assign(progress,owned);progress.events.push(owned);if(progress.events.length>100)progress.events.shift();}});
+      const result=await this.engine.turn({runId,input,requestId,operationId,baseVersion,baseHead,chapterContextEnabled:this.writerSummaryArmed.has(runId)?false:undefined,signal:signal?AbortSignal.any([controller.signal,signal]):controller.signal,onProgress:event=>{owner.attemptId=event.attemptId;const owned={...event,operationId};Object.assign(progress,owned);progress.events.push(owned);if(progress.events.length>100)progress.events.shift();}});
       Object.assign(progress,{stage:'commit',status:'committed',commitId:result.commitId});
       const summary=this.metadata.runs.find(row=>row.runId===runId);if(summary)Object.assign(summary,{version:result.version,turnCount:result.turn,updatedAt:new Date(this.now()).toISOString()});
       if(this.metadata.drafts[runId]?.requestId===requestId){delete this.metadata.drafts[runId];try{await this.persist();}catch{progress.draftCleanup='pending_restart_reconciliation';}}
@@ -316,7 +316,7 @@ export class SceanHost {
     this.requireRun(request.runId);const run=await this.engine.store.read(request.runId);
     return ({historySearch:searchHistory,historyRead:readHistory,historyPage:pageHistory}[action])(run,request);
   }
-  async summaryStatus(runId){this.requireRun(runId);const run=await this.engine.store.read(runId),chapterMode=this.chapterContextArmed.has(runId);return {...narrativeView(run),enabled:this.summaryEnabled,contextMode:chapterMode?'chapter_3_plus_8':'legacy_rolling',coverage:chapterMode?chapterContextSources(run).diagnostics:selectNarrative(run,{recentWindow:this.engine.recentWindow}).diagnostics,autoArmed:this.writerSummaryArmed.has(runId)};}
+  async summaryStatus(runId){this.requireRun(runId);const run=await this.engine.store.read(runId),chapterMode=run.narrative?.chapterSettings?.autoEnabled===true&&!this.writerSummaryArmed.has(runId);return {...narrativeView(run),enabled:this.summaryEnabled,contextMode:chapterMode?'chapter_3_plus_8':'legacy_rolling',coverage:chapterMode?chapterContextSources(run).diagnostics:selectNarrative(run,{recentWindow:this.engine.recentWindow}).diagnostics,autoArmed:this.writerSummaryArmed.has(runId)};}
   async summaryStart(request,signal){
     this.requireRun(request.runId);safeId(request.operationId);
     const fingerprint=hash({runId:request.runId,operationId:request.operationId,expectedVersion:request.expectedVersion,expectedHead:request.expectedHead,endTurn:request.endTurn??null,recentWindow:request.recentWindow??6});
@@ -332,35 +332,37 @@ export class SceanHost {
     if(!owner||owner.operationId!==request.operationId)return job??{status:'not_called',cancelRequested:false};
     owner.controller.abort();return {status:'pending',cancelRequested:true,operationId:request.operationId};
   }
+  chapterContextReadiness(run){
+    const sources=chapterContextSources(run),ports=this.engine.chapterRecall?.capabilities()??{};
+    if(run.narrative?.chapterSettings?.autoEnabled!==true)return{status:'off',reason:'saved_run_preference_off'};
+    if(!this.chapterModelsEnabled)return{status:'configuration_required',reason:'CHAPTER_SERVICE_DISABLED',originalsPreserved:true};
+    if(sources.older.length&&!ports.embedding)return{status:'configuration_required',reason:'CHAPTER_EMBEDDING_UNAVAILABLE',originalsPreserved:true};
+    if(sources.older.length&&!ports.rerank)return{status:'configuration_required',reason:'CHAPTER_RERANK_UNAVAILABLE',originalsPreserved:true};
+    return{status:sources.records.length?'ready':'awaiting_first_summary',recentChapters:Math.min(3,sources.records.length),olderCandidates:sources.older.length,recalledMaximum:8,embedding:ports.embedding?'configured':'needed_after_three_chapters',rerank:ports.rerank?'configured':'needed_after_three_chapters',providerConnectivity:'not_probed'};
+  }
   async chapterStatus(request){
     this.requireRun(request.runId);const run=await this.engine.store.read(request.runId);
     const attempts=await this.engine.store.readAttempts(run.runId),lastRecall=attempts.at(-1)?.assemblyDiagnostics?.chapterRecall??null;
     const latestJob=this.jobs.ledger.records.findLast(row=>row.runId===run.runId&&['chapterAuto','chapterSummarize'].includes(row.kind)),jobView=latestJob?await this.jobs.view(latestJob,run):null;
     const chapterFailure=jobView&&!jobView.pending&&!['completed','committed'].includes(jobView.status)&&jobView.failure?{operationId:jobView.operationId,chapterId:latestJob.input?.chapterId??null,status:jobView.status,code:jobView.failure.code}:null;
-    return {...chapterSummaryView(run,request.chapterId),chapterFailure,chapterWork:this.chapterRunning.get(run.runId)?.batching??null,enabled:this.chapterModelsEnabled,autoArmed:run.narrative?.chapterSettings?.autoEnabled===true&&!this.automaticSummaryFailures.has(request.runId),writerSummaryEnabled:this.summaryEnabled,writerSummaryArmed:this.writerSummaryArmed.has(request.runId),chapterRetrievalEnabled:this.chapterRetrievalEnabled,chapterContextArmed:this.chapterContextArmed.has(request.runId),chapterPorts:this.engine.chapterRecall?.capabilities()??{embedding:false,rerank:false},lastRecall,automaticFailure:this.automaticSummaryFailures.get(request.runId)??null};
+    return {...chapterSummaryView(run,request.chapterId),chapterFailure,chapterWork:this.chapterRunning.get(run.runId)?.batching??null,enabled:this.chapterModelsEnabled,autoArmed:run.narrative?.chapterSettings?.autoEnabled===true&&!this.automaticSummaryFailures.has(request.runId),writerSummaryEnabled:this.summaryEnabled,writerSummaryArmed:this.writerSummaryArmed.has(request.runId),chapterRetrievalEnabled:this.chapterRetrievalEnabled,chapterContextArmed:run.narrative?.chapterSettings?.autoEnabled===true,integratedContextEnabled:run.narrative?.chapterSettings?.autoEnabled===true,contextAuthority:'saved_run_autoEnabled',chapterPorts:this.engine.chapterRecall?.capabilities()??{embedding:false,rerank:false},contextReadiness:this.chapterContextReadiness(run),lastRecall,automaticFailure:this.automaticSummaryFailures.get(request.runId)??null};
   }
   async chapterSettings(request,signal){
     const result=await this.auxiliaryMutation(request,async()=>{
       if(request.writerSummaryEnabled!==undefined&&typeof request.writerSummaryEnabled!=='boolean')fail('INVALID_CHAPTER_SETTINGS','Writer summary consent must be a boolean.');
       if(request.chapterContextEnabled!==undefined&&typeof request.chapterContextEnabled!=='boolean')fail('INVALID_CHAPTER_SETTINGS','Chapter context consent must be a boolean.');
-      if(request.chapterContextEnabled===true){
-        if(request.writerSummaryEnabled===true)fail('CHAPTER_CONTEXT_MODE_CONFLICT','Choose chapter context or legacy rolling context.');
-        if(!this.chapterRetrievalEnabled||request.settings?.autoEnabled!==true)fail('CHAPTER_RECALL_UNAVAILABLE','Chapter retrieval must be enabled by the Host and explicitly armed.');
-        const ports=this.engine.chapterRecall?.capabilities();if(!ports?.embedding)fail('CHAPTER_EMBEDDING_UNAVAILABLE','Configure the chapter embedding port.');if(!ports.rerank)fail('CHAPTER_RERANK_UNAVAILABLE','Configure the chapter rerank port.');
-      }
-      if(request.writerSummaryEnabled===true&&(!this.summaryEnabled||request.settings?.autoEnabled!==true))fail('SUMMARY_DISABLED','Automatic Writer compression requires both Host capabilities and explicit automatic chapter opt-in.');
+      // The saved Run switch is the one authority for summary creation and
+      // chapter-context delivery. Old extra switches are accepted as deprecated
+      // API input, never used as another hidden/per-launch consent layer.
+      // Deprecated clients can still explicitly request their existing rolling
+      // API. The normal UI never sends this flag; it always uses integrated 3+8.
+      if(request.writerSummaryEnabled===true&&(!this.summaryEnabled||request.settings?.autoEnabled!==true))fail('SUMMARY_DISABLED','Legacy rolling requires its existing explicit capability.');
       const replay=(await this.engine.store.read(request.runId)).narrative?.operations?.[request.operationId];
       const result=await updateChapterSettings(this.engine,{...request,signal});
-      // A replay cannot grant the new paid Writer authority after restart.
-      if(replay&&(request.writerSummaryEnabled===true||request.chapterContextEnabled===true))return result;
-      if(request.settings?.autoEnabled===true)this.chapterAutoArmed.add(request.runId);
-      if(request.settings?.autoEnabled===false)this.chapterAutoArmed.delete(request.runId);
+      if(replay)return result;
       this.automaticSummaryFailures.delete(request.runId);
-      if(request.settings.autoEnabled===false){this.writerSummaryArmed.delete(request.runId);this.chapterContextArmed.delete(request.runId);}
-      if(request.writerSummaryEnabled===false||request.chapterContextEnabled===true)this.writerSummaryArmed.delete(request.runId);
-      if(request.chapterContextEnabled===false||request.writerSummaryEnabled===true)this.chapterContextArmed.delete(request.runId);
-      if(request.writerSummaryEnabled===true)this.writerSummaryArmed.add(request.runId);
-      if(request.chapterContextEnabled===true)this.chapterContextArmed.add(request.runId);
+      this.chapterAutoArmed.delete(request.runId);this.chapterContextArmed.delete(request.runId);this.writerSummaryArmed.delete(request.runId);
+      if(!replay&&request.writerSummaryEnabled===true)this.writerSummaryArmed.add(request.runId);
       await this.refreshRuns();return result;
     });
     return result;
@@ -382,9 +384,9 @@ export class SceanHost {
     const work=(async()=>{
       try{
         const workSignal=signal?AbortSignal.any([signal,controller.signal]):controller.signal;
-        const result=await method(this.engine,{...request,signal:workSignal,onProgress:event=>{owner.batching=plain(event.batching);request.onProgress?.(event);}},{enabled:this.chapterModelsEnabled});
-        if(action==='chapterAuto'&&this.writerSummaryArmed.has(request.runId)&&!this.chapterContextArmed.has(request.runId)){
-          if(result.status!=='completed')fail(result.code??'AUTOMATIC_CHAPTER_INCOMPLETE','Automatic chapter work requires explicit recovery.');
+        const result=await method(this.engine,{...request,signal:workSignal,onProgress:event=>{owner.batching=plain(event.batching);request.onProgress?.(event);}},{enabled:this.chapterModelsEnabled,...(this.writerSummaryArmed.has(request.runId)?{autoPolicy:'legacy-buffer-v1'}:{})});
+        if(action==='chapterAuto'&&this.writerSummaryArmed.has(request.runId)){
+          if(result.status!=='completed')fail(result.code??'AUTOMATIC_CHAPTER_INCOMPLETE');
           if(result.created)await this.completeAutomaticSummary(request.runId,workSignal);
         }
         return result;
@@ -434,11 +436,13 @@ export class SceanHost {
       if(this.closing||this.automaticSummaryFailures.has(runId)||this.mutationBusy(runId))return;
       const run=await this.engine.store.read(runId);
       if(run.narrative?.chapterSettings?.autoEnabled!==true||headOf(run)!==commitId)return;
-      // Repair a known closed range first; never analyze it again. One bounded
-      // delta per cycle keeps catch-up work and paid calls predictable.
+      // One natural-boundary operation after a committed player turn. Never
+      // scan/backfill old chapters on create/read/reconnect/settings save.
+      // Existing explicit legacy API only. No second grant gates the normal
+      // persisted main-switch path, and it never calls rolling summary.
       const catchup=this.writerSummaryArmed.has(runId)?this.automaticSummaryRequest(run):null;
-      if(catchup){const result=await this.summaryStart(catchup);if(result.status!=='completed')fail(result.code??'AUTOMATIC_SUMMARY_INCOMPLETE','Automatic Writer compression requires recovery.');return;}
-      if(!chapterEligibility(run).eligible)return;
+      if(catchup){const result=await this.summaryStart(catchup);if(result.status!=='completed')fail(result.code??'AUTOMATIC_SUMMARY_INCOMPLETE');return;}
+      if(!(this.writerSummaryArmed.has(runId)?legacyChapterEligibility(run):chapterEligibility(run)).eligible)return;
       await this.chapterStart('chapterAuto',{runId,operationId:`chapter-auto-${hash({commitId,consent:run.narrative.chapterSettings.operationId}).slice(0,40)}`,expectedVersion:run.version,expectedHead:headOf(run)});
     }).catch(error=>this.disarmAutomatic(runId,error));
     this.chapterBackground??=new Set();this.chapterBackground.add(work);work.finally(()=>this.chapterBackground.delete(work));
@@ -452,7 +456,7 @@ export class SceanHost {
     this.running.set(request.runId,controller);this.activeOperations.set(request.runId,owner);
     const progress={...owner,stage:action,status:'pending',sequence:0,events:[]};this.progressByRun.set(request.runId,progress);
     try{
-      const result=await this.engine[action]({...request,chapterContextEnabled:this.chapterContextArmed.has(request.runId),signal:signal?AbortSignal.any([signal,controller.signal]):controller.signal,onProgress:event=>{owner.attemptId=event.attemptId;Object.assign(progress,event,{operationId:request.operationId});progress.events.push({...event,provisional:true});if(progress.events.length>100)progress.events.shift();}});
+      const result=await this.engine[action]({...request,chapterContextEnabled:undefined,signal:signal?AbortSignal.any([signal,controller.signal]):controller.signal,onProgress:event=>{owner.attemptId=event.attemptId;Object.assign(progress,event,{operationId:request.operationId});progress.events.push({...event,provisional:true});if(progress.events.length>100)progress.events.shift();}});
       Object.assign(progress,{status:result.status,stage:action,version:result.version});
       await this.refreshRuns();await this.persist().catch(()=>{});
       return {...publicTurnResult(result),...Object.fromEntries(['kind','operationId','head','retiredCommitId','retiredBy','retiredAtVersion'].filter(k=>result[k]!==undefined).map(k=>[k,result[k]]))};

@@ -77,7 +77,7 @@ test('DF adversarial source retired before operation start cannot become a no-en
   f.model.generate=async a=>a.stage==='director'?{text:'Continue.'}:a.stage==='draft'||a.stage==='prose'?{text:'The same research watch continued.'}:a.stage==='post_stat'?{text:JSON.stringify({contractVersion:2,stateChanges:[],memories:[],playerHistory:[]})}:{text:JSON.stringify(analysis(a.input.range))};
   await f.engine.turn({runId:f.run.runId,requestId:'replace-retired',input:'Continue synthetic watch.'});
   await updateChapterSettings(f.engine,await args(f,'unbuffer',{settings:{autoEnabled:true,tokenThreshold:4000,bufferTurns:0,detail:'auto'}}));
-  await autoChapter(f.engine,await args(f,'after-retirement'),{enabled:true});const b=encodeRunBundle(await f.store.read(f.run.runId)),op=b.run.narrative.operations['after-retirement'];
+  await autoChapter(f.engine,await args(f,'after-retirement'),{enabled:true,autoPolicy:'legacy-buffer-v1'});const b=encodeRunBundle(await f.store.read(f.run.runId)),op=b.run.narrative.operations['after-retirement'];
   assert(b.run.retired.some(r=>r.commitId===oldLast.commitId&&r.retiredAtVersion<op.baseVersion));
   op.candidate.commitIds[15]=oldLast.commitId;op.candidate.sourceHashes[15]=narrativeSourceHash(oldLast);op.candidate.sourceHash=hash({commitIds:op.candidate.commitIds,sourceHashes:op.candidate.sourceHashes});assert.throws(()=>validateRunBundle(resign(b)));
 });

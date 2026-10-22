@@ -33,6 +33,7 @@ export async function apply(ctx){
       const text=options.messages?.flatMap(m=>m.content??[]).find(c=>c.type==='text')?.text;let input;try{input=JSON.parse(text);}catch{throw Error('SIX_STRUCTURED_INPUT_REQUIRED');}
       let stage,answer;
       if(Array.isArray(input.directions)&&Array.isArray(input.turns)){stage='ideas';answer=JSON.stringify({ideas:['玩家行動','角色自主','場景展開','世界自然運轉','意外與轉折'].map((category,i)=>({category,text:['我走到窗邊，詢問今天的天氣記錄。','請讓值班員自行決定怎樣整理桌上的表格。','我暫時安靜地觀察房間裡的光線與聲音。','讓港口居民按自己的日常繼續工作。','一封送錯地方的普通信件帶來意外話題。'][i]}))});}
+      else if(input.range&&Array.isArray(input.turns)){stage=input.detail?'chapter_summary':'chapter_analysis';answer=JSON.stringify(stage==='chapter_analysis'?{shouldCreateChapter:true,optimalEndTurn:input.range.endTurn,suggestedTitle:'觀測站的值班記錄',keywords:['天氣表'],characters:['值班員'],locations:['觀測站'],plotThreads:['下一份記錄'],emotionalTone:'平靜',significantEvents:[]}:{title:'觀測站的值班記錄',summary:'值班員與旅人整理了公開天氣表，仍可自由決定下一步。',keywords:['天氣表'],characters:['值班員'],locations:['觀測站'],plotThreads:['下一份記錄'],emotionalTone:'平靜'});}
       else if(input.handoffContract){stage='director';answer=JSON.stringify({handoffVersion:1,sceneIntent:'Continue an ordinary synthetic observation task without deciding the player next action.',knownFacts:[],effectiveConstraints:[],expressedCommitmentsOrRefusals:[],characterPositions:[],unknowns:[]});}
       else if(input.directorHandoff&&input.context){stage='writer';const number=calls.filter(c=>c.stage==='writer').length+1;answer=`SIX_WRITER_BODY_${number}\n\n`+Array.from({length:34},(_,i)=>`第${i+1}段。窗外的船隻隨潮水輕晃，值班員把天氣表放到桌邊。這是隔離測試的合成日常，沒有真實卡片、私人設定或模型生成品質主張。旅人可以自行決定要說什麼，這段敘述不替玩家決定下一步。`).join('\n\n');await new Promise(r=>setTimeout(r,650));}
       else if(typeof input.finalBody==='string'&&input.bodyHash){stage='post_stat';answer=JSON.stringify({contractVersion:2,stateChanges:[],memories:[]});}
@@ -40,7 +41,7 @@ export async function apply(ctx){
       // The real Director still receives its existing tool declarations; this
       // ordinary scripted scene needs none and never emits a tool-call block.
       if(stage!=='director'&&options.tools?.length)throw Error('SIX_UNEXPECTED_TOOL_CAPABILITY');
-      calls.push({index:calls.length+1,stage,at:new Date().toISOString(),toolDefinitions:options.tools?.length??0,toolCalls:0,synthetic:true});await fs.writeFile(file,JSON.stringify(calls,null,2)+'\n');
+      calls.push({index:calls.length+1,stage,at:new Date().toISOString(),toolDefinitions:options.tools?.length??0,toolCalls:0,synthetic:true,...(['director','writer'].includes(stage)?{chapterPacket:input.assembly?.chapterContext??input.context?.chapterContext,originalCount:(input.assembly?.recentDialogue??input.context?.recentDialogue??[]).length}:{})});await fs.writeFile(file,JSON.stringify(calls,null,2)+'\n');
       options.signal?.throwIfAborted();yield {type:'text-delta',index:0,text:answer};yield {type:'block-end',index:0,block:{type:'text',text:answer}};yield {type:'usage',usage:{inputTokens:20,outputTokens:40,totalTokens:60}};yield {type:'finish',reason:{kind:'stop'}};
     }
   }

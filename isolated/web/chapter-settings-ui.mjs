@@ -63,12 +63,12 @@ export function mountChapterSettings({request,onSaved=()=>{},document:doc=global
   async function refresh(){
     if(!secureContext){$('global-chapter-error').textContent='請使用正式舞臺、HTTPS 或 localhost 開啟設定。';return;}
     const current=++serial;clearInputs();$('global-chapter-error').textContent='';$('global-chapter-status').textContent='正在讀取全域設定…';
-    try{const value=await request('chapterProviderSettings');if(current!==serial)return;render(value);$('global-chapter-status').textContent=value.saveOutcomeUncertain?'上次保存結果未知。請重新讀取確認；仍無法確認時，重新啟動舞臺再查詢。章節工作已停用，不會重送金鑰。':value.appliedRevision!==value.revision?'已保存的設定尚未套用。請等工作完成後重新讀取，必要時重啟舞臺。':value.storageAvailable?`${value.settings.flags.chapterModelsEnabled?'摘要模型服務可用':'摘要模型服務已在進階設定停用'}；自動摘要請使用各故事的「本局自動摘要」開關。向量與記憶召回不是摘要的必要條件。連線尚未測試。`:'此環境沒有可寫入的安全憑證服務；僅顯示來源，不提供替代的明文儲存。';}
+    try{const value=await request('chapterProviderSettings');if(current!==serial)return;render(value);$('global-chapter-status').textContent=value.saveOutcomeUncertain?'上次保存結果未知。請重新讀取確認；仍無法確認時，重新啟動舞臺再查詢。章節工作已停用，不會重送金鑰。':value.appliedRevision!==value.revision?'已保存的設定尚未套用。請等工作完成後重新讀取，必要時重啟舞臺。':value.storageAvailable?`${value.settings.flags.chapterModelsEnabled?'摘要模型服務可用':'摘要模型服務已在進階設定停用'}；摘要與3＋8上下文統一使用各故事的主開關。向量／排序設定不足會保留原文並提示，連線尚未測試。`:'此環境沒有可寫入的安全憑證服務；僅顯示來源，不提供替代的明文儲存。';}
     catch(error){if(current===serial){$('global-chapter-error').textContent=chapterSettingsError(error);$('global-chapter-status').textContent='未能讀取全域設定。';}}
   }
   function settings(){
     const mode=$('global-rerank-mode').value,native=mode==='dsh_current'||mode==='dsh_model';
-    return {flags:{chapterModelsEnabled:$('global-chapter-models').checked,chapterRetrievalEnabled:$('global-chapter-retrieval').checked,chapterEmbeddingEnabled:$('global-chapter-embedding').checked},
+    return {flags:{chapterModelsEnabled:$('global-chapter-models').checked,chapterRetrievalEnabled:$('global-chapter-models').checked,chapterEmbeddingEnabled:$('global-chapter-models').checked},
       embedding:{provider:$('global-embedding-provider').value,model:$('global-embedding-model').value.trim(),baseUrl:$('global-embedding-url').value.trim(),nebiusOnly:$('global-embedding-provider').value==='openrouter'&&$('global-embedding-nebius').checked,environmentFallback:$('global-embedding-env').checked},
       rerank:{mode,provider:mode==='dsh_model'?$('global-rerank-provider').value.trim():'',model:mode==='dsh_current'?'':$('global-rerank-model').value.trim(),baseUrl:native?'':$('global-rerank-url').value.trim(),environmentFallback:native?false:$('global-rerank-env').checked}};
   }

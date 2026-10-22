@@ -67,7 +67,7 @@ export class ChapterProviderSettings {
   }
   publicRecord(record,{transport=false}={}){
     const result={schemaVersion:1,revision:record.revision,settings:clone(record.settings),storageAvailable:this.storageAvailable,storage:'dsh_native_credential_record',saved:record.revision>0,lastOperationId:record.lastOperationId??null,
-      embeddingKey:this.keyStatus(record,'embedding'),rerankKey:this.keyStatus(record,'rerank'),providerConnectivity:'not_tested',scope:'host_profile_all_runs',saveStartsModelWork:false,runConsent:'persisted_run_preference_future_turns',chapterSummaryAuthority:'run.chapterSettings.autoEnabled',advancedRecallConsent:'explicit_per_launch_and_run'};
+      embeddingKey:this.keyStatus(record,'embedding'),rerankKey:this.keyStatus(record,'rerank'),providerConnectivity:'not_tested',scope:'host_profile_all_runs',saveStartsModelWork:false,runConsent:'persisted_run_preference_future_turns',chapterSummaryAuthority:'run.chapterSettings.autoEnabled',advancedRecallConsent:'saved_run_autoEnabled_integrated',chapterContextPolicy:'integrated_summary_3_plus_8_v2',legacyRetrievalFlags:'not_runtime_gates',effectiveServices:{enabled:record.settings.flags.chapterModelsEnabled,embeddingConfigured:this.keyStatus(record,'embedding').configured,rerankConfigured:this.keyStatus(record,'rerank').configured}};
     let selection;try{selection=this.nativeSelection();}catch{}if(selection?.provider&&selection?.model)result.nativeSelection={provider:selection.provider,model:selection.model};
     if(transport&&this.storageAvailable){
       this.#transport??={...generateKeyPairSync('rsa',{modulusLength:2048}),keyId:randomUUID()};

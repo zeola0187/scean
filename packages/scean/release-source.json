@@ -7,5 +7,5 @@
   "sourceArchiveSha256": null,
   "networkSourceNoticeReady": false,
   "anonymousSourceAccessVerified": false,
-  "note": "Single Writer and style-import main update authorized on 2026-10-21. Exact public revision, clean-source archive hash and anonymous readback are recorded in the detached publication receipt after push; no new tag or Release. Private third-party style data is excluded."
+  "note": "Chapter/context integration and reader-overlay main update authorized on 2026-10-22. Exact public revision, clean-source hash and remote readback are recorded in the detached publication receipt. No tag, Release or formal installation. Third-party private style data and private history are excluded from the public export."
 }

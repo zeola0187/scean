@@ -58,12 +58,12 @@ test('reading new or stored global summary preferences never writes settings or 
 test('simple summary status distinguishes OFF, effective ON, unavailable service, and actual preflight failure',()=>{
  assert.match(chapterAutomationSummary({settings:{autoEnabled:false}}),/已關閉/);
  assert.match(chapterAutomationSummary({settings:{autoEnabled:true},enabled:true,autoArmed:false}),/已開啟/);
- assert.match(chapterAutomationSummary({settings:{autoEnabled:true},enabled:false}),/等待摘要服務設定/);
+ assert.match(chapterAutomationSummary({settings:{autoEnabled:true},enabled:false}),/等待章節服務設定/);
  const failed={settings:{autoEnabled:true},enabled:true,chapterFailure:{code:'CHAPTER_SOURCE_LIMIT'},operations:[]};assert.match(chapterAutomationSummary(failed),/超過單次摘要容量/);assert.match(chapterOperationSummary(failed),/尚未產生摘要/);assert(!chapterOperationSummary(failed).includes('not_started'));
  assert.match(chapterOperationSummary({operations:[]}),/開啟本頁不會產生摘要/);
 });
 
-test('normal summary UI has one persistent feature switch; optional memory services and old rolling tools are advanced',async()=>{
+test('normal summary UI has one persistent switch for summary AND chapter context; no per-launch recall consent',async()=>{
  const html=await readFile(new URL('../isolated/web/index.html',import.meta.url),'utf8'),local=html.match(/<form id="chapter-settings-form">([\s\S]*?)<\/form>/)[1];
- const normal=local.replace(/<details id="chapter-summary-tuning">[\s\S]*?<\/details>/,'');assert.equal((normal.match(/type="checkbox"/g)??[]).length,1);assert(normal.includes('自動整理故事摘要'));assert(!normal.includes('3＋8'));assert.equal((local.match(/id="chapter-recall-enabled"/g)??[]).length,1);assert(local.includes('Host 重啟後需重新確認'));assert(html.includes('id="chapter-summary-tuning"'));assert(html.includes('id="legacy-summary-tools"'));assert(!html.includes('global-chapter-settings" class="global-chapter-settings" open'));
+ const normal=local.replace(/<details id="chapter-summary-tuning">[\s\S]*?<\/details>/,'');assert.equal((normal.match(/type="checkbox"/g)??[]).length,1);assert(normal.includes('自動整理摘要並用於後續遊玩'));assert(normal.includes('BM25＋向量'));assert.equal((local.match(/id="chapter-recall-enabled"/g)??[]).length,0);assert(!local.includes('Host 重啟後需重新確認'));assert(html.includes('id="chapter-summary-tuning"'));assert(html.includes('id="legacy-summary-tools"'));assert(!html.includes('global-chapter-settings" class="global-chapter-settings" open'));
 });

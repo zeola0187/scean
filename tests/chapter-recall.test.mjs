@@ -102,16 +102,16 @@ test('3+8 shared cache eviction cannot discard a returning Run vector snapshot o
   assert.equal(added.filter(c=>c.kind==='document').length,1);assert.equal(added.filter(c=>c.kind==='query').length,1);assert.equal(added.filter(c=>c.stage==='chapter_rerank').length,1);
   assert(result.retrieved.every(r=>r.runId===first.runId));
 });
-test('3+8 missing production configuration blocks only opt-in, leaving ordinary legacy RP available',async()=>{
+test('3+8 missing configuration is visible while integrated RP preserves all originals',async()=>{
   const f=await setup({missingPorts:true}),host=await new SceanHost({engine:f.engine,root:join(f.root,'missing-port-host'),chapterModelsEnabled:true,chapterRetrievalEnabled:true}).init();try{
-    const request_=await request(f,'missing-port-consent',{settings:{autoEnabled:true,tokenThreshold:32000,bufferTurns:6,detail:'auto'},chapterContextEnabled:true});await assert.rejects(host.chapterSettings(request_),code('CHAPTER_EMBEDDING_UNAVAILABLE'));
-    assert.equal((await host.chapterStatus({runId:f.run.runId})).chapterContextArmed,false);await host.turn({runId:f.run.runId,requestId:'ordinary-legacy-turn',input:'Continue without opting in.'});assert(!f.calls.some(c=>c.stage==='chapter_rerank'));
+    const request_=await request(f,'missing-port-consent',{settings:{autoEnabled:true,tokenThreshold:32000,bufferTurns:6,detail:'auto'},chapterContextEnabled:true});await host.chapterSettings(request_);
+    assert.equal((await host.chapterStatus({runId:f.run.runId})).contextReadiness.reason,'CHAPTER_EMBEDDING_UNAVAILABLE');await host.turn({runId:f.run.runId,requestId:'ordinary-legacy-turn',input:'Continue with every legal original.'});assert(!f.calls.some(c=>c.stage==='chapter_rerank'));const packet=f.calls.find(c=>c.stage==='director').input.assembly;assert.equal(packet.recentDialogue.length,45);assert.equal(packet.chapterContext.status,'degraded');
   }finally{await host.close();}
 });
 test('3+8 consent survives the actual Host job boundary and reaches the next Director without rolling work',async()=>{
   const f=await setup(),host=await new SceanHost({engine:f.engine,root:join(f.root,'job-consent-host'),chapterModelsEnabled:true,chapterRetrievalEnabled:true}).init();try{
     const consent=await request(f,'job-context-consent',{settings:{autoEnabled:true,tokenThreshold:32000,bufferTurns:6,detail:'auto'},chapterContextEnabled:true});await host.jobs.submit({...consent,kind:'chapterSettings'});await host.jobs.active.get(f.run.runId)?.promise;
-    assert.equal(host.chapterContextArmed.has(f.run.runId),true);await host.turn({runId:f.run.runId,requestId:'host-chapter-context',input:'Recall the compass.'});const packet=f.calls.find(c=>c.stage==='director').input.assembly;assert.equal(packet.chapterContext.retrieved.length,8);assert.equal(packet.rollingSummary,undefined);assert(!f.calls.some(c=>c.stage==='summary'));
+    assert.equal(host.chapterContextArmed.size,0);assert.equal((await host.chapterStatus({runId:f.run.runId})).integratedContextEnabled,true);await host.turn({runId:f.run.runId,requestId:'host-chapter-context',input:'Recall the compass.'});const packet=f.calls.find(c=>c.stage==='director').input.assembly;assert.equal(packet.chapterContext.retrieved.length,8);assert.equal(packet.rollingSummary,undefined);assert(!f.calls.some(c=>c.stage==='summary'));
   }finally{await host.close();}
 });
 test('3+8 actual Director/Draft receive identical 3+8+all raw originals, no duplicate legacy rolling; tools and CR boundaries remain',async()=>{
@@ -136,6 +136,6 @@ test('3+8 backup/restart reconstructs chapter sources and a cold index without p
   const result=await cold.retrieve({run:restored,query:'compass'});assert.deepEqual(ids(result),ids(first));assert.equal(result.diagnostics.cacheHits,0);assert(!JSON.stringify(encodeRunBundle(restored)).includes('scripted-vector'));
   const host=await new SceanHost({engine:f.engine,root:join(f.root,'host'),chapterModelsEnabled:true,chapterRetrievalEnabled:true}).init();
   try{const consent=await request(f,'arm-chapter-context',{settings:{autoEnabled:true,tokenThreshold:32000,bufferTurns:6,detail:'auto'},chapterContextEnabled:true});await host.chapterSettings(consent);assert.equal((await host.chapterStatus({runId:f.run.runId})).chapterContextArmed,true);await host.close();
-    const second=await new SceanHost({engine:f.engine,root:join(f.root,'host'),chapterModelsEnabled:true,chapterRetrievalEnabled:true}).init();try{assert.equal((await second.chapterStatus({runId:f.run.runId})).chapterContextArmed,false);await second.chapterSettings(consent);assert.equal((await second.chapterStatus({runId:f.run.runId})).chapterContextArmed,false);}finally{await second.close();}
+    const second=await new SceanHost({engine:f.engine,root:join(f.root,'host'),chapterModelsEnabled:true,chapterRetrievalEnabled:true}).init();try{assert.equal((await second.chapterStatus({runId:f.run.runId})).integratedContextEnabled,true);await second.chapterSettings(consent);assert.equal((await second.chapterStatus({runId:f.run.runId})).integratedContextEnabled,true);assert.equal(second.chapterContextArmed.size,0);}finally{await second.close();}
   }finally{await host.close();}
 });

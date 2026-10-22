@@ -11,7 +11,7 @@ import {createChapterConfiguration} from '../plugin/chapter-runtime.mjs';
 import {sealChapterKeys} from '../isolated/web/chapter-settings-ui.mjs';
 import {encodeRunBundle} from '../core/save-bundle.mjs';
 
-test('global production configuration factory reaches real Director/Draft ports without key/setting leakage or automatic paid activation',async t=>{
+test('configured production factory connects the saved Run switch despite retired service flags, without key leakage or paid activation on save',async t=>{
  const root=await mkdtemp(join(tmpdir(),'scean-global-runtime-')),run=await chapterRecallFixture(),store=new DurableStore({root:join(root,'store')});await store.create(run);
  const records=new Map(),credentials={async readRecord(k){return structuredClone(records.get(k));},async modifyRecord(k,fn){const old=structuredClone(records.get(k)),next=await fn(old);if(next!==undefined)records.set(k,structuredClone(next));return structuredClone(next??old);}},events=[],calls=[],requests=[];
  const ledger={async reserve(row){events.push(row);return 'synthetic';},async settle(id,row){events.push(row);}};
@@ -24,7 +24,7 @@ test('global production configuration factory reaches real Director/Draft ports 
  }});
  const engine=new SceanEngine({unconfiguredWritingMode:'current',store,model,memory:{async retrieve(){return {records:[]};}}}),host=await new SceanHost({engine,root:join(root,'host'),chapterProviderSettings:configuration.settings,chapterRuntimeFactory:configuration.runtimeFactory}).init(),authority={principal:{},allowGlobalSettings:true};
  try{
-  const status=(await host.request({action:'chapterProviderSettings'},undefined,authority)).value,s=status.settings;for(const name of Object.keys(s.flags))s.flags[name]=true;
+  const status=(await host.request({action:'chapterProviderSettings'},undefined,authority)).value,s=status.settings;s.flags={chapterModelsEnabled:true,chapterRetrievalEnabled:false,chapterEmbeddingEnabled:false};
   s.rerank={mode:'compatible',provider:'',model:'synthetic-rank',baseUrl:'https://synthetic.invalid/v1',environmentFallback:false};
   const save={action:'chapterProviderSave',operationId:'configured-through-real-host',expectedRevision:0,settings:s};save.sealedKeys=await sealChapterKeys(status.keyTransport,save,{embedding:'SYNTHETIC_RUNTIME_EMBED',rerank:'SYNTHETIC_RUNTIME_RANK'});
   assert.equal((await host.request(save,undefined,authority)).ok,true);assert.equal(requests.length,0);assert.equal(host.chapterContextArmed.size,0);

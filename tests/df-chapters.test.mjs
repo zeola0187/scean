@@ -7,9 +7,11 @@ import {DurableStore} from '../adapters/store.mjs';
 import {SceanEngine} from '../core/engine.mjs';
 import {syntheticLongrun,D_PRIVATE} from '../fixtures/synthetic-longrun-d.mjs';
 import {historyArgs,historyModel,syntheticHistoryMemory,playHistory} from '../fixtures/synthetic-history-c.mjs';
-import {autoChapter,backfillChapterSummary,updateChapterSettings,chapterEligibility,chapterSummaryView,validateChapterPayload} from '../core/chapter-summary.mjs';
+import {autoChapter as currentAutoChapter,backfillChapterSummary,updateChapterSettings,legacyChapterEligibility as chapterEligibility,chapterSummaryView,validateChapterPayload} from '../core/chapter-summary.mjs';
 import {validateNarrative,recoverNarrative} from '../core/narrative.mjs';
 import {encodeRunBundle,validateRunBundle} from '../core/save-bundle.mjs';
+// Fixed-buffer v1 remains readable and explicitly callable for deprecated clients.
+const autoChapter=(engine,request,options)=>currentAutoChapter(engine,request,{...options,autoPolicy:'legacy-buffer-v1'});
 const code=c=>e=>e.code===c,copy=structuredClone;
 const settings={autoEnabled:true,tokenThreshold:4000,bufferTurns:2,detail:'auto'};
 const data={title:'港口的承諾',summary:'艾兒承諾歸還羅盤；校準任務仍未完成。角色只知道明確告知的部分。',keywords:['羅盤'],characters:['艾兒','希歐'],locations:['北碼頭'],plotThreads:['校準待完成'],emotionalTone:'期待'};

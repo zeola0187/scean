@@ -33,6 +33,12 @@ export function writerSourceCatalog(assembly,evidence){
  const rows=[{id:'input',kind:'player_input'},{id:'snapshot.card',kind:'public_card_configuration'},{id:'snapshot.worldbook',kind:'selected_public_worldbook'},{id:'snapshot.preset',kind:'public_preset'},{id:'state.public',kind:'prior_public_state'}];
  if(assembly.sources.selectedOpening)rows.push({id:'opening',kind:'fixed_opening'});
  for(const [i,t]of assembly.recentDialogue.entries())rows.push({id:'history:'+i,kind:'historical_reference',...(t.commitId?{commitId:t.commitId}:{})});
+ if(assembly.rollingSummary)rows.push({id:'history:rolling-summary',kind:'historical_summary_reference',summaryId:assembly.rollingSummary.id,startTurn:assembly.rollingSummary.startTurn,endTurn:assembly.rollingSummary.endTurn});
+ const chapterIds=new Set();
+ for(const chapter of [...(assembly.chapterContext?.recent??[]),...(assembly.chapterContext?.retrieved??[])]){
+  if(chapterIds.has(chapter.summaryId))continue;chapterIds.add(chapter.summaryId);
+  rows.push({id:'chapter:'+chapter.summaryId,kind:'public_chapter_summary',chapterId:chapter.chapterId,chapterVersion:chapter.chapterVersion,summaryId:chapter.summaryId,summaryVersion:chapter.summaryVersion,startTurn:chapter.startTurn,endTurn:chapter.endTurn,sourceHash:chapter.sourceHash,status:'historical_reference_not_current_event'});
+ }
  for(const [i,m]of (assembly.memory?.records??[]).entries())rows.push({id:'memory:'+i,kind:'authorized_public_memory',...(m.id?{memoryId:m.id}:{})});
  for(const e of evidence)rows.push({id:e.id,kind:e.kind,status:e.status});
  return rows;

@@ -50,7 +50,7 @@ for(const event of ['wheel','touchmove','pointerdown'])shell.reading.addEventLis
 shell.reading.addEventListener('keydown',event=>{if(['ArrowUp','ArrowDown','PageUp','PageDown','Home','End',' '].includes(event.key))userScrollEpoch++;});
 let narrativeSerial=0,narrativeController=null,narrativeBusy=false,narrativeData=null,recallSerial=0;
 let inspectorSerial=0,activeNarrativeOperation=null;
-let chapterData=null,chapterSerial=0,chapterDetailSerial=0,chapterSettingsDirty=false,chapterRecallDirty=false,selectedChapterId=null;
+let chapterData=null,chapterSerial=0,chapterDetailSerial=0,chapterSettingsDirty=false,selectedChapterId=null;
 const state = { token:null, mode:null, generationBlocked:false,writingMode:'single_writer', interactive:null, enableBusy:false, catalog:[], run:null, draft:null, pending:false, submitting:false, localTurn:null, lastOperation:null, failure:null, composing:false, pollBusy:false, operationUnknown:false, disconnected:false, nextPollAt:0, pollFailures:0, draftTimer:null, draftQueue:Promise.resolve(), chatKey:null };
 const globalChapterSettings=mountChapterSettings({secureContext:secureClient,request:(action,payload,signal)=>api(action,payload,signal),onSaved:()=>{if(view.runId)void refreshChapters();}});
 const writingMode=mountWritingMode({onMode:(mode,runId)=>{if(state.run?.runId===runId){state.writingMode=mode;void refreshModels().catch(()=>{});}},request:(action,payload)=>api(action,payload),secureContext:secureClient});
@@ -61,7 +61,7 @@ const playerIdentity=mountPlayerIdentity({request:(action,payload)=>api(action,p
 function preservePlayerReading(){const anchor=captureReadingAnchor(shell.reading,{allowEnd:false}),top=shell.reading.scrollTop;return()=>{if(anchor)restoreReadingAnchor(shell.reading,anchor);else shell.reading.scrollTop=top;shell.adoptReading?.();};}
 const playerContext=()=>state.run?{...state.run,epoch:nativeContextSerial+':'+view.capture().value,selectionStamp:nativeContextSerial+':'+view.capture().value,sessionId:nativeScopeKey,cardId:state.run.snapshot?.cardId,disabled:state.pending||state.submitting||historyBusy||backupBusy||state.generationBlocked}:null;
 const playerIdeas=mountPlayerIdeas({document,request:(action,payload,signal)=>api(action,payload,signal),getContext:playerContext,preserveReading:preservePlayerReading});
-const playerReaders=mountPlayerReaders({document,request:(action,payload,signal)=>api(action,payload,signal),getContext:playerContext,preserveReading:preservePlayerReading,onNavigate:target=>target.runId===view.runId?loadHistory({anchorCommitId:target.commitId}):undefined});
+const playerReaders=mountPlayerReaders({document,request:(action,payload,signal)=>api(action,payload,signal),getContext:playerContext,preserveReading:preservePlayerReading,onNavigate:target=>{if(target.runId===view.runId){shell.show('story');return loadHistory({anchorCommitId:target.commitId});}}});
 const presentationPanel=mountPresentationPanel({document,request:(action,payload,signal)=>api(action,payload,signal),getContext:playerContext,preserveReading:preservePlayerReading});
 const newBodyOpen=node('button','查看新正文','quiet');newBodyOpen.type='button';newBodyOpen.id='new-body-open';newBodyOpen.hidden=true;document.querySelector('.composer-actions').append(newBodyOpen);
 newBodyOpen.addEventListener('click',()=>{if(storyHead())void loadHistory({anchorCommitId:storyHead()});});
@@ -288,7 +288,7 @@ function resetLongform(){
   historySync.reset();submissionReading=null;
   // Navigation detaches this view; only an explicit cancel stops Host work.
   activeNarrativeOperation=null;
-  chapterSerial++;chapterDetailSerial++;chapterData=null;selectedChapterId=null;chapterSettingsDirty=false;chapterRecallDirty=false;
+  chapterSerial++;chapterDetailSerial++;chapterData=null;selectedChapterId=null;chapterSettingsDirty=false;
   $('chapter-summary-list').replaceChildren();$('chapter-summary-detail').replaceChildren();$('chapter-summary-detail').hidden=true;
   $('chapter-config-status').textContent='尚未讀取分章設定。';$('chapter-operation-status').textContent='';setError('chapter-error',null);
   pageSerial++;pageController?.abort();pageController=null;pageBusy=false;historyPageState=null;loadedTurns=[];
@@ -414,8 +414,6 @@ function chapterControls(){
 function renderChapterIndex(value){
   chapterData=value;const settings=value.settings??{};
   if(!chapterSettingsDirty){$('chapter-auto-enabled').checked=settings.autoEnabled===true;$('chapter-token-threshold').value=settings.tokenThreshold??16000;$('chapter-buffer-turns').value=settings.bufferTurns??6;$('chapter-detail').value=settings.detail??'auto';}
-  if(!chapterRecallDirty)$('chapter-recall-enabled').checked=value.chapterContextArmed===true;
-  $('chapter-recall-enabled').disabled=narrativeBusy||state.pending||state.submitting;
   const eligibility=value.eligibility??{};
   $('chapter-config-status').textContent=chapterAutomationSummary(value);
   if(!narrativeBusy||value.chapterWork)$('chapter-operation-status').textContent=chapterOperationSummary(value);
@@ -594,7 +592,7 @@ function observeOperation(receipt,progress){
     state.localTurn=null;activeNarrativeOperation=null;narrativeBusy=false;regenInput=null;
   }
   if(terminal){state.lastOperation=receipt;if(receipt.failure){state.failure=receipt.failure;setError('turn-error',receipt.failure);}}
-  if(terminal&&receipt.kind==='chapterSettings'&&receipt.status==='completed'){chapterSettingsDirty=false;chapterRecallDirty=false;}
+  if(terminal&&receipt.kind==='chapterSettings'&&receipt.status==='completed'){chapterSettingsDirty=false;}
   return terminal;
 }
 async function reconcile(){
@@ -770,11 +768,10 @@ async function importRun(){
   finally{backupBusy=false;$('import-consent').checked=false;controls();}
 }
 for(const id of ['chapter-auto-enabled','chapter-token-threshold','chapter-buffer-turns','chapter-detail'])$(id).addEventListener('input',()=>{chapterSettingsDirty=true;});
-$('chapter-recall-enabled').addEventListener('change',()=>{chapterRecallDirty=true;chapterSettingsDirty=true;});
 $('chapter-settings-form').addEventListener('submit',event=>{
   event.preventDefault();const settings={autoEnabled:$('chapter-auto-enabled').checked,tokenThreshold:Number($('chapter-token-threshold').value),bufferTurns:Number($('chapter-buffer-turns').value),detail:$('chapter-detail').value};
   if(!Number.isInteger(settings.tokenThreshold)||settings.tokenThreshold<4000||settings.tokenThreshold>32000||!Number.isInteger(settings.bufferTurns)||settings.bufferTurns<0||settings.bufferTurns>50){setError('chapter-error',new Error('門檻必須為 4000–32000，保護回合數必須為 0–50 的整數。'));return;}
-  void mutateChapter('chapterSettings',{settings,...(chapterRecallDirty?{chapterContextEnabled:$('chapter-recall-enabled').checked}:{})});
+  void mutateChapter('chapterSettings',{settings});
 });
 $('chapter-summary-refresh').addEventListener('click',()=>void refreshChapters());
 $('chapter-auto-check').addEventListener('click',()=>void mutateChapter('chapterAuto'));

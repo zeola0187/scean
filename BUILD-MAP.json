@@ -91,6 +91,10 @@
       "source": "core/chapter-summary.mjs"
     },
     {
+      "path": "packages/scean/core/chapter-target.mjs",
+      "source": "core/chapter-target.mjs"
+    },
+    {
       "path": "packages/scean/core/character-advice.mjs",
       "source": "core/character-advice.mjs"
     },

@@ -52,7 +52,7 @@ test('final merge is preflighted with bounded worst-case payloads and actual con
 
 test('source, count, total size and configured limits reject before any dispatch',()=>{
  const rows=turns();const changed=source(rows);changed.commitIds[0]='other';assert.throws(()=>planChapterBatches({...options(rows),source:changed}),code('CHAPTER_BATCH_SOURCE_MISMATCH'));
- assert.throws(()=>planChapterBatches(options(turns(51))),code('CHAPTER_SOURCE_LIMIT'));
+ assert.throws(()=>planChapterBatches(options(turns(1001))),code('CHAPTER_SOURCE_LIMIT'));
  assert.throws(()=>planChapterBatches(options(turns(1,'x'.repeat(16*200000)))),code('CHAPTER_BATCH_COUNT_LIMIT'));
  assert.throws(()=>planChapterBatches(options(rows,{maxBatchBytes:200001})),code('CHAPTER_BATCH_LIMIT_INVALID'));
  assert.throws(()=>planChapterBatches(options(rows,{maxBatches:17})),code('CHAPTER_BATCH_LIMIT_INVALID'));
