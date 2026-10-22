@@ -10,7 +10,7 @@ export function displayValues(frontend,projection) {
   for(const [name,expr] of Object.entries(frontend.conditions))values[name]=evaluateDisplay(expr,projection.values,projection.freshness);
   return values;
 }
-export function renderFrontendDocument(frontend,projection) {
+export function renderFrontendDocument(frontend,projection,{authoringInitial=false}={}) {
   let emitted=0;
   const values=displayValues(frontend,projection),status=v=>projection.freshness!=='current'?'stale':v?.status??'unavailable';
   const show=v=>status(v)==='known'?(typeof v.value==='object'?JSON.stringify(v.value):String(v.value)):{unknown:'未知',unavailable:'不可取得',stale:'資料過期'}[status(v)];
@@ -27,5 +27,5 @@ export function renderFrontendDocument(frontend,projection) {
   }
   // No scripts, network, forms, navigation, embedded documents, or Host bridge.
   // Future isolated JS needs a different, explicitly admitted runtime profile.
-  return '<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'none\'; style-src \'unsafe-inline\'; img-src \'none\'; connect-src \'none\'; font-src \'none\'; base-uri \'none\'; form-action \'none\'"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;padding:16px;font:18px system-ui;overflow-wrap:anywhere}*{box-sizing:border-box;max-width:100%}[hidden]{display:none!important}progress{width:100%}'+frontend.safeCss+'</style></head><body><div role="status">'+escapeHtml(projection.freshness==='current'?'已提交狀態 v'+projection.canonical.version:'資料過期／同步中')+'</div>'+frontend.tree.map(render).join('')+'</body></html>';
+  return '<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'none\'; style-src \'unsafe-inline\'; img-src \'none\'; connect-src \'none\'; font-src \'none\'; base-uri \'none\'; form-action \'none\'"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;padding:16px;font:18px system-ui;overflow-wrap:anywhere}*{box-sizing:border-box;max-width:100%}[hidden]{display:none!important}progress{width:100%}'+frontend.safeCss+'</style></head><body><div role="status">'+escapeHtml(authoringInitial?'作者設定初值（非遊玩狀態）':projection.freshness==='current'?'已提交狀態 v'+projection.canonical.version:'資料過期／同步中')+'</div>'+frontend.tree.map(render).join('')+'</body></html>';
 }

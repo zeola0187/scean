@@ -25,6 +25,7 @@ import {FRONTEND_PROFILE} from '../core/frontend.mjs';
 import {CHAPTER_SETTINGS_ACTIONS} from './chapter-settings.mjs';
 import {generatePlayerIdeas} from '../core/player-ideas.mjs';
 import {playerWorldbook,playerRecap} from '../core/player-readers.mjs';
+import {PlayerReaders,OPERATOR_READ_ACTIONS,requireReaderAuthority} from './reader-host.mjs';
 import {PresentationHost} from './presentation-host.mjs';
 import {changeRunLifecycle,lifecycleView} from '../core/run-lifecycle.mjs';
 const LIFECYCLE_ACTIONS=new Set(['runRecycleList','runLifecycleStatus','runTrash','runRestore']);
@@ -60,6 +61,7 @@ export class SceanHost {
     if(!Number.isSafeInteger(maxConcurrentOperations)||maxConcurrentOperations<1||maxConcurrentOperations>16)fail('HOST_CONCURRENCY','Use a Host concurrency limit between 1 and 16.');
     this.maxConcurrentOperations=maxConcurrentOperations;this.auxRunning=new Map();this.jobs=new HostJobs(this,jobLedgerOptions);this.notifications=new HostNotifications(this,notificationOptions);
     this.agentDiagnostics=new AgentDiagnostics(this);this.diagnosticGrants=new Map();this.running=new Map();this.activeOperations=new Map();this.usedOperations=new Set();this.progressByRun=new Map();this.draftQueues=new Map();this.metadata={schemaVersion:1,runs:[],bindings:[],drafts:{}};this.writeQueue=Promise.resolve();
+    this.playerReaders=new PlayerReaders(this);
   }
   async init(){
     await mkdir(this.root,{recursive:true});
@@ -567,6 +569,7 @@ export class SceanHost {
   async request(request,signal,authority={}){
     try{
       signal?.throwIfAborted();
+      if(OPERATOR_READ_ACTIONS.has(request.action))requireReaderAuthority(request.action,authority);
       if(['playerDefaults','playerDefaultsSave'].includes(request.action))return {ok:true,value:await this.playerDefaultsAction(request,signal,authority)};
       if(CHAPTER_SETTINGS_ACTIONS.has(request.action))return {ok:true,value:await this.chapterProviderAction(request,signal,authority)};
       let value;
@@ -595,6 +598,7 @@ export class SceanHost {
         if(revision>0&&request.expectedLifecycleRevision!==revision)fail('RUN_LIFECYCLE_CHANGED','副本已恢復，請重新讀取後操作；舊頁面的寫入不會自動重送。');
       }
       switch(request.action){
+        case 'playerCollaboration':case 'ownerWorldbook':value=await this.playerReaders.read(request,signal,authority,scope);break;
         case 'runRecycleList':case 'runLifecycleStatus':case 'runTrash':case 'runRestore':{const work=this.runLifecycleAction(request,signal,authority,scope);this.lifecycleSaves??=new Set();this.lifecycleSaves.add(work);try{value=await work;}finally{this.lifecycleSaves.delete(work);}break;}
         case 'playerIdeas':
           if(!authority.principal||authority.allowGlobalSettings!==true)fail('PLAYER_ACTION_DENIED','請由已授權的舞臺操作取得想法。');

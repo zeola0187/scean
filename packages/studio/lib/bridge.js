@@ -14,5 +14,6 @@ export class CardStudioBridge extends TypertRemoteService {
   async setLibraryRoot(agent,request,signal){return this.humanLibrary(agent,request,signal);}
   async sceanControl(agent,request,signal){return this.humanScean(agent,request,signal);}
   async downloadExport(agent,request,signal){return this.humanDownload(agent,request,signal);}
+  async savedPanelPreview(agent,request,signal){return this.humanPanelPreview(agent,request,signal);}
   async request(agent,request,signal) { return this.dispatch(agent,request,signal); }
 }

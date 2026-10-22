@@ -96,6 +96,24 @@ export class DurableStore {
     const attempts = await Promise.all(names.filter(name => name.endsWith('.json')).map(async name => JSON.parse(await this.retrySharingViolation(() => readFile(path.join(dir, name), 'utf8')))));
     return attempts.sort((a, b) => (a.startedAt ?? '').localeCompare(b.startedAt ?? '') || a.attemptId.localeCompare(b.attemptId));
   }
+  // Selected checkpoint only. Reader requests never enumerate/recover audit files.
+  async readAttempt(runId, attemptId) {
+    safeId(runId);safeId(attemptId);let handle;
+    try {
+      handle=await this.retrySharingViolation(()=>open(path.join(this.runDir(runId),'attempts',`${attemptId}.json`),'r'));
+      const info=await handle.stat();
+      if(!info.isFile()||info.size>16*1024*1024)throw new SceanError('ATTEMPT_TOO_LARGE');
+      const text=await handle.readFile('utf8');
+      if(Buffer.byteLength(text,'utf8')>16*1024*1024)throw new SceanError('ATTEMPT_TOO_LARGE');
+      const value=JSON.parse(text);
+      if(value?.attemptId!==attemptId||value.runId!==runId)throw new SceanError('ATTEMPT_IDENTITY_MISMATCH');
+      return value;
+    }catch(error){
+      if(error.code==='ENOENT')throw new SceanError('ATTEMPT_NOT_FOUND');
+      if(error instanceof SyntaxError)throw new SceanError('ATTEMPT_CORRUPT');
+      throw error;
+    }finally{await handle?.close();}
+  }
   async recoverAttempts(runId) {
     if (!this.held.has(runId)) throw new SceanError('LOCK_REQUIRED');
     const run = await this.read(runId);

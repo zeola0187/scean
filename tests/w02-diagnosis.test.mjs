@@ -303,3 +303,29 @@ test('Runtime revocation or Snapshot mismatch during a repair blocks final publi
   const result=await f.invoke('patch',{document_id:f.id,expected_revision:0,patches:[{op:'replace',path:'/data/description',value:'Must never publish'}]},false);assert.equal(result.error.code,mode==='revoke'?'DIAG_DENIED':'DIAG_SNAPSHOT_CHANGED');f.loader.workspace.service.beforeCommit=null;f.engine.inspect=inspect;assert.equal((await f.saved()).revision,0);
  }
 });
+
+for(const phrase of ['確認修改，只改測試欄位','同意這個修改'])for(const route of ['patch','blueprint'])test('owner chat agreement reaches existing '+route+' commit with '+phrase,async t=>{
+ const f=await fixture(t),log=[];f.agent.session.snapshotEvents=()=>log;
+ let expected=0,panel;
+ if(route==='blueprint'){
+  const {w01Fixture}=await import('../fixtures/w01-frontends.mjs');panel=w01Fixture('fantasy');
+  const first=await f.invoke('frontend',{action:'dynamic_save',document_id:f.id,expected_revision:0,blueprint:panel.bp,initial_state:panel.initial,frontend:panel.frontend});assert(first.ok,JSON.stringify(first));expected=1;
+ }
+ const run=await f.start();await f.grant(run.runId);const direction=route==='patch'?'Only clarify description; preserve personality.':'Only adjust the synthetic public mana maximum; keep all narrative text.';
+ await f.tool({action:'prepare_edit',target:'card',direction});log.push(discussion(1),said(2,phrase));
+ const before=await f.saved(),request=route==='patch'?{document_id:f.id,expected_revision:expected,patches:[{op:'replace',path:'/data/description',value:'A clarified synthetic description.'}]}:{action:'dynamic_save',document_id:f.id,expected_revision:expected,blueprint:{...panel.bp,variables:panel.bp.variables.map(v=>v.key==='mana'?{...v,max:120}:v)},initial_state:panel.initial};
+ const result=await f.invoke(route==='patch'?'patch':'frontend',request,false);assert(result.ok,JSON.stringify(result));assert.equal(result.value.revision,expected+1);assert.equal(f.r.diagnosis.approval.source,'owner-conversation');
+ const after=await f.saved();assert.equal(after.card.data.personality,before.card.data.personality);assert.equal(after.card.data.first_mes,before.card.data.first_mes);
+ if(route==='blueprint'){assert.equal(after.card.data.extensions.scean.stateBlueprint.variables.find(v=>v.key==='mana').max,120);assert.equal(after.card.data.description,before.card.data.description);}
+});
+
+test('identical prepare_edit keeps the discussed scope and new owner consent; changed scope requires fresh agreement',async t=>{
+ const f=await fixture(t),log=[];f.agent.session.snapshotEvents=()=>log;const run=await f.start();await f.grant(run.runId);
+ const proposal={action:'prepare_edit',target:'card',direction:'Clarify only description.'};await f.tool(proposal);const original=f.r.diagnosis.proposal;log.push(discussion(1),said(2,'同意這個修改'));
+ const repeated=await f.tool(proposal);assert.equal(repeated.value.reusedProposal,true);assert.equal(f.r.diagnosis.proposal,original);
+ assert((await f.invoke('patch',{document_id:f.id,expected_revision:0,patches:[{op:'replace',path:'/data/description',value:'Clarified fixture.'}]},false)).ok);
+ await f.tool({...proposal,direction:'Change the opening instead.'});assert.equal(f.r.diagnosis.approval,null);
+ const denied=await f.invoke('patch',{document_id:f.id,expected_revision:1,patches:[{op:'replace',path:'/data/first_mes',value:'Must wait.'}]},false);assert.equal(denied.error.code,'DIAG_EDIT_CONSENT');assert.equal(denied.error.details.reason,'proposal_changed_or_message_too_old');
+ log.push(discussion(3),said(4,'我同意這個修改'));
+ assert((await f.invoke('patch',{document_id:f.id,expected_revision:1,patches:[{op:'replace',path:'/data/first_mes',value:'A freshly agreed opening.'}]},false)).ok);
+});

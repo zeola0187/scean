@@ -114,6 +114,7 @@ export async function apply(ctx,config = {}) {
   bridge.resolveSceanScope=sessionId=>resolveSceanCardContext(loader,sessionId);
   bridge.resolveSceanFrontendSource=(sessionId,scope)=>resolveSceanFrontendSource(loader,sessionId,scope);
   bridge.humanDownload=async(agent,request,signal)=>{try{return {ok:true,value:await loader.downloadExport(agent,request,signal)};}catch(error){return errorResult(error);}};
+  bridge.humanPanelPreview=async(agent,request,signal)=>{try{return {ok:true,value:await loader.resolveSavedPanel(agent,request,signal)};}catch(error){return errorResult(error);}};
   bridge.humanScean=async(agent,request,signal)=>{try{return {ok:true,value:await (request.mode?.startsWith('diagnosis_')?sceanDiagnosis.human(agent,request,signal):sceanControl(agent,request,signal))};}catch(error){return errorResult(error);}};
   // Keep the explicit human command for compatibility, but background/UI RPCs
   // use CardStudioBridge and never append command/run or command/done events.

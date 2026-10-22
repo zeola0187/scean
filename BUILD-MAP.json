@@ -103,6 +103,10 @@
       "source": "core/character-sources.mjs"
     },
     {
+      "path": "packages/scean/core/collaboration-reader.mjs",
+      "source": "core/collaboration-reader.mjs"
+    },
+    {
       "path": "packages/scean/core/condition-ast.mjs",
       "source": "core/condition-ast.mjs"
     },
@@ -117,6 +121,14 @@
     {
       "path": "packages/scean/core/derived-facts.mjs",
       "source": "core/derived-facts.mjs"
+    },
+    {
+      "source": "core/dialogue-projection.mjs",
+      "path": "packages/scean/core/dialogue-projection.mjs"
+    },
+    {
+      "source": "core/dialogue.mjs",
+      "path": "packages/scean/core/dialogue.mjs"
     },
     {
       "path": "packages/scean/core/engine.mjs",
@@ -149,6 +161,10 @@
     {
       "path": "packages/scean/core/narrative.mjs",
       "source": "core/narrative.mjs"
+    },
+    {
+      "path": "packages/scean/core/owner-worldbook.mjs",
+      "source": "core/owner-worldbook.mjs"
     },
     {
       "source": "core/player-ideas.mjs",
@@ -191,6 +207,10 @@
       "source": "core/regenerate.mjs"
     },
     {
+      "source": "core/run-lifecycle.mjs",
+      "path": "packages/scean/core/run-lifecycle.mjs"
+    },
+    {
       "path": "packages/scean/core/save-bundle.mjs",
       "source": "core/save-bundle.mjs"
     },
@@ -225,6 +245,10 @@
     {
       "path": "packages/scean/isolated/web/chapter-settings-ui.mjs",
       "source": "isolated/web/chapter-settings-ui.mjs"
+    },
+    {
+      "path": "packages/scean/isolated/web/collaboration-reader-ui.mjs",
+      "source": "isolated/web/collaboration-reader-ui.mjs"
     },
     {
       "path": "packages/scean/isolated/web/condition-ast.mjs",
@@ -371,6 +395,10 @@
       "source": "plugin/protocol.mjs"
     },
     {
+      "path": "packages/scean/plugin/reader-host.mjs",
+      "source": "plugin/reader-host.mjs"
+    },
+    {
       "path": "packages/scean/plugin/studio-handoff.mjs",
       "source": "plugin/studio-handoff.mjs"
     },
@@ -491,6 +519,10 @@
       "source": "sources/card-studio/cardstudio-bundle/lib/character-sources.js"
     },
     {
+      "path": "packages/studio/lib/chat-panel-preview.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/chat-panel-preview.js"
+    },
+    {
       "path": "packages/studio/lib/client-controller.js",
       "source": "sources/card-studio/cardstudio-bundle/lib/client-controller.js"
     },
@@ -573,6 +605,10 @@
     {
       "path": "packages/studio/lib/preview-projection.js",
       "source": "sources/card-studio/cardstudio-bundle/lib/preview-projection.js"
+    },
+    {
+      "path": "packages/studio/lib/saved-panel.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/saved-panel.js"
     },
     {
       "path": "packages/studio/lib/scean-audit-control.js",
@@ -921,18 +957,6 @@
     {
       "path": "packages/studio/skills/tavern-card-format-preservation/references/worldbook-and-edits.md",
       "source": "sources/card-studio/cardstudio-bundle/skills/tavern-card-format-preservation/references/worldbook-and-edits.md"
-    },
-    {
-      "source": "core/run-lifecycle.mjs",
-      "path": "packages/scean/core/run-lifecycle.mjs"
-    },
-    {
-      "source": "core/dialogue.mjs",
-      "path": "packages/scean/core/dialogue.mjs"
-    },
-    {
-      "source": "core/dialogue-projection.mjs",
-      "path": "packages/scean/core/dialogue-projection.mjs"
     }
   ]
 }

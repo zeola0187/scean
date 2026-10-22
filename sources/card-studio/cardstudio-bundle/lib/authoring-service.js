@@ -19,6 +19,7 @@ import { targetContent } from './target-content.js';
 import { targetReadme,imageInstaller } from './target-delivery.js';
 import { gateRead,mutateGate,inspectGates,simulateGates,checkGates } from './worldbook-gating.js';
 import { preflight,repairLoop } from './preflight-check.js';
+import {savedPanelArtifact,renderSavedPanel,boundPanelWriteReceipt} from './saved-panel.js';
 
 const object=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
 const idOK=v=>typeof v==='string'&&/^[a-z][a-z0-9_-]{0,79}$/.test(v)&&!['constructor','prototype','__proto__'].includes(v);
@@ -80,12 +81,12 @@ export class AuthoringCardService extends CardService {
       const mutation=await transform(card,ids,authored,{record,decoded});
       enabled=!!record.authoring||mutation?.authoring===true||Object.hasOwn(options,'restoreAuthoring');
       if(enabled)checkedAuthoring(authored);return mutation;
-    },reason,signal,{...options,snapshotExtras:({bytes,record})=>{
+    },reason,signal,{...options,snapshotExtras:({bytes,record,revision})=>{
       if(!enabled)return {};
       const authoringSha256=sha(Buffer.from(canonical(authored)));
       const composition=Object.hasOwn(options,'restoreComposition')?options.restoreComposition:record.composition;
       if(this.scopePolicy()?.mode==='content'&&canonical(composition??null)!==canonical(record.composition??null))fail('AUTHORING_SCOPE','Material provenance changes require Full mode.');
-      return {authoring:authored,authoringSha256,jointSha256:jointHash(sha(bytes),authoringSha256),...(composition||record.composition?compositionFields(composition,sha(bytes),authoringSha256):{})};
+      return {authoring:authored,authoringSha256,jointSha256:jointHash(sha(bytes),authoringSha256),...(composition||record.composition?compositionFields(composition,sha(bytes),authoringSha256):{}),...(options.savedPanelSession?{savedPanelReceipt:{schemaVersion:1,id:randomUUID(),revision,sessionId:options.savedPanelSession}}:{})};
     }});
     if(enabled){result.authoring_revision=result.revision;result.authoring_sha256=sha(Buffer.from(canonical(authored)));}
     return result;
@@ -211,9 +212,9 @@ export class AuthoringCardService extends CardService {
       return {id:record.id,revision:record.revision,path:relative,card:cardName,files,deliveryKind:'target-package',primaryDelivery:true,...checked,preflight};
     }catch(error){await fs.writeFile(path.join(target,'INCOMPLETE.txt'),'Incomplete target export.').catch(()=>{});throw error;}
   }
-  async frontend(args,signal){
+  async frontend(args,signal,sessionId){
     if(args.action?.startsWith('derived_'))return this.derivedFactsAuthoring(args,signal);
-    if(args.action?.startsWith('dynamic_'))return this.dynamicFrontend(args,signal);
+    if(args.action?.startsWith('dynamic_'))return this.dynamicFrontend(args,signal,sessionId);
     const {record,decoded,authoring}=await this.state(args.document_id);
     const discovered=inspectFrontend(decoded.card,authoring.components,record.entryIds);
     if(args.action==='inspect')return {id:record.id,revision:record.revision,...discovered};
@@ -229,7 +230,7 @@ export class AuthoringCardService extends CardService {
       return {authoring:true};
     },'frontend '+args.action,signal);
   }
-  async dynamicFrontend(args,signal){
+  async dynamicFrontend(args,signal,sessionId){
     const {record,decoded}=await this.state(args.document_id),native=decoded.card.data.extensions?.scean??{},characters=native.characters??[];
     if(args.action==='dynamic_read')return {id:record.id,revision:record.revision,runtimeProfile:'scean-html-bindings-v1',stateBlueprint:native.stateBlueprint??null,initialState:native.initialState??null,frontend:native.frontend??null,...(native.derivedFacts?{derivedFacts:native.derivedFacts}:{})};
     if(args.action==='dynamic_validate'||args.action==='dynamic_preview'){
@@ -240,7 +241,7 @@ export class AuthoringCardService extends CardService {
       return {id:record.id,revision:record.revision,source:preview.source,diagnostics:preview.frontend.bindings.filter(b=>preview.projection.values[b.alias].status!=='known').map(b=>({code:'FRONTEND_VALUE_UNKNOWN',alias:b.alias})),frontend_hash:preview.frontend.hash,...args.action==='dynamic_preview'?{html:renderFrontendDocument(preview.frontend,preview.projection),projection:preview.projection}:{valid:true}};
     }
     if(!['dynamic_save','dynamic_patch'].includes(args.action))fail('FRONTEND_ACTION','Use dynamic_read/validate/preview/save/patch.');
-    return this.commit(record.id,args.expected_revision,(card)=>{
+    const receipt=await this.commit(record.id,args.expected_revision,(card)=>{
       const s=card.data.extensions.scean??={},actors=s.characters??[];
       if(args.blueprint!==undefined)s.stateBlueprint=validateBlueprint(args.blueprint,actors);
       if(args.initial_state!==undefined)s.initialState=clone(args.initial_state);
@@ -256,7 +257,15 @@ export class AuthoringCardService extends CardService {
       }
       s.frontend=frontendPackage(frontend,s.stateBlueprint,actors,s.derivedFacts);if(!s.frontend)fail('FRONTEND_REQUIRED','Provide a versioned dynamic package.');card.data.extensions.scean=s;
       return {authoring:true};
-    },'W01 dynamic frontend '+args.action,signal);
+    },'W01 dynamic frontend '+args.action,signal,{savedPanelSession:sessionId});
+    // Saving and preview availability are separate outcomes. A committed save
+    // remains successful if its optional readonly preview cannot be prepared.
+    try{return boundPanelWriteReceipt(receipt,{panelPreview:savedPanelArtifact(await this.load(receipt.id,receipt.revision),sessionId),panelPreviewStatus:'available'});}
+    catch(error){return boundPanelWriteReceipt(receipt,{panelPreviewStatus:'unavailable',panelPreviewError:{code:error.code??'PANEL_PREVIEW_UNAVAILABLE'}});}
+  }
+  async savedPanelPreview(artifact,sessionId,signal){
+    aborted(signal);const loaded=await this.load(artifact.document_id,artifact.revision);aborted(signal);
+    return renderSavedPanel(loaded,artifact,sessionId);
   }
   async derivedFactsAuthoring(args,signal){
     const {record,decoded}=await this.state(args.document_id),native=decoded.card.data.extensions?.scean??{},actors=native.characters??[];
@@ -462,7 +471,7 @@ export class AuthoringCardService extends CardService {
     if(!object(args)||admitted&&Object.keys(args).some(k=>!admitted.includes(k)))fail('AUTHORING_ARGUMENT','Use only admitted authoring arguments; paths, URLs, credentials and host locators are not accepted.');
     let value;
     if(action==='create')value=await this.create(args,context.sessionId,signal);
-    else if(action==='frontend')value=await this.frontend(args,signal);
+    else if(action==='frontend')value=await this.frontend(args,signal,context.sessionId);
     else if(action==='fixture')value=await this.fixture(args,signal);
     else if(action==='visual_contract')value=await this.visual(args,signal);
     else if(action==='asset')value=await this.assets(args,signal,context.sessionId);

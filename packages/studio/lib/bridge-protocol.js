@@ -16,6 +16,17 @@ export const cardstudioRemote = {
   }],
 };
 
+// Human-only immutable panel read. No arbitrary source, path, HTML or Agent
+// dispatcher action is accepted; the Host rechecks receipt and live authority.
+cardstudioRemote.descriptors.push({
+  ...cardstudioRemote.descriptors[0],id:'@local/dsh-card-studio-scean-test#cardstudioScean/savedPanelPreview',method:'savedPanelPreview',
+  parameters:[cardstudioRemote.descriptors[0].parameters[0],{
+    name:'request',wire:'request',source:'json',codec:{mode:'strict',typeSymbol:'@local/dsh-card-studio-scean-test#HumanSavedPanelPreview',create:()=>({parse(value){
+      if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).some(key=>!['claim','artifact'].includes(key))||!value.claim||!value.artifact||typeof value.artifact!=='object'||Array.isArray(value.artifact))throw new TypeError('Expected a current human page and saved panel receipt.');return value;
+    }})}
+  }]
+});
+
 cardstudioRemote.descriptors.push({
   ...cardstudioRemote.descriptors[0],id:'@local/dsh-card-studio-scean-test#cardstudioScean/setCharacterMethod',method:'setCharacterMethod',
   parameters:[cardstudioRemote.descriptors[0].parameters[0],{

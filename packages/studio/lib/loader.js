@@ -11,6 +11,7 @@ import { methodByName,restoreMethod,hasDialogue,methodInfo,methodSkills } from '
 import path from 'node:path';
 import { ExportDownloads } from './export-download.js';
 import { assertScopeOperation } from './authoring-scope.js';
+import {validSavedPanelArtifact} from './chat-panel-preview.js';
 
 /** Trusted loader. Workspace configuration is data; it cannot name modules, commands, or URLs. */
 export class WorkspaceLoader {
@@ -201,6 +202,29 @@ export class WorkspaceLoader {
     if(selected?.document_id!==download.document_id)fail('STUDIO_SELECTION_CHANGED','The selected working copy changed on another page. Refresh before downloading.');
     const saved=await this.workspace.service.read(download.document_id);if(saved.revision!==download.expected_revision)fail('REVISION_CONFLICT','The saved card changed. Export its current revision again.');
     await this.validate(agent,r,claim);signal?.throwIfAborted();return this.downloads.request(this.uploadOwner(agent,claim),download);
+  }
+  async resolveSavedPanel(agent,request,signal){
+    await this.archiveTask;
+    const r=this.records.get(agent?.id),claim=request?.claim;
+    await this.validate(agent,r,claim);
+    if(!claim)fail('STALE_LEASE','Panel preview requires a current human page.');
+    if(!request||Object.keys(request).some(key=>!['claim','artifact'].includes(key))||!validSavedPanelArtifact(request.artifact))fail('PANEL_RECEIPT','Use an exact saved panel receipt.');
+    const service=this.workspace.service,epoch=r.scope.epoch;
+    const combined=AbortSignal.any([r.controller.signal,r.scopeController.signal,r.pages.get(claim.page_id).controller.signal,AbortSignal.timeout(15000),...signal?[signal]:[]]);
+    const current=async()=>{combined.throwIfAborted();await this.validate(agent,r,claim);if(r.scope.epoch!==epoch||this.workspace?.service!==service)fail('AUTHORING_SCOPE_CHANGED','Preview scope changed.');
+      await service.lifecycle.assertReady(agent.id);
+      const index=await service.associations(),document=index.documents.find(row=>row.id===request.artifact.document_id);
+      if(!document?.sessions.includes(agent.id))fail('PANEL_SESSION','This saved panel does not belong to this Session.');
+      const lifecycle=await service.lifecycle.read(),copy=lifecycle?.copies.find(row=>row.id===request.artifact.document_id);
+      if(copy&&(copy.location!=='active'||copy.pending))fail('PANEL_RECYCLED','Restore the working copy before reading its preview.');
+      combined.throwIfAborted();};
+    // This deliberately bypasses operation()/performOperation(): a historical
+    // preview must not associate, select, initialize or mutate any workspace.
+    const job=service.serial('#workspace-operations',async()=>{await current();const value=await service.savedPanelPreview(request.artifact,agent.id,combined);await current();return value;});
+    r.jobs.add(job);job.finally(()=>r.jobs.delete(job)).catch(()=>{});
+    let abort;
+    const cancelled=new Promise((_,reject)=>{abort=()=>reject(combined.reason);if(combined.aborted)abort();else combined.addEventListener('abort',abort,{once:true});});
+    try{return await Promise.race([job,cancelled]);}finally{combined.removeEventListener('abort',abort);}
   }
   async reviewMaterials(agent,request,signal){
     const r=this.records.get(agent?.id);await this.validate(agent,r,request?.claim);
