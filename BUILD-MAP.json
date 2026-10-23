@@ -215,6 +215,10 @@
       "source": "core/save-bundle.mjs"
     },
     {
+      "path": "packages/scean/core/script-store.mjs",
+      "source": "core/script-store.mjs"
+    },
+    {
       "path": "packages/scean/core/stat-contract.mjs",
       "source": "core/stat-contract.mjs"
     },
@@ -599,6 +603,14 @@
       "source": "sources/card-studio/cardstudio-bundle/lib/presentation-base.js"
     },
     {
+      "path": "packages/studio/lib/preset-default.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/preset-default.js"
+    },
+    {
+      "path": "packages/studio/lib/preset-store.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/preset-store.js"
+    },
+    {
       "path": "packages/studio/lib/preview-css.js",
       "source": "sources/card-studio/cardstudio-bundle/lib/preview-css.js"
     },
@@ -705,6 +717,10 @@
     {
       "path": "packages/studio/lib/w01/isolated/web/frontend-runtime.mjs",
       "source": "sources/card-studio/cardstudio-bundle/lib/w01/isolated/web/frontend-runtime.mjs"
+    },
+    {
+      "path": "packages/studio/lib/work-review.js",
+      "source": "sources/card-studio/cardstudio-bundle/lib/work-review.js"
     },
     {
       "path": "packages/studio/lib/workspace-setup.js",

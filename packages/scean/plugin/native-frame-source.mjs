@@ -11,7 +11,7 @@ export function nativeFrameBootstrap(){
       if(m?.kind==='notification-settings'){for(const handler of notificationHandlers)handler(m.value);return;}
       if(m?.kind==='presentation-environment'){
         if(typeof m.dark!=='boolean')return;
-        presentation=Object.freeze({dark:m.dark});for(const handler of presentationHandlers)handler(presentation);return;
+        presentation=Object.freeze({dark:m.dark,...(m.preferences?.schemaVersion===1?{preferences:m.preferences}:{})});for(const handler of presentationHandlers)handler(presentation);return;
       }
       if(m?.kind!=='response')return;const item=pending.get(m.id);if(!item)return;pending.delete(m.id);item.cleanup();m.ok?item.resolve(m.value):item.reject(Object.assign(new Error(m.error?.message??'Native RPC failed'),m.error));
     };

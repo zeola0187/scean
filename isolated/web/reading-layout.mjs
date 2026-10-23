@@ -11,12 +11,20 @@ export function captureReadingAnchor(reading,{allowEnd=true}={}){
   if(doc.caretPositionFromPoint){const point=doc.caretPositionFromPoint(x,y);if(point){range=doc.createRange();range.setStart(point.offsetNode,point.offset);range.collapse(true);}}
   else range=doc.caretRangeFromPoint?.(x,y);
   if(!range||!text.contains(range.startContainer))return null;
-  return {range,offset:range.getBoundingClientRect().top-box.top};
+  const anchor={range,offset:range.getBoundingClientRect().top-box.top};
+  // Color-only updates replace text nodes, not the body. Keep the equivalent
+  // UTF-16 position so a live Range relocation cannot move the reading anchor.
+  if(range.cloneRange&&doc.createTreeWalker)try{const prefix=range.cloneRange();prefix.selectNodeContents(text);prefix.setEnd(range.startContainer,range.startOffset);anchor.body=text;anchor.textOffset=prefix.toString().length;anchor.textLength=text.textContent.length;}catch{}
+  return anchor;
 }
 export function restoreReadingAnchor(reading,anchor){
   if(!anchor||!reading.isConnected||reading.clientHeight===0)return;
   if(anchor.end){reading.scrollTop=reading.scrollHeight;return;}
   if(Number.isFinite(anchor.top)){reading.scrollTop=anchor.top;return;}
+  if(anchor.body?.isConnected&&reading.contains(anchor.body)&&anchor.body.textContent.length===anchor.textLength&&Number.isSafeInteger(anchor.textOffset)){
+    const doc=reading.ownerDocument,walker=doc.createTreeWalker(anchor.body,4);let node,remaining=anchor.textOffset;
+    while((node=walker.nextNode())){if(remaining<=node.data.length){const range=doc.createRange();range.setStart(node,remaining);range.collapse(true);anchor.range=range;break;}remaining-=node.data.length;}
+  }
   if(!anchor.range.startContainer.isConnected||!reading.contains(anchor.range.startContainer))return;
   reading.scrollTop+=anchor.range.getBoundingClientRect().top-reading.getBoundingClientRect().top-anchor.offset;
 }

@@ -20,6 +20,7 @@ export class MaterialCardService extends LibraryCardService {
       return {...v,identity:{type:'library',source_item_id:v.row.item_id,source_name:v.row.name,relative_path:'library/'+v.row.relative_path,source_sha256:v.source_sha256,snapshot_format:v.decoded.kind==='png'?'png':'json'}};
     }
     keys(ref,['type','document_id','revision','source_sha256']);if(ref.type!=='document'||!identity(ref.document_id)||!Number.isSafeInteger(ref.revision)||!hashOK(ref.source_sha256))fail('MATERIAL_SOURCE','Use a fixed document revision and byte hash.');
+    await this.assertBoundDocument(sessionId,ref.document_id);
     if(!(await this.associations()).documents.some(r=>r.id===ref.document_id&&r.sessions.includes(sessionId)))fail('MATERIAL_SOURCE','Use a working copy associated with this Session.');
     const v=await this.load(ref.document_id,ref.revision),current=await this.load(ref.document_id);if(current.record.revision!==ref.revision||v.record.sha256!==ref.source_sha256)fail('SOURCE_CHANGED','Working copy revision changed. Begin a new extraction.');
     return {...v,bytes:Buffer.from(v.record.bytes,'base64'),identity:{type:'document',document_id:ref.document_id,revision:ref.revision,source_name:v.decoded.card.data.name??v.decoded.card.data.character_book?.name??'Worldbook',relative_path:v.record.source,source_sha256:ref.source_sha256,snapshot_format:v.decoded.kind==='png'?'png':'json',...v.record.librarySource?{library_source:clone(v.record.librarySource)}:{}}};
@@ -27,6 +28,7 @@ export class MaterialCardService extends LibraryCardService {
   async batch(id,sessionId,{review=false}={}){
     if(!identity(id))fail('MATERIAL_ID','Invalid extraction ID.');const b=await this.materials.json('.cardstudio-scean/material-candidates/'+id+'.json',4*1024*1024);
     if(b.extraction_id!==id||b.session_id!==sessionId)fail('MATERIAL_SESSION','Candidate belongs to another Session.');
+    for(const source of b.sources??[])if(source.ref?.type==='document')await this.assertBoundDocument(sessionId,source.ref.document_id);
     if(b.expires_at<=this.materials.now())fail('MATERIAL_EXPIRED','Candidate expired; begin a new extraction.');
     if(b.scope_epoch!==(this.scopePolicy()?.epoch??0))fail('AUTHORING_SCOPE_CHANGED','Candidate belongs to an older scope epoch. Begin again under the current scope.');
     if((b.session_generation??null)!==(this.scopePolicy()?.sessionGeneration??null))fail('MATERIAL_SESSION_EPOCH','Candidate belongs to an older Session generation. Begin a new extraction.');
@@ -76,6 +78,7 @@ export class MaterialCardService extends LibraryCardService {
     return {items:items.slice(offset,offset+limit),total:items.length,offset,limit,coverage:'session-candidates'};
   }
   async humanMaterials(request,signal,{sessionId}){
+    if(!this.bindingContext.getStore())return this.withBindingOperation('material',request,{sessionId},()=>this.humanMaterials(request,signal,{sessionId}));
     if(['recycle','restore'].includes(request?.mode))return this.serial('#workspace-operations',async()=>{
       keys(request,['mode','material_id','record_sha256','expected_recycle_revision','operation_id']);
       if(typeof sessionId!=='string'||!sessionId.trim()||sessionId.length>1024)fail('SESSION','A trusted Session is required.');
@@ -125,6 +128,7 @@ export class MaterialCardService extends LibraryCardService {
     return super.create(narrative,sessionId,signal,composition,async()=>{for(const ref of material_selection)await this.materials.activeItem(ref.material_id,ref.record_sha256);this.assertScopeCurrent();});
   }
   async operation(action,args,signal,context={}){
+    if(!this.bindingContext.getStore())return this.withBindingOperation(action,args,context,()=>this.operation(action,args,signal,context));
     if(action!=='material')return super.operation(action,args,signal,context);
     try{assertScopeOperation(this.scopePolicy(),action,args);if(typeof context.sessionId!=='string'||!context.sessionId.trim())fail('SESSION','Trusted Session required.');await this.lifecycle.assertReady(context.sessionId);const admitted={begin:['sources','intent'],source_read:['extraction_id','source_index','fields','locators','offset','budget'],propose:['extraction_id','expected_revision','candidate_sha256','candidates'],candidates:['offset','limit'],candidate:['extraction_id'],catalog:['offset','limit','kind'],list:['offset','limit','kind'],browse:['offset','limit','kind'],recycle_bin:['offset','limit'],search:['query','query_terms','limit'],read:['material_id','record_sha256','field','offset','budget'],trace:['material_id','record_sha256'],refresh:[],rebuild:[],source_status:['offset','limit'],select:['materials'],selection:[]}[args?.action];if(!admitted)fail('MATERIAL_ACTION','Unknown operation. Agent cannot approve candidates or receipts.');keys(args,['action',...admitted]);
       return await this.serial('#workspace-operations',async()=>{signal?.throwIfAborted();this.assertScopeCurrent();let value;const sessionId=context.sessionId;

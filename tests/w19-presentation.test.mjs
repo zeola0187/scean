@@ -3,10 +3,11 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {normalizePresentation,presentationTheme,loadPresentation,savePresentation,presentationKey,mountPresentation} from '../isolated/web/presentation.mjs';
 const layoutDefaults={darkPalette:'forest',readingWidth:'wide',leftCollapsed:false,rightCollapsed:false};
-test('first use follows system and exact existing large preset; explicit normal survives',()=>{
-  assert.deepEqual(normalizePresentation(null),{schemaVersion:1,theme:'system',readingSize:'large',...layoutDefaults});
+test('first use follows system and normal; saved large survives',()=>{
+  assert.deepEqual(normalizePresentation(null),{schemaVersion:1,theme:'system',readingSize:'normal',...layoutDefaults});
   assert.equal(normalizePresentation({theme:'dark',readingSize:'normal'}).readingSize,'normal');
-  assert.deepEqual(normalizePresentation({theme:'host',readingSize:999,runId:'private'}),{schemaVersion:1,theme:'system',readingSize:'large',...layoutDefaults});
+  assert.equal(normalizePresentation({theme:'dark',readingSize:'large'}).readingSize,'large');
+  assert.deepEqual(normalizePresentation({theme:'host',readingSize:999,runId:'private'}),{schemaVersion:1,theme:'system',readingSize:'normal',...layoutDefaults});
   assert.equal(presentationTheme('system',true),'dark');assert.equal(presentationTheme('light',true),'light');
 });
 test('presentation persists only enums; load does not write; blocked storage is honest',async()=>{

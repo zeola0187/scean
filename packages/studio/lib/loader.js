@@ -99,7 +99,7 @@ export class WorkspaceLoader {
       if(r.scopeChanging||r.scope.epoch!==epoch)fail('AUTHORING_SCOPE_CHANGED','Authoring Scope changed while this operation was pending. Refresh and retry under the current scope.');
       if(selectionBound&&(r.selectionEpoch??0)!==selectionEpoch)fail('STUDIO_SELECTION_CHANGED','The Session selection changed while this operation was pending. Keep the draft and refresh before retrying.');
     };
-    return {mode,epoch,sessionGeneration:r.generation,workspaceGeneration:r.workspaceGeneration,action,args,assertCurrent,...!claim&&repairWrite?{assertCandidate:candidate=>assertDiagnosisCandidate(r,candidate)}:{},validateSelection:async()=>{
+    return {mode,epoch,sessionId:agent.id,sessionGeneration:r.generation,workspaceGeneration:r.workspaceGeneration,action,args,assertCurrent,...!claim&&repairWrite?{assertCandidate:candidate=>assertDiagnosisCandidate(r,candidate)}:{},validateSelection:async()=>{
       assertCurrent();if(!claim&&repairWrite&&diagnosis){await diagnosis.validate?.();assertCurrent();}if(!selectionBound)return;
       const selected=await this.workspace.service.selectedDocument?.(agent.id);assertCurrent();
       if(selected&&selected.document_id!==args.document_id)fail('STUDIO_SELECTION_CHANGED','The saved Session selection differs from this operation. Refresh before writing.');
@@ -180,7 +180,7 @@ export class WorkspaceLoader {
     if(!claim && ![...r.pages.values()].some(lease=>lease.expires>this.now())&&!(r.hostTask&&r.agent.status==='running'&&!r.hostTask.controller.signal.aborted))fail('STALE_LEASE','No live page lease or accepted Host Agent task.');
   }
   async validate(agent,r,claim,{allowArchived=false,task}={}) {if(!allowArchived&&this.archived.has(agent?.id))fail('SESSION_ARCHIVED','Restore this Session in DSH before editing.');if(r&&!r.closing)this.trackHostTask(r);this.assertRecord(agent,r,claim,{task});if(!await this.isCard(agent))fail('WORKSPACE','Session cwd changed or owner no longer exists.');this.assertRecord(agent,r,claim,{task});}
-  async selectionStatus(r,claim){const selected=await this.workspace.service.selectedDocument?.(r.agent.id)??null;r.selected=selected;const lease=r.pages.get(claim.page_id),saved=selected?await this.workspace.service.read(selected.document_id):null,changed=(lease.selection??null)!==(selected?.document_id??null)||(lease.selectionRevision??null)!==(saved?.revision??null);return {document_id:selected?.document_id??null,type:selected?.type??null,revision:saved?.revision??null,sha256:saved?.sha256??null,agent_generation:r.generation,workspace_generation:r.workspaceGeneration,changed};}
+  async selectionStatus(r,claim){const selected=await this.workspace.service.selectedDocument?.(r.agent.id)??null;r.selected=selected;const lease=r.pages.get(claim.page_id),saved=selected?await this.workspace.service.read(selected.document_id):null,changed=(lease.selection??null)!==(selected?.document_id??null)||(lease.selectionRevision??null)!==(saved?.revision??null);return {document_id:selected?.document_id??null,type:selected?.type??null,revision:saved?.revision??null,sha256:saved?.sha256??null,agent_generation:r.generation,workspace_generation:r.workspaceGeneration,changed,binding_status:await this.workspace.service.bindingStatus?.(r.agent.id)??{status:'unbound',document_id:null,legacy_document_id:null}};}
   async renew(agent,claim) {const r=this.records.get(agent.id);await this.validate(agent,r,claim);r.pages.get(claim.page_id).expires=this.now()+this.leaseMs;const selection_status=await this.selectionStatus(r,claim);await this.validate(agent,r,claim);return {active:true,...claim,selection_status,host_task:this.taskInfo(r),authoring_scope:this.scopeInfo(r),character_method:this.methodInfo(r),skills:this.methodSkills(r).map(({name,description})=>({name,description}))};}
   uploadOwner(agent,claim){return claim?{sessionId:agent.id,pageId:claim.page_id,leaseId:claim.lease_id}:agent.id;}
   clearPage(r,pageId,lease){const owner=this.uploadOwner(r.agent,{page_id:pageId,lease_id:lease.id});this.workspace?.service.uploads?.clearOwner(owner);this.workspace?.service.assetUploads?.clearOwner(owner);this.downloads.clear(r.agent.id,pageId,lease.id);}
@@ -213,6 +213,7 @@ export class WorkspaceLoader {
     const combined=AbortSignal.any([r.controller.signal,r.scopeController.signal,r.pages.get(claim.page_id).controller.signal,AbortSignal.timeout(15000),...signal?[signal]:[]]);
     const current=async()=>{combined.throwIfAborted();await this.validate(agent,r,claim);if(r.scope.epoch!==epoch||this.workspace?.service!==service)fail('AUTHORING_SCOPE_CHANGED','Preview scope changed.');
       await service.lifecycle.assertReady(agent.id);
+      await service.assertBoundDocument(agent.id,request.artifact.document_id);
       const index=await service.associations(),document=index.documents.find(row=>row.id===request.artifact.document_id);
       if(!document?.sessions.includes(agent.id))fail('PANEL_SESSION','This saved panel does not belong to this Session.');
       const lifecycle=await service.lifecycle.read(),copy=lifecycle?.copies.find(row=>row.id===request.artifact.document_id);
@@ -248,6 +249,7 @@ export class WorkspaceLoader {
         const upload=service.assetUploads.get(this.uploadOwner(agent,claim),args.upload_id);
         policyArgs={...args,document_id:upload.document_id,expected_revision:upload.expected_revision};
       }
+      if(policyArgs?.document_id&&action!=='open')await service.assertBoundDocument?.(agent.id,policyArgs.document_id);
       const policy=this.scopePolicy(agent,r,claim,action,policyArgs);
       const owned=new AbortController(),onAbort=()=>owned.abort(signal.reason);
       if(signal?.aborted)owned.abort(signal.reason);else signal?.addEventListener('abort',onAbort,{once:true});

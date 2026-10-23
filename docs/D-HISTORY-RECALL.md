@@ -72,10 +72,12 @@ smaller radius; a single oversized turn cannot be read through this bounded tool
 
 ## Paging and navigation
 
-`pageHistory(run, {cursor?, limit=10, anchorCommitId?, runId?})` returns
+`pageHistory(run, {cursor?, limit=10, anchorCommitId?, runId?, presentation=false})` returns
 `{kind:'history_page',label,runId,head,status,turns,hasMore,beforeCursor,
 anchorCommitId,totalActive}`. Each `turns` item contains only
-`{runId,turn,commitId,active:true,locator,input,body}`.
+`{runId,turn,commitId,active:true,locator,input,body}`. The player Host requests
+`presentation:true`, adding only validated `bodyHash` and `dialoguePresentation`
+when available. Search/Read and Agent history keep their existing projections.
 
 Initial requests return the latest 10 turns, ordered oldest to newest. Limit is
 1–20. `beforeCursor` fetches the immediately preceding page, so callers prepend
@@ -85,11 +87,27 @@ cursor positioned before the first turn yields `status:'end'`. Passing a cursor
 and anchor together rejects. Anchor navigation returns a page ending at the
 specified active commit, which necessarily includes that target.
 
-The complete UTF-8 JSON response is at most 65,536 bytes, including metadata and
-cursor. If necessary, the page contains fewer complete turns; its preceding
-cursor still covers all earlier turns without omission or duplication. One turn
-that cannot fit returns `HISTORY_PAGE_TURN_TOO_LARGE`. There is no partial prose
-or implicit widening of C capacity.
+The page data object's serialized UTF-8 JSON is at most 131,072 bytes (128 KiB),
+including its metadata, cursor and presentation. This is a SCEAN page budget,
+not model tokens or the enclosing RPC/HTTP envelope. Default 10 and maximum 20
+turns remain unchanged; actual returned counts can be smaller because of bytes.
+If necessary, reduce the page by whole turns **with their valid presentation**
+first. Its preceding cursor still covers every earlier turn without omission
+or duplication; colors do not disappear merely because several turns share a page.
+
+If a single turn plus its sidecar still exceeds the budget, the page may omit
+that one sidecar and returns `presentationWarning` containing
+`{code:'HISTORY_PRESENTATION_TOO_LARGE',turn}`. The UI explicitly says it retained
+the full prose with neutral color. The warning also counts toward the budget.
+A single complete plain turn that still cannot fit returns
+`HISTORY_PAGE_TURN_TOO_LARGE`; neither original prose nor input is truncated.
+This does not promise every possible turn length or enlarge stored Run capacity.
+
+Late presentation updates repaint existing story elements only when their valid
+display data changes. Identical projections retain their text nodes. A logical
+text offset accompanies reading Ranges so changing inline color spans cannot
+relocate the saved reading anchor. No story/bodyHash/State/Memory mutation is
+part of paging or repainting.
 
 Cursor schema 1 is a bounded opaque base64url JSON value (at most 1,024 chars),
 bound to Run ID, active head, ordered active commit digest and the first returned

@@ -60,10 +60,14 @@ export async function apply(ctx,config={}){
       // UI-only read projection. Never serialize provider settings or credentials.
       if(request.action==='models')return model.describe({signal}).then(info=>({ok:true,value:{mode:'native',source:'DSH authenticated host',selectionSource:info.selectionSource,requested:{provider:info.requested?.provider,model:info.requested?.model},capabilities:{contextWindow:info.capabilities?.contextWindow,outputLimit:info.capabilities?.outputLimit},modelSwitching:false}})).catch(()=>({ok:false,error:{code:'MODEL_DESCRIPTION_UNAVAILABLE',message:'目前無法讀取模型標籤；仍可閱讀已保存故事。'}}));
       return host.request(request,signal,{principal:peer,allowGlobalSettings:true,allowPrivateDiagnostics:true,allowPrivateSaves:true,requireCardScope:true,
-        resolveCardScope:sessionId=>ctx.get('cardstudioSceanBridge')?.resolveSceanScope?.(sessionId),resolvePresentationSource:(sessionId,scope)=>ctx.get('cardstudioSceanBridge')?.resolveSceanFrontendSource?.(sessionId,scope)});
+        resolveCardScope:sessionId=>ctx.get('cardstudioSceanBridge')?.resolveSceanScope?.(sessionId),resolvePlaybackStatus:sessionId=>ctx.get('cardstudioSceanBridge')?.resolveSceanPlaybackStatus?.(sessionId),resolveSourceSession:(sessionId,scope)=>ctx.get('cardstudioSceanBridge')?.resolveSourceSession?.(sessionId,scope),resolvePresentationSource:(sessionId,scope)=>ctx.get('cardstudioSceanBridge')?.resolveSceanFrontendSource?.(sessionId,scope)});
     }
     auditSavedSnapshot(input){return auditSavedSnapshot(input);}
     startFromStudio(request){return host.startFromStudio(request);}
+    publishFromStudio(request){return host.publishFromStudio(request);}
+    scriptStatusFromStudio(request){return host.scriptStatusFromStudio(request);}
+    readScriptFromStudio(request){return host.readScriptFromStudio(request);}
+    startScriptFromStudio(request){return host.startScriptFromStudio(request);}
     inspectFromStudio(request){return host.inspectFromStudio(request);}
     attachInspection(request){return host.attachInspection(request);}
     listDiagnosticRuns(request){return host.agentDiagnostics.list(request);}

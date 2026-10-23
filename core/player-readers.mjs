@@ -79,16 +79,24 @@ export function playerWorldbook(run,args={}){
 
 /** Only active structured chapter payloads; no rolling or handoff summaries. */
 export function playerRecap(run,args={}){
-  const stamp=identity(run,args),id=args.chapterId;
-  if(id!==undefined&&(typeof id!=='string'||!/^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/.test(id)))fail('READER_QUERY_INVALID');
+  const stamp=identity(run,args),id=args.chapterId,cursor=args.cursor??0,limit=args.limit??30;
+  if(!integer(cursor,0,10000)||!integer(limit,1,128)||id!==undefined&&(typeof id!=='string'||!/^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/.test(id)))fail('READER_QUERY_INVALID');
   const active=c=>integer(c.startTurn,1,run.turns?.length??0)&&integer(c.endTurn,c.startTurn,run.turns.length)&&Array.isArray(c.commitIds)&&Array.isArray(c.sourceHashes)&&c.commitIds.length===c.endTurn-c.startTurn+1&&c.commitIds.every((commit,i)=>{const t=run.turns[c.startTurn+i-1];return commit===t.commitId&&c.sourceHashes[i]===hash({commitId:t.commitId,input:t.input,body:t.body});});
   const publicIds=new Set((run.narrative?.chapters??[]).filter(c=>c.visibility==='public'&&c.perspective==='public_story'&&active(c)).map(c=>c.id));
   if(id!==undefined&&!publicIds.has(id))fail('READER_CHAPTER_NOT_FOUND');
   const narrowed=run.narrative?{...run,narrative:{...run.narrative,chapterSummaries:(run.narrative.chapterSummaries??[]).filter(s=>s.visibility==='public'&&s.perspective==='public_story')}}:run;
   const view=chapterSummaryView(narrowed,id);
-  const rows=view.chapters.filter(c=>publicIds.has(c.id)&&c.current&&c.status==='completed').slice(0,128);
-  const chapters=rows.map(c=>({id:c.id,order:c.order,title:c.title,startTurn:c.startTurn,endTurn:c.endTurn,summaryAvailable:!!c.summaryId,summaryStatus:c.summaryStatus,source:{startCommitId:c.source.startCommitId,endCommitId:c.source.endCommitId}}));
-  if(id===undefined)return{...stamp,kind:'recap',status:chapters.length?'ready':'empty',chapters};
+  const rows=view.chapters.filter(c=>publicIds.has(c.id)&&c.current&&c.status==='completed');
+  const chapters=rows.map(c=>{
+    const record=narrowed.narrative?.chapterSummaries?.find(s=>s.id===c.summaryId);
+    const payload=record?validateChapterPayload(record.payload):null;
+    return{id:c.id,order:c.order,title:payload?.title??c.title,startTurn:c.startTurn,endTurn:c.endTurn,summaryAvailable:!!c.summaryId,summaryPreview:payload?.summary.slice(0,320)??null,summaryTruncated:(payload?.summary.length??0)>320,summaryStatus:c.summaryStatus,source:{startCommitId:c.source.startCommitId,endCommitId:c.source.endCommitId}};
+  });
+  if(id===undefined){
+    const start=Math.max(0,...rows.map(c=>c.endTurn)),remaining=(run.turns??[]).slice(start);
+    const unarchived=remaining.length?{title:'尚未歸檔的原文',startTurn:start+1,endTurn:run.turns.length,source:{startCommitId:remaining[0].commitId,endCommitId:remaining.at(-1).commitId}}:null;
+    return{...stamp,kind:'recap',status:chapters.length||unarchived?'ready':'empty',chapters:chapters.slice(cursor,cursor+limit),total:chapters.length,nextCursor:cursor+limit<chapters.length?cursor+limit:null,unarchived};
+  }
   const row=rows.find(c=>c.id===id);if(!row)fail('READER_CHAPTER_NOT_FOUND');
   return{...stamp,kind:'recap',status:row.summary?'ready':'no_summary',chapter:{...chapters.find(c=>c.id===id),summary:row.summary?validateChapterPayload(row.summary):null}};
 }

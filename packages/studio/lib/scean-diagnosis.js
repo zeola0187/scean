@@ -29,7 +29,7 @@ export function createSceanDiagnosis(loader,getService){
     if(targetKind==='worldbook'&&book?.kind!=='saved_document')fail('DIAG_TARGET','Embedded worldbook entries belong to target=card. target=worldbook requires the exact separate saved_document book.');
     const id=targetKind==='worldbook'&&book?.kind==='saved_document'&&sourceId(context)?book.id:targetKind==='card'?sourceId(context):null;
     if(!id)return {status:'snapshot_only',editable:false,reason:'unverified_source_identity',target:null};
-    let saved;try{const result=await loader.call(agent,r,null,'read',{document_id:id});if(!result.ok){if(['ENOENT','DOCUMENT_NOT_FOUND','DOCUMENT_SCOPE'].includes(result.error.code))return {status:'source_missing',editable:false,target:null};fail(result.error.code,result.error.message);}saved=result.value;}
+    let saved;try{const result=await loader.call(agent,r,null,'read',{document_id:id});if(!result.ok){if(['SESSION_CARD_MISMATCH','SESSION_CARD_REQUIRED'].includes(result.error.code))return {status:'target_mismatch',editable:false,targetKind,target:null,reason:'fixed_card_scope'};if(['ENOENT','DOCUMENT_NOT_FOUND','DOCUMENT_SCOPE'].includes(result.error.code))return {status:'source_missing',editable:false,target:null};fail(result.error.code,result.error.message);}saved=result.value;}
     catch(e){if(e.code==='ENOENT')return {status:'source_missing',editable:false,target:null};throw e;}
     const revision=targetKind==='worldbook'?book.revision:context.revision;
     try{

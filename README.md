@@ -1,4 +1,4 @@
-# SCEAN 1.5.0
+# SCEAN 1.6.0
 
 SCEAN combines native Card Studio authoring with saved story openings, dynamic
 card fronts, durable story operations, independent reading sidebars and chapter
@@ -7,6 +7,15 @@ advanced-tavern-card-authoring Skill retains its MIT grant. See [LICENSE](LICENS
 [scope](LICENSE-SCOPE.md) and [third-party notices](THIRD-PARTY-NOTICES.md).
 
 **完整對應原碼／Source:** https://github.com/zeola0187/scean/tree/main
+
+## 1.6.0：創作工作台與閱讀空間
+
+創作入口 → 固定工作卡的自然語言對話 → 檢查 → 保存獨立劇本 → 新演出。
+作品的完整 Preset 可以獨立保存並重載；既有演出維持原版本。
+舞台資訊可展開，輸入與三個操作並排；收合側欄會釋放正文寬度。
+創作入口、創作對話與舞台共用此瀏覽器的 SCEAN 底色，原生對話只保留創作入口與舞臺兩個入口。
+舊演出沿原身份相容，章節原文可向後分頁。完整說明及驗收邊界見
+[1.6.0 說明](docs/RELEASE-1.6.0.zh-TW.md)；[版本下載](https://github.com/zeola0187/scean/releases/tag/v1.6.0)。
 
 ## 2026-10-21：Single Writer 與文風切換
 
@@ -28,7 +37,7 @@ advanced-tavern-card-authoring Skill retains its MIT grant. See [LICENSE](LICENS
 
 無需分支、私有 GitHub token 或 runtime build。套件身分保留為
 `@local/dsh-scean-suite`、`@local/dsh-scean`、
-`@local/dsh-card-studio-scean-test`，三者版本同步為 1.5.0。
+`@local/dsh-card-studio-scean-test`，三者版本同步為 1.6.0。
 最後一個歷史名稱保留以維持既有工作區及升級相容性。
 從先前 1.3.0 使用 DSH 更新操作；舊鎖檔固定的私人 commit 不屬於新的
 公開歷史，不能把重建舊鎖檔當成取得本公開版本的方法。

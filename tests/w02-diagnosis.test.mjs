@@ -22,7 +22,8 @@ export async function fixture(t){
   const host=await new SceanHost({engine,root:join(root,'host'),now:()=>clock.value}).init();
   const workspace=join(root,'studio');await mkdir(workspace);
   const agent={id:'w02-session',status:'idle',session:{header:{cwd:workspace},snapshotEvents:()=>[]},whenIdle:async()=>{},cancel(){}};
-  const loader=new WorkspaceLoader({root:workspace,agentLookup:id=>id===agent.id?agent:null,activateAddon:async()=>({dispose(){}}),now:()=>clock.value});
+  const agents=new Map([[agent.id,agent]]);
+  const loader=new WorkspaceLoader({root:workspace,agentLookup:id=>agents.get(id),activateAddon:async()=>({dispose(){}}),now:()=>clock.value});
   await loader.init();await loader.setArchiveState([]);const claim=await loader.acquire(agent,'w02-human-page'),r=loader.records.get(agent.id);
   t?.after(async()=>{await loader.close();await host.close();});
   const runtime={startFromStudio:q=>host.startFromStudio(q),inspectFromStudio:q=>host.inspectFromStudio(q),listDiagnosticRuns:q=>host.agentDiagnostics.list(q),grantAgentDiagnosis:q=>host.agentDiagnostics.issue(q),readAgentDiagnosis:q=>host.agentDiagnostics.read(q),revokeAgentDiagnosis:q=>host.agentDiagnostics.revoke(q)};
@@ -41,7 +42,12 @@ export async function fixture(t){
   const grant=(runId,args={})=>diagnosis.human(agent,{claim,mode:'diagnosis_grant',runId,...args});
   const tool=args=>diagnosis.call(agent,r,args);
   const human=args=>diagnosis.human(agent,{claim,...args});
-  return {root,workspace,clock,calls,engine,host,loader,agent,r,claim,id,invoke,importCard,saved,scope,start,grant,tool,human,control,runtime,diagnosis};
+  const newSession=async sessionId=>{
+    const peer={...agent,id:sessionId};agents.set(peer.id,peer);const peerClaim=await loader.acquire(peer,sessionId+'-page'),record=loader.records.get(peer.id);
+    return {agent:peer,r:record,claim:peerClaim,invoke:(action,args={},human=true)=>loader.call(peer,record,human?peerClaim:null,action,args),
+      human:args=>diagnosis.human(peer,{claim:peerClaim,...args}),tool:args=>diagnosis.call(peer,record,args)};
+  };
+  return {root,workspace,clock,calls,engine,host,loader,agent,r,claim,id,invoke,importCard,saved,scope,start,grant,tool,human,control,runtime,diagnosis,newSession};
 }
 
 test('C2 binding rejects invalid Runtime identity/relationships before any saved revision and preserves metadata',async t=>{
@@ -121,10 +127,16 @@ test('W02 full offline service loop: real committed Runtime evidence → discuss
 });
 
 test('same-name cards and multiple Runs use exact source IDs; mismatched target cannot edit',async t=>{
- const f=await fixture(t),a=await f.start(),b=await f.start('w02-another-run-0001'),other=await f.importCard('same-name');assert.notEqual(f.id,other);
+ const f=await fixture(t),a=await f.start(),b=await f.start('w02-another-run-0001'),peer=await f.newSession('w02-namesake-session');
+ const namesake=syntheticCard();namesake.data.description='Different same-name card, never the diagnostic source.';
+ await writeFile(join(f.workspace,'imports','same-name.json'),JSON.stringify(namesake));const imported=await peer.invoke('import',{path:'imports/same-name.json',type:'card'});assert(imported.ok,JSON.stringify(imported));const other=imported.value.id;assert.notEqual(f.id,other);
  const listed=await f.human({mode:'diagnosis_list'});assert.equal(listed.items.length,2);assert.notEqual(listed.items[0].runId,listed.items[1].runId);
- const g=await f.grant(a.runId);assert.equal(g.context.cardId,f.id);assert.equal(g.editTarget.status,'target_mismatch');await assert.rejects(f.tool({action:'prepare_edit',direction:'Fix.'}),{code:'DIAG_SOURCE_UNAVAILABLE'});
- await f.invoke('open',{document_id:f.id});await f.grant(b.runId);assert.equal((await f.tool({})).value.runId,b.runId);
+ const before=await f.saved();assert.equal((await peer.invoke('read',{document_id:f.id})).error.code,'SESSION_CARD_MISMATCH');
+ const mismatched=await peer.human({mode:'diagnosis_grant',runId:a.runId});assert.equal(mismatched.context.cardId,f.id);assert.equal(mismatched.editTarget.status,'target_mismatch');
+ const fixed=(await peer.tool({section:'snapshot',field:'card'})).value;assert.equal(fixed.status,'available');assert.deepEqual(JSON.parse(fixed.data.text),before.card);
+ await assert.rejects(peer.tool({action:'prepare_edit',direction:'Fix.'}),{code:'DIAG_SOURCE_UNAVAILABLE'});assert.equal(peer.r.diagnosis.approval,null);assert.deepEqual(await f.saved(),before);
+ const g=await f.grant(a.runId);assert.equal(g.context.cardId,f.id);assert.equal(g.editTarget.status,'available');
+ await f.grant(b.runId);assert.equal((await f.tool({})).value.runId,b.runId);
 });
 
 test('Agent has no implicit Inspector grant and cannot issue grants or consent',async t=>{
@@ -215,13 +227,13 @@ test('forged source UUID/hash with different Snapshot card content is readonly; 
 
 test('standalone worldbook has its own exact source revision, selected repair target and existing book write contract',async t=>{
  const f=await fixture(t);await writeFile(join(f.workspace,'imports','book.json'),JSON.stringify({entries:{'8':{uid:8,key:['lamp'],content:'Standalone lamp.',disable:false,order:0}}}));
- const imported=await f.invoke('import',{path:'imports/book.json',type:'worldbook'});assert(imported.ok,JSON.stringify(imported));const bookId=imported.value.id;
- await f.invoke('open',{document_id:f.id});const card=await f.saved(),bookRead=await f.invoke('read',{document_id:bookId});const snapshot=buildSavedSnapshot(card,{worldbook:bookRead.value});
- const run=await f.host.createRun({snapshot,playerName:'Synthetic tester'});await f.grant(run.runId);await f.invoke('open',{document_id:bookId});
- const context=(await f.tool({})).value;assert.equal(context.editTarget.targetKind,'worldbook');assert.equal(context.editTarget.target.document_id,bookId);
- await f.tool({action:'prepare_edit',target:'worldbook',direction:'Clarify the lamp setting without changing the character.'});await f.human({mode:'diagnosis_consent',expected_revision:0});
- const patched=await f.invoke('book_patch',{document_id:bookId,expected_revision:0,entry_id:'uid:8',changes:{content:'The standalone lamp is silver.'}},false);assert(patched.ok,JSON.stringify(patched));assert.equal(patched.value.revision,1);
- assert.equal((await f.tool({})).value.editTarget.diagnosticRevision,0);assert((await f.tool({})).value.changedFields.includes('entries'));
+ const peer=await f.newSession('w02-worldbook-session'),imported=await peer.invoke('import',{path:'imports/book.json',type:'worldbook'});assert(imported.ok,JSON.stringify(imported));const bookId=imported.value.id;
+ const card=await f.saved(),bookRead=await peer.invoke('read',{document_id:bookId});assert(bookRead.ok,JSON.stringify(bookRead));const snapshot=buildSavedSnapshot(card,{worldbook:bookRead.value});
+ const run=await f.host.createRun({snapshot,playerName:'Synthetic tester'});await peer.human({mode:'diagnosis_grant',runId:run.runId});
+ const context=(await peer.tool({})).value;assert.equal(context.editTarget.targetKind,'worldbook');assert.equal(context.editTarget.target.document_id,bookId);
+ await peer.tool({action:'prepare_edit',target:'worldbook',direction:'Clarify the lamp setting without changing the character.'});await peer.human({mode:'diagnosis_consent',expected_revision:0});
+ const patched=await peer.invoke('book_patch',{document_id:bookId,expected_revision:0,entry_id:'uid:8',changes:{content:'The standalone lamp is silver.'}},false);assert(patched.ok,JSON.stringify(patched));assert.equal(patched.value.revision,1);
+ assert.equal((await peer.tool({})).value.editTarget.diagnosticRevision,0);assert((await peer.tool({})).value.changedFields.includes('entries'));assert.deepEqual(await f.saved(),card);
  const old=await f.engine.store.read(run.runId);assert.equal(old.snapshot.worldbook.entries['8'].content,'Standalone lamp.');
 });
 

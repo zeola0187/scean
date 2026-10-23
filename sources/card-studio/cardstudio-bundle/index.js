@@ -1,6 +1,7 @@
 import {createSceanDiagnosis,diagnosisGuidance} from './lib/scean-diagnosis.js';
-import { createSceanControl, resolveSceanCardContext,resolveSceanFrontendSource } from './lib/scean-integration.js';
+import { createSceanControl, resolveSceanCardContext,resolveSceanFrontendSource,resolveSceanSourceSession,resolveSceanPlaybackStatus } from './lib/scean-integration.js';
 import { createSceanAuditControl } from './lib/scean-audit-control.js';
+import {createWorkReview} from './lib/work-review.js';
 import { CardStudioBridge } from './lib/bridge.js';
 import { defineTool } from '@deepseek-ai/dsh-tools';
 import { WorkspaceLoader } from './lib/loader.js';
@@ -58,7 +59,7 @@ export async function apply(ctx,config = {}) {
           async execute(args,exec){
             const action=operation==='document'?args.action:operation;
             if(operation==='document' && !['check','repair','history','diff','rollback','export','export_bundle','export_target','export_backup'].includes(action))return {ok:false,error:{code:'ACTION',message:'Choose check/repair/history/diff/rollback/export/export_bundle/export_target/export_backup.'}};
-            const result=operation==='scean_diagnose' ? await sceanDiagnosis.call(exec.agent,r,args,exec.signal).catch(error=>errorResult(error)) : operation==='scean_audit' ? await sceanAudit(exec.agent,r,args,exec.signal).catch(error=>errorResult(error)) : await loader.call(exec.agent,r,null,action,args,exec.signal);
+            const result=operation==='scean_review' ? await workReview.call(exec.agent,r,args,exec.signal).catch(error=>errorResult(error)) : operation==='scean_diagnose' ? await sceanDiagnosis.call(exec.agent,r,args,exec.signal).catch(error=>errorResult(error)) : operation==='scean_audit' ? await sceanAudit(exec.agent,r,args,exec.signal).catch(error=>errorResult(error)) : await loader.call(exec.agent,r,null,action,args,exec.signal);
             if(!result.ok&&result.error.code==='ENOENT'&&r.selected?.document_id&&args.document_id&&args.document_id!==r.selected.document_id){
               // Diagnostic only: never redirect a read/write or turn a native failure into success.
               return {...result,error:{...result.error,details:{...result.error.details,selected_document_id:r.selected.document_id,selection_hint:'If the human meant the selected working copy, copy this exact ID and read again once. The failed operation was not redirected or applied.'}}};
@@ -75,7 +76,8 @@ export async function apply(ctx,config = {}) {
   let sceanService=null;
   ctx.inject(['scean'],scope=>{sceanService=scope.scean;scope.effect(()=>()=>{sceanService=null;},'scean optional consumer');});
   const sceanDiagnosis=createSceanDiagnosis(loader,()=>sceanService);
-  const sceanControl=createSceanControl(loader,()=>sceanService);
+  const workReview=createWorkReview(loader);
+  const sceanControl=createSceanControl(loader,()=>sceanService,workReview);
   const sceanAudit=createSceanAuditControl(loader,()=>sceanService);
   observeGeneratedAssets(ctx,loader);
   let clientCapabilityRequestAt,hostState='starting',clientRegistry={available:false},archiveRecycle={state:'unavailable'},statusQueue=Promise.resolve();
@@ -112,6 +114,8 @@ export async function apply(ctx,config = {}) {
   };
   const bridge=new CardStudioBridge(ctx,dispatch,async(agent,request,signal)=>{try{return {ok:true,value:await loader.setAuthoringScope(agent,request,signal)};}catch(error){return errorResult(error);}},async(agent,request,signal)=>{try{return await loader.reviewMaterials(agent,request,signal);}catch(error){return errorResult(error);}},async(agent,request,signal)=>{try{return {ok:true,value:await loader.setCharacterMethod(agent,request,signal)};}catch(error){return errorResult(error);}},async(agent,request,signal)=>{try{return {ok:true,value:await loader.setLibraryRoot(agent,request,signal)};}catch(error){return errorResult(error);}});
   bridge.resolveSceanScope=sessionId=>resolveSceanCardContext(loader,sessionId);
+  bridge.resolveSceanPlaybackStatus=sessionId=>resolveSceanPlaybackStatus(loader,sessionId);
+  bridge.resolveSourceSession=(sessionId,cardScope)=>resolveSceanSourceSession(loader,sessionId,cardScope);
   bridge.resolveSceanFrontendSource=(sessionId,scope)=>resolveSceanFrontendSource(loader,sessionId,scope);
   bridge.humanDownload=async(agent,request,signal)=>{try{return {ok:true,value:await loader.downloadExport(agent,request,signal)};}catch(error){return errorResult(error);}};
   bridge.humanPanelPreview=async(agent,request,signal)=>{try{return {ok:true,value:await loader.resolveSavedPanel(agent,request,signal)};}catch(error){return errorResult(error);}};

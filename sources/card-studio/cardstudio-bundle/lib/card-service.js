@@ -21,6 +21,10 @@ export function exportFolderName(value,limit=64) {
 }
 const aborted = signal => signal?.throwIfAborted();
 const sessionIdentity = id => typeof id === 'string' && id.trim() && id.length <= 1024;
+// All service instances in this Host share admission/publication queues. A
+// recreated loader must not race a draining instance when fixing a Session.
+const workspaceQueues=new Map();
+const createsWorkingCopy=new Set(['create','import','library_copy','upload_begin','upload_finish']);
 function mergeMetadata(base,update){
   if(!base||!update||typeof base!=='object'||typeof update!=='object'||Array.isArray(base)||Array.isArray(update))return clone(update);
   const result=clone(base);
@@ -92,12 +96,41 @@ function diff(a,b,prefix='') {
 export class CardService {
   constructor(root, { beforeCommit,lifecycleHooks } = {}) {
     this.root = root; this.beforeCommit = beforeCommit; this.queues = new Map(); this.closing = false;
-    this.scopeContext=new AsyncLocalStorage();
+    this.scopeContext=new AsyncLocalStorage();this.bindingContext=new AsyncLocalStorage();
     this.uploads=new UploadBuffer();
     this.lifecycle=new ArchiveLifecycle({root,contained:(relative,options)=>contained(root,relative,options),atomicReplace,associations:()=>this.associations(),hooks:lifecycleHooks});
   }
   withAuthoringScope(policy,fn){return this.scopeContext.run(policy,fn);}
   scopePolicy(){return this.scopeContext.getStore();}
+  withBindingOperation(action,args,context,fn){
+    if(!sessionIdentity(context.sessionId))return Promise.resolve(errorResult(new CardError('SESSION','A trusted DSH Session identity is required.')));
+    return this.bindingContext.run({sessionId:context.sessionId,uploadOwner:context.uploadOwner??context.sessionId,action,args},fn);
+  }
+  async bindingStatus(sessionId){
+    if(!sessionIdentity(sessionId))fail('SESSION','A trusted DSH Session identity is required.');
+    const index=await this.associations(),binding=index.bindings?.find(row=>row.sessionId===sessionId);
+    return {status:binding?'bound':'unbound',document_id:binding?.documentId??null,legacy_document_id:binding?null:index.selections.find(row=>row.sessionId===sessionId)?.documentId??null};
+  }
+  async assertBoundDocument(sessionId,id){
+    const binding=await this.bindingStatus(sessionId);
+    if(binding.status!=='bound')fail('SESSION_CARD_REQUIRED','Explicitly select a working card for this conversation before reading or editing it.',binding);
+    if(binding.document_id!==id)fail('SESSION_CARD_MISMATCH','This conversation is fixed to another working card. Open a new conversation for another card.',binding);
+    return binding;
+  }
+  async assertBindingOperation(){
+    const context=this.bindingContext.getStore();if(!context)return;
+    const binding=await this.bindingStatus(context.sessionId);
+    if(context.action==='asset_upload_finish'){
+      const upload=this.assetUploads.get(context.uploadOwner,context.args.upload_id);
+      await this.assertBoundDocument(context.sessionId,upload.document_id);
+    }
+    if(createsWorkingCopy.has(context.action)&&binding.status==='bound')fail('SESSION_CARD_BOUND','This conversation already has a fixed working card. Create or import another card in a new conversation.',binding);
+    if(context.args?.document_id){
+      if(context.action==='open'){
+        if(binding.status==='bound'&&binding.document_id!==context.args.document_id)fail('SESSION_CARD_BOUND','This conversation cannot switch its fixed working card.',binding);
+      }else await this.assertBoundDocument(context.sessionId,context.args.document_id);
+    }
+  }
   assertScopeCurrent(){this.scopePolicy()?.assertCurrent?.();}
   async init() {
     for (const dir of ['imports','exports','.cardstudio-scean','.cardstudio-scean/documents']) await fs.mkdir(path.join(this.root,dir),{ recursive:true });
@@ -109,6 +142,13 @@ export class CardService {
     return files.filter(x => x.isFile() && /\.(json|png)$/i.test(x.name)).slice(0,100).map(x => 'imports/' + x.name);
   }
   async load(id, revision) {
+    const context=this.bindingContext.getStore()??(this.scopePolicy()?.sessionId?this.scopePolicy():null);
+    if(context){
+      const binding=await this.bindingStatus(context.sessionId);
+      const selectionRead=context.action==='open'&&context.args.document_id===id&&binding.status==='unbound';
+      const catalogRead=context.action==='documents'&&binding.status==='unbound';
+      if(!selectionRead&&!catalogRead)await this.assertBoundDocument(context.sessionId,id);
+    }
     if (!safeName(id)) fail('DOCUMENT', 'Invalid document id.');
     const directory = await contained(this.root,`.cardstudio-scean/documents/${id}`,{existing:true});
     let rev = revision;
@@ -122,8 +162,9 @@ export class CardService {
   }
   async serial(id, fn) {
     if (this.closing) fail('CLOSING','Workspace is closing.');
-    const prior = this.queues.get(id) ?? Promise.resolve(); const job = prior.catch(() => {}).then(fn); this.queues.set(id,job);
-    try { return await job; } finally { if (this.queues.get(id) === job) this.queues.delete(id); }
+    const shared=['#workspace-operations','#working-copy-sessions'].includes(id),key=shared?await canonicalRoot(this.root)+':'+id:id,queues=shared?workspaceQueues:this.queues;
+    const prior = queues.get(key) ?? Promise.resolve(); const job = prior.catch(() => {}).then(async()=>{if(id==='#workspace-operations')await this.assertBindingOperation();return fn();});queues.set(key,job);this.queues.set(id,job);
+    try { return await job; } finally { if(queues.get(key)===job)queues.delete(key);if(this.queues.get(id)===job)this.queues.delete(id); }
   }
   async import(relative, type, signal, librarySource) {
     aborted(signal);
@@ -162,12 +203,35 @@ export class CardService {
     }catch(error){await handle?.close();if(written)await fs.unlink(destination);throw error;}
   }
   async selectedDocument(sessionId){
-    const id=(await this.associations()).selections.find(row=>row.sessionId===sessionId)?.documentId;
+    const id=(await this.bindingStatus(sessionId)).document_id;
     if(!id)return null;
     // Keep the persisted identity for restoration, but never replace a missing
     // source or let it prevent lease renewal and Snapshot-only diagnosis.
     try{const {record}=await this.load(id);return {document_id:record.id,type:record.type};}
     catch(error){if(error.code==='ENOENT')return null;throw error;}
+  }
+  // Playback/navigation compatibility only. A pre-upgrade explicit selection
+  // remains exact lineage evidence, but is NOT a fixed authoring binding.
+  // This read never associates, migrates, chooses by name, or grants tools.
+  async selectedPlaybackDocument(sessionId){
+    const index=await this.associations(),binding=index.bindings?.find(row=>row.sessionId===sessionId),selection=index.selections.find(row=>row.sessionId===sessionId);
+    const id=binding?.documentId??selection?.documentId;if(!id)return null;
+    const life=await this.lifecycle.read(),copy=life?.copies.find(row=>row.id===id);
+    if(copy&&(copy.location!=='active'||copy.pending))return null;
+    try{const {record}=await this.load(id);return {document_id:record.id,type:record.type,authoringBindingRequired:!binding};}
+    catch(error){if(error.code==='ENOENT')return null;throw error;}
+  }
+  // A bounded availability hint, never a source payload or authorization grant.
+  // In particular, a recycled journal entry is not made readable or restored.
+  async playbackStatus(sessionId){
+    const index=await this.associations(),binding=index.bindings?.find(row=>row.sessionId===sessionId),selection=index.selections.find(row=>row.sessionId===sessionId);
+    const id=binding?.documentId??selection?.documentId;
+    if(!id)return {status:'unselected'};
+    const flags={authoringBindingRequired:!binding},life=await this.lifecycle.read(),copy=life?.copies.find(row=>row.id===id);
+    if(copy?.pending)return {status:'source_pending',...flags};
+    if(copy?.location==='recycled')return {status:'source_recycled',...flags};
+    const selected=await this.selectedPlaybackDocument(sessionId);
+    return {status:selected?.type==='card'?'available':selected?'unselected':'source_missing',...flags};
   }
   async commit(id, expected, transform, reason, signal, { restoringSnapshot=false,restoredBytes,snapshotExtras } = {}) {
     return this.serial(id,async () => {
@@ -220,6 +284,14 @@ export class CardService {
         if(!sessionIdentity(row.sessionId)||sessions.has(row.sessionId)||!value.documents.some(d=>d.id===row.documentId&&d.sessions.includes(row.sessionId)))fail('ASSOCIATIONS','Invalid working-copy selection.');
         sessions.add(row.sessionId);
       }
+      if(value.bindings!==undefined){
+        if(!Array.isArray(value.bindings))fail('ASSOCIATIONS','Invalid fixed conversation bindings.');
+        const bound=new Set();
+        for(const row of value.bindings){
+          if(!sessionIdentity(row.sessionId)||bound.has(row.sessionId)||!safeName(row.documentId)||!value.selections.some(s=>s.sessionId===row.sessionId&&s.documentId===row.documentId))fail('ASSOCIATIONS','Invalid fixed conversation binding.');
+          bound.add(row.sessionId);
+        }
+      }
       return value;
     } catch(error) {if(error.code==='ENOENT')return {schemaVersion:1,documents:[],selections:[]};throw error;}
   }
@@ -228,6 +300,14 @@ export class CardService {
     if(!safeName(id))fail('DOCUMENT','Invalid document id.');
     return this.serial('#working-copy-sessions',async()=>{
       aborted(signal);const value=await this.associations();let changed=false;
+      const binding=value.bindings?.find(row=>row.sessionId===sessionId);
+      if(binding&&binding.documentId!==id)fail(selected?'SESSION_CARD_BOUND':'SESSION_CARD_MISMATCH','This conversation cannot access another working card.',{status:'bound',document_id:binding.documentId,legacy_document_id:null});
+      if(selected&&!binding){
+        // Validate identity before binding, without admitting an unbound general
+        // read. Existing selections remain legacy until this explicit action.
+        await this.scopeContext.run(undefined,()=>this.bindingContext.run(undefined,()=>this.load(id)));
+        (value.bindings??=[]).push({sessionId,documentId:id});changed=true;
+      }
       let row=value.documents.find(d=>d.id===id);
       // An old unassociated copy remains legacy even after a user reuses it.
       // Neither export bindings nor snapshot contents establish ownership.
@@ -238,23 +318,31 @@ export class CardService {
         if(!selection){selection={sessionId,documentId:id};value.selections.push(selection);changed=true;}
         else if(selection.documentId!==id){selection.documentId=id;changed=true;}
       }
-      if(changed)await atomicReplace(await contained(this.root,'.cardstudio-scean/working-copy-sessions.json'),Buffer.from(JSON.stringify(value)+'\n'),signal);
+      if(changed){
+        try{await atomicReplace(await contained(this.root,'.cardstudio-scean/working-copy-sessions.json'),Buffer.from(JSON.stringify(value)+'\n'),signal);}
+        catch(error){
+          // A response may be lost after rename. Never replace a committed
+          // binding on retry; reread the authoritative file before reporting.
+          let actual;try{actual=await this.associations();}catch{fail('SESSION_BINDING_UNKNOWN','Could not confirm the conversation binding. Refresh before retrying.');}
+          if(!selected||!actual.bindings?.some(row=>row.sessionId===sessionId&&row.documentId===id))throw error;
+        }
+      }
       await this.lifecycle.usedSession(sessionId);
     });
   }
   async documents(sessionId,{scope='session',offset=0,limit=50}={}) {
     if(!sessionIdentity(sessionId))fail('SESSION','A trusted DSH Session identity is required.');
     if(!['session','all'].includes(scope)||!Number.isSafeInteger(offset)||offset<0||!Number.isSafeInteger(limit)||limit<1||limit>100)fail('LIST','Invalid working-copy list scope or page.');
-    const associations=await this.associations(),byId=new Map(associations.documents.map(d=>[d.id,d]));
+    const associations=await this.associations(),byId=new Map(associations.documents.map(d=>[d.id,d])),binding_status=await this.bindingStatus(sessionId);
     const dir=await contained(this.root,'.cardstudio-scean/documents',{existing:true});
-    const rows=(await fs.readdir(dir,{withFileTypes:true})).filter(x=>x.isDirectory()&&(scope==='all'||byId.get(x.name)?.sessions.includes(sessionId))).sort((a,b)=>a.name.localeCompare(b.name));
+    const rows=(await fs.readdir(dir,{withFileTypes:true})).filter(x=>x.isDirectory()&&(binding_status.status==='bound'?x.name===binding_status.document_id:scope==='all'||byId.get(x.name)?.sessions.includes(sessionId))).sort((a,b)=>a.name.localeCompare(b.name));
     const items=[];
     for(const row of rows.slice(offset,offset+limit)){
-      const {record}=await this.load(row.name),association=byId.get(row.name);
-      items.push({id:record.id,revision:record.revision,type:record.type,source:record.source,legacy:!association||association.origin==='legacy',shared:(association?.sessions.length??0)>1});
+      const {record,decoded}=await this.load(row.name),association=byId.get(row.name);
+      items.push({id:record.id,name:String(record.type==='worldbook'?decoded.card.data.character_book?.name??'Worldbook':decoded.card.data.name??'').slice(0,500),revision:record.revision,type:record.type,source:record.source,legacy:!association||association.origin==='legacy',shared:(association?.sessions.length??0)>1});
     }
-    const selected=associations.selections.find(s=>s.sessionId===sessionId)?.documentId??null;
-    return {items,total:rows.length,scope,offset,limit,selectedId:rows.some(row=>row.name===selected)?selected:null};
+    const selected=binding_status.document_id;
+    return {items,total:rows.length,scope,offset,limit,selectedId:rows.some(row=>row.name===selected)?selected:null,binding_status};
   }
   async patch(id,expected,patches,signal) {
     return this.commit(id,expected,(card,ids)=>{
@@ -422,6 +510,7 @@ export class CardService {
   async synchronizeArchiveState(ids){return this.serial('#workspace-operations',()=>this.lifecycle.reconcile(ids));}
   async prepareRecycleRollback(){return this.serial('#workspace-operations',()=>this.lifecycle.prepareRollback());}
   async operation(action,args,signal,context={}) {
+    if(!this.bindingContext.getStore())return this.withBindingOperation(action,args,context,()=>this.operation(action,args,signal,context));
     try{assertScopeOperation(this.scopePolicy(),action,args);return await this.serial('#workspace-operations',async()=>{assertScopeOperation(this.scopePolicy(),action,args);await this.scopePolicy()?.validateSelection?.();return this.performOperation(action,args,signal,context);});}catch(error){return errorResult(error);}
   }
   async performOperation(action,args,signal,context={}) {

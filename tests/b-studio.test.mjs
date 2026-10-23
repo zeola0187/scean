@@ -14,7 +14,7 @@ import {Memory} from '../core/memory.mjs';
 
 const card=(roster=true)=>({spec:'chara_card_v2',spec_version:'2.0',data:{name:'Synthetic Studio keeper',description:'saved r1',personality:'Calm',scenario:'A synthetic observatory',first_mes:'Welcome to the quiet observation deck.',mes_example:'',creator_notes:'Synthetic fixture only',system_prompt:'',post_history_instructions:'',alternate_greetings:['Welcome to the synthetic harbor.'],tags:[],creator:'SCEAN synthetic test',character_version:'1',extensions:roster?{scean:{characters:[{id:'keeper',name:'Keeper',description:'A synthetic station keeper.'}]}}:{},character_book:{entries:[{id:1,keys:['lamp'],content:'A silver lamp stands on the desk.',enabled:true,insertion_order:0,extensions:{}}]}}});
 const b64=value=>Buffer.from(typeof value==='object'&&!Buffer.isBuffer(value)?JSON.stringify(value):value).toString('base64');
-async function fixture(t,{absent=false,clock}={}){
+async function fixture(t,{absent=false,clock,sourceCard=card()}={}){
   const root=await mkdtemp(join(tmpdir(),'scean-studio-b-'));let calls=0;
   const host=await new SceanHost({engine:new SceanEngine({unconfiguredWritingMode:'current',store:new DurableStore({root:join(root,'rp')}),model:{generate(){calls++;throw Error('No model allowed in Studio integration');}},memory:new Memory()}),root:join(root,'host')}).init();
   const bridge=await new IsolatedStudioBridge({root:join(root,'studio'),sceanHost:absent?null:host,...clock?{now:()=>clock.value}:{}}).init();
@@ -22,7 +22,7 @@ async function fixture(t,{absent=false,clock}={}){
   const acquired=await bridge.request({action:'studio.acquire',pageId:'studio-test-page-0001'});assert(acquired.ok,JSON.stringify(acquired));
   const claim=acquired.value.claim;
   const request=(action,args={})=>bridge.request({action:'studio.'+action,claim,...(action==='handoff'?{playerName:'Synthetic player'}:{}),...args});
-  const imported=await request('import',{fileName:'synthetic.json',type:'card',base64:b64(card())});assert(imported.ok,JSON.stringify(imported));
+  const imported=await request('import',{fileName:'synthetic.json',type:'card',base64:b64(sourceCard)});assert(imported.ok,JSON.stringify(imported));
   return {root,bridge,host,claim,request,id:imported.value.id};
 }
 
@@ -41,11 +41,10 @@ const initial=()=>({schemaVersion:1,blueprintId:'research-ship',blueprintVersion
 const save=(f,extra={})=>({documentId:f.id,expectedRevision:0,expectedScopeEpoch:f.claim.authoring_scope.epoch,authorizeBlueprintSave:true,stateBlueprint:bp(),initialState:initial(),...extra});
 
 test('B Studio saves Blueprint/InitialState through original revision/codec and preserves extension metadata',async t=>{
- const f=await fixture(t),original=card();original.data.extensions.other={preserve:'yes'};original.data.extensions.scean.future={preserve:true};
- const imported=await f.request('import',{fileName:'bp.json',type:'card',base64:b64(original)});assert(imported.ok);
- const saved=await f.request('patch',save(f,{documentId:imported.value.id}));assert(saved.ok,JSON.stringify(saved));assert.equal(saved.value.blueprintSaved,true);assert.equal(saved.value.rosterSaved,false);assert.equal(saved.value.scopeRestored,true);
- const read=await f.request('read',{documentId:imported.value.id});assert.equal(read.value.revision,1);assert.deepEqual(read.value.card.data.extensions.other,{preserve:'yes'});assert.deepEqual(read.value.card.data.extensions.scean.future,{preserve:true});assert.deepEqual(read.value.card.data.extensions.scean.stateBlueprint,bp());
- const exported=await f.request('export',{documentId:imported.value.id,expectedRevision:1});assert(exported.ok);const exportedCard=JSON.parse(Buffer.from(exported.value.base64,'base64'));assert.deepEqual(exportedCard.data.extensions.scean.initialState,initial());
+ const original=card();original.data.extensions.other={preserve:'yes'};original.data.extensions.scean.future={preserve:true};const f=await fixture(t,{sourceCard:original});
+ const saved=await f.request('patch',save(f));assert(saved.ok,JSON.stringify(saved));assert.equal(saved.value.blueprintSaved,true);assert.equal(saved.value.rosterSaved,false);assert.equal(saved.value.scopeRestored,true);
+ const read=await f.request('read',{documentId:f.id});assert.equal(read.value.revision,1);assert.deepEqual(read.value.card.data.extensions.other,{preserve:'yes'});assert.deepEqual(read.value.card.data.extensions.scean.future,{preserve:true});assert.deepEqual(read.value.card.data.extensions.scean.stateBlueprint,bp());
+ const exported=await f.request('export',{documentId:f.id,expectedRevision:1});assert(exported.ok);const exportedCard=JSON.parse(Buffer.from(exported.value.base64,'base64'));assert.deepEqual(exportedCard.data.extensions.scean.initialState,initial());
 });
 
 test('B Studio rejects missing authorization, stale scope, invalid actor/type/unit/task before scope transition',async t=>{
@@ -113,10 +112,9 @@ test('B player state presentation uses public projection, shows latest value del
 
 
 test('B imported saved blueprint may omit InitialState: new Run remains unknown; orphan InitialState is rejected',async t=>{
- const f=await fixture(t),unknown=card();unknown.data.extensions.scean.stateBlueprint=bp();
- const imported=await f.request('import',{fileName:'unknown-initial.json',type:'card',base64:b64(unknown)});assert(imported.ok,JSON.stringify(imported));
- const handed=await f.request('handoff',{documentId:imported.value.id,expectedRevision:0,presetId:'scean-default'});assert(handed.ok,JSON.stringify(handed));assert.equal(Object.hasOwn(handed.value.snapshot,'initialState'),false);
+ const unknown=card();unknown.data.extensions.scean.stateBlueprint=bp();const f=await fixture(t,{sourceCard:unknown});
+ const handed=await f.request('handoff',{documentId:f.id,expectedRevision:0,presetId:'scean-default'});assert(handed.ok,JSON.stringify(handed));assert.equal(Object.hasOwn(handed.value.snapshot,'initialState'),false);
  const run=await f.host.inspect(handed.value.runId);assert(run.worldView.declared.length>0);assert(run.worldView.declared.every(row=>row.known===false));assert.deepEqual(run.state.world,{});
- const orphan=card();orphan.data.extensions.scean.initialState=initial();const bad=await f.request('import',{fileName:'orphan-initial.json',type:'card',base64:b64(orphan)});assert(bad.ok);
- const rejected=await f.request('handoff',{documentId:bad.value.id,expectedRevision:0,presetId:'scean-default'});assert.equal(rejected.error.code,'INITIAL_STATE_WITHOUT_BLUEPRINT');
+ const orphan=card();orphan.data.extensions.scean.initialState=initial();const other=await fixture(t,{sourceCard:orphan});
+ const rejected=await other.request('handoff',{documentId:other.id,expectedRevision:0,presetId:'scean-default'});assert.equal(rejected.error.code,'INITIAL_STATE_WITHOUT_BLUEPRINT');
 });

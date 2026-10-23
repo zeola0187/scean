@@ -155,6 +155,7 @@
       <div class="history-pagination"><button id="history-earlier" type="button" class="quiet" disabled>載入更早原文</button><button id="history-latest" type="button" class="quiet" disabled>回到近期原文</button><span id="history-page-status" class="hint" role="status">尚未開局。</span></div>
       <p id="history-page-error" class="error" role="alert" hidden></p>
       <div id="chat" class="chat" role="log" aria-label="已保存對話" aria-live="polite" aria-relevant="additions"></div>
+      <div class="history-next-pagination"><button id="history-later" type="button" class="quiet" disabled hidden>載入後續原文</button></div>
       <div id="provisional" class="provisional" hidden><strong>本輪輸入 · 尚未提交</strong><p id="pending-input"></p></div>
       <section class="composer" aria-label="本輪輸入">
         <section id="interactive-activation" class="activation" aria-label="本次啟動的模型使用授權" hidden>
@@ -165,9 +166,9 @@
         </section>
         <div id="progress" role="status" aria-live="polite"></div>
         <form id="turn-form">
-          <label for="input" class="sr-only">你的行動或對話</label>
-          <textarea id="input" rows="2" maxlength="20000" aria-label="你的行動或對話" aria-keyshortcuts="Control+Enter Meta+Enter" placeholder="例如：我走進休息室，向大家打聲招呼。" disabled></textarea>
-          <div class="composer-actions"><span id="draft-status" class="hint sr-only" role="status">開局後即可輸入。Enter 換行；Ctrl / ⌘ + Enter 送出。</span><button id="cancel" type="button" class="quiet" hidden>取消本輪</button><button id="send" type="submit" disabled>送出</button></div>
+          <label for="input">輪到你了</label>
+          <textarea id="input" rows="2" maxlength="20000" aria-label="你的行動或對話" aria-keyshortcuts="Control+Enter Meta+Enter" placeholder="說一句話，或描述你想做的事…" disabled></textarea>
+          <div class="composer-actions"><span id="draft-status" class="hint sr-only" role="status">開局後即可輸入。Enter 換行；Ctrl / ⌘ + Enter 送出。</span><button id="cancel" type="button" class="quiet" hidden>取消本輪</button><button id="send" type="submit" disabled>送出行動 ↑</button></div>
         </form>
         <div id="turn-error" class="error" role="alert" hidden></div>
         <div class="recovery"><button id="retry" type="button" hidden>重試同一輸入</button><button id="recheck" type="button" class="quiet" hidden>查詢儲存結果</button></div>

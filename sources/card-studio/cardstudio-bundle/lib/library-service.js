@@ -39,6 +39,7 @@ export class LibraryCardService extends AuthoringCardService {
     });
   }
   async operation(action,args,signal,context={}){
+    if(!this.bindingContext.getStore())return this.withBindingOperation(action,args,context,()=>this.operation(action,args,signal,context));
     if(!['library','library_copy','library_folder','library_image'].includes(action))return super.operation(action,args,signal,context);
     try{
       assertScopeOperation(this.scopePolicy(),action,args);signal?.throwIfAborted();if(this.closing)fail('CLOSING','Workspace is closing.');

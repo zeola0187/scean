@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtemp,readFile,mkdir} from 'node:fs/promises';
+import {mkdtemp,readFile,mkdir,writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {deflateSync} from 'node:zlib';
@@ -11,10 +11,11 @@ import {SceanHost} from '../plugin/host.mjs';
 import {SceanEngine} from '../core/engine.mjs';
 import {DurableStore} from '../adapters/store.mjs';
 import {Memory} from '../core/memory.mjs';
+import {MaterialCardService} from '../sources/card-studio/cardstudio-bundle/lib/material-service.js';
 
 const card=(roster=true)=>({spec:'chara_card_v2',spec_version:'2.0',data:{name:'Synthetic Studio keeper',description:'saved r1',personality:'Calm',scenario:'A synthetic observatory',first_mes:'Welcome to the quiet observation deck.',mes_example:'',creator_notes:'Synthetic fixture only',system_prompt:'',post_history_instructions:'',alternate_greetings:['Welcome to the synthetic harbor.'],tags:[],creator:'SCEAN synthetic test',character_version:'1',extensions:roster?{scean:{characters:[{id:'keeper',name:'Keeper',description:'A synthetic station keeper.'}]}}:{},character_book:{entries:[{id:1,keys:['lamp'],content:'A silver lamp stands on the desk.',enabled:true,insertion_order:0,extensions:{}}]}}});
 const b64=value=>Buffer.from(typeof value==='object'&&!Buffer.isBuffer(value)?JSON.stringify(value):value).toString('base64');
-async function fixture(t,{absent=false,clock}={}){
+async function fixture(t,{absent=false,clock,sourceCard=card(),skipImport=false}={}){
   const root=await mkdtemp(join(tmpdir(),'scean-studio-a-'));let calls=0;
   const host=await new SceanHost({engine:new SceanEngine({unconfiguredWritingMode:'current',store:new DurableStore({root:join(root,'rp')}),model:{generate(){calls++;throw Error('No model allowed in Studio integration');}},memory:new Memory()}),root:join(root,'host')}).init();
   const bridge=await new IsolatedStudioBridge({root:join(root,'studio'),sceanHost:absent?null:host,...clock?{now:()=>clock.value}:{}}).init();
@@ -22,8 +23,8 @@ async function fixture(t,{absent=false,clock}={}){
   const acquired=await bridge.request({action:'studio.acquire',pageId:'studio-test-page-0001'});assert(acquired.ok,JSON.stringify(acquired));
   const claim=acquired.value.claim;
   const request=(action,args={})=>bridge.request({action:'studio.'+action,claim,...(action==='handoff'?{playerName:'Synthetic player'}:{}),...args});
-  const imported=await request('import',{fileName:'synthetic.json',type:'card',base64:b64(card())});assert(imported.ok,JSON.stringify(imported));
-  return {root,bridge,host,claim,request,id:imported.value.id};
+  let id;if(!skipImport){const imported=await request('import',{fileName:'synthetic.json',type:'card',base64:b64(sourceCard)});assert(imported.ok,JSON.stringify(imported));id=imported.value.id;}
+  return {root,bridge,host,claim,request,id};
 }
 
 test('real Studio saved revisions, worldbook/preset/roster/opening snapshot and SCEAN Inspector binding',async t=>{
@@ -43,17 +44,17 @@ test('real Studio saved revisions, worldbook/preset/roster/opening snapshot and 
 test('actual standalone worldbook read is fixed with expected revision, no fallback',async t=>{
   const f=await fixture(t);
   const book={name:'Synthetic book',entries:{'8':{uid:8,key:['harbor'],content:'Only a synthetic harbor.',disable:false,order:0}}};
-  const imported=await f.request('import',{fileName:'worldbook.json',type:'worldbook',base64:b64(book)});assert(imported.ok,JSON.stringify(imported));
+  const peer=new MaterialCardService(f.bridge.root);await peer.init();t.after(()=>peer.close());await writeFile(join(f.bridge.root,'imports','worldbook.json'),JSON.stringify(book));
+  const imported=await peer.operation('import',{path:'imports/worldbook.json',type:'worldbook'},undefined,{sessionId:'isolated-book-session'});assert(imported.ok,JSON.stringify(imported));
   const handed=await f.request('handoff',{documentId:f.id,expectedRevision:0,worldbookDocumentId:imported.value.id,worldbookRevision:0,presetId:'scean-default'});assert(handed.ok,JSON.stringify(handed));
   assert.equal(handed.value.snapshot.source.worldbook.kind,'saved_document');assert.equal(handed.value.snapshot.worldbook.entries['8'].content,book.entries['8'].content);
   const stale=await f.request('handoff',{documentId:f.id,expectedRevision:0,worldbookDocumentId:imported.value.id,worldbookRevision:99,presetId:'scean-default'});assert.equal(stale.error.code,'SCEAN_REVISION');
 });
 
 test('missing or stale lease/revision and implicit single-character inference are rejected',async t=>{
-  const clock={value:1000},f=await fixture(t,{clock});
+  const clock={value:1000},f=await fixture(t,{clock,sourceCard:card(false)});
   for(const request of [{action:'studio.read',documentId:f.id},{action:'studio.read',claim:{...f.claim,lease_id:'forged'},documentId:f.id},{action:'studio.handoff',claim:f.claim,documentId:f.id,expectedRevision:99,presetId:'scean-default'},{action:'studio.read',claim:f.claim,documentId:'foreign-document'}])assert.equal((await f.bridge.request(request)).ok,false);
-  const plain=await f.request('import',{fileName:'single.json',type:'card',base64:b64(card(false))});assert(plain.ok);
-  const req={documentId:plain.value.id,expectedRevision:0,presetId:'scean-default'};
+  const req={documentId:f.id,expectedRevision:0,presetId:'scean-default'};
   assert.equal((await f.request('handoff',req)).error.code,'SCEAN_ROSTER_REQUIRED');
   assert.equal((await f.request('handoff',{...req,singleCharacter:true})).error.code,'STUDIO_ROSTER_SAVE_REQUIRED');
   assert.equal((await f.request('handoff',{...req,roster:card().data.extensions.scean.characters})).error.code,'STUDIO_ROSTER_SAVE_REQUIRED');
@@ -94,13 +95,14 @@ test('accepted handoff drains to a durable receipt when authoring lease closes d
 });
 
 test('PNG upload uses original parser, validates CRC, rejects paths and arbitrary source filenames',async t=>{
-  const f=await fixture(t),header=Buffer.alloc(13);header.writeUInt32BE(1,0);header.writeUInt32BE(1,4);header[8]=8;header[9]=6;
+  const f=await fixture(t,{skipImport:true}),header=Buffer.alloc(13);header.writeUInt32BE(1,0);header.writeUInt32BE(1,4);header[8]=8;header[9]=6;
   const png=Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]),pngChunk('IHDR',header),pngChunk('tEXt',Buffer.from('chara\0'+b64(card()))),pngChunk('IDAT',deflateSync(Buffer.from([0,0,0,0,0]))),pngChunk('IEND',Buffer.alloc(0))]);
   const imported=await f.request('import',{fileName:'safe.png',type:'card',base64:b64(png)});assert(imported.ok,JSON.stringify(imported));const saved=await f.request('read',{documentId:imported.value.id});assert.equal(saved.value.format,'png');
-  const corrupt=Buffer.from(png);corrupt[32]^=1;assert.equal((await f.request('import',{fileName:'bad.png',type:'card',base64:b64(corrupt)})).error.code,'PNG_CRC');
-  for(const fileName of ['../outside.json','C:\\private.json','folder/card.json'])assert.equal((await f.request('import',{fileName,type:'card',base64:b64(card())})).error.code,'UPLOAD_NAME');
+  assert.equal((await f.request('import',{fileName:'second.json',type:'card',base64:b64(card())})).error.code,'SESSION_CARD_BOUND');
+  const unbound=await fixture(t,{skipImport:true}),corrupt=Buffer.from(png);corrupt[32]^=1;assert.equal((await unbound.request('import',{fileName:'bad.png',type:'card',base64:b64(corrupt)})).error.code,'PNG_CRC');
+  for(const fileName of ['../outside.json','C:\\private.json','folder/card.json'])assert.equal((await unbound.request('import',{fileName,type:'card',base64:b64(card())})).error.code,'UPLOAD_NAME');
   assert.equal((await f.request('import',{path:'E:\\private.json',type:'card'})).error.code,'STUDIO_UPLOAD_BYTES');
-  assert.equal((await f.request('export',{documentId:f.id,expectedRevision:0,fileName:'../outside.json'})).error.code,'EXPORT_NAME');
+  assert.equal((await f.request('export',{documentId:imported.value.id,expectedRevision:0,fileName:'../outside.json'})).error.code,'EXPORT_NAME');
 });
 
 test('vendor source closure matches recorded original hashes and contains no SDK/external imports',async()=>{
@@ -146,11 +148,10 @@ test('roster save requires explicit authorization, current scope, revision and l
 });
 
 test('plain card explicit roster save creates only missing parent, preserves other extensions and works without SCEAN',async t=>{
-  const f=await fixture(t,{absent:true}),plain=card(false);plain.data.extensions={other:{keep:true}};
-  const imported=await f.request('import',{fileName:'unrostered.json',type:'card',base64:b64(plain)});assert(imported.ok);
-  const saved=await f.request('patch',rosterSave(f,multiRoster(),{documentId:imported.value.id}));assert(saved.ok,JSON.stringify(saved));
-  const read=await f.request('read',{documentId:imported.value.id});assert.deepEqual(read.value.card.data.extensions.other,{keep:true});assert.deepEqual(read.value.roster,multiRoster());
-  const exported=await f.request('export',{documentId:imported.value.id,expectedRevision:1});assert(exported.ok);assert.deepEqual(JSON.parse(Buffer.from(exported.value.base64,'base64')).data.extensions.other,{keep:true});
+  const plain=card(false);plain.data.extensions={other:{keep:true}};const f=await fixture(t,{absent:true,sourceCard:plain});
+  const saved=await f.request('patch',rosterSave(f,multiRoster()));assert(saved.ok,JSON.stringify(saved));
+  const read=await f.request('read',{documentId:f.id});assert.deepEqual(read.value.card.data.extensions.other,{keep:true});assert.deepEqual(read.value.roster,multiRoster());
+  const exported=await f.request('export',{documentId:f.id,expectedRevision:1});assert(exported.ok);assert.deepEqual(JSON.parse(Buffer.from(exported.value.base64,'base64')).data.extensions.other,{keep:true});
 });
 
 test('failed scoped roster patch restores content and queued page release drains successful save',async t=>{

@@ -34,7 +34,7 @@
         "path": "core/engine.mjs",
         "line": 210,
         "symbol": "async turn",
-        "sha256": "ea5e1f4a5f254413938ca0ab0609ef0ad68c79fc6cb76fa46522712d9edeaea4",
+        "sha256": "a14385681be682a33cdbd41b128c0000af5d853f907eb4d84ea5cf8569342145",
         "priorSha256": "13f418aabc85cd1e6ae9b6ef5920db7e92aafc5cf9d9dd6c5f50ddd9de6cf907",
         "playerNameBaselineSha256": "23686d04b743925c5c94bbb21fd1418984db7cea17ca75580243ee6321ba21e7",
         "beforeDialogueColorsSha256": "f4a83d514153d2d5531f0ec1b9919196a819adffd8dffe729ba0b23d9911228f"
@@ -55,7 +55,7 @@
         "path": "core/engine.mjs",
         "line": 390,
         "symbol": "ownerPacket",
-        "sha256": "ea5e1f4a5f254413938ca0ab0609ef0ad68c79fc6cb76fa46522712d9edeaea4",
+        "sha256": "a14385681be682a33cdbd41b128c0000af5d853f907eb4d84ea5cf8569342145",
         "priorSha256": "13f418aabc85cd1e6ae9b6ef5920db7e92aafc5cf9d9dd6c5f50ddd9de6cf907",
         "playerNameBaselineSha256": "23686d04b743925c5c94bbb21fd1418984db7cea17ca75580243ee6321ba21e7",
         "beforeDialogueColorsSha256": "f4a83d514153d2d5531f0ec1b9919196a819adffd8dffe729ba0b23d9911228f"
@@ -316,7 +316,7 @@
         "path": "core/save-bundle.mjs",
         "line": 9,
         "symbol": "export",
-        "sha256": "bef38a4fca6324796df8e9d839ed92e81c21b66e2eff5a6e88d161fe665dbf42",
+        "sha256": "92c8eed1f5e808d8e6793f7ba40e0cde53081b578b9a72325061859e25253500",
         "priorSha256": "844896a425489603e0c4a8ddbffa5e439671fb035d70724baf0fee0ec1b01813",
         "playerNameBaselineSha256": "844896a425489603e0c4a8ddbffa5e439671fb035d70724baf0fee0ec1b01813",
         "beforeDialogueColorsSha256": "b6d6936abf29ce6103bfd3a278a9dfe808b85b8ae2f8ae89f323eab53ecc2e7b"
@@ -397,7 +397,7 @@
         "path": "sources/card-studio/cardstudio-bundle/lib/scean-integration.js",
         "line": 49,
         "symbol": "Card JavaScript",
-        "sha256": "16edb69704b16ff036466fdb1c9dc92007c0f91313d68314b5a464534d8bbe31",
+        "sha256": "44a4196a837451fc22516094369d93f61ea99b3eb95c197345f6d7e0bed0ee63",
         "priorSha256": "95153467540cd9633b9b46d92a37e5a28fbe8c273e575d757eee92065f007f8b",
         "beforeDialogueColorsSha256": "7a8c5a0f189a49eb5eec56a6926b28693d215bfc5dfca64e48b8d6664b60c171"
       },
@@ -417,7 +417,7 @@
         "path": "core/engine.mjs",
         "line": 131,
         "symbol": "no configured numerical dice runner",
-        "sha256": "ea5e1f4a5f254413938ca0ab0609ef0ad68c79fc6cb76fa46522712d9edeaea4",
+        "sha256": "a14385681be682a33cdbd41b128c0000af5d853f907eb4d84ea5cf8569342145",
         "priorSha256": "13f418aabc85cd1e6ae9b6ef5920db7e92aafc5cf9d9dd6c5f50ddd9de6cf907",
         "playerNameBaselineSha256": "23686d04b743925c5c94bbb21fd1418984db7cea17ca75580243ee6321ba21e7",
         "beforeDialogueColorsSha256": "f4a83d514153d2d5531f0ec1b9919196a819adffd8dffe729ba0b23d9911228f"
@@ -438,7 +438,7 @@
         "path": "plugin/player-native-bridge.mjs",
         "line": 2,
         "symbol": "export",
-        "sha256": "ff594ad8848fcb03ea846edb286193ce624ecd87f8212b8b0979115d8a06d8c7",
+        "sha256": "9340836e3abb8aefe9099807ffe6d74091dd32a90b3fb3f41e114bb2f237e18d",
         "priorSha256": "d3b890dccd81f954368ad04120a6c3510a764522cda132222d7c4bf2a3215f7d",
         "playerNameBaselineSha256": "44ba5afdea62fe9638fc29fe45350d9bee53af16c705555a4ec61d7d05fa458b",
         "beforeRunRecycleSha256": "02d19075c10ae36e73461b5d48ad7ba00c49a2e242f253a0002c7b7882933050"
@@ -523,7 +523,7 @@
         "path": "sources/card-studio/cardstudio-bundle/index.js",
         "line": 52,
         "symbol": "addonCtx.tools.register",
-        "sha256": "527ebcedc13ac9ad1894c0e8cc027bc48638be18c2d023b74039d80c51d38065",
+        "sha256": "94af8a4dc2035511a1e38beba33895a31e49d5376d738c19b34821b2151e59a4",
         "priorSha256": "5bd327c74759dd237a40d2a7c39aabb9f0e06a2b6c4ea5073792bb568f6bd182",
         "previousCandidateSource": {
           "path": "authoring/.integration/cardstudio/index.js",
@@ -552,7 +552,7 @@
         "path": "plugin/index.js",
         "line": 59,
         "symbol": "TRUSTED_CLIENT_REQUIRED",
-        "sha256": "a005d2308337a796b3666ba491940f954b0bebfb87b2c19c83aca7702f214a75",
+        "sha256": "b8c2aac640f8e4d33621378bca1c93bcc015f40fd62b323fa7a408a482332917",
         "priorSha256": "c147be085f45389c7687bfebda4cff106e5ca3997f6ebd891baa6c94f067cd7e",
         "beforeDialogueColorsSha256": "eebefd4f0dbb37a5a640debe8b0a8d00aa37e4d5fba05a8771081deb5986797f"
       },
@@ -610,7 +610,7 @@
         "path": "isolated/web/player-shell.mjs",
         "line": 6,
         "symbol": "export",
-        "sha256": "6cda278631c5e9691114a73de00c48c815d22003b76f18a462973fd86b6c1cab",
+        "sha256": "14e94382fcdc5db9b002b1f56a0249781be04f9366a25ca4e097de4e06de24bd",
         "priorSha256": "58b26e8cf1b1366bfcc974cb28b30ae3173003fdba2df8c6bc44cc4389a53cca",
         "beforePublic142Sha256": "ab3bfe7e1552fb5ad9ff8e971059603b9f706e9ef4774d4c4cbb30161c9b5f07",
         "public142Note": "Reviewed 1.4.2 version/source-offer metadata alignment; capability checks remain enforced.",

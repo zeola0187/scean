@@ -80,10 +80,17 @@ cardstudioRemote.descriptors.push({
         if(value.mode==='diagnosis_grant'&&typeof value.runId!=='string'||value.mode==='diagnosis_consent'&&!Number.isSafeInteger(value.expected_revision))throw new TypeError('Exact Run or saved repair revision is required.');
         return value;
       }
-      const keys=['mode','claim','document_id','expected_revision','worldbook_document_id','worldbook_revision','preset','characters','characters_revision','runId','binding','request_id'];
-      if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).some(k=>!keys.includes(k))||!['start','inspect','attach'].includes(value.mode)||!value.claim)throw new TypeError('Expected a current human SCEAN control request.');
-      if(value.mode==='start'&&(typeof value.document_id!=='string'||!Number.isSafeInteger(value.expected_revision)))throw new TypeError('Select a saved revision.');
-      if(value.mode!=='start'&&(typeof value.runId!=='string'||!value.binding))throw new TypeError('Explicit inspection binding is required.');
+      const fields={start:['document_id','expected_revision','expected_preset_revision','worldbook_document_id','worldbook_revision','preset','characters','characters_revision','request_id'],prepare:['document_id','expected_revision','expected_preset_revision','worldbook_document_id','worldbook_revision','preset','characters','characters_revision'],publish:['document_id','expected_revision','expected_preset_revision','worldbook_document_id','worldbook_revision','preset','characters','characters_revision','request_id'],prepareStatus:['request_id'],startScript:['script_id','script_hash','expected_revision','request_id'],inspect:['runId','binding'],attach:['runId','binding'],presetRead:['document_id'],presetSave:['document_id','expected_revision','expected_preset_revision','preset','operation_id'],presetStatus:['document_id','operation_id']};
+      const allowed=fields[value?.mode];
+      if(!value||typeof value!=='object'||Array.isArray(value)||!allowed||Object.keys(value).some(k=>!['mode','claim',...allowed].includes(k))||!value.claim)throw new TypeError('Expected a current human SCEAN control request.');
+      if(['start','prepare','publish'].includes(value.mode)&&(typeof value.document_id!=='string'||!Number.isSafeInteger(value.expected_revision)))throw new TypeError('Select a saved revision.');
+      if(['publish','prepareStatus','startScript'].includes(value.mode)&&(typeof value.request_id!=='string'||!/^[A-Za-z0-9-]{16,100}$/.test(value.request_id)))throw new TypeError('Use a stable publication or operation request identity.');
+      if(value.mode==='startScript'&&(typeof value.script_id!=='string'||!/^[a-f0-9]{64}$/.test(value.script_hash??'')||!Number.isSafeInteger(value.expected_revision)))throw new TypeError('Use an exact saved script receipt.');
+      if(['inspect','attach'].includes(value.mode)&&(typeof value.runId!=='string'||!value.binding))throw new TypeError('Explicit inspection binding is required.');
+      if(value.mode.startsWith('preset')&&(typeof value.document_id!=='string'||!value.document_id))throw new TypeError('Preset requires the bound working card.');
+      if(['presetSave','presetStatus'].includes(value.mode)&&(typeof value.operation_id!=='string'||!/^[A-Za-z0-9-]{16,100}$/.test(value.operation_id)))throw new TypeError('Use the original Preset save operation identity.');
+      if(value.expected_preset_revision!==undefined&&(!Number.isSafeInteger(value.expected_preset_revision)||value.expected_preset_revision<0))throw new TypeError('Use the saved Preset revision.');
+      if(value.mode==='presetSave'&&(!Number.isSafeInteger(value.expected_revision)||value.expected_revision<0||!Number.isSafeInteger(value.expected_preset_revision)||!value.preset||typeof value.preset!=='object'||Array.isArray(value.preset)))throw new TypeError('Save complete Preset JSON with exact card and Preset revisions.');
       return value;
     }})}
   }]

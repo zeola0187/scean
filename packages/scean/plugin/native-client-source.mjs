@@ -4,7 +4,7 @@ export function nativeClientFactory(React,sharedHTML,createNativeBridge,createNo
   const remote={package:'@local/dsh-scean',descriptors:[{id:'@local/dsh-scean#scean/request',service:'scean',namespace:'scean',method:'request',invocation:{kind:'direct'},parameters:[{name:'request',wire:'request',source:'json',codec:{mode:'strict',typeSymbol:'@local/dsh-scean#Request',create:()=>({parse(value){if(!value||typeof value!=='object'||Array.isArray(value)||typeof value.action!=='string')throw new TypeError('Expected SCEAN action object.');return value;}})}}],cancellation:{parameter:'signal'},result:{mode:'src-json'}}]};
   return {name:'scean-client',apply(ctx){ctx.inject(['remote','typert'],async scope=>{
     await scope.remote.$mount(remote);
-    scope.inject(['remote.scean','slots','layout','sessions'],child=>{
+    scope.inject(['remote.scean','slots','layout','sessions','uiWorkspace'],child=>{
       let selected=null,sessionId=null;const selections=new Set(),panels=new Set(),viewers=new Map();
       const viewerKey='scean.page-viewers.v1';
       try{if(['reload','back_forward'].includes(performance.getEntriesByType('navigation')[0]?.type)){const raw=sessionStorage.getItem(viewerKey);if(raw&&raw.length<24000){const rows=JSON.parse(raw);if(Array.isArray(rows))for(const row of rows.slice(-64))if(Array.isArray(row)&&row.length===2&&row.every(v=>typeof v==='string'&&/^[\w-]{1,160}$/.test(v)))viewers.set(row[0],row[1]);}}}catch{}
@@ -27,7 +27,7 @@ export function nativeClientFactory(React,sharedHTML,createNativeBridge,createNo
         React.useEffect(()=>close,[]);
         const connect=()=>{
           close();if(!frame.current?.contentWindow)return;
-          const channel=new MessageChannel(),bridge=createNativeBridge({call,selectPanel:key=>child.layout.selectPanel(key),getSessionId:()=>sessionId,getViewerId,notifications,enableNotifications,onRunRecycled:({runId})=>{if(selected===runId)selected=null;},onDiagnose:detail=>window.dispatchEvent(new CustomEvent('scean:diagnose',{detail})),onOpeningStarted:({request,value})=>{if(request.sessionId!==sessionId)return;window.dispatchEvent(new CustomEvent('scean:started',{detail:{schema:1,authoringSessionId:request.sessionId,documentId:request.cardId,generation:request.cardScope?.generation,revision:request.revision,offerId:request.offerId,runId:value.runId,binding:value.binding}}));}});
+          const channel=new MessageChannel(),bridge=createNativeBridge({call,selectPanel:key=>child.layout.selectPanel(key),openSession:id=>child.uiWorkspace.openSession(id),getSessionId:()=>sessionId,getViewerId,notifications,enableNotifications,onRunRecycled:({runId})=>{if(selected===runId)selected=null;},onDiagnose:detail=>window.dispatchEvent(new CustomEvent('scean:diagnose',{detail})),onOpeningStarted:({request,value})=>{if(request.sessionId!==sessionId)return;window.dispatchEvent(new CustomEvent('scean:started',{detail:{schema:1,authoringSessionId:request.sessionId,documentId:request.cardId,generation:request.cardScope?.generation,revision:request.revision,offerId:request.offerId,runId:value.runId,binding:value.binding}}));}});
           const current={port:channel.port1,bridge,notify:runId=>{bridge.clearContext();channel.port1.postMessage({kind:'context',runId,...(notificationTarget?.runId===runId?{notificationTarget}:{})});}};session.current=current;panels.add(current);selections.add(current.notify);
           channel.port1.onmessage=async event=>{
             const message=event.data;if(session.current!==current||!message||message.kind!=='request'||typeof message.id!=='string'||message.id.length>100)return;
@@ -38,14 +38,23 @@ export function nativeClientFactory(React,sharedHTML,createNativeBridge,createNo
           // Device preference comes from the top-level document; an iframe's
           // media query may instead inherit the manually selected DSH scheme.
           const media=window.matchMedia('(prefers-color-scheme: dark)'),present=()=>channel.port1.postMessage({kind:'presentation-environment',dark:media.matches===true});
-          media.addEventListener('change',present);current.stopPresentation=()=>media.removeEventListener('change',present);present();
+          const preferences=async event=>{if(event?.type==='storage'&&event.key!=='scean.presentation.v1')return;try{const value=await bridge.request('native.presentationGet');if(session.current===current)channel.port1.postMessage({kind:'presentation-environment',dark:media.matches===true,preferences:value});}catch{}};
+          media.addEventListener('change',present);window.addEventListener('scean:presentation',preferences);window.addEventListener('storage',preferences);
+          current.stopPresentation=()=>{media.removeEventListener('change',present);window.removeEventListener('scean:presentation',preferences);window.removeEventListener('storage',preferences);};present();
           current.notify(selected);
         };
         return h('iframe',{ref:frame,title:'SCEAN 玩家介面','data-scean-native-player':true,sandbox:'allow-scripts allow-downloads allow-forms',srcDoc:sharedHTML,onLoad:connect,style:{width:'100%',height:'100%',minHeight:0,border:0,display:'block',background:'transparent'}});
       }
       function Entry(){
+        // The authenticated read-only status uses Studio's configured workspace
+        // root and exact Session, never a title/name or a browser-provided path.
+        const [target,setTarget]=React.useState(()=>currentSession()),[revision,bump]=React.useState(0),[visible,setVisible]=React.useState(false);
+        React.useEffect(()=>{const changed=()=>setTarget(currentSession()),refresh=event=>{if(event.detail?.authoringSessionId===currentSession())bump(n=>n+1);};const off=child.sessions.list.subscribe(changed);window.addEventListener('scean:context',refresh);changed();return()=>{off();window.removeEventListener('scean:context',refresh);};},[]);
+        React.useEffect(()=>{let active=true;setVisible(false);if(target)void call({action:'context',sessionId:target}).then(value=>{if(active&&target===currentSession())setVisible(['available','unselected','source_missing','source_recycled','source_pending','session_archived'].includes(value.playbackStatus?.status));}).catch(()=>{});return()=>{active=false;};},[target,revision]);
+        const activePanel=React.useSyncExternalStore(child.layout.panelInfo.subscribe,()=>child.layout.panelInfo.getSnapshot().activePanelId);
+        if(!visible||target!==currentSession()||activePanel==='local-scean-studio')return null;
         // Match Studio's dock and the host composer, including resized columns.
-        return h('button',{type:'button','data-scean-stage-entry':true,style:{display:'block',boxSizing:'border-box',width:'calc(100% - var(--dsh-composer-side-clearance,16px) - var(--dsh-composer-side-clearance,16px))',maxWidth:'var(--dsh-composer-card-max-width,952px)',margin:'0 auto',flex:'none',minWidth:0,minHeight:44,whiteSpace:'normal',overflowWrap:'anywhere'},onClick:()=>{sync();reset();child.layout.selectPanel('local-scean');}},'SCEAN 舞台');
+        return h('button',{type:'button','data-scean-stage-entry':true,style:{display:'block',boxSizing:'border-box',width:'calc(100% - var(--dsh-composer-side-clearance,16px) - var(--dsh-composer-side-clearance,16px))',maxWidth:'var(--dsh-composer-card-max-width,952px)',margin:'0 auto',flex:'none',minWidth:0,minHeight:44,whiteSpace:'normal',overflowWrap:'anywhere'},onClick:()=>{sync();reset();child.layout.selectPanel('local-scean');}},'舞臺');
       }
       const disposers=[child.slots.inject('main',()=>child.slots.register({name:'main',key:'local-scean'},Panel)),child.slots.inject('conversation.input.dock',()=>child.slots.register({name:'conversation.input.dock',id:'local-scean-entry',order:18},Entry))];
       child.effect(()=>()=>{notifications?.dispose();unsubscribe();window.removeEventListener('scean:open',open);window.removeEventListener('scean:context',context);for(const panel of panels){panel.stopPresentation?.();panel.port.onmessage=null;panel.port.close();void panel.bridge.dispose();}panels.clear();selections.clear();disposers.reverse().forEach(fn=>fn());},'scean shared player cleanup');

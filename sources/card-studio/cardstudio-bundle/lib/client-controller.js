@@ -140,7 +140,7 @@ export class WorkspaceClient {
   }
   async sceanControl(request,expectedSequence=this.sequence){
     try{return await this.human(this.sendScean,request,expectedSequence,'SCEAN human');}
-    catch(error){if(request.mode==='start'&&this.connectionError(error)&&!['STALE_LEASE','STALE_WORKSPACE','LEASE','STUDIO_RECONNECTING','SESSION_ARCHIVED','WORKSPACE','SESSION'].includes(error.code))throw this.error({code:'HANDOFF_UNCONFIRMED',message:'尚未收到開局回執。連線恢復不會自動重送；請先到舞臺核對，再由你決定是否用相同請求確認。',details:{request_id:request.request_id}});throw error;}
+    catch(error){if(['start','startScript','publish'].includes(request.mode)&&this.connectionError(error)&&!['STALE_LEASE','STALE_WORKSPACE','LEASE','STUDIO_RECONNECTING','SESSION_ARCHIVED','WORKSPACE','SESSION'].includes(error.code))throw this.error({code:request.mode==='publish'?'PUBLICATION_UNCONFIRMED':'HANDOFF_UNCONFIRMED',message:request.mode==='publish'?'尚未收到劇本保存回執。連線恢復不會自動重送；請先核對保存結果，再用原請求重試。':'尚未收到開局回執。連線恢復不會自動重送；請先到舞臺核對，再由你決定是否用相同請求確認。',details:{request_id:request.request_id}});throw error;}
   }
   async setLibraryRoot(path,expectedSequence=this.sequence){
     const sequence=this.sequence,session=this.current,claim=this.claim;

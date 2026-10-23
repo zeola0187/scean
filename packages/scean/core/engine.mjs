@@ -192,7 +192,7 @@ export class SceanEngine {
       for (const [stage, value] of Object.entries(stageModelSelections)) { if (!['summary', 'chapter_analysis', 'chapter_summary', 'chapter_rerank'].includes(stage) && !Object.hasOwn(SYSTEMS, stage)) throw new SceanError('INVALID_MODEL_STAGE'); overrides.stageModelSelections[stage] = selection(value); }
     }
     const now = new Date().toISOString();
-    const created={ schemaVersion: 1, runId, version: 0, snapshot: fixed, ...(name!==undefined?{playerIdentity:{schemaVersion:1,name:playerName(name),boundVersion:0,afterTurn:0}}:{}), ...overrides, ...(openingId ? { openingId } : {}),
+    const created={ schemaVersion: 1, runId, version: 0, snapshot: fixed, ...(fixed.source?.script?{scriptId:fixed.source.script.scriptId,scriptHash:fixed.source.script.scriptHash,scriptSourceSessionId:fixed.source.script.sourceSessionId,sourceSessionId:fixed.source.authoring?.sessionId}:{}), ...(name!==undefined?{playerIdentity:{schemaVersion:1,name:playerName(name),boundVersion:0,afterTurn:0}}:{}), ...overrides, ...(openingId ? { openingId } : {}),
       state: initialized.state, baselineState: clone(initialized.state), ...(blueprint ? { stateProvenance: initialized.provenance, baselineProvenance: clone(initialized.provenance) } : {}), memories: [], playerHistory: [], turns: [], receipts: {}, head: null, retired: [], operationReceipts: {},
       banList: normalizeBanList(banList), createdAt: now, updatedAt: now };
     if(chapterAutoEnabled!==undefined)seedNewRunChapterSettings(created,chapterAutoEnabled);

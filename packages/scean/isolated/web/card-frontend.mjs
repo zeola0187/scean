@@ -30,7 +30,7 @@ export function mountCardFrontend({document:doc=globalThis.document,now=()=>Date
     const p=run?.cardFrontend;if(!p){
       if(!run){clear();return;}
       const revision=run.presentationRevision??0;if(revision<lastPresentation)return;
-      packet=null;lastPresentation=revision;lastVersion=run.version;lastHead=run.head??null;canonical={runId:run.runId,snapshotHash:run.snapshot.hash,head:lastHead};box.hidden=true;frame.removeAttribute('srcdoc');return;
+      packet=null;lastPresentation=revision;lastVersion=run.version;lastHead=run.head??null;canonical=null;box.hidden=true;frame.removeAttribute('srcdoc');return;
     }
     const presentation=p.projection?.presentationRevision??p.presentationRevision??run.presentationRevision??0;
     if(!Number.isSafeInteger(presentation)||presentation<0||presentation<lastPresentation)return;

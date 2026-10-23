@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-scean-suite",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "private": true,
   "type": "module",
   "description": "SCEAN: native Card Studio, dynamic fronts, durable stories and 3+8 chapter memory",

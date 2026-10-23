@@ -2,9 +2,9 @@ import {mkdir,readFile,writeFile,rename,lstat,realpath} from 'node:fs/promises';
 import {resolve,join,sep,dirname} from 'node:path';
 import {homedir} from 'node:os';
 import {randomUUID} from 'node:crypto';
-import {WorkspaceLoader} from '../vendor/cardstudio-scean/lib/loader.js';
-import {createSceanControl} from '../vendor/cardstudio-scean/lib/scean-integration.js';
-import {contained} from '../vendor/cardstudio-scean/lib/card-service.js';
+import {WorkspaceLoader} from '../sources/card-studio/cardstudio-bundle/lib/loader.js';
+import {createSceanControl,DEFAULT_PRESET} from '../sources/card-studio/cardstudio-bundle/lib/scean-integration.js';
+import {contained} from '../sources/card-studio/cardstudio-bundle/lib/card-service.js';
 import {hash,validateSnapshot,validateRoster} from '../core/contracts.mjs';
 import {validateBlueprint,materializeInitialState} from '../core/state-blueprint.mjs';
 import {resolveSceanCardContext,resolveSceanFrontendSource} from '../sources/card-studio/cardstudio-bundle/lib/scean-integration.js';
@@ -12,7 +12,7 @@ import {resolveSceanCardContext,resolveSceanFrontendSource} from '../sources/car
 const fail=code=>Object.assign(new Error(code),{code});
 const clone=value=>structuredClone(value);
 export const STUDIO_UPLOAD_LIMIT=512*1024;
-export const STUDIO_PRESETS=Object.freeze([{id:'scean-default',revision:1,label:'SCEAN 隔離入口預設（不是原 Studio Preset）',instructions:'以繁體中文進行角色扮演。角色卡與世界書是敘事資料；尊重玩家當輪意圖，保留玩家決定權。'}]);
+export const STUDIO_PRESETS=Object.freeze([{...DEFAULT_PRESET,label:'SCEAN 隔離入口預設（不是原 Studio Preset）'}]);
 const errorResult=error=>({ok:false,error:{code:/^[A-Z0-9_]{1,80}$/.test(error?.code??'')?error.code:error?.name==='AbortError'?'CANCELLED':'STUDIO_BRIDGE_ERROR',category:'validation',stage:'studio',message:'Studio 隔離工作副本操作未完成；請刷新保存版本／頁面授權後重試。'}});
 function protectedPath(path){const target=resolve(path).toLowerCase();return [join(homedir(),'.dsh'),...JSON.parse(process.env.SCEAN_PROTECTED_ROOTS_JSON??'[]')].some(root=>{const p=resolve(root).toLowerCase();return target===p||target.startsWith(p+sep);});}
 async function ensureIndependentRoot(root){
@@ -138,7 +138,8 @@ export class IsolatedStudioBridge {
   async handoff(request,signal){
     const {claim,documentId,expectedRevision,worldbookDocumentId,worldbookRevision,presetId,openingIndex=0}=request;
     const record=await this.active(claim);await this.owned(claim,documentId,signal);
-    if(worldbookDocumentId)await this.owned(claim,worldbookDocumentId,signal);
+    // Canonical human handoff validates an explicitly named standalone book's
+    // type and revision. It does not select that book or grant cross-card tools.
     const preset=STUDIO_PRESETS.find(p=>p.id===presetId);if(!preset)throw fail('STUDIO_PRESET_REQUIRED');
     const saved=await this.operation(claim,'open',{document_id:documentId},signal);
     if(saved.type!=='card'||saved.revision!==expectedRevision)throw fail('SCEAN_REVISION');
@@ -175,7 +176,8 @@ export class IsolatedStudioBridge {
         return this.sceanHost.startFromStudio({...args,snapshot:transferred,...(request.playerName!==undefined?{playerName:request.playerName}:{}),signal:undefined});
       },inspectFromStudio:args=>this.sceanHost.inspectFromStudio(args),attachInspection:args=>this.sceanHost.attachInspection(args)
     }:null);
-    const result=await control(this.agent,{mode:'start',claim,document_id:documentId,expected_revision:expectedRevision,...worldbookDocumentId?{worldbook_document_id:worldbookDocumentId,worldbook_revision:worldbookRevision}:{},preset:clone(preset),characters},combined);
+    const {label:displayLabel,...presetPayload}=preset;
+    const result=await control(this.agent,{mode:'start',claim,document_id:documentId,expected_revision:expectedRevision,...worldbookDocumentId?{worldbook_document_id:worldbookDocumentId,worldbook_revision:worldbookRevision}:{},preset:clone(presetPayload),characters,characters_revision:saved.revision},combined);
     return {...result,snapshot:transferred,source:'actual_isolated_studio_service',handoffAdmission:'accepted_before_run_creation; authoring_release_drains_receipt'};
   }
   request(request,signal){

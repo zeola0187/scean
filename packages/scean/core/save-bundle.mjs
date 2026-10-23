@@ -8,6 +8,7 @@ import { validateBlueprint, materializeInitialState, validateBlueprintState, val
 import { normalizeBanList } from './banlist.mjs';
 import { applyStatProposal } from './stat-contract.mjs';
 import { validateNarrative } from './narrative.mjs';
+import {validateCharacterSources} from './character-sources.mjs';
 
 export const SAVE_FORMAT = 'scean.run';
 export const SAVE_LIMITS = Object.freeze({ bytes: 16 * 1024 * 1024, depth: 64, nodes: 300000, turns: 1000, retired: 256, receipts: 4096, records: 100000 });
@@ -25,10 +26,10 @@ const ABS = /^(?:[a-z]:[\\/]|\\\\|file:\/\/|\/[^\s])/i;
 // This is a structural portability boundary, not a semantic secret classifier.
 // Unknown story keys remain intact. No payload-provided reference is opened.
 function bounded(value, { portability=true }={}) {
-  let nodes=0; const active=new Set();
-  function walk(v, depth) {
+  let nodes=0,checkPortability=false; const active=new Set(),cardSelectors=new WeakSet();
+  function walk(v, depth,cardPointer=false) {
     if (++nodes > SAVE_LIMITS.nodes || depth > SAVE_LIMITS.depth) fail('SAVE_LIMIT');
-    if (typeof v === 'string') { if(Buffer.byteLength(v,'utf8')>SAVE_LIMITS.bytes)fail('SAVE_LIMIT');if (portability && ABS.test(v)) fail('SAVE_ENVIRONMENT_PATH'); if (/\p{Surrogate}/u.test(v)) fail('SAVE_UNICODE'); return; }
+    if (typeof v === 'string') { if(Buffer.byteLength(v,'utf8')>SAVE_LIMITS.bytes)fail('SAVE_LIMIT');if (checkPortability && ABS.test(v)&&!cardPointer) fail('SAVE_ENVIRONMENT_PATH'); if (/\p{Surrogate}/u.test(v)) fail('SAVE_UNICODE'); return; }
     if (v === null || typeof v === 'boolean' || (typeof v === 'number' && Number.isFinite(v))) return;
     if ((!Array.isArray(v) && !plain(v)) || active.has(v)) fail('SAVE_JSON');
     if (Object.getOwnPropertySymbols(v).length) fail('SAVE_JSON'); active.add(v);
@@ -37,14 +38,29 @@ function bounded(value, { portability=true }={}) {
       if (Array.isArray(v) && key==='length') continue;
       if (['__proto__','constructor','prototype'].includes(key) || !Object.hasOwn(d,'value') || !d.enumerable) fail('SAVE_JSON');
       if (Array.isArray(v) && !/^(0|[1-9]\d*)$/.test(key)) fail('SAVE_JSON');
-      if (portability && ENV.test(key)) fail('SAVE_ENVIRONMENT_FIELD');
-      if (portability && /^(?:\$ref|\$include|externalFile|loadFrom|filePath)$/i.test(key) && typeof d.value==='string' && /^(?:\.\.[\\/]|https?:|file:|[a-z]:|[\\/])/i.test(d.value)) fail('SAVE_EXTERNAL_REFERENCE');
+      if (checkPortability && ENV.test(key)) fail('SAVE_ENVIRONMENT_FIELD');
+      if (checkPortability && /^(?:\$ref|\$include|externalFile|loadFrom|filePath)$/i.test(key) && typeof d.value==='string' && /^(?:\.\.[\\/]|https?:|file:|[a-z]:|[\\/])/i.test(d.value)) fail('SAVE_EXTERNAL_REFERENCE');
       if (/\p{Surrogate}/u.test(key)) fail('SAVE_UNICODE');
-      walk(d.value,depth+1);
+      walk(d.value,depth+1,key==='path'&&cardSelectors.has(v));
     }
     if (Array.isArray(v) && Object.keys(v).length!==v.length) fail('SAVE_JSON'); active.delete(v);
   }
+  // Complete the data-only validation before examining any domain fields: a
+  // getter/proxy-shaped payload must not execute through selector validation.
   walk(value,0); if (Buffer.byteLength(json(value),'utf8') > SAVE_LIMITS.bytes) fail('SAVE_LIMIT');
+  if(portability){
+    const run=value?.format===SAVE_FORMAT?value.run:value,snapshot=run?.schemaVersion===1?run.snapshot:null;
+    if(snapshot){
+      // Only the two canonical roster locations may contain this exception.
+      // Revalidate each binding's exact card target and digest. A `path` in an
+      // arbitrary extension or a merely similar object remains nonportable.
+      for(const actors of [snapshot.characters,snapshot.card?.data?.extensions?.scean?.characters])if(Array.isArray(actors))for(const actor of actors){
+        try{validateCharacterSources(actor,snapshot);}catch{continue;}
+        for(const source of actor?.sourceBindings?.sources??[])if(source.kind==='card_field'&&typeof source.path==='string'&&source.path.startsWith('/data/')&&!source.path.split('/').some(part=>part==='.'||part==='..')&&!/[\\\u0000-\u001f]/.test(source.path))cardSelectors.add(source);
+      }
+    }
+    nodes=0;checkPortability=true;walk(value,0);
+  }
 }
 
 /** Parse raw JSON without accepting duplicate members, before normal JSON.parse. */

@@ -78,8 +78,8 @@ test('D3 summary/version-only update keeps cursor; story append rollback replace
 });
 test('D3 UTF8 byte budget reduces complete turns and cursor still yields every source exactly once',()=>{
   const run=fixture(12);for(const t of run.turns)t.body='船'.repeat(6000);
-  let cursor,all=[];do{const result=pageHistory(run,cursor?{cursor}:{});assert(Buffer.byteLength(JSON.stringify(result))<=65536);assert(result.turns.length<=3);for(const t of result.turns)assert.equal(t.body.length,6000);all.unshift(...result.turns.map(t=>t.turn));cursor=result.beforeCursor;}while(cursor);
-  assert.deepEqual(all,Array.from({length:12},(_,i)=>i+1));run.turns.at(-1).body='船'.repeat(23000);assert.throws(()=>pageHistory(run),code('HISTORY_PAGE_TURN_TOO_LARGE'));
+  let cursor,all=[];do{const result=pageHistory(run,cursor?{cursor}:{});assert(Buffer.byteLength(JSON.stringify(result))<=HISTORY_RECALL_LIMITS.pageBytes);assert(result.turns.length<=7);for(const t of result.turns)assert.equal(t.body.length,6000);all.unshift(...result.turns.map(t=>t.turn));cursor=result.beforeCursor;}while(cursor);
+  assert.deepEqual(all,Array.from({length:12},(_,i)=>i+1));run.turns.at(-1).body='船'.repeat(45000);assert.throws(()=>pageHistory(run),code('HISTORY_PAGE_TURN_TOO_LARGE'));
 });
 test('D2/D3 corrupted active-vs-retired identity and invalid head fail closed',()=>{
   for(const mutate of [r=>r.retired.push({commitId:'commit-1'}),r=>r.turns.push({...r.turns[0]}),r=>r.head='bad',r=>r.receipts['request-1']={status:'retired'}]){

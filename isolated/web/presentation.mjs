@@ -2,7 +2,7 @@
 export const presentationKey='scean.presentation.v1';
 export function normalizePresentation(value){
   if(value?.schemaVersion!==undefined&&value.schemaVersion!==1)value=null;
-  return {schemaVersion:1,theme:['light','dark','system'].includes(value?.theme)?value.theme:'system',readingSize:['normal','large'].includes(value?.readingSize)?value.readingSize:'large',darkPalette:['forest','black','wine'].includes(value?.darkPalette)?value.darkPalette:'forest',readingWidth:['comfortable','wide'].includes(value?.readingWidth)?value.readingWidth:'wide',leftCollapsed:value?.leftCollapsed===true,rightCollapsed:value?.rightCollapsed===true};
+  return {schemaVersion:1,theme:['light','dark','system'].includes(value?.theme)?value.theme:'system',readingSize:['normal','large'].includes(value?.readingSize)?value.readingSize:'normal',darkPalette:['forest','black','wine'].includes(value?.darkPalette)?value.darkPalette:'forest',readingWidth:['comfortable','wide'].includes(value?.readingWidth)?value.readingWidth:'wide',leftCollapsed:value?.leftCollapsed===true,rightCollapsed:value?.rightCollapsed===true};
 }
 export function presentationTheme(choice,dark){return choice==='system'?(dark?'dark':'light'):choice;}
 export async function loadPresentation({native,storage}={}){
@@ -12,7 +12,7 @@ export async function loadPresentation({native,storage}={}){
 export async function savePresentation(value,{native,storage}={}){
   const safe=normalizePresentation(value);
   if(native)return native.request('native.presentationSave',safe);
-  try{if(!storage)throw Error('Storage unavailable');storage.setItem(presentationKey,JSON.stringify(safe));return {...safe,persistence:'saved'};}
+  try{if(!storage)throw Error('Storage unavailable');storage.setItem(presentationKey,JSON.stringify(safe));globalThis.dispatchEvent?.(new CustomEvent('scean:presentation',{detail:safe}));return {...safe,persistence:'saved'};}
   catch{return {...safe,persistence:'unavailable'};}
 }
 export function mountPresentation({font,theme,palette,width,left,right,status,beforeLayoutChange,root=document.documentElement,body=document.body,native=globalThis.__SCEAN_NATIVE__,media=globalThis.matchMedia?.('(prefers-color-scheme: dark)'),storage}={}){
@@ -36,7 +36,7 @@ export function mountPresentation({font,theme,palette,width,left,right,status,be
   for(const control of [font,theme,palette,width])control?.addEventListener('change',change);
   left?.addEventListener('click',toggleLeft);right?.addEventListener('click',toggleRight);
   const systemChange=()=>{if(!native){systemDark=media?.matches===true;if(value.theme==='system')apply();}};if(!native)media?.addEventListener?.('change',systemChange);
-  const environment=next=>{if(typeof next?.dark==='boolean'){systemDark=next.dark;if(value.theme==='system')apply();}};
+  const environment=next=>{if(typeof next?.dark==='boolean')systemDark=next.dark;if(next?.preferences){value=normalizePresentation(next.preferences);apply();}else if(value.theme==='system')apply();};
   const unsubscribe=native?.onPresentation?.(environment);
   if(native)native.request('native.presentationEnvironment').then(environment).catch(()=>{});
   apply();

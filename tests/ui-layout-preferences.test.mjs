@@ -47,3 +47,19 @@ test('new dark palettes preserve readable semantic colors, field edges and focus
     for(const semantic of ['error','error-bg','warning','warning-bg','focus'])assert.equal(specific[semantic],undefined,'preset must not replace '+semantic);
   }
 });
+
+test('saved Studio appearance reaches a mounted native player without changing reading choices or calling Host',async()=>{
+  const priorStorage=Object.getOwnPropertyDescriptor(globalThis,'localStorage'),priorDispatch=Object.getOwnPropertyDescriptor(globalThis,'dispatchEvent');
+  let data=JSON.stringify(normalizePresentation({theme:'dark',darkPalette:'forest',readingWidth:'comfortable',readingSize:'large',leftCollapsed:true})),environment;
+  const storage={getItem:()=>data,setItem:(_key,v)=>{data=v;}},events=[];
+  Object.defineProperty(globalThis,'localStorage',{configurable:true,value:storage});Object.defineProperty(globalThis,'dispatchEvent',{configurable:true,value:event=>{events.push(event);return true;}});
+  const control=()=>({value:'',addEventListener(){},removeEventListener(){},setAttribute(){}}),font=control(),theme=control(),palette=control(),width=control(),root={dataset:{},style:{}},body={dataset:{}},status={};
+  try{
+    const bridge=createNativeBridge({call:()=>assert.fail('appearance must never call Host')});
+    const mounted=mountPresentation({font,theme,palette,width,root,body,status,native:{request:bridge.request,onPresentation:fn=>{environment=fn;return()=>environment=null;}}});await mounted.ready;
+    const before=JSON.parse(data);await savePresentation({...before,theme:'dark',darkPalette:'wine'},{storage});
+    assert.equal(events.at(-1).type,'scean:presentation');environment({dark:false,preferences:await bridge.request('native.presentationGet')});
+    assert.equal(root.dataset.theme,'dark');assert.equal(root.dataset.darkPalette,'wine');assert.equal(palette.value,'wine');assert.equal(body.dataset.leftCollapsed,'true');assert.equal(body.dataset.readingWidth,'comfortable');assert.equal(font.value,'large');
+    await bridge.request('native.presentationSave',{...JSON.parse(data),theme:'light'});assert.equal(events.at(-1).detail.theme,'light');mounted.dispose();assert.equal(environment,null);
+  }finally{for(const [key,prior]of [['localStorage',priorStorage],['dispatchEvent',priorDispatch]])if(prior)Object.defineProperty(globalThis,key,prior);else delete globalThis[key];}
+});

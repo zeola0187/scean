@@ -17,6 +17,7 @@ import {mountPresentationPanel} from './presentation-panel-ui.mjs';
 import {mountTurnDuration} from './turn-duration.mjs';
 import {renderDialogueBody} from './dialogue-colors.mjs';
 import {mountRunRecycle} from './run-recycle-ui.mjs';
+import {mountScriptLibrary} from './script-library-ui.mjs';
 const shell=mountPlayerShell();
 const cardFrontend=mountCardFrontend({preserveReading:()=>{
   const reading=shell.reading,anchor=captureReadingAnchor(reading),top=reading.scrollTop;
@@ -65,17 +66,30 @@ const playerIdentity=mountPlayerIdentity({request:(action,payload)=>api(action,p
 function preservePlayerReading(){const anchor=captureReadingAnchor(shell.reading,{allowEnd:false}),top=shell.reading.scrollTop;return()=>{if(anchor)restoreReadingAnchor(shell.reading,anchor);else shell.reading.scrollTop=top;shell.adoptReading?.();};}
 const playerContext=()=>state.run?{...state.run,epoch:nativeContextSerial+':'+view.capture().value,selectionStamp:nativeContextSerial+':'+view.capture().value,sessionId:nativeScopeKey,cardId:state.run.snapshot?.cardId,disabled:state.pending||state.submitting||historyBusy||backupBusy||state.generationBlocked}:null;
 const playerIdeas=mountPlayerIdeas({document,request:(action,payload,signal)=>api(action,payload,signal),getContext:playerContext,preserveReading:preservePlayerReading});
-const playerReaders=mountPlayerReaders({document,request:(action,payload,signal)=>api(action,payload,signal),getContext:playerContext,preserveReading:preservePlayerReading,onNavigate:target=>{if(target.runId===view.runId){shell.show('story');return loadHistory({anchorCommitId:target.commitId});}}});
+const playerReaders=mountPlayerReaders({document,onDismiss:()=>{shell.show('story');return shell.reading;},request:(action,payload,signal)=>api(action,payload,signal),getContext:playerContext,preserveReading:preservePlayerReading,onNavigate:target=>{if(target.runId===view.runId){shell.show('story');return loadHistory({anchorCommitId:target.commitId,anchorPosition:target.anchorPosition});}}});
 const presentationPanel=mountPresentationPanel({document,request:(action,payload,signal)=>api(action,payload,signal),getContext:playerContext,preserveReading:preservePlayerReading});
 const runRecycle=mountRunRecycle({document,request:(action,payload)=>api(action,payload),getCurrent:()=>state.run,getScopeKey:()=>{if(!native)return 'isolated';try{const s=JSON.parse(nativeScopeKey??'null');return JSON.stringify([s?.provider,s?.cardId,s?.authoringSessionId,s?.generation]);}catch{return '';}},isBusy:()=>state.pending||state.submitting||historyBusy||backupBusy||state.operationUnknown||state.composing,beforeTrash:()=>saveDraft(),onChanged:async value=>{
   if(value.status==='trashed'&&view.runId===value.runId){clearNativeView({preserveRecycle:true});try{sessionStorage.removeItem('scean-selected-run');}catch{}}
   await refreshRuns();shell.show('library');
 }});
+async function returnToAuthoring(target={runId:view.runId}){
+  if(!native)return;const selected=view.capture(),serial=nativeContextSerial;
+  await saveDraft();if(!view.current(selected)||serial!==nativeContextSerial)return;
+  await native.request('native.returnToAuthoring',target);
+}
+const sourceReturn=node('button','返回創作對話','quiet');sourceReturn.id='source-return';sourceReturn.type='button';sourceReturn.hidden=!native;sourceReturn.disabled=true;
+document.querySelector('#stage-heading-actions').append(sourceReturn);
+sourceReturn.addEventListener('click',()=>void returnToAuthoring().catch(error=>setError('turn-error',error)));
+shell.placeRecycle();
+shell.setNavigation(native?async screen=>{try{await saveDraft();await native.request('native.navigate',{screen});}catch(error){setError('turn-error',error);}}:null);
+const scriptLibrary=native?mountScriptLibrary({document,request:(action,payload)=>api(action,payload),getScopeKey:()=>nativeScopeKey??'',onOffer:async()=>{await openingSelection.refresh();shell.show('library');},onCreated:async result=>{await refreshRuns();await selectRun(result.runId);shell.committed();},onReturn:returnToAuthoring}):null;
+document.querySelector('.library .section-heading h2').textContent='劇本與演出';
+if($('opening-new'))$('opening-new').textContent='從本局劇本另開演出';
 const newBodyOpen=node('button','查看新正文','quiet');newBodyOpen.type='button';newBodyOpen.id='new-body-open';newBodyOpen.hidden=true;document.querySelector('.composer-actions').append(newBodyOpen);
 newBodyOpen.addEventListener('click',()=>{if(storyHead())void loadHistory({anchorCommitId:storyHead()});});
 function node(tag, text, className) { const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(className)e.className=className;return e; }
 function setError(id,error) { const el=$(id);el.textContent=error ? `${error.message ?? '操作未完成。'}${error.code ? `（${error.category ? error.category+' / ':''}${error.code}）` : ''}` : '';el.hidden=!error; }
-function connection(ok){if(!ok)cardFrontend.heartbeat(false);state.disconnected=!ok;turnDuration.connection(ok);$('connection').textContent=ok?(native?'舞台已連線':'本機隔離環境已連線'):'連線中斷 · 可重新查詢';}
+function connection(ok){if(!ok)cardFrontend.heartbeat(false);state.disconnected=!ok;turnDuration.connection(ok);$('connection').dataset.connected=String(ok);$('connection').textContent=ok?(native?'舞台已連線':'本機隔離環境已連線'):'連線中斷 · 可重新查詢';}
 function diagnosticsControls(){
   $('diagnostics-grant').disabled=!state.run||diagnosticsBusy||!!privateDiagnostics.grant||!$('diagnostics-consent').checked;
   $('diagnostics-consent').disabled=diagnosticsBusy||!!privateDiagnostics.grant;
@@ -133,7 +147,7 @@ async function requestApi(action,payload={},signal) {
   return data.value;
 }
 const notifications=native?null:createNotificationClient({call:(action,payload)=>api(action,payload),onTarget:target=>openNotificationTarget(target),showToast:showNotificationToast});
-const notificationControls=mountNotificationControls({request:async(action,payload={})=>{
+const notificationControls=mountNotificationControls({parent:$('notification-panel-dialog'),request:async(action,payload={})=>{
   if(native){if(action==='capabilities')return native.request('native.notificationCapabilities');if(action==='enable')return native.request('native.notificationEnable');return native.request('native.notificationConfigure',action==='mute'?{runId:view.runId}:payload);}
   if(action==='capabilities')return notifications.capabilities();if(action==='enable')return notifications.enable();return notifications.configure(action==='mute'?{runId:view.runId}:payload);
 }});
@@ -159,18 +173,21 @@ function renderOpenings(){ $('opening').replaceChildren();for(const o of revisio
 function renderPreview(){ $('opening-preview').textContent=opening()?.text??'';$('create').disabled=!opening();shell.preview(card(),revision(),opening()); }
 
 async function refreshRuns(){
-  const contextSerial=nativeContextSerial,rows=await api('list');if(contextSerial!==nativeContextSerial)return [];$('runs').replaceChildren();
-  if(!rows.length){$('runs').append(node('p',native?'目前卡片尚無相關 Run；請回 Studio 交接已保存版本，開啟新局。':'尚無紀錄；先選卡開新局。','hint'));return rows;}
-  for(const row of [...rows].reverse()) {
+  const contextSerial=nativeContextSerial,results=await Promise.allSettled([api('list'),...(native?[api('scriptList')]:[])]);if(contextSerial!==nativeContextSerial)return [];
+  if(results[0].status==='rejected')throw results[0].reason;const rows=results[0].value;
+  const renderRun=(container,row)=>{
     const button=node('button',state.catalog.find(c=>c.id===row.cardId)?.title??row.title??row.cardId??row.runId);
     button.type='button';button.dataset.runId=row.runId;button.setAttribute('aria-current',String(view.runId===row.runId));
     if(row.playerName)button.append(node('small','主角：'+row.playerName));
-    button.append(node('small',`${row.revision??'—'} · ${row.runId}`));
-    button.addEventListener('click',()=>selectRun(row.runId).catch(e=>setError('turn-error',e)));const item=node('div',undefined,'run-entry');item.append(button);runRecycle.addAction(item,row);$('runs').append(item);
-  }
+    button.append(node('small',`版本 ${row.revision??'—'} · 已保存 ${row.turnCount??0} 回合${row.createdAt&&Number.isFinite(Date.parse(row.createdAt))?' · '+new Date(row.createdAt).toLocaleString('zh-TW'):''}`));
+    button.addEventListener('click',()=>selectRun(row.runId).catch(e=>setError('turn-error',e)));const item=node('div',undefined,'run-entry');item.append(button);runRecycle.addAction(item,row);const trash=item.querySelector('.run-trash');if(trash){trash.textContent='刪除演出';trash.setAttribute('aria-label','刪除演出，移入回收區');}container.append(item);
+  };
+  if(scriptLibrary)scriptLibrary.render({runs:rows,scripts:results[1].status==='fulfilled'?results[1].value:[],error:results[1].status==='rejected'?results[1].reason:null,renderRun});
+  else{$('runs').replaceChildren();for(const row of [...rows].reverse())renderRun($('runs'),row);if(!rows.length)$('runs').append(node('p','尚無演出；先選卡開新局。','hint'));}
   return rows;
 }
 function clearNativeView({preserveRecycle=false}={}){
+  scriptLibrary?.reset();sourceReturn.disabled=true;
   if(!preserveRecycle)runRecycle.reset();
   playerIdeas.reset();playerReaders.reset();presentationPanel.reset();showNotificationToast({clear:true});
   writingMode.select(null);proseStyle.select(null);cardFrontend.clear();
@@ -191,19 +208,20 @@ function clearNativeView({preserveRecycle=false}={}){
 async function syncNativeContext(runId){
   const serial=++nativeContextSerial;clearNativeView();
   let context;try{context=await api('native.context');}catch(error){if(serial!==nativeContextSerial)return;throw error;}if(serial!==nativeContextSerial)return;
-  const scope=context.cardScope;nativeScopeKey=JSON.stringify(scope??null);adoptNativeViewer(context.viewerId);
-  $('card-title').textContent=scope?.title??'請先選取卡片';
-  $('card-description').textContent=scope?'這張卡的已保存故事列於下方。欲以新版本開局，請回 Studio 交接。':'請在目前對話的 Card Studio 選取角色卡，再開啟舞臺。';
+  const scope=context.cardScope,scopeMessage=shell.scope(scope,context.playbackStatus);nativeScopeKey=JSON.stringify(scope??null);adoptNativeViewer(context.viewerId);
+  $('card-title').textContent=scope?.title??(scopeMessage?'來源暫不可用':'請先選取卡片');
+  $('card-description').textContent=scopeMessage|| (scope?.authoringBindingRequired?'沿用此對話既有選卡，可繼續舊演出；編輯前請回 Studio 明確固定工作卡。':scope?'這張卡的已保存故事列於下方。欲以新版本開局，請回 Studio 交接。':'請在目前對話的 Card Studio 選取角色卡，再開啟舞臺。');
   $('data-source').textContent=scope?`目前卡片：${scope.cardId}（所有已保存版本的 Run）。`:'此對話尚無可確認的卡片；請在 Card Studio 選卡。';
   let rows;try{rows=await refreshRuns();}catch(error){if(serial!==nativeContextSerial)return;throw error;}if(serial!==nativeContextSerial)return;
   if(runId&&!rows.some(row=>row.runId===runId)){setError('turn-error',Object.assign(new Error('指定的 Run 不屬於目前卡片，未開啟。'),{code:'CARD_SCOPE_MISMATCH'}));return;}
   const selected=runId??rows[0]?.runId;
   if(selected){try{await selectRun(selected);}catch(error){if(serial!==nativeContextSerial)return;throw error;}}
-  else $('chat').append(node('p',scope?'此卡尚無故事。請回 Studio 交接已保存版本，建立新局。':'請先在目前對話的 Studio 選取卡片。','empty'));
+  else $('chat').append(node('p',scopeMessage||(scope?'此卡尚無故事。請回 Studio 交接已保存版本，建立新局。':'請先在目前對話的 Studio 選取卡片。'),'empty'));
   if(scope&&await openingSelection.refresh()&&serial===nativeContextSerial)shell.show('library');
 }
 function controls(){
   runRecycle.update();
+  sourceReturn.disabled=!state.run;
   const hasRun=!!state.run, busy=state.pending||state.submitting||historyBusy||backupBusy||playerIdentity.isBusy();
   playerIdentity.update(state.run,state.pending||state.submitting||historyBusy||backupBusy);
   $('input').disabled=!hasRun||busy;
@@ -267,12 +285,13 @@ function renderRun(run){
   state.run=run;historySync.want(run);cardFrontend.update(run);proseStyle.select(run.runId);writingMode.select(run.runId);
   playerReaders.update(playerContext());presentationPanel.update(playerContext());
   if(!banListDirty)$('banlist-input').value=(run.banList??[]).map(x=>typeof x==='string'?x:x.text??x.phrase??'').join('\n');
-  $('run-title').textContent=titleOf(run.snapshot);
+  $('run-title').textContent=titleOf(run.snapshot);shell.story(run,narrativeData,loadedTurns);
   $('run-version').textContent=`固定版本 ${run.snapshot?.revision??'—'} · Run ${run.runId} · 摘要 ${run.snapshot?.hash?.slice(0,12)??'未記錄'} · ${run.turnCount??run.turns?.length??0} 回合`;
   renderWorld(run.state?.world??{},run.worldView,run.lastTurn??run.turns?.at(-1));
   controls();
 }
 function renderChat(){
+  shell.story(state.run,narrativeData,loadedTurns);
   const projected={...state.run,turns:loadedTurns};
   if(historyPageState?.hasMore)projected.snapshot={...state.run?.snapshot,opening:null,card:{}};
   const wanted=committedMessages(projected),existing=new Map([...$('chat').querySelectorAll('article[data-message-key]')].map(el=>[el.dataset.messageKey,el]));
@@ -284,8 +303,9 @@ function renderChat(){
     if(!article){article=node('article',undefined,`message ${item.kind}`);article.dataset.messageKey=key;
       if(item.commitId)article.dataset.commitId=item.commitId;
       const header=node('header',item.label);if(item.commitId)header.append(node('small','已提交'));
-      const storyBody=node('div',item.body,'body');if(item.kind==='story')renderDialogueBody(storyBody,item,{runId:state.run.runId,snapshotHash:state.run.snapshot.hash,actors:state.run.snapshot.characters??[]});article.append(header,storyBody);
+      const storyBody=node('div',item.body,'body');article.append(header,storyBody);
     }
+    if(item.kind==='story')renderDialogueBody(article.querySelector('.body'),item,{runId:state.run.runId,snapshotHash:state.run.snapshot.hash,actors:state.run.snapshot.characters??[]});
     // Keep existing nodes in place: summary/status changes never reconstruct chat.
     const next=previous?previous.nextElementSibling:$('chat').firstElementChild;
     if(next!==article)$('chat').insertBefore(article,next);
@@ -312,6 +332,7 @@ function longformControls(){
   const selected=!!state.run,busy=state.pending||state.submitting||historyBusy||backupBusy;
   $('history-earlier').disabled=!selected||pageBusy||!historyPageState?.hasMore;
   $('history-latest').disabled=!selected||pageBusy;
+  $('history-later').hidden=!historyPageState?.hasLater;$('history-later').disabled=!selected||pageBusy||!historyPageState?.hasLater;
   $('summary-start').disabled=!selected||busy||narrativeBusy||narrativeData?.enabled!==true;
   $('summary-refresh').disabled=!selected||narrativeBusy;
   $('summary-cancel').hidden=!activeNarrativeOperation||activeNarrativeOperation.kind!=='summaryStart';
@@ -325,20 +346,20 @@ function captureStoryReading(){
   return {follow:shell.atEnd(),anchorCommitId:visible.at(-1)?.dataset.commitId??loadedTurns[0]?.commitId,
     restore(){if(anchor)restoreReadingAnchor(reading,anchor);else reading.scrollTop=top;}};
 }
-async function loadHistory({earlier=false,anchorCommitId,priorHead,readingBefore,latest=false,ownCommitId}={}){
-  if(!view.runId||earlier&&!historyPageState?.beforeCursor)return;
+async function loadHistory({earlier=false,later=false,anchorCommitId,anchorPosition,priorHead,readingBefore,latest=false,ownCommitId}={}){
+  if(!view.runId||earlier&&!historyPageState?.beforeCursor||later&&!historyPageState?.afterCursor)return;
   const selected=view.capture(),baseline=canonicalStamp(),serial=++pageSerial;pageController?.abort();pageController=new AbortController();pageBusy=true;longformControls();
   $('history-page-status').textContent='正在讀取原文頁…';setError('history-page-error',null);
-  const oldCursor=historyPageState?.beforeCursor;
+  const priorPage=historyPageState,oldCursor=historyPageState?.beforeCursor,afterCursor=historyPageState?.afterCursor;
   const scrollEpoch=userScrollEpoch;
   const scrollBefore={top:shell.reading.scrollTop,height:shell.reading.scrollHeight,follow:readingBefore?.follow??shell.atEnd()};
   const preserve=!!readingBefore&&!latest&&!anchorCommitId&&!ownCommitId;
   const preserveOld=preserve&&(!scrollBefore.follow||historySync.historical);
   const readingAnchor=preserveOld?readingBefore.anchorCommitId:undefined;
-  const historical=earlier||!!anchorCommitId&&anchorCommitId!==baseline.head||!!readingAnchor;
+  const historical=earlier||later||!!anchorCommitId&&anchorCommitId!==baseline.head||!!readingAnchor;
   try{
     let page,retiredAnchor=false;
-    try{page=await api('historyPage',{runId:selected.runId,limit:10,...(earlier?{cursor:oldCursor}:{}),...((anchorCommitId??readingAnchor)?{anchorCommitId:anchorCommitId??readingAnchor}:{})},pageController.signal);}
+    try{page=await api('historyPage',{runId:selected.runId,limit:10,expectedHead:baseline.head,...(earlier?{cursor:oldCursor}:later?{afterCursor}:{}),...((anchorCommitId??readingAnchor)?{anchorCommitId:anchorCommitId??readingAnchor,...(anchorPosition?{anchorPosition}:{})}:{})},pageController.signal);}
     catch(error){
       if(!readingAnchor||!['HISTORY_COMMIT_RETIRED','HISTORY_COMMIT_NOT_FOUND'].includes(error.code))throw error;
       if(!view.current(selected)||serial!==pageSerial||!relatedReadCurrent(selected,baseline))return;
@@ -350,17 +371,19 @@ async function loadHistory({earlier=false,anchorCommitId,priorHead,readingBefore
     }
     const readerMoved=scrollEpoch!==userScrollEpoch,readingAfter=readerMoved?captureStoryReading():null;
     const mergeForReading=readerMoved&&page.turns.some(t=>t.commitId===loadedTurns.at(-1)?.commitId);
-    const turns=new Map((earlier||mergeForReading?loadedTurns:[]).map(turn=>[turn.commitId,turn]));
+    const turns=new Map((earlier||later||mergeForReading?loadedTurns:[]).map(turn=>[turn.commitId,turn]));
     for(const turn of page.turns)turns.set(turn.commitId,turn);
     loadedTurns=[...turns.values()].sort((a,b)=>a.turn-b.turn);
-    historyPageState=page;
+    historyPageState={...page,...(earlier?{hasLater:priorPage.hasLater,afterCursor:priorPage.afterCursor}:later?{hasMore:priorPage.hasMore,beforeCursor:priorPage.beforeCursor}:{})};
     renderChat();
     const range=loadedTurns.length?`${loadedTurns[0].turn}–${loadedTurns.at(-1).turn}`:'無';
-    $('history-page-status').textContent=`目前顯示 ${range} 回合 · ${historyPageState.hasMore?'可載入更早原文':'已到故事起點'}${anchorCommitId?' · 原文定位':''}`;
+    $('history-page-status').textContent=`目前顯示 ${range} 回合 · ${historyPageState.hasMore?'可載入更早原文':'已到故事起點'}${historyPageState.hasLater?' · 下方可載入後續原文':''}${anchorCommitId?' · 原文定位':''}`;
+    if(page.presentationWarning?.code==='HISTORY_PRESENTATION_TOO_LARGE')$('history-page-status').textContent+=' · 此回合的分色資料過大，已保留完整正文並以中性色顯示';
     if(readingAnchor)$('history-page-status').textContent+=retiredAnchor?' · 原閱讀回合已失效，顯示有效原文':' · 保留原閱讀位置；回到最新原文可看最新面板';
     // Restore only after status wrapping has settled, including narrow screens.
     if(earlier)shell.reading.scrollTop=scrollBefore.top+shell.reading.scrollHeight-scrollBefore.height;
     else if(readerMoved)readingAfter.restore();
+    else if(later)shell.reading.scrollTop=scrollBefore.top;
     else if(latest)shell.scrollEnd();
     else if(anchorCommitId||ownCommitId){
       const commit=anchorCommitId??ownCommitId,target=[...$('chat').querySelectorAll('.player[data-commit-id]')].find(el=>el.dataset.commitId===commit);
@@ -370,7 +393,7 @@ async function loadHistory({earlier=false,anchorCommitId,priorHead,readingBefore
     shell.adoptReading?.();
   }catch(error){if(serial===pageSerial&&relatedReadCurrent(selected,baseline)&&error.name!=='AbortError'){
     historySync.failed();$('history-page-status').textContent='本輪已保存，正在讀取正文；目前顯示的內容保留。';
-    setError('history-page-error',error.code==='HISTORY_PAGE_TURN_TOO_LARGE'?error:null);
+    setError('history-page-error',error.code==='HISTORY_PAGE_TURN_TOO_LARGE'?{...error,message:'這個回合太長，暫時無法在單頁完整載入。已保留目前畫面；原始正文沒有刪除或截斷，也不會重新生成。'}:null);
   }}finally{if(view.current(selected)&&serial===pageSerial){pageBusy=false;longformControls();controls();}}
 }
 async function loadInspector(){
@@ -380,7 +403,7 @@ async function loadInspector(){
   catch(error){if(serial===inspectorSerial&&relatedReadCurrent(selected,baseline))$('inspection').textContent=`Inspector 讀取失敗：${error.message} (${error.code??'unknown'})`;}
 }
 function renderNarrative(value){
-  narrativeData=value;
+  narrativeData=value;shell.story(state.run,value,loadedTurns);
   const summaries=value.summaries??[],current=summaries.find(row=>row.current&&row.status==='completed');
   const last=(value.operations??[]).at(-1);
   $('summary-status').textContent=`${value.enabled===true?value.autoArmed?'長篇摘要已授權自動維護；封章後執行有界壓縮。':'長篇摘要 Adapter 已啟用；可在下方明示啟用自動維護，或手動補救。':'長篇摘要 Adapter 未啟用。'} ${last?`最近操作：${last.status}`:'not_started'}${current?` · 目前摘要 ${current.startTurn}–${current.endTurn} 回合 · v${current.version}`:' · 尚無有效滾動摘要'}${value.coverage?.coverageStatus==='blocked'?' · 正文保護已阻擋下一輪：請補齊摘要，全文仍可查回。':` · 未摘要原文 ${value.coverage?.uncoveredTurns??0} 回合完整保留`}`;
@@ -798,6 +821,7 @@ $('chapter-operation-cancel').addEventListener('click',async()=>{
   finally{$('chapter-operation-cancel').disabled=false;}
 });
 $('history-earlier').addEventListener('click',()=>void loadHistory({earlier:true}));
+$('history-later').addEventListener('click',()=>void loadHistory({later:true}));
 $('history-latest').addEventListener('click',()=>void loadHistory({latest:true}));
 $('agent-diagnose').hidden=!native;
 $('agent-diagnose').addEventListener('click',()=>{if(view.runId)void native.request('native.diagnose',{runId:view.runId}).catch(e=>setError('turn-error',e));});

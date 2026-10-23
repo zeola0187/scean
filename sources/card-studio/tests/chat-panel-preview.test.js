@@ -34,9 +34,9 @@ test('successful panel save gives a bounded immutable artifact; human read is by
   const f=await fixture(t),receipt=await f.save();assert(validSavedPanelArtifact(receipt.panelPreview));assert.equal(receipt.panelPreviewStatus,'available');assert(Buffer.byteLength(JSON.stringify(receipt))<8192);assert(!JSON.stringify(receipt).includes('SECRET'));
   const before=await hashes(f.root),view=await f.read(receipt.panelPreview);assert.deepEqual(await hashes(f.root),before);assert.equal(view.source,'authoring-initial-state-not-runtime');assert(view.html.includes('作者設定初值（非遊玩狀態）'));assert(view.html.includes('75'));assert(!view.html.includes('SECRET'));assert(view.html.includes("script-src 'none'"));assert(view.html.includes("connect-src 'none'"));assert(!view.html.includes('已提交狀態 v0'));
 });
-test('old chat preview stays on its saved revision after later panel edits and selection of same-name card',async t=>{
+test('old chat preview stays on its saved revision after later panel edits and a refused same-name card switch',async t=>{
   const f=await fixture(t),first=await f.save();const second=await f.ok('frontend',{action:'dynamic_patch',document_id:f.document.id,expected_revision:1,expected_source_hash:first.panelPreview.frontend_hash,field:'html',old_text:'合成面板',new_text:'新版面板'});
-  await f.ok('create',{name:'Same synthetic name'});const old=await f.read(first.panelPreview),fresh=await f.read(second.panelPreview);assert(old.html.includes('合成面板'));assert(!old.html.includes('新版面板'));assert(fresh.html.includes('新版面板'));assert.notEqual(first.panelPreview.receipt_id,second.panelPreview.receipt_id);
+  const peer=await f.loader.acquire(f.b,'synthetic-panel-page-B'),other=await f.ok('create',{name:'Same synthetic name'},f.b,peer);assert.equal((await f.call('open',{document_id:other.id})).error.code,'SESSION_CARD_BOUND');const old=await f.read(first.panelPreview),fresh=await f.read(second.panelPreview);assert(old.html.includes('合成面板'));assert(!old.html.includes('新版面板'));assert(fresh.html.includes('新版面板'));assert.notEqual(first.panelPreview.receipt_id,second.panelPreview.receipt_id);
 });
 test('missing, forged, altered revision/hash and arbitrary locator receipts reject',async t=>{
   const f=await fixture(t),receipt=await f.save(),artifact=receipt.panelPreview;
@@ -53,11 +53,11 @@ test('shared copy in another valid Session does not authorize its saved chat rec
 test('unassociated same-name card, recycled source and archived Session are unavailable',async t=>{
   const f=await fixture(t),receipt=await f.save(),read=f.service.lifecycle.read.bind(f.service.lifecycle);
   f.service.lifecycle.read=async()=>({copies:[{id:f.document.id,location:'recycled'}]});await assert.rejects(f.read(receipt.panelPreview),e=>e.code==='PANEL_RECYCLED');f.service.lifecycle.read=read;
-  const associations=f.service.associations.bind(f.service);f.service.associations=async()=>({documents:[],selections:[]});await assert.rejects(f.read(receipt.panelPreview),e=>e.code==='PANEL_SESSION');f.service.associations=associations;
+  const associations=f.service.associations.bind(f.service);f.service.associations=async()=>({documents:[],selections:[]});await assert.rejects(f.read(receipt.panelPreview),e=>e.code==='SESSION_CARD_REQUIRED');f.service.associations=associations;
   f.loader.archived.add(f.a.id);await assert.rejects(f.read(receipt.panelPreview),e=>e.code==='SESSION_ARCHIVED');f.loader.archived.delete(f.a.id);
 });
 test('missing source is not replaced with current selection or similar card',async t=>{
-  const f=await fixture(t),receipt=await f.save();await fs.rename(path.join(f.root,'.cardstudio-scean/documents',f.document.id),path.join(f.root,'source-missing'));await f.ok('create',{name:'Same synthetic name'});await assert.rejects(f.read(receipt.panelPreview),e=>e.code==='ENOENT');
+  const f=await fixture(t),receipt=await f.save();await fs.rename(path.join(f.root,'.cardstudio-scean/documents',f.document.id),path.join(f.root,'source-missing'));assert.equal((await f.call('create',{name:'Same synthetic name'})).error.code,'SESSION_CARD_BOUND');const peer=await f.loader.acquire(f.b,'synthetic-panel-page-B');await f.ok('create',{name:'Same synthetic name'},f.b,peer);await assert.rejects(f.read(receipt.panelPreview),e=>e.code==='ENOENT');
 });
 test('expired lease and absent human claim are denied without creating a lease',async t=>{
   const f=await fixture(t),receipt=await f.save(),count=f.loader.records.get(f.a.id).pages.size;await assert.rejects(f.loader.resolveSavedPanel(f.a,{artifact:receipt.panelPreview}),e=>e.code==='STALE_LEASE');f.now(90001);await assert.rejects(f.read(receipt.panelPreview),e=>e.code==='STALE_LEASE');assert.equal(f.loader.records.get(f.a.id).pages.size,count);

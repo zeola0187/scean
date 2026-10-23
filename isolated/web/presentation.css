@@ -52,3 +52,11 @@ button:disabled{opacity:1;background:var(--soft);color:var(--muted);border-color
   .player-shell[data-left-collapsed=true] .layout>.library,.player-shell[data-right-collapsed=true] .layout>.scene-pane{display:none}
 }
 @media(forced-colors:active){.edge-tab{border:1px solid ButtonText}}
+
+/* Comfortable keeps a readable measure at the actual available width. Wide
+   gives the released space to prose, including when either rail is collapsed. */
+.player-shell[data-reading-width=comfortable]{--reading-width:88%;--reading-measure:730px}
+.player-shell[data-reading-width=wide]{--reading-width:100%;--reading-measure:1360px}
+.player-shell .chat{width:var(--reading-width,100%);max-width:var(--reading-measure,1360px);margin-inline:auto}
+@media(max-width:1179px){.player-shell[data-reading-width=comfortable]{--reading-width:88%}}
+@media(max-width:600px){.player-shell[data-reading-width=comfortable],.player-shell[data-reading-width=wide]{--reading-width:100%}}
