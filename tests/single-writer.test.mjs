@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {mkdtemp,readFile} from 'node:fs/promises';import {join} from 'node:path';import {tmpdir} from 'node:os';
-import {SceanEngine} from '../core/engine.mjs';import {DurableStore} from '../adapters/store.mjs';import {Memory} from '../core/memory.mjs';import {hash} from '../core/contracts.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';import {DurableStore} from '../adapters/store.mjs';import {Memory} from '../core/memory.mjs';import {hash} from '../core/contracts.mjs';
 import {freezeWriterBody,assertWriterBodyHash,buildWriterHandoff,publicToolEvidence} from '../core/writer-workflow.mjs';
 import {publicInspection} from '../core/inspection.mjs';import {encodeRunBundle,validateRunBundle} from '../core/save-bundle.mjs';
 import {captureWritingMode,validateWritingModePin,writingModeAvailability,loadWritingSkills} from '../core/writing-mode.mjs';

@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { SceanEngine } from '../packages/scean/core/engine.mjs';
+import {temporalFixtureModel} from '../fixtures/temporal-fixture-engine.mjs';
+import {projectStoryState} from '../packages/scean/core/state-operations.mjs';
 
 // Observe the packaged engine's real stage packets with synthetic model output.
 // This is not a persistence/concurrency test or a live-model semantic assessment.
@@ -81,7 +83,7 @@ async function setup({ consult = false } = {}) {
       return { text: story };
     },
   };
-  const engine = new SceanEngine({unconfiguredWritingMode:'current', store, model, memory: {
+  const engine = new SceanEngine({unconfiguredWritingMode:'current', store, model:temporalFixtureModel(model), memory: {
     async retrieve({ records }) { return { records: copy(records), status: 'synthetic_offline' }; },
   } });
   const snapshot = {
@@ -127,11 +129,13 @@ function assertSharedStageRouting({ calls }) {
     for (const marker of privateMarkers) assert(!packet.includes(marker), `${call.stage} exposed ${marker}`);
   }
   const prose = calls.find(call => call.stage === 'prose').input;
-  assert.deepEqual(Object.keys(prose).sort(), ['characterIdentities', 'draft', 'playerInput', 'preset']);
+  assert.deepEqual(Object.keys(prose).sort(), ['characterIdentities', 'draft', 'playerInput', 'preset', 'temporal']);
   assert.equal(prose.draft, story);
   assert.deepEqual(prose.preset, { style: 'concise' });
   const postStat = calls.find(call => call.stage === 'post_stat').input;
-  assert.deepEqual(Object.keys(postStat).sort(), ['characters', 'finalBody', 'outputContract', 'previousState']);
+  assert.deepEqual(Object.keys(postStat).sort(), ['characters', 'finalBody', 'outputContract', 'previousState', 'temporal']);
+  assert.deepEqual(prose.temporal, director.input.assembly.temporal);
+  assert.deepEqual(postStat.temporal, director.input.assembly.temporal);
   assert.equal(postStat.finalBody, story);
   for (const call of calls.filter(call => ['prose', 'post_stat'].includes(call.stage))) {
     const packet = JSON.stringify(call.input);
@@ -163,7 +167,9 @@ test('native dialogue: consultation gets only its owner context and projects adv
   assert.equal(owner.character.description, 'OWNER_BACKGROUND_A');
   assert.deepEqual(owner.character.private, { secret: 'OWNER_CARD_SECRET_A' });
   assert.deepEqual(owner.ownState.private, { secret: 'OWNER_STATE_A' });
-  assert.deepEqual(owner.publicWorld, env.initialState.world);
+  assert.deepEqual(owner.publicWorld, projectStoryState(env.run).world);
+  assert.deepEqual((await env.store.read(env.run.runId)).state, env.initialState,
+    'the shared read-only clock projection does not become a second writable State clock');
   assert.deepEqual(owner.memory.records.map(record => record.id), ['public-memory', 'private-a', 'known-a']);
   assert.equal(owner.lastCommittedTurn, null);
   for (const otherMarker of ['OWNER_BACKGROUND_B', 'OWNER_CARD_SECRET_B', 'OWNER_STATE_B', 'OWNER_MEMORY_B']) {

@@ -6,7 +6,7 @@ import {derivedFactsPackage,projectDerivedFacts} from '../core/derived-facts.mjs
 import {evaluateCondition} from '../core/condition-ast.mjs';
 import {frontendProjection} from '../core/frontend.mjs';
 import {displayValues} from '../isolated/web/frontend-runtime.mjs';
-import {SceanEngine,DIRECTOR_TOOLS,SYSTEMS} from '../core/engine.mjs';
+import {DIRECTOR_TOOLS,SYSTEMS} from '../core/engine.mjs';import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {DurableStore} from '../adapters/store.mjs';import {hash} from '../core/contracts.mjs';
 import {budgetStage} from '../core/context-budget.mjs';import {publicRunView} from '../core/inspection.mjs';
 import {encodeRunBundle,validateRunBundle} from '../core/save-bundle.mjs';

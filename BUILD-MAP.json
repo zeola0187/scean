@@ -973,6 +973,86 @@
     {
       "path": "packages/studio/skills/tavern-card-format-preservation/references/worldbook-and-edits.md",
       "source": "sources/card-studio/cardstudio-bundle/skills/tavern-card-format-preservation/references/worldbook-and-edits.md"
+    },
+    {
+      "source": "core/model-routing.mjs",
+      "path": "packages/scean/core/model-routing.mjs"
+    },
+    {
+      "source": "plugin/agent-models.mjs",
+      "path": "packages/scean/plugin/agent-models.mjs"
+    },
+    {
+      "path": "packages/scean/core/story-clock.mjs",
+      "source": "core/story-clock.mjs"
+    },
+    {
+      "path": "packages/scean/core/state-operations.mjs",
+      "source": "core/state-operations.mjs"
+    },
+    {
+      "path": "packages/studio/lib/w01/core/story-clock.mjs",
+      "source": "sources/card-studio/cardstudio-bundle/lib/w01/core/story-clock.mjs"
+    },
+    {
+      "path": "packages/studio/lib/w01/core/state-operations.mjs",
+      "source": "sources/card-studio/cardstudio-bundle/lib/w01/core/state-operations.mjs"
+    },
+    {
+      "source": "core/world-routine.mjs",
+      "path": "packages/scean/core/world-routine.mjs"
+    },
+    {
+      "source": "core/world-routine-context.mjs",
+      "path": "packages/scean/core/world-routine-context.mjs"
+    },
+    {
+      "source": "plugin/world-routine-host.mjs",
+      "path": "packages/scean/plugin/world-routine-host.mjs"
+    },
+    {
+      "source": "sources/card-studio/cardstudio-bundle/lib/w01/core/world-routine.mjs",
+      "path": "packages/studio/lib/w01/core/world-routine.mjs"
+    },
+    {
+      "source": "plugin/world-routine-reader.mjs",
+      "path": "packages/scean/plugin/world-routine-reader.mjs"
+    },
+    {
+      "source": "isolated/web/world-routine-ui.mjs",
+      "path": "packages/scean/isolated/web/world-routine-ui.mjs"
+    },
+    {
+      "source": "core/ambient-forum.mjs",
+      "path": "packages/scean/core/ambient-forum.mjs"
+    },
+    {
+      "source": "core/forum-authors.mjs",
+      "path": "packages/scean/core/forum-authors.mjs"
+    },
+    {
+      "source": "sources/card-studio/cardstudio-bundle/lib/w01/core/ambient-forum.mjs",
+      "path": "packages/studio/lib/w01/core/ambient-forum.mjs"
+    },
+    {
+      "source": "sources/card-studio/cardstudio-bundle/lib/w01/core/forum-authors.mjs",
+      "path": "packages/studio/lib/w01/core/forum-authors.mjs"
+    },
+    {
+      "source": "sources/card-studio/cardstudio-bundle/lib/authoring-navigation.js",
+      "path": "packages/studio/lib/authoring-navigation.js"
+    },
+    {
+      "source": "core/forum-policy-constants.mjs",
+      "path": "packages/scean/core/forum-policy-constants.mjs"
+    },
+    {
+      "source": "sources/card-studio/cardstudio-bundle/lib/w01/core/forum-policy-constants.mjs",
+      "path": "packages/studio/lib/w01/core/forum-policy-constants.mjs"
+    },
+    {
+      "source": "sources/card-studio/cardstudio-bundle/skills/scean-native-authoring/references/world-routine.md",
+      "path": "packages/studio/skills/scean-native-authoring/references/world-routine.md"
     }
   ]
 }

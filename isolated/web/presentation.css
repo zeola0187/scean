@@ -45,9 +45,12 @@ button:disabled{opacity:1;background:var(--soft);color:var(--muted);border-color
 .player-shell .card-cover{background:radial-gradient(ellipse at 72% 15%,var(--cover-light) 0,transparent 54%),linear-gradient(135deg,var(--cover-from),var(--cover-to));color:var(--cover-ink)}.player-shell .card-cover::after{border-color:var(--cover-orbit)}
 .player-shell .activation{color:var(--warning);background:var(--warning-bg);border-color:var(--gold)}
 .player-shell[data-reading-width=wide]{--reading-width:1360px}.player-shell .chat{max-width:var(--reading-width,730px)}.reading-pane{scrollbar-gutter:stable;overflow-anchor:none}
+/* Keep each pane in its track throughout the three-column layout range. */
+@media(min-width:761px){
+  .player-shell .layout>.library{grid-column:1;grid-row:1}.player-shell .layout>#player{grid-column:2;grid-row:1}.player-shell .layout>.scene-pane{grid-column:3;grid-row:1}
+}
 @media(min-width:1180px){
   .player-shell .layout{grid-template-columns:var(--library-width,258px) minmax(0,1fr) var(--scene-width,270px)}
-  .player-shell .layout>.library{grid-column:1;grid-row:1}.player-shell .layout>#player{grid-column:2;grid-row:1}.player-shell .layout>.scene-pane{grid-column:3;grid-row:1}
   .player-shell[data-left-collapsed=true]{--library-width:0px}.player-shell[data-right-collapsed=true]{--scene-width:0px}
   .player-shell[data-left-collapsed=true] .layout>.library,.player-shell[data-right-collapsed=true] .layout>.scene-pane{display:none}
 }

@@ -8,7 +8,7 @@ import {validatePlan} from '../scripts/validate-plan-v1.0.0.mjs';
 import {hash} from '../../core/contracts.mjs';
 import {buildSavedSnapshot} from '../../studio/cardstudio-bundle/lib/scean-integration.js';
 import {normalizeStudioHandoffSnapshot} from '../../plugin/studio-handoff.mjs';
-import {SceanEngine} from '../../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../../fixtures/temporal-fixture-engine.mjs';
 import {DurableStore} from '../../adapters/store.mjs';
 import {Memory} from '../../core/memory.mjs';
 import {projectCharacterAdvice} from '../../core/character-advice.mjs';

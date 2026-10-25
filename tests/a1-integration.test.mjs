@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtemp,readFile,mkdir,writeFile} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
-import {SceanEngine} from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {DurableStore} from '../adapters/store.mjs';
 import {Memory} from '../core/memory.mjs';
 import {hash} from '../core/contracts.mjs';
@@ -16,7 +16,7 @@ const roster=()=>[
 ];
 const snapshot=()=>{const characters=roster();return {schemaVersion:1,cardId:'a1-original-synthetic',revision:'r1',card:{data:{name:'合成研究船',description:'星港日常。',extensions:{scean:{characters:structuredClone(characters)}}}},worldbook:{entries:[{content:'星港很安靜。',constant:true}]},preset:{style:'繁體中文'},characters};};
 const state=()=>({
-  world:{locations:{kalt:'workshop',ael:'workshop',sio:'bridge'},tasks:{inspection:{status:'active',assignedTo:['kalt','sio']},fullThermalCycle:{status:'pending'}},resources:{fuel:72},time:{elapsedSeconds:0}},
+  world:{locations:{kalt:'workshop',ael:'workshop',sio:'bridge'},tasks:{inspection:{status:'active',assignedTo:['kalt','sio']},fullThermalCycle:{status:'pending'}},resources:{fuel:72},time:{elapsedSeconds:{temporalKind:'duration',seconds:0}}},
   characters:{
     kalt:{public:{role:'工程師'},private:{facts:{secret:'KALT_STATE_SECRET'}}},
     ael:{public:{role:'觀測員'},private:{facts:{secret:'AEL_STATE_SECRET'}}},

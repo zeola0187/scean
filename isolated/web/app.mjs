@@ -1,3 +1,4 @@
+import {mountWorldRoutineReaders} from './world-routine-ui.mjs';
 import {mountWritingMode} from './writing-mode-ui.mjs';
 import {mountProseStyle} from './prose-style-ui.mjs';
 import {mountPlayerIdentity} from './player-identity-ui.mjs';
@@ -7,6 +8,7 @@ import { SelectionEpoch, OperationOwnership, PrivateDiagnosticsSession, generati
 import { mountStudio } from './studio.mjs';
 import { mountPlayerShell } from './player-shell.mjs';
 import {createNotificationClient,mountNotificationControls,showNotificationToast} from './notifications.mjs';
+import {mountAgentModels} from './agent-models-ui.mjs';
 import {mountChapterSettings} from './chapter-settings-ui.mjs';
 import {chapterAutomationSummary,chapterOperationSummary} from './summary-settings-ui.mjs';
 import {mountOpeningSelection} from './opening-selection-ui.mjs';
@@ -57,6 +59,7 @@ let narrativeSerial=0,narrativeController=null,narrativeBusy=false,narrativeData
 let inspectorSerial=0,activeNarrativeOperation=null;
 let chapterData=null,chapterSerial=0,chapterDetailSerial=0,chapterSettingsDirty=false,selectedChapterId=null;
 const state = { token:null, mode:null, generationBlocked:false,writingMode:'single_writer', interactive:null, enableBusy:false, catalog:[], run:null, draft:null, pending:false, submitting:false, localTurn:null, lastOperation:null, failure:null, composing:false, pollBusy:false, operationUnknown:false, disconnected:false, nextPollAt:0, pollFailures:0, draftTimer:null, draftQueue:Promise.resolve(), chatKey:null };
+const agentModels=mountAgentModels({document,request:(action,payload,signal)=>api(action,payload,signal),getRunId:()=>view.runId,getScopeKey:()=>nativeScopeKey??'',secureContext:secureClient});
 const globalChapterSettings=mountChapterSettings({secureContext:secureClient,request:(action,payload,signal)=>api(action,payload,signal),onSaved:()=>{if(view.runId)void refreshChapters();}});
 const writingMode=mountWritingMode({onMode:(mode,runId)=>{if(state.run?.runId===runId){state.writingMode=mode;void refreshModels().catch(()=>{});}},request:(action,payload)=>api(action,payload),secureContext:secureClient});
 const proseStyle=mountProseStyle({request:(action,payload)=>api(action,payload),secureContext:secureClient});
@@ -67,6 +70,7 @@ function preservePlayerReading(){const anchor=captureReadingAnchor(shell.reading
 const playerContext=()=>state.run?{...state.run,epoch:nativeContextSerial+':'+view.capture().value,selectionStamp:nativeContextSerial+':'+view.capture().value,sessionId:nativeScopeKey,cardId:state.run.snapshot?.cardId,disabled:state.pending||state.submitting||historyBusy||backupBusy||state.generationBlocked}:null;
 const playerIdeas=mountPlayerIdeas({document,request:(action,payload,signal)=>api(action,payload,signal),getContext:playerContext,preserveReading:preservePlayerReading});
 const playerReaders=mountPlayerReaders({document,onDismiss:()=>{shell.show('story');return shell.reading;},request:(action,payload,signal)=>api(action,payload,signal),getContext:playerContext,preserveReading:preservePlayerReading,onNavigate:target=>{if(target.runId===view.runId){shell.show('story');return loadHistory({anchorCommitId:target.commitId,anchorPosition:target.anchorPosition});}}});
+const worldRoutineReaders=mountWorldRoutineReaders({document,request:(action,payload)=>api(action,payload),getContext:playerContext,preserveReading:preservePlayerReading,onDismiss:()=>{shell.show('story');return shell.reading;}});
 const presentationPanel=mountPresentationPanel({document,request:(action,payload,signal)=>api(action,payload,signal),getContext:playerContext,preserveReading:preservePlayerReading});
 const runRecycle=mountRunRecycle({document,request:(action,payload)=>api(action,payload),getCurrent:()=>state.run,getScopeKey:()=>{if(!native)return 'isolated';try{const s=JSON.parse(nativeScopeKey??'null');return JSON.stringify([s?.provider,s?.cardId,s?.authoringSessionId,s?.generation]);}catch{return '';}},isBusy:()=>state.pending||state.submitting||historyBusy||backupBusy||state.operationUnknown||state.composing,beforeTrash:()=>saveDraft(),onChanged:async value=>{
   if(value.status==='trashed'&&view.runId===value.runId){clearNativeView({preserveRecycle:true});try{sessionStorage.removeItem('scean-selected-run');}catch{}}
@@ -110,7 +114,7 @@ function updateModels(models){
   $('mode-banner').classList.toggle('scripted',scripted||availability.blocked);
   if(native)$('mode-banner').textContent='目前對話的卡片舞臺 · 只列出同一卡片各保存版本的故事';
   const publicDescription={mode:models.mode??state.mode,source:models.source??models.label??'DSH',...(models.requested?{requested:models.requested}:{}),...(models.effective?{effective:models.effective}:{}),...(models.selectionSource?{selectionSource:models.selectionSource}:{}),...(availability.remaining!==null?{remaining:availability.remaining}:{})};
-  $('model-source').textContent=`模型來源：${valueText(publicDescription)}。${scripted?'目前使用離線合成模型。':'隔離環境以啟動時 DSH 選擇為準，改模型請重啟。'}實際路由與用量保存在本輪診斷。`;
+  $('model-source').textContent=`預設模型來源：${valueText(publicDescription)}。${scripted?'目前使用離線合成模型。':native?'各 Agent 依舞臺全域與本局設定選模；新設定從下一個新請求生效。':'隔離環境以啟動時 DSH 選擇為準，改模型請重啟。'}實際路由與用量保存在本輪診斷。`;
   controls();
 }
 async function refreshModels(){updateModels(await api('models'));}
@@ -189,8 +193,8 @@ async function refreshRuns(){
 function clearNativeView({preserveRecycle=false}={}){
   scriptLibrary?.reset();sourceReturn.disabled=true;
   if(!preserveRecycle)runRecycle.reset();
-  playerIdeas.reset();playerReaders.reset();presentationPanel.reset();showNotificationToast({clear:true});
-  writingMode.select(null);proseStyle.select(null);cardFrontend.clear();
+  playerIdeas.reset();playerReaders.reset();worldRoutineReaders.reset();presentationPanel.reset();showNotificationToast({clear:true});
+  writingMode.select(null);proseStyle.select(null);agentModels.invalidateRun();cardFrontend.clear();
   openingSelection.reset();
   openingSelection.setRun(null);
   view.select(null);operations.reset();resetLongform(false);clearTimeout(state.draftTimer);
@@ -283,7 +287,7 @@ async function readCanonicalSnapshot(selected,owner,serial,{includeDraft=false}=
 function renderRun(run){
   openingSelection.setRun(run);
   state.run=run;historySync.want(run);cardFrontend.update(run);proseStyle.select(run.runId);writingMode.select(run.runId);
-  playerReaders.update(playerContext());presentationPanel.update(playerContext());
+  playerReaders.update(playerContext());worldRoutineReaders.update(playerContext());presentationPanel.update(playerContext());
   if(!banListDirty)$('banlist-input').value=(run.banList??[]).map(x=>typeof x==='string'?x:x.text??x.phrase??'').join('\n');
   $('run-title').textContent=titleOf(run.snapshot);shell.story(run,narrativeData,loadedTurns);
   $('run-version').textContent=`固定版本 ${run.snapshot?.revision??'—'} · Run ${run.runId} · 摘要 ${run.snapshot?.hash?.slice(0,12)??'未記錄'} · ${run.turnCount??run.turns?.length??0} 回合`;
@@ -570,7 +574,7 @@ async function selectRun(runId){
   }
   if(contextSerial!==nativeContextSerial||navigation!==navigationSerial)return;
   banListDirty=false;$('banlist-status').textContent='';
-  writingMode.select(null);proseStyle.select(null);
+  writingMode.select(null);proseStyle.select(null);agentModels.invalidateRun();
   const token=view.select(runId);operations.reset();historyBusy=false;clearTimeout(state.draftTimer);resetLongform();
   cardFrontend.clear();turnDuration.clear();state.run=null;state.draft=null;state.pending=false;state.submitting=false;state.operationUnknown=false;state.failure=null;state.localTurn=null;state.lastOperation=null;state.chatKey=null;regenInput=null;
   historyTarget=null;$('history-dialog').close();$('export-consent').checked=false;$('history-status').textContent='僅可操作最後有效已提交回合。';setError('history-error',null);

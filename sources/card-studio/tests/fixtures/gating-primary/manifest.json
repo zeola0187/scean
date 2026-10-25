@@ -1,0 +1,36 @@
+[
+  {
+    "file": "pt-handler.ts",
+    "sha256": "0694fe613f72f5796587cac1023ea0ce554c3e5c122be20a9850f84008b8d91a",
+    "source": "https://github.com/zonde306/ST-Prompt-Template/blob/d6f520d149aba146305b0b781ddd691d449c28d2/src/modules/handler.ts",
+    "upstreamVerified": true
+  },
+  {
+    "file": "pt-worldinfo.ts",
+    "sha256": "7681354d011b16c5bfaab01bba212651dfd42edcf1fd85b3aea089d03f8ea02f",
+    "source": "https://github.com/zonde306/ST-Prompt-Template/blob/d6f520d149aba146305b0b781ddd691d449c28d2/src/function/worldinfo.ts",
+    "upstreamVerified": true
+  },
+  {
+    "file": "pt-evaluate.ts",
+    "sha256": "d381e132949fc1434e9680e5db85b82121dabc2a635b2b0fdcfe1ccd21158153",
+    "source": "https://github.com/zonde306/ST-Prompt-Template/blob/d6f520d149aba146305b0b781ddd691d449c28d2/src/utils/evaluate.ts",
+    "upstreamVerified": true
+  },
+  {
+    "file": "PT-LICENSE",
+    "sha256": "8486a10c4393cee1c25392769ddd3b2d6c242d6ec7928e1414efff7dfb2f07ef",
+    "source": "https://github.com/zonde306/ST-Prompt-Template/blob/d6f520d149aba146305b0b781ddd691d449c28d2/LICENSE",
+    "upstreamVerified": true
+  },
+  {
+    "file": "tt-world-info.js.txt",
+    "sha256": "7906040cea3eaab55c06d0637801742e05e59976a5c24615b556c1070bd600cf",
+    "source": "https://raw.githubusercontent.com/Darkatse/TauriTavern/3fe9e055b512/src/scripts/world-info.js"
+  },
+  {
+    "file": "TT-LICENSE",
+    "sha256": "8486a10c4393cee1c25392769ddd3b2d6c242d6ec7928e1414efff7dfb2f07ef",
+    "source": "https://raw.githubusercontent.com/Darkatse/TauriTavern/3fe9e055b512/LICENSE"
+  }
+]

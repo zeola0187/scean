@@ -1,3 +1,5 @@
+import {storyTimeDefinition} from './w01/core/story-clock.mjs';
+import {validatePublicEvents} from './w01/core/state-operations.mjs';
 import {derivedFactsPackage} from './w01/core/derived-facts.mjs';
 import {frontendPackage} from './w01/core/frontend.mjs';
 import { canonical, sha, fail } from './codec.js';
@@ -105,6 +107,8 @@ export function buildSavedSnapshot(saved,{preset=DEFAULT_PRESET,presetSource,wor
     source:{provider:'@local/dsh-card-studio-scean-test',card:{id:saved.id,revision:saved.revision,sha256:saved.sha256},worldbook:{kind:worldbook?'saved_document':'embedded',id:worldbook?.id??saved.id,revision:worldbook?.revision??saved.revision,hash:digest(book)},preset:{...presetSource??{kind:'explicit_fixed_payload'},hash:digest(preset)}},
     limitations:['Card JavaScript, MVU, EJS and executable extensions are not executed.','Natural-language worldbook rules are model context, not verified executable predicates.','Saving a new revision requires a new run; live reload is unsupported.']};
   const native=saved.card.data.extensions?.scean;
+  if(native?.storyTimeDefinition!==undefined)snapshot.storyTimeDefinition=storyTimeDefinition(native.storyTimeDefinition);
+  if(native?.publicEvents!==undefined)snapshot.publicEvents=validatePublicEvents(native.publicEvents,storyTimeDefinition(snapshot.storyTimeDefinition));
   if(native?.frontend||native?.derivedFacts){
     snapshot.stateBlueprint=copy(native.stateBlueprint);if(native.initialState!==undefined)snapshot.initialState=copy(native.initialState);
     if(native.derivedFacts){snapshot.derivedFacts=derivedFactsPackage(native.derivedFacts,snapshot.stateBlueprint,roster);snapshot.source.derivedFacts={id:snapshot.derivedFacts.id,version:snapshot.derivedFacts.version,hash:snapshot.derivedFacts.hash,storage:'embedded-in-saved-card-and-fixed-snapshot'};}

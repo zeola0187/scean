@@ -48,6 +48,7 @@ export function configuredChapterPorts({settings,nativeModel,legacyNativeModel=n
   };
 }
 function rerankContext(context={},spec){
+  if(context.routePin)return context;
   const {modelSelection,stageModelSelections,...rest}=context;
   return spec.mode==='dsh_model'?{...rest,stageModelSelections:{chapter_rerank:{provider:spec.provider,model:spec.model}}}:rest;
 }

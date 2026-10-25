@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {SceanEngine} from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {DurableStore} from '../adapters/store.mjs';
 import {publicInspection} from '../core/inspection.mjs';
 import {retireHead,assertHistoryCapacity,HISTORY_LIMITS} from '../core/history.mjs';

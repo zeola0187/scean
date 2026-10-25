@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {mkdtemp} from 'node:fs/promises';import {tmpdir} from 'node:os';import {join} from 'node:path';
-import {SceanEngine} from '../core/engine.mjs';import {SceanHost} from '../plugin/host.mjs';import {DurableStore} from '../adapters/store.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';import {SceanHost} from '../plugin/host.mjs';import {DurableStore} from '../adapters/store.mjs';
 import {ChapterRecall,chapterContextSources} from '../core/chapter-recall.mjs';
 import {chapterRecallFixture,chapterRecallPorts} from '../fixtures/synthetic-chapter-recall.mjs';
 import {validateNarrative} from '../core/narrative.mjs';import {encodeRunBundle,validateRunBundle} from '../core/save-bundle.mjs';

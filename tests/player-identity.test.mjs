@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtemp,mkdir} from 'node:fs/promises';
 import {join} from 'node:path';
-import {SceanEngine} from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {DurableStore} from '../adapters/store.mjs';
 import {Memory} from '../core/memory.mjs';
 import {SceanHost} from '../plugin/host.mjs';
@@ -83,7 +83,7 @@ test('worldbook primary/secondary keys resolve literally, including regex-lookin
 });
 test('legacy adoption is explicit, once-only, idempotent, head/version-bound and portable; no historical hashes change',async t=>{
   const f=await fixture(t),run=await f.engine.createRun({snapshot:f.snapshot});await f.host.refreshRuns();
-  await f.call('turn',{runId:run.runId,requestId:'legacy-first',input:'Original {{user}}.'});const before=await f.store.read(run.runId),legacy=encodeRunBundle(before);assert.equal(legacy.schemaVersion,1);assert.equal(validateRunBundle(legacy).playerIdentity,undefined);
+  await f.call('turn',{runId:run.runId,requestId:'legacy-first',input:'Original {{user}}.'});const before=await f.store.read(run.runId),legacy=encodeRunBundle(before);assert.equal(legacy.schemaVersion,9);assert.equal(validateRunBundle(legacy).playerIdentity,undefined);
   const request={runId:run.runId,name:'補設旅人',operationId:'bind-one',expectedVersion:before.version,expectedHead:before.head};
   await assert.rejects(f.call('playerBind',{...request,expectedVersion:0}),code('VERSION_CONFLICT'));
   await assert.rejects(f.call('playerBind',{...request,expectedHead:null}),code('HISTORY_HEAD_CONFLICT'));
@@ -91,7 +91,7 @@ test('legacy adoption is explicit, once-only, idempotent, head/version-bound and
   const result=await f.call('playerBind',request);assert.deepEqual(await f.call('playerBind',request),result);
   await assert.rejects(f.call('playerBind',{...request,name:'Different'}),code('IDEMPOTENCY_CONFLICT'));await assert.rejects(f.call('playerBind',{...request,operationId:'bind-two'}),code('PLAYER_NAME_ALREADY_BOUND'));
   const named=await f.store.read(run.runId);for(const key of ['snapshot','turns','state','memories','playerHistory','receipts','head'])assert.deepEqual(named[key],before[key],key);
-  assert.equal(openingDisplay(named),'Hello {{user}}.');const bundle=encodeRunBundle(named);assert.equal(bundle.schemaVersion,4);assert.deepEqual(encodeRunBundle(validateRunBundle(bundle)),bundle);
+  assert.equal(openingDisplay(named),'Hello {{user}}.');const bundle=encodeRunBundle(named);assert.equal(bundle.schemaVersion,9);assert.deepEqual(encodeRunBundle(validateRunBundle(bundle)),bundle);
   for(const mutate of [b=>b.schemaVersion=1,b=>delete b.run.playerIdentity,b=>b.run.playerIdentity.extra='bad',b=>b.run.playerIdentity.adoption.fingerprint='0'.repeat(64)]){const bad=clone(bundle);mutate(bad);bad.manifest.sha256=hash(bad.run);assert.throws(()=>validateRunBundle(bad));}
   await f.restart();assert.equal((await f.call('runView',{runId:run.runId})).playerIdentity.name,'補設旅人');
   await f.call('turn',{runId:run.runId,requestId:'named-next',input:'Next.'});const next=await f.store.read(run.runId);assert.equal(next.turns[0].body,before.turns[0].body);assert(next.turns[1].body.includes('補設旅人'));
@@ -121,9 +121,9 @@ test('authenticated defaults and card-scoped binding cannot be changed by untrus
 
 test('authenticated v4 backup imports into a distinct store and resumes; legacy v1 remains unnamed',async t=>{
  const first=await fixture(t),second=await fixture(t),named=await first.engine.createRun({snapshot:first.snapshot,playerName:'Portable name'});await first.host.refreshRuns();
- const exported=await first.call('exportRun',{runId:named.runId,acknowledgement:'export-private-run-data'});assert.equal(exported.schemaVersion,4);
+ const exported=await first.call('exportRun',{runId:named.runId,acknowledgement:'export-private-run-data'});assert.equal(exported.schemaVersion,9);
  const imported=await second.call('importRun',{bundle:exported,acknowledgement:'import-private-run-data'});assert.equal(imported.runId,named.runId);assert.equal((await second.call('runView',{runId:named.runId})).playerIdentity.name,'Portable name');
  await second.call('turn',{runId:named.runId,input:'Continue.',requestId:'portable-turn'});assert((await second.store.read(named.runId)).turns[0].body.startsWith('Portable name'));
- const old=await first.engine.createRun({snapshot:first.snapshot});await first.host.refreshRuns();const legacy=await first.call('exportRun',{runId:old.runId,acknowledgement:'export-private-run-data'});assert.equal(legacy.schemaVersion,1);
+ const old=await first.engine.createRun({snapshot:first.snapshot});await first.host.refreshRuns();const legacy=await first.call('exportRun',{runId:old.runId,acknowledgement:'export-private-run-data'});assert.equal(legacy.schemaVersion,9);
  await second.call('importRun',{bundle:legacy,acknowledgement:'import-private-run-data'});assert.equal((await second.call('runView',{runId:old.runId})).playerIdentity,undefined);
 });

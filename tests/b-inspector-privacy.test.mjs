@@ -7,7 +7,7 @@ import {budgetStage} from '../core/context-budget.mjs';
 import {publicInspection,publicTurnResult} from '../core/inspection.mjs';
 import {hash} from '../core/contracts.mjs';
 import {SceanHost} from '../plugin/host.mjs';
-import {SceanEngine} from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {DurableStore} from '../adapters/store.mjs';
 import {Memory} from '../core/memory.mjs';
 

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "skillVersion": "1.1.0",
-  "runtimeVersion": "1.5.0",
-  "studioVersion": "1.5.0",
+  "runtimeVersion": "1.6.2-local.w29.2d",
+  "studioVersion": "1.6.2-local.w29.2d",
   "desktopVersion": "0.2.0-rc.2",
   "claimsScope": "structure/data-path proof; no true-model semantic acceptance",
   "capabilities": [
@@ -12,11 +12,11 @@
       "contract": "固定 revision/hash；新 Run 凍結，舊 Run 不熱更新",
       "source": {
         "path": "core/contracts.mjs",
-        "line": 44,
+        "line": 50,
         "symbol": "validateSnapshot",
-        "sha256": "7906d61f2b05d115a0013223d1df7c0bdd8942f016eb72ea98f42f007419df04",
+        "sha256": "9bca4aa0ae3db5ee10c754c2dd0daaefe8bb255dfee1d5d236adc968735eeb5f",
         "priorSha256": "ef8c4606012f0d80a12824ba1320b31a34822fdd94c3a3e32eb8373adf25108c",
-        "beforeSingleWriterSha256": "4b3d12129a5175374b08e9b9a080b4a94b8824a440a230906e9888870542877d"
+        "beforeDialogueColorsSha256": "4b3d12129a5175374b08e9b9a080b4a94b8824a440a230906e9888870542877d"
       },
       "tests": [
         {
@@ -29,19 +29,15 @@
     {
       "id": "pipeline",
       "classification": "runtime_executable",
-      "contract": "Default Director → Single Writer → local validation/necessary bounded repair → Post-Stat → atomic commit. Character and pre-Stat remain on demand. Legacy explicit workflows remain for internal compatibility.",
+      "contract": "Director tool loop (optional Host StoryClock settlement) -> Single Writer -> validation -> PostStat -> atomic commit; Character and pre-Stat on demand; legacy explicit modes remain internal.",
       "source": {
         "path": "core/engine.mjs",
-        "line": 210,
+        "line": 259,
         "symbol": "async turn",
-        "sha256": "a14385681be682a33cdbd41b128c0000af5d853f907eb4d84ea5cf8569342145",
+        "sha256": "69653b8e35abf0b38346a6bf59cb81c7845a7a02e04d1cfa1328d91471155b78",
         "priorSha256": "13f418aabc85cd1e6ae9b6ef5920db7e92aafc5cf9d9dd6c5f50ddd9de6cf907",
         "playerNameBaselineSha256": "23686d04b743925c5c94bbb21fd1418984db7cea17ca75580243ee6321ba21e7",
-        "beforeProseStyleSha256": "b1c7bed2fb832c175e29be5d424d1301d5c8aa34ec554c859ad30ca8b8e571ef",
-        "beforeWritingModeSha256": "5ca461974598736482218ad80d6d8b76280860a8129e736e7e73b8b1272bdb9e",
-        "beforeSingleWriterSha256": "71b6a3661a8bbb6f4c68b1f9860433114dbb6a7725689cfd237c30e2b792483e",
-        "beforeWriterStyleSkillsSha256": "ad1a52390639bf90294912c68c25b650f7adebd8969db3b58bf7f57604c3bef4",
-        "beforeDialogueColorsSha256": "1e99cef96e254285387e6029590343010724c38ebd868063b8b99287343d804d"
+        "beforeDialogueColorsSha256": "f4a83d514153d2d5531f0ec1b9919196a819adffd8dffe729ba0b23d9911228f"
       },
       "tests": [
         {
@@ -57,16 +53,12 @@
       "contract": "本人完整背景、ownState、owner recall；其他人僅身分",
       "source": {
         "path": "core/engine.mjs",
-        "line": 390,
+        "line": 480,
         "symbol": "ownerPacket",
-        "sha256": "a14385681be682a33cdbd41b128c0000af5d853f907eb4d84ea5cf8569342145",
+        "sha256": "69653b8e35abf0b38346a6bf59cb81c7845a7a02e04d1cfa1328d91471155b78",
         "priorSha256": "13f418aabc85cd1e6ae9b6ef5920db7e92aafc5cf9d9dd6c5f50ddd9de6cf907",
         "playerNameBaselineSha256": "23686d04b743925c5c94bbb21fd1418984db7cea17ca75580243ee6321ba21e7",
-        "beforeProseStyleSha256": "b1c7bed2fb832c175e29be5d424d1301d5c8aa34ec554c859ad30ca8b8e571ef",
-        "beforeWritingModeSha256": "5ca461974598736482218ad80d6d8b76280860a8129e736e7e73b8b1272bdb9e",
-        "beforeSingleWriterSha256": "71b6a3661a8bbb6f4c68b1f9860433114dbb6a7725689cfd237c30e2b792483e",
-        "beforeWriterStyleSkillsSha256": "ad1a52390639bf90294912c68c25b650f7adebd8969db3b58bf7f57604c3bef4",
-        "beforeDialogueColorsSha256": "1e99cef96e254285387e6029590343010724c38ebd868063b8b99287343d804d"
+        "beforeDialogueColorsSha256": "f4a83d514153d2d5531f0ec1b9919196a819adffd8dffe729ba0b23d9911228f"
       },
       "tests": [
         {
@@ -82,10 +74,11 @@
       "contract": "刪除 withheld/internal，保留公開意圖與發言；非語義防洩密",
       "source": {
         "path": "core/character-advice.mjs",
-        "line": 22,
+        "line": 32,
         "symbol": "projectCharacterAdvice",
         "sha256": "c27c4aacc863236737bfd11e7ea590166f61dffc4289053b4e271155a23af2d2",
-        "priorSha256": "57855fbdaa74187474ec7fb3fb6a87d8df1b3a78805ad5ca5ed2533c5148d066"
+        "priorSha256": "57855fbdaa74187474ec7fb3fb6a87d8df1b3a78805ad5ca5ed2533c5148d066",
+        "beforeDialogueColorsSha256": "57855fbdaa74187474ec7fb3fb6a87d8df1b3a78805ad5ca5ed2533c5148d066"
       },
       "tests": [
         {
@@ -143,7 +136,7 @@
         "path": "core/state-blueprint.mjs",
         "line": 47,
         "symbol": "validateBlueprint",
-        "sha256": "1686bc3e2c950ce9895b73023088c3ba33bae7ec41d2dbba3533290cfb592e90",
+        "sha256": "97f5c8aef0024fc743154ad0ff1d73009e4d09732360679846c0e7f5a16ef490",
         "priorSha256": "1686bc3e2c950ce9895b73023088c3ba33bae7ec41d2dbba3533290cfb592e90"
       },
       "tests": [
@@ -160,9 +153,9 @@
       "contract": "來源版本化 InitialState 物化，restricted wrapper",
       "source": {
         "path": "core/state-blueprint.mjs",
-        "line": 110,
+        "line": 112,
         "symbol": "materializeInitialState",
-        "sha256": "1686bc3e2c950ce9895b73023088c3ba33bae7ec41d2dbba3533290cfb592e90",
+        "sha256": "97f5c8aef0024fc743154ad0ff1d73009e4d09732360679846c0e7f5a16ef490",
         "priorSha256": "1686bc3e2c950ce9895b73023088c3ba33bae7ec41d2dbba3533290cfb592e90"
       },
       "tests": [
@@ -198,15 +191,12 @@
       "contract": "正文/State/Memory/playerHistory/來源/receipt 一次原子提交",
       "source": {
         "path": "adapters/store.mjs",
-        "line": 77,
+        "line": 83,
         "symbol": "async commit",
-        "sha256": "44183d3d1bffc66eb37af60ff37a3b12c1a6fced16925472a5a0f438fcdc36af",
+        "sha256": "4482e9084c88fd979105ca5c30ea610d0701e323e46f30581999e49f8e7adb9a",
         "priorSha256": "48b888d37ac8a760f9955037091792cab9674522afba9bb8e19b502c34244e2e",
         "playerNameBaselineSha256": "48b888d37ac8a760f9955037091792cab9674522afba9bb8e19b502c34244e2e",
-        "beforeProseStyleSha256": "3cb9068c8dd4f70142ee147c25b6ecdfe2ca48ef6c4ab8855abb95f044ce4a86",
-        "beforeWritingModeSha256": "5a589e17c0a50def8465334fea09193f9984ed18d6771b870e6e7e6bb0573127",
-        "beforeWriterStyleSkillsSha256": "f6c3bcdac46642bb1f2ba0182b1b9fadc944933245210b29e48d252231d0dd62",
-        "beforeRunRecycleSha256": "c461e8e8b09e34f3269a0fef221de7a3d6f27c156ff5bfa702f3284faa945584"
+        "beforeRunRecycleSha256": "3cb9068c8dd4f70142ee147c25b6ecdfe2ca48ef6c4ab8855abb95f044ce4a86"
       },
       "tests": [
         {
@@ -242,14 +232,13 @@
       "contract": "按階段有界容量；必要核心超限拒絕",
       "source": {
         "path": "core/context-budget.mjs",
-        "line": 51,
+        "line": 75,
         "symbol": "budgetStage",
-        "sha256": "5d3bb65b58c9424ca2cab8b1cd7ae0619f1d0d9462c7b1290d2db18ac6da2dc3",
+        "sha256": "bc5622e7d4bd9f71f86c2f0942c0db52ff67e1eaff37ffe735c69363c5e52768",
         "priorSha256": "dd5f2fc80a390c0cf60696d44dca7cab8a75d4b788306cbc35c3c5756d78fd06",
         "playerNameBaselineSha256": "f8e2ecd322373fbb4c64ed9248b098a6124e8484f1d7e2a64eb023605a7f2434",
-        "beforeProseStyleSha256": "3197c1adf224b92d9ae091446273edda4ad07001adbca6c3c61798f21d006178",
-        "beforeWritingModeSha256": "efca1e00df4243f6d66829af3df699469bdd96b2cf441c753197941e40146381",
-        "beforeSingleWriterSha256": "72c87d66677fc3db7b0db5e6e770b59eb7485afaa4d97818e6f207a82b6c6600"
+        "beforeDialogueColorsSha256": "8af924bfc1dfdfd239d1cf9b853de0b45066b5910b0432fec6643ab7faf7b4db",
+        "priorW29Sha256": "94ad325aa53a585bc1a12ed7d90665aa8fa54c6adf09cc4f88321d0b6e4dc275"
       },
       "tests": [
         {
@@ -267,7 +256,7 @@
         "path": "plugin/studio-handoff.mjs",
         "line": 10,
         "symbol": "normalizeStudioHandoffSnapshot",
-        "sha256": "773550c0ac4f81998e86335f17b588277a7ab26491180f56114775b67ebde17d",
+        "sha256": "6507cfaf382b519d6a40f2a4d8015c92fce52e6904627911958b89f6b7b56fea",
         "priorSha256": "773550c0ac4f81998e86335f17b588277a7ab26491180f56114775b67ebde17d"
       },
       "tests": [
@@ -284,15 +273,12 @@
       "contract": "通用UI/Inspector公開投影，未知呈現；不是任意HTML runtime",
       "source": {
         "path": "core/inspection.mjs",
-        "line": 101,
+        "line": 112,
         "symbol": "publicInspection",
-        "sha256": "82bfd197434f6be99f0969e9e227cd938d605757530c75cfb04d70b14bbc7646",
+        "sha256": "5048bb81e2af9bd80d7e1d3b09d4751af7a9b20b26fa56ab0b8a8738e3f04a8f",
         "priorSha256": "e6be0c1210c5f25606b698af4f21641bdfed34a00dfd4928fa5ee53ab6a2d402",
         "playerNameBaselineSha256": "74072c433c818b474e968fca156486cc4c6fb8e409ddf9dde5015614a7fcc219",
-        "beforeProseStyleSha256": "95448d9c58fdb5c52fef26e1840aa6f1cb0fd07ff710865d88c1358813083a94",
-        "beforeWritingModeSha256": "c1a166025b1201bc1340f52f69dc73c5b4d92340d9dd324d90325fa0dc1cf1b2",
-        "beforeSingleWriterSha256": "0712b1a020009cdc8b43a5f874378317b4d1e229441889a7a68e1f7971f55164",
-        "beforeRunRecycleSha256": "480f7a745e718e56bf558e910c4926f96f34f38d00906277b06c490071c07c4c",
+        "beforeRunRecycleSha256": "ca7b70d4200db5c6ffd6b90e7f03c1b8a926a7413447c0378fd13a87f7559e0e",
         "beforeDialogueColorsSha256": "7c3cb5428166b7339a3f04ab8cc81ee2f1ce131e65085a21e29860dfa1f90cf6"
       },
       "tests": [
@@ -311,9 +297,9 @@
         "path": "core/regenerate.mjs",
         "line": 5,
         "symbol": "regenerateLast",
-        "sha256": "66646ff0f41a10f5f07f5f076fcb285bcd7399d2721e2fd443d3e920b0a349ec",
+        "sha256": "7a76b24645846961e9810f6a95155ba9cfd99c0cf3b8dbb5e4c575dd5f2dac17",
         "priorSha256": "9d34cfbf02cc39dd7427cd30ebebb45219818ffd6a2099f00b54a69999aa9636",
-        "beforeWriterStyleSkillsSha256": "134717dfca1d7aa2c4867d7759f469d537b0ce0b0c79cf2195cf62f7f82413c4"
+        "beforeDialogueColorsSha256": "134717dfca1d7aa2c4867d7759f469d537b0ce0b0c79cf2195cf62f7f82413c4"
       },
       "tests": [
         {
@@ -329,15 +315,13 @@
       "contract": "有來源鏈及hash的保存／新Run匯入；私密資料需既有grant",
       "source": {
         "path": "core/save-bundle.mjs",
-        "line": 9,
+        "line": 14,
         "symbol": "export",
-        "sha256": "92c8eed1f5e808d8e6793f7ba40e0cde53081b578b9a72325061859e25253500",
+        "sha256": "70c3a8c783fc31eef335d0a34e60fbd1b3d3a99698f530c573c62438f96d5747",
         "priorSha256": "844896a425489603e0c4a8ddbffa5e439671fb035d70724baf0fee0ec1b01813",
         "playerNameBaselineSha256": "844896a425489603e0c4a8ddbffa5e439671fb035d70724baf0fee0ec1b01813",
-        "beforeProseStyleSha256": "b6d6936abf29ce6103bfd3a278a9dfe808b85b8ae2f8ae89f323eab53ecc2e7b",
-        "beforeWritingModeSha256": "f7539d5539f61f9e39809baad92a04e5affef5e6ea4272a5d75424555e77e79f",
-        "beforeSingleWriterSha256": "4d57e451ed1bf233563dfab59e1cdf002db47363e2a3a79a7ac8a8a920f077b7",
-        "beforeDialogueColorsSha256": "a5e744c0c29ce0659e0fcce34ed43c215183ff3e1c7c073df5bf6e02e9d5cb64"
+        "beforeDialogueColorsSha256": "b6d6936abf29ce6103bfd3a278a9dfe808b85b8ae2f8ae89f323eab53ecc2e7b",
+        "priorW29Sha256": "72cc461c8291c4345bdee17b2d46de7fa961b01dbc32df0a002e6ee0033f30ea"
       },
       "tests": [
         {
@@ -355,8 +339,9 @@
         "path": "core/narrative.mjs",
         "line": 29,
         "symbol": "invalidateNarrative",
-        "sha256": "b007dee43c6be61bb59ebb6413f7ffad454139cffeba32f5b8a10ca4315a83aa",
-        "priorSha256": "6b57286f1536adf1508e6b2a02acbc7aa8579817273549a0204ef1677f210dd6"
+        "sha256": "3fa6963697c4aa43e1650942405b1531bc2e9d02a03270cd9fc41480f7733494",
+        "priorSha256": "6b57286f1536adf1508e6b2a02acbc7aa8579817273549a0204ef1677f210dd6",
+        "beforeDialogueColorsSha256": "84d9cedd29f1c149e44efbae26f462005237fb343c38fb1dbc00a58978439c03"
       },
       "tests": [
         {
@@ -374,9 +359,9 @@
         "path": "core/prompt-r3.mjs",
         "line": 3,
         "symbol": "withR3Prompts",
-        "sha256": "8a3c0f849d5c027961c7c6f97704e3b2f28c36af099e958bdf08fe95a020eabe",
+        "sha256": "18c24ce1c6f5f1d94cca64e68d473caaa1e1da8afa07e88008dfe5ea1f86e4f2",
         "priorSha256": "7e2057ad8bf79c3af9d7fd08c253866a6f4b598d5c6aefb91f09e5ed4ca7cfa8",
-        "beforeProseStyleSha256": "6c2ffb731ca5aab85b2d1d8090a8cd55c65792459d650d8bdb0896264d0c1b8a"
+        "beforeDialogueColorsSha256": "169c63fc6f9cf033d7fe0599dfba0f08fe53cd8afff7d6857b5dcbb13a3964f7"
       },
       "tests": [
         {
@@ -392,10 +377,11 @@
       "contract": "自由文字披露無語義保密保證，作者分域＋模型遵循",
       "source": {
         "path": "core/character-advice.mjs",
-        "line": 20,
+        "line": 30,
         "symbol": "Free text can paraphrase",
         "sha256": "c27c4aacc863236737bfd11e7ea590166f61dffc4289053b4e271155a23af2d2",
-        "priorSha256": "57855fbdaa74187474ec7fb3fb6a87d8df1b3a78805ad5ca5ed2533c5148d066"
+        "priorSha256": "57855fbdaa74187474ec7fb3fb6a87d8df1b3a78805ad5ca5ed2533c5148d066",
+        "beforeDialogueColorsSha256": "57855fbdaa74187474ec7fb3fb6a87d8df1b3a78805ad5ca5ed2533c5148d066"
       },
       "tests": [
         {
@@ -411,10 +397,11 @@
       "contract": "不執行任意 JS/EJS/MVU/TavernHelper/regex replacement",
       "source": {
         "path": "sources/card-studio/cardstudio-bundle/lib/scean-integration.js",
-        "line": 49,
+        "line": 108,
         "symbol": "Card JavaScript",
-        "sha256": "e533b2aa535a3c4a8594959291557db6330ef1b51fba18295f1bb7bb3eb9ccd8",
-        "priorSha256": "8fd40b5d0b1206cfb415bdd202b2748569b91c88dd150e9d8d959d0c410d6809"
+        "sha256": "d8399e5d1118b2ce75bfc4e950a648a17ff4e0494cc7062df38177c05c4d5ea5",
+        "priorSha256": "95153467540cd9633b9b46d92a37e5a28fbe8c273e575d757eee92065f007f8b",
+        "beforeDialogueColorsSha256": "7a8c5a0f189a49eb5eec56a6926b28693d215bfc5dfca64e48b8d6664b60c171"
       },
       "tests": [
         {
@@ -427,19 +414,15 @@
     {
       "id": "deterministic-rules",
       "classification": "requires_host_ui",
-      "contract": "沒有確定性骰子/消耗公式/時間排程/任意事件predicate",
+      "contract": "沒有通用骰子、消耗公式或任意規則引擎；StoryClock／公共事件已有獨立 Host 契約。",
       "source": {
         "path": "core/engine.mjs",
-        "line": 131,
+        "line": 172,
         "symbol": "no configured numerical dice runner",
-        "sha256": "a14385681be682a33cdbd41b128c0000af5d853f907eb4d84ea5cf8569342145",
+        "sha256": "69653b8e35abf0b38346a6bf59cb81c7845a7a02e04d1cfa1328d91471155b78",
         "priorSha256": "13f418aabc85cd1e6ae9b6ef5920db7e92aafc5cf9d9dd6c5f50ddd9de6cf907",
         "playerNameBaselineSha256": "23686d04b743925c5c94bbb21fd1418984db7cea17ca75580243ee6321ba21e7",
-        "beforeProseStyleSha256": "b1c7bed2fb832c175e29be5d424d1301d5c8aa34ec554c859ad30ca8b8e571ef",
-        "beforeWritingModeSha256": "5ca461974598736482218ad80d6d8b76280860a8129e736e7e73b8b1272bdb9e",
-        "beforeSingleWriterSha256": "71b6a3661a8bbb6f4c68b1f9860433114dbb6a7725689cfd237c30e2b792483e",
-        "beforeWriterStyleSkillsSha256": "ad1a52390639bf90294912c68c25b650f7adebd8969db3b58bf7f57604c3bef4",
-        "beforeDialogueColorsSha256": "1e99cef96e254285387e6029590343010724c38ebd868063b8b99287343d804d"
+        "beforeDialogueColorsSha256": "f4a83d514153d2d5531f0ec1b9919196a819adffd8dffe729ba0b23d9911228f"
       },
       "tests": [
         {
@@ -457,13 +440,10 @@
         "path": "plugin/player-native-bridge.mjs",
         "line": 2,
         "symbol": "export",
-        "sha256": "9340836e3abb8aefe9099807ffe6d74091dd32a90b3fb3f41e114bb2f237e18d",
-        "priorSha256": "42c0c92fef9df6aaa835da00431361964b8ae120443c11a6f37d25708fcb40b9",
+        "sha256": "c1244934c7bcab37b3d866cce32d580e069830f37bbe7a51bf45401b5514d35d",
+        "priorSha256": "d3b890dccd81f954368ad04120a6c3510a764522cda132222d7c4bf2a3215f7d",
         "playerNameBaselineSha256": "44ba5afdea62fe9638fc29fe45350d9bee53af16c705555a4ec61d7d05fa458b",
-        "beforeProseStyleSha256": "02d19075c10ae36e73461b5d48ad7ba00c49a2e242f253a0002c7b7882933050",
-        "beforeWritingModeSha256": "e4f8a7d92b5944efe93f1a3b671988999375fc7f30b82957437ba7978109ef35",
-        "beforeWriterStyleSkillsSha256": "3c5866a12fa38d597e0d6f0125f4eba24b2e07f0cb6436f5d123ae8afdf4fc2b",
-        "beforeRunRecycleSha256": "00f9b46c0fefaeb3fa98d18f18f30d0c24720286d29a10627d39072c89c2c0b2"
+        "beforeRunRecycleSha256": "02d19075c10ae36e73461b5d48ad7ba00c49a2e242f253a0002c7b7882933050"
       },
       "tests": [
         {
@@ -498,11 +478,11 @@
       "contract": "未定初值/公式/披露/性別等不可杜撰；ready必須解決",
       "source": {
         "path": "core/contracts.mjs",
-        "line": 47,
+        "line": 53,
         "symbol": "validateRoster",
-        "sha256": "7906d61f2b05d115a0013223d1df7c0bdd8942f016eb72ea98f42f007419df04",
+        "sha256": "9bca4aa0ae3db5ee10c754c2dd0daaefe8bb255dfee1d5d236adc968735eeb5f",
         "priorSha256": "ef8c4606012f0d80a12824ba1320b31a34822fdd94c3a3e32eb8373adf25108c",
-        "beforeSingleWriterSha256": "4b3d12129a5175374b08e9b9a080b4a94b8824a440a230906e9888870542877d"
+        "beforeDialogueColorsSha256": "4b3d12129a5175374b08e9b9a080b4a94b8824a440a230906e9888870542877d"
       },
       "tests": [
         {
@@ -543,10 +523,10 @@
       "contract": "真Agent工具create/card_patch_fields保存原生extensions；Content拒絕，不自動handoff",
       "source": {
         "path": "sources/card-studio/cardstudio-bundle/index.js",
-        "line": 52,
+        "line": 56,
         "symbol": "addonCtx.tools.register",
-        "sha256": "94af8a4dc2035511a1e38beba33895a31e49d5376d738c19b34821b2151e59a4",
-        "priorSha256": "f503b4fbd6722f595b26060e0e053288908dcbb3dbd15f33203397cdb6918eaf",
+        "sha256": "ebb8cc642b22e951f856e470440519c57aa0e56bc2e344f50dd970cd0c1a09e0",
+        "priorSha256": "5bd327c74759dd237a40d2a7c39aabb9f0e06a2b6c4ea5073792bb568f6bd182",
         "previousCandidateSource": {
           "path": "authoring/.integration/cardstudio/index.js",
           "sha256": "22db817325b344fa5c3c75b88a6957c97e0d9d31939722264379d51017edd0b7"
@@ -556,7 +536,8 @@
         "beforePublic141Sha256": "52cca31811a8f32ff2231edd54ea7927f7bda008cf3626218d3367169aa945a8",
         "public141Note": "Public 1.4.1 version/source notice metadata; source and runtime authority remain pinned.",
         "beforePublic142Sha256": "40f0040456e6a0bc07b373f371b4a31b87d36bb255e124e63547e6808ee99338",
-        "public142Note": "Reviewed 1.4.2 version/source-offer metadata alignment; capability checks remain enforced."
+        "public142Note": "Reviewed 1.4.2 version/source-offer metadata alignment; capability checks remain enforced.",
+        "priorW29Sha256": "af5de28641c2cae6e862cd6a2385d559cf0c3803b452d1e346055a358a06418b"
       },
       "tests": [
         {
@@ -572,10 +553,11 @@
       "contract": "正式一般控制需authenticated operator；Studio獨立lease/identity契約",
       "source": {
         "path": "plugin/index.js",
-        "line": 59,
+        "line": 62,
         "symbol": "TRUSTED_CLIENT_REQUIRED",
-        "sha256": "b8c2aac640f8e4d33621378bca1c93bcc015f40fd62b323fa7a408a482332917",
-        "priorSha256": "e45b22a157fea0d12942f0ab18a14acee6cabaa00f538d73f7bcebf639f4edad"
+        "sha256": "068b8010c31da856d2aaf0fb6976e4335a70ecb294e3471c724ec98f63589e9f",
+        "priorSha256": "c147be085f45389c7687bfebda4cff106e5ca3997f6ebd891baa6c94f067cd7e",
+        "beforeDialogueColorsSha256": "eebefd4f0dbb37a5a640debe8b0a8d00aa37e4d5fba05a8771081deb5986797f"
       },
       "tests": [
         {
@@ -612,7 +594,7 @@
         "path": "core/post-stat-output.mjs",
         "line": 6,
         "symbol": "export",
-        "sha256": "4340d643f4438c80e44f9c6a60f47da80d3ac7ea145b0da9d6ec286ea0bd56b3",
+        "sha256": "3c11e94e2bd16ef45b59aa93cc072f9818a6f3936d8fc3bb48d998a17fa3ba0f",
         "priorSha256": "4340d643f4438c80e44f9c6a60f47da80d3ac7ea145b0da9d6ec286ea0bd56b3"
       },
       "tests": [
@@ -629,15 +611,13 @@
       "contract": "既有responsive共用前端、native bridge；本輪無專屬frontend",
       "source": {
         "path": "isolated/web/player-shell.mjs",
-        "line": 23,
+        "line": 34,
         "symbol": "export",
-        "sha256": "14e94382fcdc5db9b002b1f56a0249781be04f9366a25ca4e097de4e06de24bd",
-        "priorSha256": "504dd160b3320fdf2c1ff1840428e080ccb0385af4a33d14f86a2794d556e594",
-        "beforeProseStyleSha256": "4cc6c25bd60ac62cde4a30c59e2878060552ff44d35c2b0367979ecf0fc56cf1",
-        "beforeWritingModeSha256": "672a8e9b994a04d0013cb0b90d123ccfdbca76fcec116c213d58579b18dfb599",
-        "beforeSingleWriterSha256": "f4ed0e266169e7c28da0740b92d7aa4d79af6f25a57dc81941d0625c130ea375",
-        "beforeWriterStyleSkillsSha256": "544de2452abded60ec6992c9316a7611a5966d16dba54a48b2e0740e16573245",
-        "previousDurationBaseSha256": "da053ffef298c2e0caff4fe698cf2622913da4a8bf7370c0cd9a3fed7ebb3840"
+        "sha256": "f506172b9053b47540f3ed9f256fe91665b61dcd1f160f6d16a7f576657d3893",
+        "priorSha256": "58b26e8cf1b1366bfcc974cb28b30ae3173003fdba2df8c6bc44cc4389a53cca",
+        "beforePublic142Sha256": "ab3bfe7e1552fb5ad9ff8e971059603b9f706e9ef4774d4c4cbb30161c9b5f07",
+        "public142Note": "Reviewed 1.4.2 version/source-offer metadata alignment; capability checks remain enforced.",
+        "beforeDialogueColorsSha256": "4cc6c25bd60ac62cde4a30c59e2878060552ff44d35c2b0367979ecf0fc56cf1"
       },
       "tests": [
         {
@@ -665,10 +645,100 @@
           "layer": "L2"
         }
       ]
+    },
+    {
+      "id": "story-clock",
+      "classification": "runtime_executable",
+      "contract": "唯一可寫 StoryClock；Host 確定性運算與 State 時間投影",
+      "source": {
+        "path": "core/story-clock.mjs",
+        "line": 9,
+        "symbol": "storyTimeDefinition",
+        "sha256": "25a716126338fb915c8a0c4472c737629f066ca2aa95634918ed138aab78f423"
+      },
+      "tests": [
+        {
+          "path": "tests/w29-story-clock.test.mjs",
+          "case": "story-clock",
+          "layer": "L2"
+        }
+      ]
+    },
+    {
+      "id": "world-routine",
+      "classification": "runtime_executable",
+      "contract": "公共七日規劃、角色自主論壇與來源截點",
+      "source": {
+        "path": "core/world-routine.mjs",
+        "line": 14,
+        "symbol": "routinePolicy",
+        "sha256": "2a1a362c46762a1cf812299997634ef8d1ad6f2bb435f160774147607c8f2c0b"
+      },
+      "tests": [
+        {
+          "path": "tests/w29-world-routine.test.mjs",
+          "case": "world-routine",
+          "layer": "L2"
+        }
+      ]
+    },
+    {
+      "id": "ambient-posts",
+      "classification": "runtime_executable",
+      "contract": "新卡版本化選用；最多三位已邀角色全有效拒絕才補匿名主文，每故事日最多一篇",
+      "source": {
+        "path": "core/ambient-forum.mjs",
+        "line": 18,
+        "symbol": "dayForumOutcome",
+        "sha256": "82cb1aed472e6a150c1f16d1a3c2e9e8a4430ed1621e30b27eb0f54b279b8359"
+      },
+      "tests": [
+        {
+          "path": "tests/w29-ambient-forum.test.mjs",
+          "case": "ambient-posts",
+          "layer": "L2"
+        }
+      ]
+    },
+    {
+      "id": "authoring-entry",
+      "classification": "runtime_executable",
+      "contract": "已確認綁定消費一次入口意圖，附加資料讀取不阻塞導頁",
+      "source": {
+        "path": "sources/card-studio/cardstudio-bundle/lib/authoring-navigation.js",
+        "line": 3,
+        "symbol": "AuthoringNavigation",
+        "sha256": "2a0f91fb9346e4db23ade90b024450b8541e6c3b7401d77651326cb1a56b3bce"
+      },
+      "tests": [
+        {
+          "path": "sources/card-studio/tests/authoring-navigation.test.js",
+          "case": "authoring-entry",
+          "layer": "L2"
+        }
+      ]
+    },
+    {
+      "id": "studio-routine-handoff",
+      "classification": "runtime_executable",
+      "contract": "真實製卡服務保存讀回與固定 Snapshot 至新 Run，舊 Run 不跟隨更新",
+      "source": {
+        "path": "plugin/studio-handoff.mjs",
+        "line": 10,
+        "symbol": "normalizeStudioHandoffSnapshot",
+        "sha256": "6507cfaf382b519d6a40f2a4d8015c92fce52e6904627911958b89f6b7b56fea"
+      },
+      "tests": [
+        {
+          "path": "tests/w29-authoring-chain.test.mjs",
+          "case": "studio-routine-handoff",
+          "layer": "L2"
+        }
+      ]
     }
   ],
   "featureProfile": "scean-character-agent-v1",
   "runtimeCommitMeaning": "Legacy saved-plan compatibility token only; current canonical source is pinned by the source hashes below.",
   "runtimeCommit": "45ff63fd8c75f05c010cf4092d08e94dd3cf7ee4",
-  "sourceUpdateNote": "Single Writer is the default; complete human-imported prose Skills are pinned before Writer. Generic source only, no third-party style assets. Not automatically installed or published."
+  "sourceUpdateNote": "W29 canonical contracts and versioned ambient opt-in; offline structural evidence only for Phase 2D."
 }

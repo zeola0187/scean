@@ -4,7 +4,7 @@ import {mkdtemp} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {measurePromptCost,promptSource} from '../fixtures/synthetic-df-prompt-source.mjs';
-import {SceanEngine} from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {DurableStore} from '../adapters/store.mjs';
 
 test('DF actual Director and Draft rolling metadata stays bounded at 100/500/1000 turns; Host retains complete source identities',async()=>{
@@ -14,7 +14,7 @@ test('DF actual Director and Draft rolling metadata stays bounded at 100/500/100
 });
 test('DF 1000-turn and 100-chapter history keeps legacy rolling compatibility and sends only3+8 in chapter mode',async t=>{
   const row=await measurePromptCost(1000,{chapters:100,backfill:true,withChapterContext:true});assert.equal(row.stageCounts.chapter_summary,100);assert.equal(row.chapters,100);for(const p of row.observations){assert(p.rollingMetadataBytes<512);assert(p.rollingMetadataEstimate<200);assert(p.inputBytes<12000);assert.equal(p.sourceCountDelivered,0);}
-  assert.equal(row.chapterContextObservations.length,2);for(const p of row.chapterContextObservations){assert.equal(p.recentChapters,3);assert.equal(p.retrievedChapters,8);assert.equal(new Set(p.selectedSummaryIds).size,11);assert.equal(p.uncoveredTurns.length,9);}t.diagnostic(JSON.stringify({evidence:'long_history_3_plus_8',activeTurns:1000,archiveChapters:100,observations:row.chapterContextObservations,paidCalls:0,embeddingCalls:0}));
+  assert.equal(row.chapterContextObservations.length,2);assert.equal(row.singleWriterContextObservations.length,2);for(const p of row.singleWriterContextObservations){assert.equal(p.recentChapters,3);assert.equal(p.retrievedChapters,8);assert.equal(new Set(p.selectedSummaryIds).size,11);assert.equal(p.uncoveredTurns.length,9);assert(p.memoryIds.length>0);}assert.equal(row.singleWriterContextObservations[0].candidateRef,row.singleWriterContextObservations[1].candidateRef);for(const p of row.chapterContextObservations){assert.equal(p.recentChapters,3);assert.equal(p.retrievedChapters,8);assert.equal(new Set(p.selectedSummaryIds).size,11);assert.equal(p.uncoveredTurns.length,9);}t.diagnostic(JSON.stringify({evidence:'long_history_3_plus_8',activeTurns:1000,archiveChapters:100,observations:row.chapterContextObservations,paidCalls:0,embeddingCalls:0}));
 });
 test('DF createRun accepts explicit chapter stage model selections and still rejects unrelated stages',async()=>{
   const root=await mkdtemp(join(tmpdir(),'scean-df-selection-')),store=new DurableStore({root}),engine=new SceanEngine({unconfiguredWritingMode:'current',store,model:{async generate(){throw Error('No generation expected');}},memory:{async retrieve(){throw Error('No retrieval expected');}}});

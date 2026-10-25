@@ -5,7 +5,7 @@ import vm from 'node:vm';
 import {AgentDiagnostics,diagnosticPage,diagnosticWireBytes,DIAGNOSTIC_WIRE_BYTES,warningSummary} from '../plugin/agent-diagnostics.mjs';
 import {boundedDiagnosisResult,diagnosisToolWireBytes,DIAGNOSIS_TOOL_WIRE_BYTES} from '../sources/card-studio/cardstudio-bundle/lib/scean-diagnosis.js';
 import {selectiveSecondaryWarning} from '../sources/card-studio/cardstudio-bundle/lib/codec.js';
-import {narrativeSources,SceanEngine} from '../core/engine.mjs';
+import {narrativeSources} from '../core/engine.mjs';import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {selectWorldbooks} from '../core/worldbook.mjs';
 import {characterAdviceOutputContract} from '../core/character-advice.mjs';
 import {fixture,syntheticCard} from '../fixtures/gemini-batch2.mjs';

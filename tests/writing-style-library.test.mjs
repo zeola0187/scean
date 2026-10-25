@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {mkdir,mkdtemp,readFile,writeFile,unlink} from 'node:fs/promises';import {join} from 'node:path';
-import {SceanEngine} from '../core/engine.mjs';import {Memory} from '../core/memory.mjs';import {DurableStore} from '../adapters/store.mjs';import {SceanHost} from '../plugin/host.mjs';import {hash} from '../core/contracts.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';import {Memory} from '../core/memory.mjs';import {DurableStore} from '../adapters/store.mjs';import {SceanHost} from '../plugin/host.mjs';import {hash} from '../core/contracts.mjs';
 import {validateStylePack,listWritingStyles,importWritingStylePack,styleSelectionAvailability,writingStyleLibraryView} from '../core/writing-style-library.mjs';
 import {publicInspection} from '../core/inspection.mjs';import {encodeRunBundle,validateRunBundle} from '../core/save-bundle.mjs';
 const root=new URL('../evidence/style-library-tests/',import.meta.url);await mkdir(root,{recursive:true});

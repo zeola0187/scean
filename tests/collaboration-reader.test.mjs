@@ -5,7 +5,7 @@ import path from 'node:path';
 import {collaborationView,attemptCanonical} from '../core/collaboration-reader.mjs';
 import {PlayerReaders} from '../plugin/reader-host.mjs';
 import {SceanHost} from '../plugin/host.mjs';
-import {SceanEngine} from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {DurableStore} from '../adapters/store.mjs';
 import {Memory} from '../core/memory.mjs';
 import {hash} from '../core/contracts.mjs';

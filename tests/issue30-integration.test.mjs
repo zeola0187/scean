@@ -10,7 +10,7 @@ import {createWorkReview} from '../sources/card-studio/cardstudio-bundle/lib/wor
 import {createSceanControl,resolveSceanCardContext,resolveSceanSourceSession} from '../sources/card-studio/cardstudio-bundle/lib/scean-integration.js';
 import {auditSavedSnapshot} from '../authoring/compatibility-audit.mjs';
 import {SceanHost} from '../plugin/host.mjs';
-import {SceanEngine} from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {Memory} from '../core/memory.mjs';
 import {DurableStore} from '../adapters/store.mjs';
 import {encodeRunBundle,validateRunBundle} from '../core/save-bundle.mjs';

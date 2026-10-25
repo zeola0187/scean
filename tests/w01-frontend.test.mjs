@@ -6,7 +6,7 @@ import {join} from 'node:path';
 import {w01Fixture} from '../fixtures/w01-frontends.mjs';
 import {validateFrontend,frontendPackage,frontendPreview,frontendProjection} from '../core/frontend.mjs';
 import {evaluateDisplay,renderFrontendDocument,displayValues} from '../isolated/web/frontend-runtime.mjs';
-import {SceanEngine} from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {DurableStore} from '../adapters/store.mjs';
 import {publicRunView} from '../core/inspection.mjs';
 import {validateSnapshot,hash} from '../core/contracts.mjs';

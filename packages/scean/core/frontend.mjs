@@ -1,3 +1,5 @@
+import {readStoryClock,initializeStoryClock} from './story-clock.mjs';
+import {projectStoryState} from './state-operations.mjs';
 import {boundedConditionJSON,validateConditionExpression} from './condition-ast.mjs';
 import {admitPublicBindings,publicBindingValues} from './public-state-bindings.mjs';
 import {derivedFactsPackage,projectDerivedFacts} from './derived-facts.mjs';
@@ -66,12 +68,13 @@ export function frontendPackage(input,blueprint,characters,derivedFacts){const v
 export function frontendProjection(run,{frontend:input=run.snapshot.frontend,presentationRevision=0}={}){
   const frontend=validateFrontend(input,run.snapshot.stateBlueprint,run.snapshot.characters,run.snapshot.derivedFacts);if(!frontend)return null;
   validateBlueprintState(run.snapshot.stateBlueprint,run.state,run.snapshot.characters);
-  const values=publicBindingValues(frontend.bindings,run.snapshot.stateBlueprint,run.state),derived=frontend.derivedBindings?.length?projectDerivedFacts(run):null;
+  const values=publicBindingValues(frontend.bindings,run.snapshot.stateBlueprint,projectStoryState(run)),derived=frontend.derivedBindings?.length?projectDerivedFacts(run):null;
   for(const b of frontend.derivedBindings??[]){const f=derived.facts.find(f=>f.id===b.factId);values[b.alias]={status:f.status,type:'boolean',...(f.status==='known'?{value:f.value}:{}),provenance:{factId:f.id,ruleHash:f.ruleHash,config:derived.config,runId:derived.runId,snapshotHash:derived.snapshotHash,canonical:derived.canonical}};}
-  return {projectionApiVersion:1,runId:run.runId,cardId:run.snapshot.cardId,snapshotHash:run.snapshot.hash,frontendHash:frontend.hash,presentationRevision,canonical:{version:run.version,head:run.head??run.turns?.at(-1)?.commitId??null},freshness:'current',values};
+  return {...(run.storyClock?{storyClock:readStoryClock(run)}:{}),projectionApiVersion:1,runId:run.runId,cardId:run.snapshot.cardId,snapshotHash:run.snapshot.hash,frontendHash:frontend.hash,presentationRevision,canonical:{version:run.version,head:run.head??run.turns?.at(-1)?.commitId??null},freshness:'current',values};
 }
 export function frontendPreview(input,blueprint,initialState,characters=[],derivedFacts){
   const frontend=validateFrontend(input,blueprint,characters,derivedFacts),{state}=materializeInitialState(blueprint,initialState,characters);
   const run={runId:'authoring-preview',version:0,snapshot:{cardId:'authoring-preview',hash:'preview',derivedFacts,frontend:frontendPackage(input,blueprint,characters,derivedFacts),stateBlueprint:blueprint,characters},state};
+  run.storyClock=initializeStoryClock(run.snapshot);run.worldActivity={occurrences:[]};
   return {frontend,projection:frontendProjection(run),source:'authoring-initial-state-not-runtime'};
 }

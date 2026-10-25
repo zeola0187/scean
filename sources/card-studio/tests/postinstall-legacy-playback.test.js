@@ -7,7 +7,7 @@ import {join,resolve,dirname} from 'node:path';
 import {WorkspaceLoader} from '../cardstudio-bundle/lib/loader.js';
 import {buildSavedSnapshot,createSceanControl,resolveSceanCardContext,resolveSceanSourceSession,resolveSceanPlaybackStatus} from '../cardstudio-bundle/lib/scean-integration.js';
 import {SceanHost} from '../../../plugin/host.mjs';
-import {SceanEngine} from '../../../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../../../fixtures/temporal-fixture-engine.mjs';
 import {Memory} from '../../../core/memory.mjs';
 import {DurableStore} from '../../../adapters/store.mjs';
 

@@ -4,7 +4,7 @@ import {mkdtemp} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {DurableStore} from '../adapters/store.mjs';
-import {SceanEngine} from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {syntheticLongrun,D_PRIVATE} from '../fixtures/synthetic-longrun-d.mjs';
 import {historyArgs,historyModel,syntheticHistoryMemory,playHistory} from '../fixtures/synthetic-history-c.mjs';
 import {autoChapter as currentAutoChapter,backfillChapterSummary,updateChapterSettings,legacyChapterEligibility as chapterEligibility,chapterSummaryView,validateChapterPayload} from '../core/chapter-summary.mjs';

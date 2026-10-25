@@ -1,10 +1,10 @@
-# 本版原生契約（Character Agent v1；基於 45ff63f）
+# 本版原生契約（W29；實際封版來源由 capability-manifest 與安裝收據核對）
 
 ## Core、Host 與 Writer
 
 Snapshot schemaVersion=1 包含 cardId/revision/card/worldbook/preset/characters，validateSnapshot 計算並核對 hash。validateRoster 要求穩定唯一 id、非空 name、專屬 description；player 保留。可選 identity 必須源自 user-explicit/card-explicit。Host 接收已保存 Studio 版本後 normalizeStudioHandoffSnapshot 驗證 hash，將保存於 data.extensions.scean 的 stateBlueprint/initialState 及 first_mes 提升為新 Run 契約，不改舊 Run。
 
-Director → Draft → Prose → Post-Stat → commit。Director 至多 5 round／6 tool calls，歷史搜尋有獨立界限。consult_character、adjudicate_action 是按需工具；前 Stat 僅裁定建議，沒有配置數值骰子執行器，需骰則應回 UNRESOLVED。Prose 無工具，局部禁詞修復有限重試。Provider outputContract 是 prompt_contract_only，不是 provider-enforced schema。
+預設流程為 Director 工具迴圈 → Host 候選時間／事件結算 → Single Writer → 驗證 → Post-Stat → 原子 commit。Character 與前 Stat 按需諮詢；舊明確模式仍有內部相容路徑。Director 至多 5 round／6 tool calls，歷史搜尋有獨立界限。consult_character、adjudicate_action 是按需工具；前 Stat 僅裁定建議，沒有配置數值骰子執行器，需骰則應回 UNRESOLVED。Prose 無工具，局部禁詞修復有限重試。Provider outputContract 是 prompt_contract_only，不是 provider-enforced schema。
 
 ## CR 與 Memory
 
@@ -33,3 +33,8 @@ worldbook selector 是有界 literal、constant/keyword/scan 與容量選擇，�
 Snapshot、Blueprint、初值以新 Run 固定；新卡 revision 不覆蓋舊 Run。rollback 需 expectedVersion/expectedHead/operationId，退役最後回合與其記憶／playerHistory，衍生資料失效；regen 用前一狀態生成候選後一次替換，失敗不撤舊回合。save bundle 檢查來源鏈與 hash、選項與授權，匯入成新 Run；不可繞過現有私密 save grant。章節與 rollingSummary 都是衍生資料，原文與 State 才是權威；章節啟用不代表 rollingSummary 啟用。
 
 新增 sourceBindings、card_bind_scean_character、lastCommittedTurn 的確切契約見 [角色工作區](character-workspace.md)。Director 必要作者備註可以包含秘密；保留結構化私密投影並不構成嚴格 RP Host 沙盒承諾。
+
+
+## W29 背景活動與保存
+
+見 [七日日曆與論壇契約](world-routine.md)。run.storyClock 是唯一可寫時間；State.time 是投影。schemaVersion=1 的舊論壇保持 Character-only 與 v9 保存。顯式 ambientPosts.v1 使用 worldRoutine schemaVersion=2、作者 discriminated union 與 save v10 requiredCapabilities；舊讀取器明確拒絕 v10。兩者均維持 300000 nodes / 16 MiB、安全來源與 checkpoint 完整性，沒有舊 Run 遷移。

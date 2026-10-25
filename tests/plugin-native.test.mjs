@@ -34,7 +34,7 @@ test('FORMAL SOURCE / FAKE MODEL: native plugin registration, direct RPC no Agen
     assert.equal((await ctx.scean.request({action:'list'})).error.code,'TRUSTED_CLIENT_REQUIRED');
     assert.equal((await gateway.invokeRpc('scean/request',{args:{request:{action:'list'}}},new AbortController().signal,foreignPeer)).value.error.code,'TRUSTED_CLIENT_REQUIRED');
     assert.equal((await ctx.scean.request({action:'models'})).error.code,'TRUSTED_CLIENT_REQUIRED');
-    const labels=await invoke({action:'models'});assert(labels.value.ok);assert.deepEqual(labels.value.value.requested,{provider:'synthetic',model:'offline'});assert.equal(labels.value.value.modelSwitching,false);assert.deepEqual(Object.keys(labels.value.value.capabilities).sort(),['contextWindow','outputLimit']);
+    const labels=await invoke({action:'models'});assert(labels.value.ok);assert.deepEqual(labels.value.value.requested,{provider:'synthetic',model:'offline'});assert.equal(labels.value.value.modelSwitching,true);assert.deepEqual(Object.keys(labels.value.value.capabilities).sort(),['contextWindow','outputLimit']);
     const start=await ctx.scean.startFromStudio({snapshot,authoringSessionId:'synthetic-author',generation:'uuid-native-generation'});
     const read=await ctx.scean.inspectFromStudio({...start,authoringSessionId:'synthetic-author',generation:'uuid-native-generation'});assert.equal(read.snapshot.revision,1);
     assert.equal((await invoke({action:'create',snapshot})).value.error.code,'CARD_SCOPED_STUDIO_REQUIRED');

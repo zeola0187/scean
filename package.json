@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-scean-suite",
-  "version": "1.6.0",
+  "version": "1.6.2-local.w29.2d.rc3.1",
   "private": true,
   "type": "module",
   "description": "SCEAN: native Card Studio, dynamic fronts, durable stories and 3+8 chapter memory",
@@ -21,10 +21,10 @@
   ],
   "engines": {
     "node": ">=24",
-    "dsh": "0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2"
+    "dsh": "0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2 || 0.2.1-rc.3"
   },
   "peerDependencies": {
-    "@deepseek-ai/dsh": "0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2"
+    "@deepseek-ai/dsh": "0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2 || 0.2.1-rc.3"
   },
   "peerDependenciesMeta": {
     "@deepseek-ai/dsh": {

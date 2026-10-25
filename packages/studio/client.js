@@ -199,6 +199,18 @@ class WorkspaceClient {
   }
 }
 
+    // Binding is authoritative. Optional book/Preset hydration must not delay
+// navigation, and a browser-local entry intention can only be consumed once.
+class AuthoringNavigation {
+  constructor(){this.owner=crypto.randomUUID();this.used=new Set();}
+  begin(sessionId,kind){return {owner:this.owner,id:crypto.randomUUID(),sessionId,kind};}
+  consume(intent,{currentIntent,sessionId,sequence,currentSequence,claim,currentClaim,ready,live,doc,selection}){
+    if(!intent||intent!==currentIntent||intent.owner!==this.owner||this.used.has(intent.id)||intent.sessionId!==sessionId||!['create','picker'].includes(intent.kind))return false;
+    if(!live||!ready||sequence!==currentSequence||!claim||claim!==currentClaim||doc?.type!=='card'||selection?.binding_status?.status!=='bound'||selection.document_id!==doc.id||selection.revision!==doc.revision)return false;
+    this.used.add(intent.id);return true;
+  }
+}
+
     // Public Typert descriptor over the existing authenticated DSH Connection.
 // Shared verbatim by Host and generated Client; no command/session-log transport.
 const cardstudioRemote = {
@@ -698,6 +710,7 @@ const productAppearanceCss=".scean-workspace{--page:#e9ece4;--ink:#263b39;--body
       ctx.effect(()=>ctx.locale.register('cardstudio-scean',translations),'cardstudio locale');const t=ctx.locale.bind('cardstudio-scean');
       let capabilities={skills:[],tools:[]},disposers=[],listeners=new Set(),notice='';
       const changed=()=>{for(const fn of listeners)fn();};
+      const entryNavigation=new AuthoringNavigation();
       let directoryPicker=null;
       ctx.inject(['remote','remote.directoryPicker'],function cardstudioDirectoryPicker(scope){directoryPicker=scope.remote.directoryPicker;changed();scope.effect(()=>()=>{directoryPicker=null;changed();},'cardstudio folder picker lifecycle');});
       let desktopRemote=null;
@@ -986,7 +999,7 @@ const productAppearanceCss=".scean-workspace{--page:#e9ece4;--ink:#263b39;--body
         React.useEffect(()=>{const cached=sessionView(sessionId);if(cached!==state.current){state.current=cached;setView(cached);}});
         // Notify conversation controls after view changes; operation gates stay self-contained.
         React.useEffect(()=>{changed();},[v.doc?.id,v.doc?.revision,v.workPreparation,v.workPublication]);
-        state.current=v;const cardBinding=controller.selectionStatus?.binding_status??v.documents?.binding_status,cardBound=cardBinding?.status==='bound';const transportCall=controller.bind(sequence),call=async(...args)=>{const result=await transportCall(...args);if(result?.preflight)setV({preflight:result.preflight});return result;},selection=controller.selectionStatus,selectionStale=!!v.doc&&!!selection&&(v.doc.id!==selection.document_id||v.doc.revision!==selection.revision),ready=controller.phase==='ready'&&!selectionStale,valid=()=>live.current&&sequence===controller.sequence;
+        state.current=v;const cardBinding=controller.selectionStatus?.binding_status??v.documents?.binding_status,cardBound=cardBinding?.status==='bound';const transportCall=controller.bind(sequence),call=async(...args)=>{const result=await transportCall(...args);if(result?.preflight)setV({preflight:result.preflight});return result;},selection=controller.selectionStatus,selectionStale=!!v.doc&&!!selection&&(v.doc.id!==selection.document_id||v.doc.revision!==selection.revision),ready=controller.phase==='ready'&&!selectionStale&&!['pending','error'].includes(v.hydration?.status),valid=()=>live.current&&sequence===controller.sequence;
         const setV=update=>{if(!valid())return;const previous=state.current,next={...previous,...(typeof update==='function'?update(previous):update)};viewCache.set(sessionId,next);state.current=next;setView(next);};
         const downloadIdentity=()=>{const doc=state.current.doc,selected=controller.selectionStatus;return {sequence:controller.sequence,session_id:controller.current?.id,document_id:doc?.id,revision:doc?.revision,selected_document_id:selected?.document_id??doc?.id,selected_revision:selected?.revision??doc?.revision};};
         React.useEffect(()=>{downloadRef.current.invalidate(downloadIdentity());},[sequence,sessionId,v.doc?.id,v.doc?.revision,selection?.document_id,selection?.revision]);
@@ -1015,7 +1028,20 @@ const productAppearanceCss=".scean-workspace{--page:#e9ece4;--ink:#263b39;--body
           setV({summaries});return list;
         };
         const lists=async()=>{const current=state.current;const [files,documents]=await Promise.all([call('imports'),call('documents',{offset:current.documents.offset,limit:12})]);setV({files,documents});if(current.allOpen)await refreshAll();if(state.current.route==='picker')await names(documents);return documents;};
-        const read=async(id,{select=true,route='stage'}={})=>{if(state.current.doc?.id!==id&&rosterDraftDirty(state.current)){setDialog({message:'切換工作卡會捨棄未保存名冊；目前編輯仍保留，確定切換？',fn:()=>{setV({sceanCharacters:state.current.sceanCharactersBase??savedRosterText(state.current.doc)});return run(()=>read(id,{select,route}));}});return;}const doc=await call(select?'open':'read',{document_id:id});const [book,config]=await Promise.all([call('book_list',{document_id:id}),call('book_config',{document_id:id})]);if(!valid())return;const previous=state.current,changed=previous.doc?.id!==id;setV({doc,entries:book.entries,config:json(config.config??{}),configBase:json(config.config??{}),route,entry:null,text:doc.card.data[state.current.field]??'',exportName:`cardstudio-${id.slice(0,8)}-r${doc.revision}.${doc.format==='png'?'png':'json'}`,...changed?{sceanPreset:undefined,sceanPresetBase:undefined,presetRecord:null,presetConflict:null,presetAttempt:null,presetReceipt:null,presetMessage:'',workPreparation:null,workPublication:null,workPublishAttempt:null,readSection:null,sceanRun:null,sceanPending:null,stageReceipt:'',saveReceipt:state.current.saveReceipt?.documentId===id?state.current.saveReceipt:null,sceanOpeningPending:false,sceanInspector:null,query:'',scroll:0,output:'',preflight:null,authoring:authoringBlank(),}:{},...reconcileRoster(previous,doc)});await loadPreset();if(select){try{await lists();}catch(error){if(valid())setV({listWarning:'已選取工作卡；清單更新失敗，請重新整理。'});}if(surface!=='editor'&&valid()){setV({workspaceIntent:null});setWorkspaceOverlay(null);ctx.layout.selectPanel('local-scean-studio');}}};
+        /* AUTHORING_READ_START */
+        const read=async(id,{select=true,route='stage'}={})=>{
+          if(state.current.doc?.id!==id&&rosterDraftDirty(state.current)){setDialog({message:'切換工作卡會捨棄未保存名冊；目前編輯仍保留，確定切換？',fn:()=>{setV({sceanCharacters:state.current.sceanCharactersBase??savedRosterText(state.current.doc)});return run(()=>read(id,{select,route}));}});return;}
+          const intent=state.current.entryIntent,claim=controller.claim;
+          const doc=await call(select?'open':'read',{document_id:id});
+          if(!valid()||claim!==controller.claim)return;
+          const previous=state.current,changed=previous.doc?.id!==id;setV({doc,entries:[],config:"{}",configBase:"{}",hydration:{status:"pending",documentId:doc.id,revision:doc.revision},route,entry:null,text:doc.card.data[state.current.field]??'',exportName:`cardstudio-${id.slice(0,8)}-r${doc.revision}.${doc.format==='png'?'png':'json'}`,...changed?{sceanPreset:undefined,sceanPresetBase:undefined,presetRecord:null,presetConflict:null,presetAttempt:null,presetReceipt:null,presetMessage:'',workPreparation:null,workPublication:null,workPublishAttempt:null,readSection:null,sceanRun:null,sceanPending:null,stageReceipt:'',saveReceipt:state.current.saveReceipt?.documentId===id?state.current.saveReceipt:null,sceanOpeningPending:false,sceanInspector:null,query:'',scroll:0,output:'',preflight:null,authoring:authoringBlank(),}:{},...reconcileRoster(previous,doc)});
+          if(select&&surface!=='editor'&&entryNavigation.consume(intent,{currentIntent:state.current.entryIntent,sessionId,sequence,currentSequence:controller.sequence,claim,currentClaim:controller.claim,ready:controller.phase==='ready',live:live.current,doc,selection:controller.selectionStatus})){
+            setV({entryIntent:null,workspaceIntent:null});setWorkspaceOverlay(null);ctx.layout.selectPanel('local-scean-studio');
+          }
+          // The mounted destination hydrates its own document. A continuation
+          // belonging to the unmounted chooser cannot update another card.
+        };
+        /* AUTHORING_READ_END */
         const refresh=async({restore=false}={})=>{const documents=await lists(),current=state.current;if(!valid())return;const id=restore?documents.selectedId:current.doc?.id;if(restore&&isDirty(current)&&current.doc?.id!==documents.selectedId){notify(new Error('此對話的選卡已在另一頁變更；未保存文字已保留，請先複製文字後重新讀取。'));return;}if(id&&!isDirty(current)){await read(id,{select:false,route:current.route==='entry'?'book':current.route});if(current.route==='authoring')await loadAuthoring();}};
         // A connection epoch must not remount or refresh an existing editor under the caret/IME.
         React.useEffect(()=>{if(ready&&!initialLoad.current){initialLoad.current=true;if(!state.current.doc)run(()=>refresh({restore:true}),t('refreshing')).then(ok=>{if(!ok)initialLoad.current=false;});}},[ready]);
@@ -1038,10 +1064,23 @@ const productAppearanceCss=".scean-workspace{--page:#e9ece4;--ink:#263b39;--body
         };
         const loadPreset=async()=>{
           if(state.current.doc?.type!=='card')return;
-          const record=await sceanRequest({mode:'presetRead',document_id:state.current.doc.id});acceptPreset(record);
+          const id=state.current.doc.id,revision=state.current.doc.revision,claim=controller.claim;
+          const record=await sceanRequest({mode:'presetRead',document_id:id});if(!valid()||claim!==controller.claim||state.current.doc?.id!==id||state.current.doc?.revision!==revision||controller.selectionStatus?.document_id!==id||controller.selectionStatus?.revision!==revision)return;acceptPreset(record);
           if(!state.current.presetAttempt){try{const saved=JSON.parse(sessionStorage.getItem(presetStorageKey())||'null');if(saved?.documentId===state.current.doc.id&&typeof saved.operationId==='string')setV({presetAttempt:saved});}catch{}}
           return record;
         };
+        React.useEffect(()=>{
+          const doc=v.doc;if(!doc||v.hydration?.status!=='pending'||controller.phase!=='ready'||selectionStale)return;
+          let active=true;const claim=controller.claim;
+          const current=()=>active&&valid()&&claim===controller.claim&&state.current.doc?.id===doc.id&&state.current.doc?.revision===doc.revision&&controller.selectionStatus?.document_id===doc.id&&controller.selectionStatus?.revision===doc.revision;
+          void (async()=>{try{
+            const [book,config]=await Promise.all([call('book_list',{document_id:doc.id}),call('book_config',{document_id:doc.id})]);
+            if(!current())return;
+            setV({entries:book.entries,config:json(config.config??{}),configBase:json(config.config??{})});
+            await loadPreset();if(current())setV({hydration:{status:'ready',documentId:doc.id,revision:doc.revision}});
+          }catch(error){if(current())setV({hydration:{status:'error',documentId:doc.id,revision:doc.revision,message:diagnosticText(error.code,error.message)}});}})();
+          return()=>{active=false;};
+        },[v.doc?.id,v.doc?.revision,v.hydration?.status,sequence,controller.claim,controller.phase,selection?.document_id,selection?.revision]);
         const recoverPreset=async()=>{
           const attempt=state.current.presetAttempt;if(!attempt)throw new Error('沒有待核對的 Preset 保存請求。');
           const result=await sceanRequest({mode:'presetStatus',document_id:state.current.doc.id,operation_id:attempt.operationId});
@@ -1346,17 +1385,18 @@ const productAppearanceCss=".scean-workspace{--page:#e9ece4;--ink:#263b39;--body
         if(surface!=='editor'){
           const title=v.doc?.card.data.name||'你的下一個世界',workDisabled=busy||!ready||v.doc?.type!=='card'||isDirty(v)||!!rosterIssue||!rosterHandoffReady(v)||!v.presetRecord||!!v.presetConflict||!!v.presetAttempt;
           const conversationSettled=id=>{if(id===sessionId&&valid()&&controller.current?.id===id)setV({workspaceRefreshTick:(state.current.workspaceRefreshTick??0)+1});};
-          const move=panel=>guard(()=>ctx.layout.selectPanel(panel));
-          const openOverlay=kind=>guard(()=>{setWorkspaceOverlay(kind);if(kind==='create')setV({route:'create',createName:'',createFormat:'v3'});if(kind==='picker')void run(async()=>{setV({route:'picker'});await lists();});if(kind==='settings')setV({route:'stage'});});
+          const cancelEntry=()=>{setV({entryIntent:null,workspaceIntent:null});setWorkspaceOverlay(null);};
+          const move=panel=>guard(()=>{setV({entryIntent:null,workspaceIntent:null});ctx.layout.selectPanel(panel);});
+          const openOverlay=kind=>guard(()=>{setV({workspaceIntent:['create','picker'].includes(kind)?kind:null,entryIntent:['create','picker'].includes(kind)?entryNavigation.begin(sessionId,kind):null});setWorkspaceOverlay(kind);if(kind==='create')setV({route:'create',createName:'',createFormat:'v3'});if(kind==='picker')void run(async()=>{setV({route:'picker'});await lists();});if(kind==='settings')setV({route:'stage'});});
           const begin=kind=>guard(()=>run(async()=>{
             if(cardBound){
               const workspace=ctx.workspaces.list.getSnapshot().items.find(row=>row.sessionIds.includes(sessionId));
               if(!workspace)throw new Error('請先在 DSH 選定這個製卡工作區，再建立新的創作對話。');
               const id=await ctx.sessions.create({workspaceId:workspace.workspaceId});
-              viewCache.set(id,createEditorView({workspaceIntent:kind,route:kind==='create'?'create':'picker',createName:'',createFormat:'v3'}));
+              viewCache.set(id,createEditorView({workspaceIntent:kind,entryIntent:entryNavigation.begin(id,kind),route:kind==='create'?'create':'picker',createName:'',createFormat:'v3'}));
               ctx.uiWorkspace.openSession(id);return;
             }
-            setWorkspaceOverlay(kind);setV({route:kind==='create'?'create':'picker',createName:'',createFormat:'v3'});if(kind==='picker')await lists();
+            setWorkspaceOverlay(kind);setV({workspaceIntent:kind,entryIntent:entryNavigation.begin(sessionId,kind),route:kind==='create'?'create':'picker',createName:'',createFormat:'v3'});if(kind==='picker')await lists();
           }));
           const action=(label,onClick,attributes={})=>h('button',{type:'button',className:'sw-button',onClick,...attributes},label);
           const appearanceButton=action('設定',()=>setAppearanceOpen(true),{'data-scean-settings-open':true,className:'sw-button scean-settings-open'});
@@ -1372,8 +1412,9 @@ const productAppearanceCss=".scean-workspace{--page:#e9ece4;--ink:#263b39;--body
           return h('main',{className:'scean-workspace',...appearance.attributes,[surface==='home'?'data-scean-home':'data-scean-workbench']:true},h('style',null,css+workspaceCss+productAppearanceCss),nav,h(productAppearance.Settings,{open:appearanceOpen,onClose:()=>setAppearanceOpen(false),appearance}),
             notice?h('p',{role:'alert',className:'workspace-notice'},notice):null,controller.phase!=='ready'?h('p',{role:'status',className:'workspace-notice'},'正在連線至本對話工作區；未保存內容仍保留。'):null,
             selectionStale||v.workspaceRefreshPending?h('div',{role:'status',className:'workspace-notice','data-studio-selection-stale':true},'工作卡有較新的保存版本。草稿仍保留，請比較後重新讀取。',action('重新讀取保存版本',()=>guard(()=>run(async()=>{await refresh({restore:true});setV({workspaceRefreshPending:false});})),{'data-workbench-refresh':true,disabled:busy})):null,
+            v.hydration?.status==='error'?h('div',{role:'alert',className:'workspace-notice','data-authoring-hydration-error':true},'工作卡已綁定；附加資料讀取失敗。',h('button',{type:'button',onClick:()=>setV({hydration:{...v.hydration,status:'pending'}})},'重試讀取附加資料')):v.hydration?.status==='pending'?h('p',{role:'status','data-authoring-hydration-pending':true},'工作卡已綁定；正在讀取附加資料。'):null,
             surface==='home'?home:workbench,
-            overlayContent?h('div',{className:'workspace-modal',onKeyDown:e=>{if(e.key==='Escape'){e.preventDefault();guard(()=>setWorkspaceOverlay(null));}if(e.key==='Tab'){const nodes=[...workspaceModal.current.querySelectorAll('button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),a[href]')].filter(n=>n.getClientRects().length);if(!nodes.length)return;const first=nodes[0],last=nodes[nodes.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}}},h('section',{ref:workspaceModal,className:'csscean-panel',role:'dialog','aria-modal':true,'aria-label':overlayTitle},h('header',{className:'workspace-modal-header'},h('h2',null,overlayTitle),action('關閉',()=>guard(()=>setWorkspaceOverlay(null)),{'data-workspace-close':true})),notice?h('p',{role:'alert',className:'csscean-error'},notice):null,selectionStale?h('p',{role:'status',className:'csscean-warn'},'保存版本已變更。請關閉設定，比較草稿後重新讀取工作卡。'):null,h('fieldset',{disabled:busy,className:'csscean-editor-form','aria-busy':busy},overlayContent))):null,confirmation);
+            overlayContent?h('div',{className:'workspace-modal',onKeyDown:e=>{if(e.key==='Escape'){e.preventDefault();guard(()=>cancelEntry());}if(e.key==='Tab'){const nodes=[...workspaceModal.current.querySelectorAll('button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),a[href]')].filter(n=>n.getClientRects().length);if(!nodes.length)return;const first=nodes[0],last=nodes[nodes.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}}},h('section',{ref:workspaceModal,className:'csscean-panel',role:'dialog','aria-modal':true,'aria-label':overlayTitle},h('header',{className:'workspace-modal-header'},h('h2',null,overlayTitle),action('關閉',()=>guard(()=>cancelEntry()),{'data-workspace-close':true})),notice?h('p',{role:'alert',className:'csscean-error'},notice):null,selectionStale?h('p',{role:'status',className:'csscean-warn'},'保存版本已變更。請關閉設定，比較草稿後重新讀取工作卡。'):null,h('fieldset',{disabled:busy,className:'csscean-editor-form','aria-busy':busy},overlayContent))):null,confirmation);
         }
         return h('div',{className:'csscean-panel csscean-editor-a'},h('style',null,css),h('div',{className:'csscean-shell'},
           selectionStale?h('section',{role:'alert',className:'csscean-box csscean-warn','data-w19-selection-conflict':true},h('p',null,'選卡或保存版本已變更，草稿仍保留。請先讀取新版再決定要保存的內容。'),v.route==='field'&&v.doc.id===selection.document_id?h('button',{'data-recover-draft':true,className:'csscean-button',disabled:busy||controller.phase!=='ready',onClick:()=>run(async()=>{const text=state.current.text,id=state.current.doc.id,field=state.current.field;await read(id,{select:false,route:'field'});setV({text,recoveryDiff:{field,saved:state.current.doc.card.data[field]??''}});})},'保留草稿並讀取新版'):null,h('button',{className:'csscean-button',disabled:busy,onClick:()=>guard(()=>run(async()=>{const list=await lists();if(list.selectedId)await read(list.selectedId,{select:false});else setV({doc:null,entry:null,sceanInspector:null});}))},'重新讀取目前選卡')):null,

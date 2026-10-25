@@ -7,8 +7,8 @@ export function syntheticCatalog() {
   return {source:'bundled-synthetic',studioBridge:'not_connected',cards:[{id:'synthetic-observatory',title:'星港研究船（安全合成卡）',revisions:['r1','r2'].map(revision=>({
     id:revision,revision,label:revision,title:revision+' · '+(revision==='r1'?'港邊午休':'夜間觀測'),
     snapshot:{schemaVersion:1,cardId:'synthetic-observatory',revision,card:{spec:'chara_card_v2',data:{name:'星港研究船',description:'完全合成的研究船。卡爾特與希歐陪同玩家在星港進行日常研究。',first_mes:''}},worldbook:{entries:[{id:1,content:'星港是安全、平靜的補給站。研究船目前停泊港內。',constant:true}]},preset:{style:'繁體中文，第三人稱，保留玩家決定權。'},characters,chapterSummary:'安全合成新局；沒有引用任何私人對話。',fixtureProvenance:'SCEAN milestone A original synthetic fixture v1'},
-    openings:[{id:'cabin',label:'共用艙室',title:'共用艙室',text:'午後的星光穿過舷窗。卡爾特把工具箱放在桌邊，希歐抬起頭，等候你的下一句話。',initialState:{world:{locations:{kalt:'common_cabin',sio:'common_cabin'},tasks:{inspection:{status:'not_started'}},resources:{fuel:{amount:72,unit:'percent'}},time:{elapsedSeconds:0}},characters:{kalt:{public:{role:'engineer'}},sio:{public:{role:'navigator'}}}}},
-      {id:'deck',label:'觀測甲板',title:'觀測甲板',text:'觀測甲板的燈光逐一亮起。卡爾特正在整理設備，希歐指著遠處的星群，留出你發言的空間。',initialState:{world:{locations:{kalt:'observation_deck',sio:'observation_deck'},tasks:{inspection:{status:'not_started'}},time:{elapsedSeconds:0}},characters:{kalt:{public:{role:'engineer'}},sio:{public:{role:'navigator'}}}}}]
+    openings:[{id:'cabin',label:'共用艙室',title:'共用艙室',text:'午後的星光穿過舷窗。卡爾特把工具箱放在桌邊，希歐抬起頭，等候你的下一句話。',initialState:{world:{locations:{kalt:'common_cabin',sio:'common_cabin'},tasks:{inspection:{status:'not_started'}},resources:{fuel:{amount:72,unit:'percent'}},time:{elapsedSeconds:{temporalKind:'duration',seconds:0}}},characters:{kalt:{public:{role:'engineer'}},sio:{public:{role:'navigator'}}}}},
+      {id:'deck',label:'觀測甲板',title:'觀測甲板',text:'觀測甲板的燈光逐一亮起。卡爾特正在整理設備，希歐指著遠處的星群，留出你發言的空間。',initialState:{world:{locations:{kalt:'observation_deck',sio:'observation_deck'},tasks:{inspection:{status:'not_started'}},time:{elapsedSeconds:{temporalKind:'duration',seconds:0}}},characters:{kalt:{public:{role:'engineer'}},sio:{public:{role:'navigator'}}}}}]
   }))}]};
 }
 

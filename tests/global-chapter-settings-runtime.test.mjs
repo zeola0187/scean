@@ -5,7 +5,7 @@ import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {chapterRecallFixture} from '../fixtures/synthetic-chapter-recall.mjs';
 import {DurableStore} from '../adapters/store.mjs';
-import {SceanEngine} from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {SceanHost} from '../plugin/host.mjs';
 import {createChapterConfiguration} from '../plugin/chapter-runtime.mjs';
 import {sealChapterKeys} from '../isolated/web/chapter-settings-ui.mjs';

@@ -3,14 +3,15 @@ import assert from 'node:assert/strict';
 import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { SceanEngine } from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import { DurableStore } from '../adapters/store.mjs';
 import { hash } from '../core/contracts.mjs';
 import { encodeRunBundle,validateRunBundle,parseRunBundle,SAVE_LIMITS } from '../core/save-bundle.mjs';
 import {createHistoryFixture,playHistory,historyArgs,historyModel,syntheticHistoryMemory,HISTORY_C} from '../fixtures/synthetic-history-c.mjs';
+import {temporalRestore} from '../core/state-operations.mjs';
 
 const copy=structuredClone;
-const resign=b=>{b.manifest={runId:b.run.runId,version:b.run.version,head:b.run.head,snapshotHash:b.run.snapshot.hash,sha256:hash(b.run)};return b;};
+const resign=b=>{b.manifest={...b.manifest,runId:b.run.runId,version:b.run.version,head:b.run.head,snapshotHash:b.run.snapshot.hash,sha256:hash(b.run)};return b;};
 const code=c=>e=>e.code===c;
 let fixture;
 async function source(){
@@ -60,7 +61,7 @@ test('C save bounded data-only structure rejects excessive bytes/depth, getters,
   const cyclic={};cyclic.x=cyclic;assert.throws(()=>validateRunBundle(cyclic),code('SAVE_JSON'));
 });
 test('C save rejects nonportable nested credentials, OS paths and external-load directives instead of silently removing them',async()=>{
-  for(const [key,value,expected]of[['apiKey','synthetic-secret','SAVE_ENVIRONMENT_FIELD'],['location','C:\\Users\\fixture','SAVE_ENVIRONMENT_PATH'],['location','/tmp/fixture','SAVE_ENVIRONMENT_PATH'],['$ref','https://invalid.example/external.json','SAVE_EXTERNAL_REFERENCE'],['filePath','../private.json','SAVE_EXTERNAL_REFERENCE']]){
+  for(const [key,value,expected]of[['apiKey','synthetic-secret','SAVE_ENVIRONMENT_FIELD'],['location','C:\\fixture\\private','SAVE_ENVIRONMENT_PATH'],['location','/tmp/fixture','SAVE_ENVIRONMENT_PATH'],['$ref','https://invalid.example/external.json','SAVE_EXTERNAL_REFERENCE'],['filePath','../private.json','SAVE_EXTERNAL_REFERENCE']]){
     const run=await source();run.snapshot.card.data.extensions[key]=value;assert.throws(()=>encodeRunBundle(run),code(expected));
   }
   await bad(b=>{b.run.sdk={};},'SAVE_FIELDS');
@@ -95,12 +96,13 @@ test('C save checks Blueprint values/initial state, provenance source and durabl
 });
 
 function rollbackFixture(run){
+  const prior=copy(run);
   const t=run.turns.pop(),version=run.version+1,operationId='rollback-save';run.head=run.turns.at(-1)?.commitId??null;run.version=version;run.state=copy(t.stateBefore);
   run.memories=run.memories.filter(m=>m.source.commitId!==t.commitId);run.playerHistory=run.playerHistory.filter(m=>m.source.commitId!==t.commitId);run.stateProvenance=run.stateProvenance.filter(p=>p.source.id!==t.commitId);
-  run.retired=[{commitId:t.commitId,requestId:t.requestId,attemptId:t.attemptId,turn:t.turn,bodyHash:t.bodyHash,reason:'rollback',operationId,retiredAtVersion:version,replacedBy:null}];
+  run.retired=[{commitId:t.commitId,requestId:t.requestId,attemptId:t.attemptId,turn:t.turn,worldActivityBefore:copy(t.worldActivityBefore),worldActivityAfter:copy(t.worldActivityAfter),bodyHash:t.bodyHash,reason:'rollback',operationId,retiredAtVersion:version,replacedBy:null}];
   const old=run.receipts[t.requestId];run.receipts[t.requestId]={status:'retired',inputHash:old.inputHash,commitId:t.commitId,attemptId:t.attemptId,retiredBy:operationId,retiredAtVersion:version};
   const request={kind:'rollback',runId:run.runId,operationId,expectedVersion:version-1,expectedHead:t.commitId};
-  run.operationReceipts={[operationId]:{kind:'rollback',request,fingerprint:hash(request),result:{status:'committed',kind:'rollback',runId:run.runId,operationId,version,head:run.head,retiredCommitId:t.commitId}}};return run;
+  run.operationReceipts={[operationId]:{kind:'rollback',request,fingerprint:hash(request),result:{status:'committed',kind:'rollback',runId:run.runId,operationId,version,head:run.head,retiredCommitId:t.commitId}}};temporalRestore(prior,run,t,operationId);return run;
 }
 test('C save rolled-back knowledge stays excluded, private earlier memory survives, receipts and version roundtrip',async()=>{
   const run=rollbackFixture(await source()),restored=validateRunBundle(encodeRunBundle(run));assert.equal(restored.version,3);assert.equal(restored.memories.length,1);assert.equal(restored.memories[0].access.kind,'private');
@@ -144,10 +146,10 @@ test('C save verifies provenance target operations against each full state trans
     r=>{r.stateProvenance.find(p=>p.kind!=='initial').source.version=r.version+1;},
   ]){const b=await bundle();mutate(b.run);resign(b);assert.throws(()=>validateRunBundle(b));}
 });
-test('C save legacy pre-C active aggregates receive head defaults while exact authoritative state remains unchanged',async()=>{
+test('W29 save refuses deleting baseline fields from a new temporal aggregate; no implicit legacy migration',async()=>{
   const run=await source();for(const k of ['head','baselineState','baselineProvenance','operationReceipts','retired'])delete run[k];
   for(const turn of run.turns)for(const k of ['commitVersion','stateProvenanceBefore','stateProvenanceAfter'])delete turn[k];
-  const restored=validateRunBundle(encodeRunBundle(run));assert.deepEqual(restored.turns,run.turns);assert.deepEqual(restored.state,run.state);assert.equal(restored.head,run.turns.at(-1).commitId);
+  assert.throws(()=>encodeRunBundle(run),code('TEMPORAL_RUN_INVALID'));
 });
 test('C save actual research ship rollback and zero-memory regeneration export, empty-root import, restart and continuation',async()=>{
   const a=await createHistoryFixture();await playHistory(a,'private','private-origin');await playHistory(a,'share','shared-then-rollback');

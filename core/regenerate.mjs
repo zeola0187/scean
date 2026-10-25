@@ -15,6 +15,7 @@ export async function regenerateLast(engine,request){
     let candidate=retireHead(run,{operationId:request.operationId,reason:'regenerate'});
     // Version stays at current v; only context is from the preceding story head.
     const virtual={
+      provisionalTemporalRestore:candidate.storyClock?.sourceRef,
       root:engine.store.root,
       withRunLock:async(_id,fn)=>fn(),read:async()=>({...clone(candidate),proseStyle:clone(proseStyle),writingMode:clone(writingMode)}),recoverAttempts:async()=>{},readAttempts:async()=>engine.store.readAttempts(run.runId),
       writeAttempt:async(_id,attempt)=>{attempts.set(attempt.attemptId,clone(attempt));},

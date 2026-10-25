@@ -5,6 +5,7 @@ import {DurableStore} from '../adapters/store.mjs';
 import {syntheticLongrun} from './synthetic-longrun-d.mjs';
 import {updateChapterSettings,backfillChapterSummary} from '../core/chapter-summary.mjs';
 import {validateRunBundle,encodeRunBundle} from '../core/save-bundle.mjs';
+import {constructTemporalFixture} from './temporal-history.mjs';
 
 let template;
 export async function chapterRecallFixture(){
@@ -16,7 +17,7 @@ export async function chapterRecallFixture(){
     for(const c of run.narrative.chapters)await backfillChapterSummary(engine,await args('fill-'+c.order,{chapterId:c.id}),{enabled:true});
     const base=await store.read(run.runId),tail=syntheticLongrun({turns:45,bodyRepeats:0,runId:run.runId});
     for(const t of tail.turns.slice(42)){const version=++base.version;t.commitVersion=version;base.turns.push(t);base.receipts[t.requestId]=tail.receipts[t.requestId];base.receipts[t.requestId].result.version=version;base.head=t.commitId;}
-    validateRunBundle(encodeRunBundle(base));return base;
+    constructTemporalFixture(base);validateRunBundle(encodeRunBundle(base));return base;
   })();return structuredClone(await template);
 }
 export function chapterRecallPorts({overrideEmbed,overrideRerank,contextWindow=200000}={}){

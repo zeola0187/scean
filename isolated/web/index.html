@@ -18,11 +18,18 @@
   <div id="mode-banner" class="mode-banner" role="note">正在確認執行環境</div>
   <dialog id="global-chapter-dialog" aria-labelledby="global-chapter-dialog-title">
     <div class="section-heading"><h2 id="global-chapter-dialog-title">舞臺全域設定</h2><button id="global-chapter-close" type="button" class="quiet">關閉設定</button></div>
-  <section aria-label="預設主角名稱"><h3>預設主角名稱</h3>
+  <nav class="global-settings-tabs" role="tablist" aria-label="舞臺全域設定分頁">
+    <button id="global-general-tab" type="button" role="tab" data-global-settings-tab="general" aria-controls="global-general-panel" aria-selected="true">一般</button>
+    <button id="global-agent-models-tab" type="button" role="tab" data-global-settings-tab="models" aria-controls="global-agent-models-panel" aria-selected="false" tabindex="-1">Agent 模型</button>
+    <button id="global-summary-tab" type="button" role="tab" data-global-settings-tab="summary" aria-controls="global-summary-panel" aria-selected="false" tabindex="-1">進階摘要服務</button>
+  </nav>
+  <section id="global-general-panel" role="tabpanel" aria-labelledby="global-general-tab" aria-label="預設主角名稱"><h3>預設主角名稱</h3>
     <form id="player-default-form"><label for="player-default-name">之後新局預填的名稱（可留空）</label><input id="player-default-name" maxlength="80" autocomplete="off"><button id="player-default-save" type="submit" disabled>保存預設主角名稱</button></form>
     <p id="player-default-status" class="hint" role="status"></p>
     <p class="hint">每局可另填姓名；舊局不隨預設變更。只支援故事文字中的 {{user}}，未知宏與 W01 自訂前端宏保持原樣。</p>
   </section>
+  <section id="global-agent-models-panel" role="tabpanel" aria-labelledby="global-agent-models-tab" hidden><h3>Agent 模型</h3><p class="hint">Director、Character、Writer、Stat、日曆與論壇可分別選用既有 DSH 模型。日曆未另設時繼承 Stat，論壇繼承 Character；論壇模型不改變發言角色與權限。</p></section>
+  <section id="global-summary-panel" role="tabpanel" aria-labelledby="global-summary-tab" hidden>
   <details id="global-chapter-settings" class="global-chapter-settings">
     <summary>進階：摘要服務、章節記憶與金鑰</summary>
     <p class="hint">自動摘要請使用故事內的「本局自動摘要」開關；新故事預設開啟，舊故事明確關閉的設定保持不變。這裡只管理共用服務，不是另一個故事開關。保存或開啟設定不會發出模型請求。</p>
@@ -59,6 +66,7 @@
     </form>
     <p id="global-chapter-status" class="hint" role="status">尚未讀取全域設定。</p><p id="global-chapter-error" class="error" role="alert"></p>
   </details>
+  </section>
   </dialog>
   <div class="layout">
     <aside class="library" aria-label="選卡與遊玩紀錄">

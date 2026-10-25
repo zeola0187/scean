@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdtemp} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
-import {SceanEngine} from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {DurableStore} from '../adapters/store.mjs';
 import {publicInspection} from '../core/inspection.mjs';
 
@@ -11,7 +11,7 @@ import {publicInspection} from '../core/inspection.mjs';
 const serialized = value => JSON.stringify(value);
 const roster=()=>[{id:'keeper',name:'守塔人',description:'KEEPER_FULL_OWNER_BACKGROUND',relationships:{apprentice:'KEEPER_OWNER_RELATION'},private:{secret:'KEEPER_CARD_SECRET'}},{id:'apprentice',name:'學徒',description:'APPRENTICE_FULL_BACKGROUND',private:{secret:'APPRENTICE_CARD_SECRET'}}];
 const snapshot=()=>({schemaVersion:1,cardId:'b-synthetic-magic-tower',revision:'r1',card:{name:'合成魔法塔',description:'The public tower entrance.'},worldbook:{entries:[{id:'door',keys:['塔門'],content:'DOOR_PUBLIC_RULE'}]},preset:{style:'Concise public scene'},characters:roster()});
-const state=()=>({world:{locations:{current:'tower'},resources:{mana:80},time:{minute:17}},characters:{keeper:{private:{facts:{secret:'KEEPER_STATE_SECRET'}},public:{facts:{role:'keeper'}}},apprentice:{private:{facts:{secret:'APPRENTICE_STATE_SECRET'}}}}});
+const state=()=>({world:{locations:{current:'tower'},resources:{mana:80},time:{countdown:{temporalKind:'duration',minutes:17}}},characters:{keeper:{private:{facts:{secret:'KEEPER_STATE_SECRET'}},public:{facts:{role:'keeper'}}},apprentice:{private:{facts:{secret:'APPRENTICE_STATE_SECRET'}}}}});
 const emptyProposal=()=>({contractVersion:2,stateChanges:[],memories:[]});
 const advice=()=>({adviceVersion:1,characterId:'keeper',observable:{attitude:'calm',intent:'wait'},publicUtterances:['PUBLIC_ADVICE_ONLY'],withheld:['WITHHELD_PRIVATE_SENTINEL'],internal:{notes:['INTERNAL_PRIVATE_SENTINEL']},intendedDisclosures:[]});
 async function setup({source=snapshot(),initial=state(),window=32768,consult=false,post=emptyProposal,fault}={}){
@@ -51,7 +51,9 @@ test('B2 complete authorized packet preserves selected books and source-selected
   await play(a);await play(b);
   const packet=a.calls.find(c=>c.stage==='director');assert(serialized(packet.input).includes('OPTIONAL_BOOK_0'));assert(!serialized(packet.input).includes('OLD_BODY_0'));
   assert(serialized(packet.input).includes('我在塔門旁等待。'));assert(serialized(packet.input).includes('"mana":80'));assert(serialized(packet.input).includes('守塔人'));
-  assert.deepEqual(a.calls,b.calls,'run IDs and timestamps must not affect assembled prompt');
+  const normalize=f=>{const {candidateRef,candidateHash}=f.calls.find(c=>c.stage==='director').input.assembly.temporal;const walk=v=>typeof v==='string'?v===candidateRef?'<run-bound-candidate>':v===candidateHash?'<candidate-digest>':v:Array.isArray(v)?v.map(walk):v&&typeof v==='object'?Object.fromEntries(Object.entries(v).map(([k,x])=>[k,walk(x)])):v;return walk(f.calls);};
+  assert.notEqual(a.calls[0].input.assembly.temporal.candidateRef,b.calls[0].input.assembly.temporal.candidateRef,'candidate identity must be Run-scoped');
+  assert.deepEqual(normalize(a),normalize(b),'authorized content stays identical apart from explicit Run-bound candidate identities');
   const trace=serialized((await a.engine.inspect(a.run.runId)).attempts.at(-1));assert(trace.includes('complete_authorized_packet_no_token_quota')); assert(trace.includes('estimateOnly'));
 });
 

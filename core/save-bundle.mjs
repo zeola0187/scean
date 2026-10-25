@@ -1,3 +1,4 @@
+import {validateTemporalRun} from './state-operations.mjs';
 import {publicTurnDialogue} from './dialogue-projection.mjs';
 import {validateWritingMode,validateWritingModeReference} from './writing-mode.mjs';
 import {validateProseStyle,validateProseStyleReference} from './prose-style.mjs';
@@ -11,8 +12,10 @@ import { validateNarrative } from './narrative.mjs';
 import {validateCharacterSources} from './character-sources.mjs';
 
 export const SAVE_FORMAT = 'scean.run';
+// Explicit incompatible author capability, retaining the exact v9 safety limits.
+export const AMBIENT_SAVE_CAPABILITIES=Object.freeze(['worldRoutine.v2.ambientPosts.v1']);
 export const SAVE_LIMITS = Object.freeze({ bytes: 16 * 1024 * 1024, depth: 64, nodes: 300000, turns: 1000, retired: 256, receipts: 4096, records: 100000 });
-const ROOT = ['schemaVersion','runId','version','head','snapshot','openingId','baselineState','baselineProvenance','state','stateProvenance','memories','playerHistory','turns','receipts','operationReceipts','retired','banList','proseStyle','writingMode','createdAt','updatedAt'];
+const ROOT = ['worldRoutine','worldActivityCheckpoints','storyClock','baselineStoryClock','storyEpoch','storyRevision','worldActivity','baselineWorldActivity','schemaVersion','runId','version','head','snapshot','openingId','baselineState','baselineProvenance','state','stateProvenance','memories','playerHistory','turns','receipts','operationReceipts','retired','banList','proseStyle','writingMode','createdAt','updatedAt'];
 const ROOT_D = [...ROOT, 'narrative'];
 const fail = code => { throw new SceanError(code); };
 const plain = v => v && typeof v === 'object' && !Array.isArray(v) && [Object.prototype, null].includes(Object.getPrototypeOf(v));
@@ -121,7 +124,7 @@ function validateRun(run, { narrative=false, player=false }={}) {
   if(!same(normalizeBanList(run.banList),run.banList)||typeof run.createdAt!=='string'||typeof run.updatedAt!=='string'||!Number.isFinite(Date.parse(run.createdAt))||!Number.isFinite(Date.parse(run.updatedAt)))fail('SAVE_RUN_METADATA');
   const turns=new Map(),requests=new Set(),attempts=new Set();let previous;
   for(let index=0;index<run.turns.length;index++) {
-    const t=run.turns[index];fields(t,['turn','requestId','commitId','input','body','bodyHash','dialoguePresentation','stateBefore','stateAfter','memoryIds','playerHistoryIds','attemptId','committedAt','commitVersion','stateProvenanceBefore','stateProvenanceAfter'],['turn','requestId','commitId','input','body','bodyHash','stateBefore','stateAfter','memoryIds','playerHistoryIds','attemptId','committedAt']);
+    const t=run.turns[index];fields(t,['clockBefore','clockAfter','worldActivityBefore','worldActivityAfter','timeResolution','turn','requestId','commitId','input','body','bodyHash','dialoguePresentation','stateBefore','stateAfter','memoryIds','playerHistoryIds','attemptId','committedAt','commitVersion','stateProvenanceBefore','stateProvenanceAfter'],['turn','requestId','commitId','input','body','bodyHash','stateBefore','stateAfter','memoryIds','playerHistoryIds','attemptId','committedAt']);
     for(const key of ['requestId','commitId','attemptId'])safeId(t[key]);
     if(t.turn!==index+1 || turns.has(t.commitId)||requests.has(t.requestId)||attempts.has(t.attemptId)||typeof t.input!=='string'||!t.input.trim()||t.input.length>20000||typeof t.body!=='string'||!t.body.trim()||t.body.length>200000||t.bodyHash!==hash(t.body)||typeof t.committedAt!=='string'||!Number.isFinite(Date.parse(t.committedAt)))fail('SAVE_TURN');
     validateBlueprintState(bp,t.stateBefore,snap.characters);validateBlueprintState(bp,t.stateAfter,snap.characters);
@@ -136,7 +139,7 @@ function validateRun(run, { narrative=false, player=false }={}) {
   const memories=checkSources(run.memories,turns,run,'memory'),history=checkSources(run.playerHistory,turns,run,'history');
   const retired=new Set();
   for(const row of run.retired){
-    fields(row,['commitId','requestId','attemptId','turn','bodyHash','reason','operationId','retiredAtVersion','replacedBy'],['commitId','requestId','attemptId','turn','bodyHash','reason','operationId','retiredAtVersion','replacedBy']);
+    fields(row,['calendarCut','worldActivityBefore','worldActivityAfter','commitId','requestId','attemptId','turn','bodyHash','reason','operationId','retiredAtVersion','replacedBy'],['commitId','requestId','attemptId','turn','bodyHash','reason','operationId','retiredAtVersion','replacedBy']);
     for(const k of ['commitId','requestId','attemptId','operationId'])safeId(row[k]);
     if(row.replacedBy!==null)safeId(row.replacedBy);
     if(retired.has(row.commitId)||turns.has(row.commitId)||requests.has(row.requestId)||attempts.has(row.attemptId)||!integer(row.turn,1)||!integer(row.retiredAtVersion,1)||row.retiredAtVersion>run.version||!digest(row.bodyHash)||!['rollback','regenerate'].includes(row.reason)||(row.reason==='rollback'&&row.replacedBy!==null)||(row.reason==='regenerate'&&row.replacedBy===null))fail('SAVE_AUDIT');retired.add(row.commitId);requests.add(row.requestId);attempts.add(row.attemptId);
@@ -146,7 +149,7 @@ function validateRun(run, { narrative=false, player=false }={}) {
     if(r.status==='retired') { fields(r,['status','inputHash','commitId','attemptId','retiredBy','retiredAtVersion'],['status','inputHash','commitId','attemptId','retiredBy','retiredAtVersion']);const audit=run.retired.find(x=>x.commitId===r.commitId);if(!audit||audit.requestId!==requestId||audit.attemptId!==r.attemptId||audit.operationId!==r.retiredBy||audit.retiredAtVersion!==r.retiredAtVersion)fail('SAVE_RECEIPT');safeId(r.retiredBy);continue; }
     fields(r,['status','inputHash','commitId','attemptId','result'],['inputHash','commitId','attemptId','result']);const t=turns.get(r.commitId),v=r.result;
     if(r.status!==undefined&&r.status!=='committed')fail('SAVE_RECEIPT');
-    fields(v,['runId','requestId','version','turn','body','state','memories','playerHistory','commitId','status','trace'],['runId','requestId','version','turn','body','state','memories','commitId','status']);
+    fields(v,['storyClock','candidateRef','runId','requestId','version','turn','body','state','memories','playerHistory','commitId','status','trace'],['runId','requestId','version','turn','body','state','memories','commitId','status']);
     checkTrace(v.trace,t?.attemptId);
     if(!t||t.requestId!==requestId||r.attemptId!==t.attemptId||r.inputHash!==hash(t.input)||v.status!=='committed'||v.runId!==run.runId||v.requestId!==requestId||v.commitId!==t.commitId||v.turn!==t.turn||v.body!==t.body||!integer(v.version,1)||v.version>run.version||(t.commitVersion!==undefined&&v.version!==t.commitVersion)||!same(v.state,t.stateAfter)||!same(v.memories,t.memoryIds.map(id=>memories.get(id)))||!same(v.playerHistory??[],t.playerHistoryIds.map(id=>history.get(id))))fail('SAVE_RECEIPT');
   }
@@ -165,7 +168,7 @@ function validateRun(run, { narrative=false, player=false }={}) {
       safeId(q.requestId);
       if(q.requestId!==v.requestId||typeof q.guidance!=='string'||q.guidance.length>10000||(q.guidance!==''&&!q.guidance.trim()))fail('SAVE_OPERATION_REQUEST');
     }
-    fields(v,['status','kind','runId','operationId','version','head','retiredCommitId','requestId','commitId','turn','body','state','memories','playerHistory','trace','retiredBy','retiredAtVersion'],['status','kind','runId','operationId','version','head','retiredCommitId']);
+    fields(v,['storyClock','candidateRef','status','kind','runId','operationId','version','head','retiredCommitId','requestId','commitId','turn','body','state','memories','playerHistory','trace','retiredBy','retiredAtVersion'],['status','kind','runId','operationId','version','head','retiredCommitId']);
     if(v.kind!==r.kind||v.runId!==run.runId||v.operationId!==operationId||!integer(v.version,1)||v.version>run.version||!retired.has(v.retiredCommitId)||!['committed','retired'].includes(v.status))fail('SAVE_OPERATION_RECEIPT');
     if(v.head!==null&&!turns.has(v.head)&&!retired.has(v.head))fail('SAVE_OPERATION_RECEIPT');
     const target=run.retired.find(x=>x.commitId===v.retiredCommitId);if(target.operationId!==operationId||target.reason!==r.kind||target.retiredAtVersion!==v.version)fail('SAVE_OPERATION_RECEIPT');
@@ -205,7 +208,7 @@ function validateRun(run, { narrative=false, player=false }={}) {
     const applied=applyStatProposal({contractVersion:2,stateChanges:changes,memories:[]},t.stateBefore,snap.characters,t.body,{publicView:true});
     if(!same(applied.state,t.stateAfter))fail('SAVE_PROVENANCE_STATE');
   }
-  if(narrative)validateNarrative(run);
+  if(narrative)validateNarrative(run);validateTemporalRun(run);
   const safe=clone(run);for(const turn of safe.turns){if(turn.dialoguePresentation){const display=publicTurnDialogue(safe,turn);if(display.dialoguePresentation)turn.dialoguePresentation=display.dialoguePresentation;else delete turn.dialoguePresentation;}}return safe;
 }
 
@@ -224,6 +227,10 @@ function portableReceipt(receipt) {
   if(out.result?.trace)out.result.trace={...(out.result.trace.writingMode?{writingMode:clone(out.result.trace.writingMode)}:{}),...(out.result.trace.proseStyle?{proseStyle:clone(out.result.trace.proseStyle)}:{}),attemptId:out.result.trace.attemptId,...(out.result.trace.operationId?{operationId:out.result.trace.operationId}:{}),stages:(out.result.trace.stages??[]).map(s=>({stage:s.stage,status:s.status}))};
   return out;
 }
+// v9 retains explicit presence declarations for optional portable domains.
+// Rehashing a payload after accidentally dropping identity/style/history must
+// not silently turn it into a different kind of saved Run.
+function portableDomains(run){return [...(run.worldRoutine?['worldRoutine']:[]),'storyClock','worldActivity','worldActivityCheckpoints',...['narrative','playerIdentity','proseStyle','writingMode'].filter(k=>Object.hasOwn(run,k)),...(run.turns?.some(t=>Object.hasOwn(t,'dialoguePresentation'))?['dialoguePresentation']:[])].sort();}
 export function encodeRunBundle(run) {
   // Never copy Host/provider fields or raw attempt traces into the portable domain.
   const hasNarrative=Object.hasOwn(run,'narrative'),hasPlayer=Object.hasOwn(run,'playerIdentity');
@@ -234,17 +241,20 @@ export function encodeRunBundle(run) {
   for(const turn of portable.turns??[]){if(turn.dialoguePresentation){try{const display=publicTurnDialogue(portable,turn);if(display.dialoguePresentation){bounded(display.dialoguePresentation);turn.dialoguePresentation=display.dialoguePresentation;}else delete turn.dialoguePresentation;}catch{delete turn.dialoguePresentation;}}}
   if(Buffer.byteLength(JSON.stringify(portable),'utf8')>SAVE_LIMITS.bytes)for(const turn of portable.turns??[])delete turn.dialoguePresentation;
   bounded(portable);validateRun(portable,{narrative:hasNarrative,player:hasPlayer});
-  const bundle={format:SAVE_FORMAT,schemaVersion:portable.turns.some(t=>t.dialoguePresentation)?7:(portable.writingMode!==undefined||Object.values(portable.receipts).some(r=>r.result?.trace?.writingMode!==undefined))?6:(portable.proseStyle!==undefined||Object.values(portable.receipts).some(r=>r.result?.trace?.proseStyle!==undefined))?5:hasPlayer?4:hasNarrative?(portable.narrative.schemaVersion===2?3:2):1,manifest:{runId:portable.runId,version:portable.version,head:portable.head,snapshotHash:portable.snapshot.hash,sha256:hash(portable)},run:portable};
+  const bundle={format:SAVE_FORMAT,schemaVersion:portable.worldRoutine?.schemaVersion===2?10:portable.storyClock?9:portable.turns.some(t=>t.dialoguePresentation)?7:(portable.writingMode!==undefined||Object.values(portable.receipts).some(r=>r.result?.trace?.writingMode!==undefined))?6:(portable.proseStyle!==undefined||Object.values(portable.receipts).some(r=>r.result?.trace?.proseStyle!==undefined))?5:hasPlayer?4:hasNarrative?(portable.narrative.schemaVersion===2?3:2):1,manifest:{runId:portable.runId,version:portable.version,head:portable.head,snapshotHash:portable.snapshot.hash,sha256:hash(portable),...(portable.storyClock?{domains:portableDomains(portable)}:{}),...(portable.worldRoutine?.schemaVersion===2?{requiredCapabilities:[...AMBIENT_SAVE_CAPABILITIES]}:{})},run:portable};
   bounded(bundle);return bundle;
 }
 export function validateRunBundle(value) {
   const bundle=typeof value==='string'?parseRunBundle(value):value;bounded(bundle);
-  fields(bundle,['format','schemaVersion','manifest','run'],['format','schemaVersion','manifest','run']);if(bundle.format!==SAVE_FORMAT||![1,2,3,4,5,6,7].includes(bundle.schemaVersion)||(bundle.schemaVersion===2&&bundle.run?.narrative?.schemaVersion!==1)||(bundle.schemaVersion===3&&bundle.run?.narrative?.schemaVersion!==2))fail('SAVE_FORMAT_VERSION');
+  fields(bundle,['format','schemaVersion','manifest','run'],['format','schemaVersion','manifest','run']);if(bundle.format!==SAVE_FORMAT||![1,2,3,4,5,6,7,9,10].includes(bundle.schemaVersion)||(bundle.schemaVersion===2&&bundle.run?.narrative?.schemaVersion!==1)||(bundle.schemaVersion===3&&bundle.run?.narrative?.schemaVersion!==2))fail('SAVE_FORMAT_VERSION');
+  if((bundle.schemaVersion===10)!==(bundle.run?.worldRoutine?.schemaVersion===2))fail('SAVE_CAPABILITY_VERSION');
   const styleDomain=Object.hasOwn(bundle.run??{},'proseStyle')||Object.values(bundle.run?.receipts??{}).some(r=>r?.result?.trace?.proseStyle!==undefined);
   const modeDomain=Object.hasOwn(bundle.run??{},'writingMode')||Object.values(bundle.run?.receipts??{}).some(r=>r?.result?.trace?.writingMode!==undefined);
   const dialogueDomain=bundle.run?.turns?.some(t=>Object.hasOwn(t,'dialoguePresentation'))===true;
-  if(bundle.schemaVersion===7?!dialogueDomain:dialogueDomain||(bundle.schemaVersion===6?!modeDomain:modeDomain||(bundle.schemaVersion===5)!==styleDomain))fail('SAVE_FORMAT_VERSION');
-  const m=bundle.manifest;fields(m,['runId','version','head','snapshotHash','sha256'],['runId','version','head','snapshotHash','sha256']);
+  if(bundle.schemaVersion>=9?!bundle.run?.storyClock:bundle.run?.storyClock|| (bundle.schemaVersion===7?!dialogueDomain:dialogueDomain||(bundle.schemaVersion===6?!modeDomain:modeDomain||(bundle.schemaVersion===5)!==styleDomain)))fail('SAVE_FORMAT_VERSION');
+  const m=bundle.manifest,manifestFields=['runId','version','head','snapshotHash','sha256',...(bundle.schemaVersion>=9?['domains']:[]),...(bundle.schemaVersion===10?['requiredCapabilities']:[])];fields(m,manifestFields,manifestFields);
+  if(bundle.schemaVersion>=9&&!same(m.domains,portableDomains(bundle.run)))fail('SAVE_DOMAINS');
+  if(bundle.schemaVersion===10&&!same(m.requiredCapabilities,AMBIENT_SAVE_CAPABILITIES))fail('SAVE_CAPABILITY_VERSION');
   if(!digest(m.sha256)||m.sha256!==hash(bundle.run))fail('SAVE_DIGEST');
   if(m.runId!==bundle.run.runId||m.version!==bundle.run.version||m.head!==bundle.run.head||m.snapshotHash!==bundle.run.snapshot.hash)fail('SAVE_MANIFEST');
   return validateRun(bundle.run,{narrative:bundle.schemaVersion>=4?Object.hasOwn(bundle.run,'narrative'):bundle.schemaVersion>=2,player:bundle.schemaVersion===4||bundle.schemaVersion>=5&&Object.hasOwn(bundle.run,'playerIdentity')});

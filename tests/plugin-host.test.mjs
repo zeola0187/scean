@@ -13,7 +13,7 @@ function createNativeModelPort(args){
   return createPort({...args,agentDefaultModel:{currentSelection:()=>({provider:'deepseek-official',model:'deepseek-flash',reasoningEffort:'off'})}});
 }
 
-import {SceanEngine} from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {DurableStore} from '../adapters/store.mjs';
 import {Memory} from '../core/memory.mjs';
 

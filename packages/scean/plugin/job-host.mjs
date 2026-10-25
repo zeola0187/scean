@@ -79,14 +79,14 @@ export class HostJobs {
       if(request.status==='retired')return row.attemptId===request.attemptId&&row.commitId===request.commitId?{status:'retired',result:{status:'retired',commitId:request.commitId},binding:{attemptId:request.attemptId,commitId:request.commitId}}:null;
       if(request.status==='unknown')return run.receipts[row.requestId]?.result?.trace?.operationId===row.operationId?{status:'unknown'}:null;
       if(request.operationId!==row.operationId)return null;
-      return {status:'committed',result:publicTurnResult(run.receipts[row.requestId].result),binding:{attemptId:request.attemptId,commitId:request.commitId}};
+      return {status:'committed',result:publicTurnResult(run.receipts[row.requestId].result,run),binding:{attemptId:request.attemptId,commitId:request.commitId}};
     }
     const operation=run.operationReceipts?.[row.operationId]??run.narrative?.operations?.[row.operationId];
     if(!operation)return null;
     if(operation.fingerprint!==row.canonicalFingerprint)fail('OPERATION_ID_CONFLICT');
     if(operation.status==='pending')return null;
     const result=operation.result;if(!result)return null;
-    return {status:result.status,result:row.kind==='regenerate'?{...publicTurnResult(result),...Object.fromEntries(['kind','operationId','head','retiredCommitId','retiredBy','retiredAtVersion'].filter(k=>result[k]!==undefined).map(k=>[k,result[k]]))}:copy(result)};
+    return {status:result.status,result:row.kind==='regenerate'?{...publicTurnResult(result,run),...Object.fromEntries(['kind','operationId','head','retiredCommitId','retiredBy','retiredAtVersion'].filter(k=>result[k]!==undefined).map(k=>[k,result[k]]))}:copy(result)};
   }
   generationTiming(row,run){
     // A later background summary must not extend or replace the last turn's clock.

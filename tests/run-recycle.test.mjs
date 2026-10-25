@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';import path from 'node:path';
-import {DurableStore} from '../adapters/store.mjs';import {SceanEngine} from '../core/engine.mjs';import {SceanHost} from '../plugin/host.mjs';import {Memory} from '../core/memory.mjs';
+import {DurableStore} from '../adapters/store.mjs';import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';import {SceanHost} from '../plugin/host.mjs';import {Memory} from '../core/memory.mjs';
 import {changeRunLifecycle,lifecycleView} from '../core/run-lifecycle.mjs';import {w01Fixture} from '../fixtures/w01-frontends.mjs';import {createNativeBridge} from '../plugin/player-native-bridge.mjs';import {encodeRunBundle} from '../core/save-bundle.mjs';
 const code=c=>e=>e.code===c,deferred=()=>{let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve};};
 async function fixture(t){const base=path.resolve(import.meta.dirname,'../.test-data');await fs.mkdir(base,{recursive:true});const root=await fs.mkdtemp(path.join(base,'run-recycle-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));

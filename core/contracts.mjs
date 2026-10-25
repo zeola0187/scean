@@ -1,3 +1,6 @@
+import {routinePolicy} from './world-routine.mjs';
+import {storyTimeDefinition} from './story-clock.mjs';
+import {validatePublicEvents} from './state-operations.mjs';
 import { createHash, randomUUID } from 'node:crypto';
 import {derivedFactsPackage} from './derived-facts.mjs';
 import { frontendPackage } from './frontend.mjs';
@@ -47,7 +50,8 @@ export function parseObject(value) {
 export function validateSnapshot(snapshot) {
   object(snapshot);
   if (snapshot.schemaVersion !== 1 || !snapshot.cardId || snapshot.revision === undefined || !snapshot.card || snapshot.worldbook === undefined || snapshot.preset === undefined || !Array.isArray(snapshot.characters)) throw new SceanError('INVALID_SNAPSHOT');
-  validateRoster(snapshot.characters);
+  validateRoster(snapshot.characters);routinePolicy(snapshot.worldRoutineDefinition,snapshot.characters);
+  const storyDefinition=storyTimeDefinition(snapshot.storyTimeDefinition);validatePublicEvents(snapshot.publicEvents,storyDefinition);
   for (const actor of snapshot.characters) validateCharacterSources(actor, snapshot);
   derivedFactsPackage(snapshot.derivedFacts,snapshot.stateBlueprint,snapshot.characters);
   if (snapshot.frontend) frontendPackage(snapshot.frontend,snapshot.stateBlueprint,snapshot.characters,snapshot.derivedFacts);

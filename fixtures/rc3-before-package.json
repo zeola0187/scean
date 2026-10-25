@@ -1,0 +1,58 @@
+{
+  "name": "@local/dsh-scean-suite",
+  "version": "1.6.2-local.w29.2d",
+  "private": true,
+  "type": "module",
+  "description": "SCEAN: native Card Studio, dynamic fronts, durable stories and 3+8 chapter memory",
+  "files": [
+    "packages",
+    "cordis.patch.yml",
+    "README.md",
+    "THIRD-PARTY-NOTICES.md",
+    "dsh-compatibility.json",
+    "docs",
+    "LICENSE",
+    "COPYRIGHT",
+    "LICENSE-SCOPE.md",
+    "THIRD-PARTY-LICENSES.json",
+    "SOURCE-AVAILABILITY.md",
+    "release-source.json",
+    "licenses"
+  ],
+  "engines": {
+    "node": ">=24",
+    "dsh": "0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh": "0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh": {
+      "optional": true
+    }
+  },
+  "os": [
+    "win32"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "scripts": {
+    "test": "node --require ./scripts/w19-offline-network.cjs --test tests/*.test.mjs",
+    "test:authoring": "node --require ./scripts/w19-offline-network.cjs --test authoring/tests/*.test.mjs",
+    "build:suite": "python scripts/build-candidate.py",
+    "export:clean": "python tools/export-clean.py",
+    "test:release": "python tests/release-support.test.py -v"
+  },
+  "license": "AGPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zeola0187/scean.git"
+  },
+  "homepage": "https://github.com/zeola0187/scean",
+  "bugs": {
+    "url": "https://github.com/zeola0187/scean/issues"
+  }
+}

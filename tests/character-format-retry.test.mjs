@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
-import {SceanEngine,SYSTEMS} from '../core/engine.mjs';
+import {SYSTEMS} from '../core/engine.mjs';import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {Memory} from '../core/memory.mjs';
 import {DurableStore} from '../adapters/store.mjs';
 import {characterAdviceOutputContract} from '../core/character-advice.mjs';

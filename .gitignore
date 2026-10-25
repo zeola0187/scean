@@ -25,3 +25,4 @@ __pycache__/
 # Regenerated compatibility imports for offline tests
 authoring/.integration/
 /studio/
+.test-temp/

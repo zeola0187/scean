@@ -1,3 +1,11 @@
+# W29 RC3 預發行：1.6.2-local.w29.2d.rc3.1
+
+目標為官方 DSH **0.2.1-rc.3**。先備份程式、profile、卡片及 Run 再升級。這是已完成正式原生啟動與一次有界真模型驗收的 RC3 相容版本，並非宣稱全部歷史測試通過。
+
+新增 StoryClock、七日日曆、角色論壇與有界路人補文、Studio 創作導航及獨立日曆／論壇模型設定。[更新與使用說明](docs/RELEASE-W29-RC3.zh-TW.md)。新版 v10 不可交給舊 2C 降版讀取；既有 Run 不會自動開啟新能力。
+
+---
+
 # SCEAN 1.6.0
 
 SCEAN combines native Card Studio authoring with saved story openings, dynamic

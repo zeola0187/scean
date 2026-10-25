@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { normalizeStudioHandoffSnapshot } from '../plugin/studio-handoff.mjs';
 import { validateSnapshot } from '../core/contracts.mjs';
-import { SceanEngine } from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import { publicSnapshot } from '../core/inspection.mjs';
 import { buildSavedSnapshot } from '../vendor/cardstudio-scean/lib/scean-integration.js';
 

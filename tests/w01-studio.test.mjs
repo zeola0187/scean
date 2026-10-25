@@ -7,7 +7,7 @@ import {WorkspaceLoader} from '../packages/studio/lib/loader.js';
 import {MaterialCardService} from '../packages/studio/lib/material-service.js';
 import {createSceanControl,resolveSceanCardContext} from '../packages/studio/lib/scean-integration.js';
 import {createSceanAuditControl} from '../packages/studio/lib/scean-audit-control.js';
-import {SceanEngine} from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {DurableStore} from '../adapters/store.mjs';
 import {SceanHost} from '../plugin/host.mjs';
 import {createNativeBridge} from '../plugin/player-native-bridge.mjs';

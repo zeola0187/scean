@@ -8,7 +8,7 @@ import {validateNarrative} from '../core/narrative.mjs';
 import {encodeRunBundle,validateRunBundle} from '../core/save-bundle.mjs';
 import {syntheticLongrun} from '../fixtures/synthetic-longrun-d.mjs';
 import {DurableStore} from '../adapters/store.mjs';
-import {SceanEngine} from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {chapterSettingsDefaults,ChapterProviderSettings} from '../plugin/chapter-settings.mjs';
 import {chapterAutomationSummary,chapterOperationSummary} from '../isolated/web/summary-settings-ui.mjs';
 

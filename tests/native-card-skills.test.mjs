@@ -11,7 +11,7 @@ import * as studioPlugin from '../packages/studio/index.js';
 import {loadSkills,readSkill,bundledSkillsRoot,retiredSkillNames,nativeAuthoringSkillNames} from '../packages/studio/lib/workspace-setup.js';
 import {toolSpecs} from '../packages/studio/lib/tool-definitions.js';
 import {buildSavedSnapshot} from '../packages/studio/lib/scean-integration.js';
-import {SceanEngine} from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {DurableStore} from '../adapters/store.mjs';
 import {w01Fixture} from '../fixtures/w01-frontends.mjs';
 const sha=b=>createHash('sha256').update(b).digest('hex');

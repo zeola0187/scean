@@ -8,7 +8,7 @@ import {createHash} from 'node:crypto';
 import {IsolatedStudioBridge} from '../isolated/studio-bridge.mjs';
 import {pngChunk} from '../vendor/cardstudio-scean/lib/codec.js';
 import {SceanHost} from '../plugin/host.mjs';
-import {SceanEngine} from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {DurableStore} from '../adapters/store.mjs';
 import {Memory} from '../core/memory.mjs';
 import {MaterialCardService} from '../sources/card-studio/cardstudio-bundle/lib/material-service.js';

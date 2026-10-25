@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdtemp,mkdir,readFile,writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
 import {SceanHost} from '../plugin/host.mjs';
-import {SceanEngine,assembleSources,SYSTEMS} from '../core/engine.mjs';
+import {assembleSources,SYSTEMS} from '../core/engine.mjs';import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {Memory} from '../core/memory.mjs';
 import {DurableStore} from '../adapters/store.mjs';
 import {buildSavedSnapshot,createSceanControl,resolveSceanCardContext} from '../packages/studio/lib/scean-integration.js';

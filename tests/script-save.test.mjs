@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtemp,mkdir,rm} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
-import {SceanEngine} from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {Memory} from '../core/memory.mjs';
 import {DurableStore} from '../adapters/store.mjs';
 import {bindCharacterSources} from '../core/character-sources.mjs';
@@ -25,7 +25,7 @@ test('verified canonical character JSON pointers roundtrip with immutable Script
 
 test('source selector exception cannot admit OS paths, traversal, corrupt bindings or other path fields',async t=>{
   const original=await fixture(t);
-  for(const pointer of ['C:/Users/private/secret.json','/../etc/passwd','/data/../etc','\\\\server\\private']){
+  for(const pointer of ['C:/fixture/secret.json','/../etc/passwd','/data/../etc','\\\\server\\private']){
     const run=structuredClone(original);run.snapshot.characters[0].sourceBindings.sources[0].path=pointer;
     assert.throws(()=>encodeRunBundle(run),{code:'SAVE_ENVIRONMENT_PATH'});
   }
@@ -35,7 +35,7 @@ test('source selector exception cannot admit OS paths, traversal, corrupt bindin
     run=>run.snapshot.source.fake={sourceBindings:structuredClone(run.snapshot.characters[0].sourceBindings)},
     run=>run.snapshot.characters[0].sourceBindings.sources[0].sha256='0'.repeat(64),
     run=>run.snapshot.card.data.extensions.scean.characters[0].sourceBindings.descriptionHash='0'.repeat(64),
-    run=>run.snapshot.card.data.extensions.privatePath='C:/Users/private',
+    run=>run.snapshot.card.data.extensions.privatePath='C:/fixture/private',
   ]){const run=structuredClone(original);mutate(run);assert.throws(()=>encodeRunBundle(run),{code:'SAVE_ENVIRONMENT_PATH'});}
 });
 

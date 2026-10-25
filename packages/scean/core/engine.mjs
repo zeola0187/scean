@@ -1,4 +1,7 @@
-import {decodeWriterDialogue,makeDialoguePresentation} from './dialogue.mjs';
+import {initializeWorldRoutine,routineContext,routineMetadataRebase} from './world-routine.mjs';
+import {recordActivityCheckpoint,initializeTemporal,prepareTemporalCandidate,candidateView,projectStoryState,validateTemporalPost,temporalCheckpoint,temporalReceipt,validateTemporalRun,TIME_TOOL} from './state-operations.mjs';
+import {assertNoWritableClock} from './story-clock.mjs';
+import {decodeWriterDialogue,makeDialoguePresentation,writerDialogueStatus} from './dialogue.mjs';
 import {publicSnapshot} from './inspection.mjs';
 import {SINGLE_WRITER_SYSTEM,publicToolEvidence,writerHandoffContract,buildWriterHandoff,prepareSingleWriterInput,freezeWriterBody,assertWriterBodyHash} from './writer-workflow.mjs';
 import {readRunWritingMode,saveRunWritingMode,captureWritingMode,validateWritingModePin,writingModeReference,systemsForWritingMode,defaultWritingMode} from './writing-mode.mjs';
@@ -50,6 +53,13 @@ export function safeFailure(error, stage = 'request', fallback = 'TURN_FAILED') 
     CONTEXT_PACKET_TOO_LARGE: '授權資料封包超過 16MiB 傳輸安全上限；未裁剪內容，本輪未提交。',
     NARRATIVE_COVERAGE_REQUIRED: '未摘要正文超出 50 回合或 200KB 保護上限；本輪未生成。請啟用自動長篇摘要或用手動摘要補齊，再繼續故事。全文仍可從歷史查回。',
     MODEL_TIMEOUT: '模型回應逾時；本輪尚未提交，可保留原輸入重試。',
+    UNKNOWN_MODEL:'選定模型已不在 DSH 現有清單內；本輪未提交，未改用其他模型。請修復原路由，或以新請求選用另一個現有模型。',
+    INVALID_CONFIG:'DSH 供應商或模型設定無效；本輪未提交，請先在 DSH 修復。',
+    INVALID_CATALOG:'DSH 模型清單無效；未自動換用其他模型，請重新讀取設定。',
+    MODEL_CATALOG_UNAVAILABLE:'目前無法核對 DSH 模型清單；未自動換用其他模型。',
+    MODEL_CATALOG_CHANGED:'供應商清單在請求準備期間已變更；本次未送出該模型呼叫，請重新讀取後明確重試。',
+    MODEL_ROUTE_PIN_CORRUPT:'此請求的模型設定快照無法驗證；未重選模型，請重新讀取後以新請求操作。',
+    MODEL_ROUTE_REQUEST_CHANGED:'此請求所屬的故事狀態或輸入已變更；請以新的請求編號操作。',
     COMMIT_OUTCOME_UNKNOWN: '保存結果尚未確認；請使用相同請求重試查核，避免另送一輪。',
     PERSISTENCE_READ_FAILED: '暫時無法讀取 Run；請稍後使用原請求恢復。',
     IDEMPOTENCY_CONFLICT: '此請求編號已用於不同輸入；修改輸入後必須使用新請求編號。',
@@ -77,6 +87,9 @@ export function safeFailure(error, stage = 'request', fallback = 'TURN_FAILED') 
   const category = code === 'CANCELLED' ? 'cancelled' : ['model', 'tool', 'post_stat', 'persistence', 'validation'].includes(error?.category) ? error.category : stage === 'commit' || /^(?:EIO|ENOSPC|EACCES|EPERM|COMMIT_OUTCOME_UNKNOWN|HOST_METADATA)/.test(code) ? 'persistence' : stage === 'post_stat' ? 'post_stat' : ['consult_character', 'adjudicate_action'].includes(stage) ? 'tool' : ['director', 'draft', 'prose', 'prose_repair', 'writer', 'writer_repair', 'character', 'adjudicate'].includes(stage) ? 'model' : 'validation';
   const issue = error?.validation;
   let validation = code === 'INVALID_STATE_SCOPE' && Number.isInteger(issue?.index) && issue.index >= 0 && issue.index < 200 && ['reserved_player', 'unknown_character', 'invalid_visibility', 'invalid_world_fields'].includes(issue.reason) ? { index: issue.index, path: `/stateChanges/${issue.index}`, reason: issue.reason } : null;
+  if(['WRITER_HANDOFF_INVALID','WRITER_HANDOFF_SOURCE_INVALID','WRITER_ADVICE_NOT_COMMITMENT'].includes(code)&&/^(?:|\/(?:statement|handoffVersion|sceneIntent|knownFacts|effectiveConstraints|expressedCommitmentsOrRefusals|characterPositions|unknowns)(?:\/(?:[0-9]|1[0-9]|2[0-3])(?:\/(?:text|sourceRefs)(?:\/[0-7])?)?)?)$/.test(issue?.path??'invalid')&&['invalid_json','object_required','missing_field','unexpected_fields','string_required','array_required','limit','version','unknown_source','advice_not_commitment'].includes(issue?.reason)){
+    validation={path:issue.path,reason:issue.reason};reasons[code]+=` 欄位 ${validation.path||'/'}（${validation.reason}）。`;
+  }
   if (validation) reasons.INVALID_STATE_SCOPE += ` stateChanges 第 ${validation.index + 1} 筆（${validation.reason}）。`;
   if(/^CHARACTER_ADVICE_/.test(code)&&/^\/(?:adviceVersion|characterId|observable(?:\/(?:attitude|intent))?|publicUtterances(?:\/(?:[0-9]|1[0-9]))?|withheld(?:\/(?:[0-9]|1[0-9]))?|internal(?:\/notes(?:\/(?:[0-9]|1[0-9]))?)?|intendedDisclosures(?:\/(?:[0-9]|1[0-9])(?:\/(?:topic|publicText))?)?)?$/.test(issue?.path??'')&&['invalid_json','object_required','missing_fields','unexpected_fields','string_required','array_required','limit','version','identity'].includes(issue?.reason)){
     validation={path:issue.path,reason:issue.reason};reasons[code]=`角色回覆${code==='CHARACTER_ADVICE_JSON'?' JSON 語法':'欄位結構'}不符；本輪未保存。位置 ${validation.path}（${validation.reason}）。`;
@@ -144,6 +157,7 @@ export function narrativeSources(sources) {
 }
 
 export const DIRECTOR_TOOLS = [
+  TIME_TOOL,
   { type: 'function', function: { name: 'search_history', description: 'Optionally search active committed original player input/story. Historical reference, not a current event or all-character knowledge. Returns bounded snippets; use read_history for original prose.', parameters: { type: 'object', properties: { query: { type: 'string', maxLength: 512 }, limit: { type: 'integer', minimum: 1, maximum: 10 }, mode: { type: 'string', enum: ['literal', 'bm25'] }, caseSensitive: { type: 'boolean' } }, required: ['query'], additionalProperties: false } } },
   { type: 'function', function: { name: 'read_history', description: 'Optionally read an active committed original story source by locator or commitId, with at most one neighboring turn each side. Historical reference, not a current event or automatic NPC knowledge.', parameters: { type: 'object', properties: { locator: { type: 'string' }, commitId: { type: 'string' }, radius: { type: 'integer', minimum: 0, maximum: 1 }, maxChars: { type: 'integer', minimum: 1, maximum: 12000 } }, additionalProperties: false } } },
   { type: 'function', function: { name: 'consult_character', description: 'Optionally ask one character for viewpoint advice. Advice is not an event and never writes memory.', parameters: { type: 'object', properties: { characterId: { type: 'string' }, question: { type: 'string' } }, required: ['characterId', 'question'], additionalProperties: false } } },
@@ -189,13 +203,14 @@ export class SceanEngine {
     if (stageModelSelections !== undefined) {
       if (!stageModelSelections || typeof stageModelSelections !== 'object' || Array.isArray(stageModelSelections)) throw new SceanError('INVALID_MODEL_SELECTION');
       overrides.stageModelSelections = {};
-      for (const [stage, value] of Object.entries(stageModelSelections)) { if (!['summary', 'chapter_analysis', 'chapter_summary', 'chapter_rerank'].includes(stage) && !Object.hasOwn(SYSTEMS, stage)) throw new SceanError('INVALID_MODEL_STAGE'); overrides.stageModelSelections[stage] = selection(value); }
+      for (const [stage, value] of Object.entries(stageModelSelections)) { if (!['summary', 'chapter_analysis', 'chapter_summary', 'chapter_rerank','ideas'].includes(stage) && !Object.hasOwn(SYSTEMS, stage)) throw new SceanError('INVALID_MODEL_STAGE'); overrides.stageModelSelections[stage] = selection(value); }
     }
     const now = new Date().toISOString();
     const created={ schemaVersion: 1, runId, version: 0, snapshot: fixed, ...(fixed.source?.script?{scriptId:fixed.source.script.scriptId,scriptHash:fixed.source.script.scriptHash,scriptSourceSessionId:fixed.source.script.sourceSessionId,sourceSessionId:fixed.source.authoring?.sessionId}:{}), ...(name!==undefined?{playerIdentity:{schemaVersion:1,name:playerName(name),boundVersion:0,afterTurn:0}}:{}), ...overrides, ...(openingId ? { openingId } : {}),
       state: initialized.state, baselineState: clone(initialized.state), ...(blueprint ? { stateProvenance: initialized.provenance, baselineProvenance: clone(initialized.provenance) } : {}), memories: [], playerHistory: [], turns: [], receipts: {}, head: null, retired: [], operationReceipts: {},
       banList: normalizeBanList(banList), createdAt: now, updatedAt: now };
     if(chapterAutoEnabled!==undefined)seedNewRunChapterSettings(created,chapterAutoEnabled);
+    initializeTemporal(created);initializeWorldRoutine(created);validateTemporalRun(created);
     return this.store.create(created);
   }
   async rollback(request) { const value=await rollbackLast(this,request);this.chapterRecall?.clearRun(request.runId);return value; }
@@ -244,7 +259,7 @@ export class SceanEngine {
   async turn({ runId, input, requestId, signal, onProgress, operationId, writingGuidance, baseVersion, baseHead, chapterContextEnabled }) {
     safeId(runId); safeId(requestId); text(input, 20000); if (operationId !== undefined) safeId(operationId);
     return this.store.withRunLock(runId, async () => {
-      const run = await this.store.read(runId); await this.store.recoverAttempts(runId);
+      const run = await this.store.read(runId); validateTemporalRun(run,{provisionalRestore:this.store.provisionalTemporalRestore}); await this.store.recoverAttempts(runId);
       if (run.receipts[requestId]?.status === 'retired') throw new SceanError('REQUEST_RETIRED');
       if (run.receipts[requestId]) {
         if (run.receipts[requestId].inputHash !== hash(input)) throw new SceanError('IDEMPOTENCY_CONFLICT');
@@ -255,13 +270,14 @@ export class SceanEngine {
       if (baseVersion !== undefined || baseHead !== undefined) {
         if (!Number.isSafeInteger(baseVersion) || baseVersion < 0 || !(baseHead === null || typeof baseHead === 'string')) throw new SceanError('HISTORY_EXPECTATION_REQUIRED');
         if (baseHead !== null) safeId(baseHead);
-        if (run.version !== baseVersion) throw new SceanError('VERSION_CONFLICT');
+        if (run.version !== baseVersion&&!routineMetadataRebase(run,baseVersion,baseHead)) throw new SceanError('VERSION_CONFLICT');
         if (headOf(run) !== baseHead) throw new SceanError('HISTORY_HEAD_CONFLICT');
       }
       assertHistoryCapacity(run,{turn:true});
       validatePlayerIdentity(run.playerIdentity,run);
       const identity=playerContext(run),bindingHash=identity?hash(identity):null;
       const priorAttempts = await this.store.readAttempts(runId);
+      const routePin=this.model.captureRoutes?await this.model.captureRoutes({run,requestId,kind:'turn',inputHash:hash(input),signal}):null;
       const chapterContextPin={schemaVersion:1,enabled:chapterContextEnabled??run.narrative?.chapterSettings?.autoEnabled===true,settingsVersion:run.narrative?.chapterSettings?.version??0};
       for(const prior of priorAttempts.filter(a=>a.requestId===requestId))if(prior.chapterContextPin&&hash(prior.chapterContextPin)!==hash(chapterContextPin))throw new SceanError('CHAPTER_CONTEXT_REQUEST_CHANGED');
       if(priorAttempts.some(a=>a.requestId===requestId&&(a.playerBindingHash??null)!==bindingHash))throw new SceanError('PLAYER_CONTEXT_CHANGED');
@@ -275,7 +291,7 @@ export class SceanEngine {
       if(priorModes.some(p=>p&&hash(p)!==hash(writingMode)||p===null&&writingMode.mode!=='current'))throw new SceanError('WRITING_MODE_REQUEST_CONFLICT');
       const modeRef=writingModeReference(writingMode),systems=systemsForWritingMode(SYSTEMS,writingMode),singleWriter=writingMode.mode==='single_writer';
       const withMethod=(stage,payload)=>{const skill=writingMode.skills.find(s=>s.stage===stage);return skill?{...payload,writingSkill:clone(skill)}:payload;};
-      const attempt = { chapterContextPin:clone(chapterContextPin), writingMode:clone(writingMode), proseStyle:clone(proseStyle), schemaVersion: 1, attemptId: id('attempt'), runId, requestId, ...(operationId ? { operationId } : {}), baseVersion: run.version,
+      const attempt = { ...(routePin?{modelRouting:{hash:routePin.hash,globalRevision:routePin.globalRevision,runRevision:routePin.runRevision}}:{}),chapterContextPin:clone(chapterContextPin), writingMode:clone(writingMode), proseStyle:clone(proseStyle), schemaVersion: 1, attemptId: id('attempt'), runId, requestId, ...(operationId ? { operationId } : {}), baseVersion: run.version,
         turnIdentity:{schemaVersion:1,turn:run.turns.length+1,baseHead:headOf(run),snapshotHash:run.snapshot.hash},
         playerBindingHash:bindingHash, status: 'pending', startedAt: new Date().toISOString(), input, inputSnapshot: { cardId: run.snapshot.cardId, revision: run.snapshot.revision, hash: run.snapshot.hash }, stages: [], tools: [], directorComplete: false };
       let sequence = 0;
@@ -296,7 +312,7 @@ export class SceanEngine {
       const preflight = async (stage, payload, tools, dispatchBudget) => {
         payload=withPlayer(withMethod(stage,payload));
         activeStage = stage; checkAbort(signal);
-        const context = { ...(run.modelSelection ? { modelSelection: clone(run.modelSelection) } : {}), ...(run.stageModelSelections ? { stageModelSelections: clone(run.stageModelSelections) } : {}) };
+        const context = { ...(routePin?{routePin}:{}), ...(run.modelSelection ? { modelSelection: clone(run.modelSelection) } : {}), ...(run.stageModelSelections ? { stageModelSelections: clone(run.stageModelSelections) } : {}) };
         const description = this.model.describe ? await abortable(() => dispatchBudget?dispatchBudget.run(()=>this.model.describe({stage,context,signal:dispatchBudget.signal,...(this.model.managesDispatchBudget?{dispatchBudget}:{})})):this.model.describe({ stage, context, signal })) : null;
         checkAbort(signal);
         const capability = description?.capabilities ?? description ?? {};
@@ -313,7 +329,7 @@ export class SceanEngine {
         const event = { stage, ...(stage === 'character' ? { access: { kind: 'character_private', characterId: payload.character.id } } : {}), status: 'pending', startedAt: new Date().toISOString(), prompt: { system: systems[stage], input: clone(payload) } };
         attempt.stages.push(event); await checkpoint(); progress(stage, 'pending');
         try {
-          const modelContext = { runId, attemptId: attempt.attemptId, requestId, ...(operationId ? { operationId } : {}), ...(run.modelSelection ? { modelSelection: clone(run.modelSelection) } : {}), ...(run.stageModelSelections ? { stageModelSelections: clone(run.stageModelSelections) } : {}) };
+          const modelContext = { ...(routePin?{routePin}:{}),runId, attemptId: attempt.attemptId, requestId, ...(operationId ? { operationId } : {}), ...(run.modelSelection ? { modelSelection: clone(run.modelSelection) } : {}), ...(run.stageModelSelections ? { stageModelSelections: clone(run.stageModelSelections) } : {}) };
           const description = this.model.describe ? await abortable(() => dispatchBudget?dispatchBudget.run(()=>this.model.describe({stage,context:modelContext,signal:dispatchBudget.signal,...(this.model.managesDispatchBudget?{dispatchBudget}:{})})):this.model.describe({ stage, context: modelContext, signal })) : null;
           checkAbort(signal);
           const capability = description?.capabilities ?? description ?? {};
@@ -367,6 +383,11 @@ export class SceanEngine {
       };
       try {
         checkAbort(signal);
+        if(!run.storyClock)throw new SceanError('STORY_CLOCK_REQUIRED');
+        let temporal=prepareTemporalCandidate(run,{kind:'hold'},{requestId,inputHash:hash(input)}),timeToolUsed=false,endpointAdviceUsed=false;
+        const checkpointPins={inputHash:hash(input),routeHash:routePin?.hash??null,writingModeHash:hash(writingMode),styleHash:hash(proseStyle)};
+        const saveTemporal=async body=>{attempt.temporalCheckpoint=temporalCheckpoint(run,temporal,{...checkpointPins,...(body!==undefined?{body,bodyHash:hash(body)}:{})});await checkpoint();};
+        await saveTemporal();
         const assembled = assembleSources(run.snapshot);
         const recentDialogue = publicData([...clone(run.snapshot.recentDialogue ?? []), ...run.turns.map(t => ({ turn: t.turn, input: t.input, body: t.body }))]);
         const selected = selectWorldbooks(run.snapshot, { playerInput: input, recentDialogue, config: run.snapshot.worldbookSelection ?? {},playerName:run.playerIdentity?.name });
@@ -376,7 +397,7 @@ export class SceanEngine {
           const sources=chapterContextSources(run);
           attempt.assemblyDiagnostics={...assembled.diagnostics,worldbook:selected.diagnostics,chapterRecall:{...sources.diagnostics,status:'pending'}};
           activeStage='chapter_recall';progress(activeStage,'pending');
-          try{chapters=await recall.retrieve({run,query:input,sources,signal,context:{runId,requestId,attemptId:attempt.attemptId,...(run.modelSelection?{modelSelection:clone(run.modelSelection)}:{}),...(run.stageModelSelections?{stageModelSelections:clone(run.stageModelSelections)}:{})}});}
+          try{chapters=await recall.retrieve({run,query:input,sources,signal,context:{...(routePin?{routePin}:{}),runId,requestId,attemptId:attempt.attemptId,...(run.modelSelection?{modelSelection:clone(run.modelSelection)}:{}),...(run.stageModelSelections?{stageModelSelections:clone(run.stageModelSelections)}:{})}});}
           catch(error){
             if(signal?.aborted||['CANCELLED','CHAPTER_RECALL_STALE'].includes(error.code))throw error;
             chapters=originalChapterContext(run,{...sources.diagnostics,...error.chapterRecallDiagnostics,failureCode:/^[A-Z0-9_]{1,64}$/.test(error.code??'')?error.code:'CHAPTER_RECALL_FAILED'});
@@ -391,8 +412,12 @@ export class SceanEngine {
         if(narrative.diagnostics.coverageStatus==='blocked')throw new SceanError('NARRATIVE_COVERAGE_REQUIRED','Unsummarized story exceeds the bounded Writer context. Complete or repair the long-story summary before continuing.');
         const stageSources = projectPlayerSources(stripWorldbookContainers(narrativeSources(assembled.sources)),run);
         stageSources.worldbook = { entries: clone(selected.entries) };
-        const derived=projectDerivedFacts(run,{writerOnly:true});
+        const clockDependentFacts=run.snapshot.derivedFacts?.bindings.some(b=>b.target.scope==='world'&&(b.target.category==='time'&&b.target.key==='current'||b.target.category==='effects'&&b.target.key==='story_events'));
+        const candidateDerived=()=>projectDerivedFacts(clockDependentFacts?{...run,storyClock:temporal.clockAfter,worldActivity:temporal.worldActivityAfter}:run,{writerOnly:true,...(clockDependentFacts?{temporalCandidate:temporal.candidateRef}:{})});
+        const derived=candidateDerived();
         if(derived)attempt.assemblyDiagnostics.derivedFacts={config:clone(derived.config),canonical:clone(derived.canonical),providedFactIds:derived.facts.map(f=>f.id),stageUse:[]};
+        const priorRoutine=run.worldRoutine?(await this.store.readAttempts(runId)).find(a=>a.requestId===requestId&&a.assembly?.worldRoutine)?.assembly.worldRoutine:null;
+        const routineArtifactIds=priorRoutine?priorRoutine.forum.map(a=>a.id):undefined;
         const assembly = {
           playerInput: input,
           ...(writingGuidance?{writingGuidance:text(writingGuidance,10000)}:{}),
@@ -403,7 +428,9 @@ export class SceanEngine {
           recentDialogue: publicData([...seed, ...narrative.recentDialogue]),
           ...(run.snapshot.stateBlueprint ? { stateBlueprint: publicBlueprint(run.snapshot.stateBlueprint) } : {}),
           ...(derived?.facts.length?{derivedFacts:derived}:{}),
-          worldState: publicStateForModel(run.state), memory: { records: [], status: 'pending' },
+          ...(run.worldRoutine?{worldRoutine:routineContext(run,{query:input,clock:temporal.clockAfter,artifactIds:routineArtifactIds})}:{}),
+          temporal:candidateView(run,temporal),
+          worldState: projectStoryState(run,{clock:temporal.clockAfter,activity:temporal.worldActivityAfter}), memory: { records: [], status: 'pending' },
           characters: characterIdentities(run.snapshot),
           characterIdentities: characterIdentities(run.snapshot),
         };
@@ -419,7 +446,8 @@ export class SceanEngine {
           if (!director.toolCalls?.length) { brief = text(director.text); attempt.directorComplete = true; await checkpoint(); break; }
           if (round === 4) throw new SceanError('DIRECTOR_TOOL_LIMIT');
           conversation.push({ role: 'assistant', text: director.text, toolCalls: director.toolCalls });
-          for (const tool of director.toolCalls) {
+          // Time tools settle before any endpoint-dependent advice in the same batch.
+          for (const tool of [...director.toolCalls].sort((a,b)=>Number(b.name==='resolve_turn_time')-Number(a.name==='resolve_turn_time'))) {
             if (++toolCount > 6) throw new SceanError('DIRECTOR_TOOL_LIMIT');
             if (!tool.id || typeof tool.id !== 'string' || attempt.tools.some(t => t.id === tool.id)) throw new SceanError('INVALID_TOOL_ID');
             const args = parseObject(tool.arguments);
@@ -427,7 +455,14 @@ export class SceanEngine {
             try {
               activeStage = tool.name;
               let result;
-              if (tool.name === 'search_history' || tool.name === 'read_history') {
+              if(tool.name==='resolve_turn_time'){
+                const proposed=prepareTemporalCandidate(run,args,{requestId,inputHash:hash(input)});
+                if(endpointAdviceUsed&&proposed.hash!==temporal.hash)throw new SceanError('TIME_OPERATION_AFTER_ADVICE');
+                if(timeToolUsed&&proposed.hash!==temporal.hash)throw new SceanError('TIME_OPERATION_CONFLICT');
+                temporal=proposed;timeToolUsed=true;if(run.worldRoutine)assembly.worldRoutine=routineContext({...run,worldActivity:temporal.worldActivityAfter},{query:input,clock:temporal.clockAfter,artifactIds:routineArtifactIds});assembly.temporal=candidateView(run,temporal);assembly.worldState=projectStoryState(run,{clock:temporal.clockAfter,activity:temporal.worldActivityAfter});
+                if(clockDependentFacts)assembly.derivedFacts=candidateDerived();
+                attempt.assembly=clone(assembly);await saveTemporal();record.kind='host_time_resolution';result={text:json(assembly.temporal)};
+              } else if (tool.name === 'search_history' || tool.name === 'read_history') {
                 if (++historyToolCount > 3) throw new SceanError('HISTORY_TOOL_LIMIT');
                 if (args.runId !== undefined && args.runId !== runId) throw new SceanError('HISTORY_CROSS_RUN');
                 const allowed = tool.name === 'search_history' ? ['query', 'limit', 'mode', 'caseSensitive'] : ['locator', 'commitId', 'radius', 'maxChars'];
@@ -439,14 +474,16 @@ export class SceanEngine {
                 record.historyBudget = { calls: historyToolCount, estimatedTokens, cumulativeEstimate: historyTokenEstimate, maxCalls: 3, estimateOnly: true, tokenQuota: null };
                 result = { text: json(reference) };
               } else if (tool.name === 'consult_character') {
+                endpointAdviceUsed=true;
                 const actor = run.snapshot.characters.find(c => c.id === args.characterId);
                 if (!actor) throw new SceanError('UNKNOWN_CHARACTER'); text(args.question, 10000);
                 const ownerPacket = {
                   outputContract:characterAdviceOutputContract(actor.id),
                   character: projectPlayerCharacter(stripWorldbookContainers(stripAuthoringStateContainers(ownerCharacterContext(actor, { characterId: actor.id })), { preservePrivate: true }),identity?.name), question: resolvePlayerText(args.question,identity?.name),
-                  publicWorld: publicStateForModel(run.state).world, ownState: ownerStateForModel(run.state, actor.id),
+                  ...(run.worldRoutine?{worldRoutine:clone(assembly.worldRoutine)}:{}),temporal:clone(assembly.temporal),
+                  publicWorld: clone(assembly.worldState.world), ownState: ownerStateForModel(run.state, actor.id),
                   memory: { records: [], status: 'pending' }, playerInput: input,
-                  currentEvent: { playerInput: input, turn: run.turns.length + 1, publicState: publicStateForModel(run.state) },
+                  currentEvent: { playerInput: input, turn: run.turns.length + 1, publicState: clone(assembly.worldState) },
                   // Canonical last committed turn only; never Attempt/tool conversation.
                   lastCommittedTurn: run.turns.length ? ((t) => ({ turn:t.turn, commitId:t.commitId, input:t.input, body:t.body }))(run.turns.at(-1)) : null,
                   worldbook: clone(assembly.sources.worldbook),
@@ -478,9 +515,10 @@ export class SceanEngine {
                   result={text:json(advice),advice};record.kind='advice_not_event';
                 }catch(error){record.consultation.stopReason??=error.code==='MODEL_TIMEOUT'?'timeout':error.code==='CANCELLED'||signal?.aborted?'cancelled':'generation_failed';throw error;}finally{allowance.close();}
               } else if (tool.name === 'adjudicate_action') {
+                endpointAdviceUsed=true;
                 text(args.action, 10000);
                 if (args.mode !== undefined && !['query', 'calculate', 'adjudicate'].includes(args.mode)) throw new SceanError('INVALID_STAT_MODE');
-                result = await call('adjudicate', { ...(run.snapshot.stateBlueprint ? { stateBlueprint: publicBlueprint(run.snapshot.stateBlueprint) } : {}), mode: args.mode ?? 'adjudicate', action: resolvePlayerText(args.action,identity?.name), state: publicStateForModel(run.state), worldbook: clone(assembly.sources.worldbook), playerInput: input, recentDialogue: clone(assembly.recentDialogue), characterIdentities: characterIdentities(run.snapshot) });
+                result = await call('adjudicate', { ...(run.snapshot.stateBlueprint ? { stateBlueprint: publicBlueprint(run.snapshot.stateBlueprint) } : {}), mode: args.mode ?? 'adjudicate', action: resolvePlayerText(args.action,identity?.name), temporal:clone(assembly.temporal),state: clone(assembly.worldState), worldbook: clone(assembly.sources.worldbook), playerInput: input, recentDialogue: clone(assembly.recentDialogue), characterIdentities: characterIdentities(run.snapshot) });
                 record.kind = 'ruling_not_commit';
               } else throw new SceanError('TOOL_NOT_ALLOWED');
               text(result.text); record.result = { text: result.text, ...(result.advice ? { advice: clone(result.advice) } : {}) }; record.status = 'completed'; record.finishedAt = new Date().toISOString();
@@ -496,10 +534,11 @@ export class SceanEngine {
           attempt.writerHandoff=clone(handoff);await checkpoint();
           const writerInput=prepareSingleWriterInput({assembly,handoff,preset:projectPlayerPreset(stripWorldbookContainers(publicSources(run.snapshot.preset)),identity?.name),proseStyle});
           await preflight('writer',writerInput);
-          dialogueOutput=decodeWriterDialogue((await call('writer',writerInput)).text);body=text(dialogueOutput.body);dialogueBodyHash=hash(body);
+          const writerRaw=(await call('writer',writerInput)).text;
+          dialogueOutput=decodeWriterDialogue(writerRaw,{candidateRef:temporal.candidateRef});body=text(dialogueOutput.body);dialogueBodyHash=hash(body);
         }else{
           const draft = text((await call('draft', { context: assembly, directorBrief: brief })).text);
-          body = text((await call('prose', { draft, playerInput: input, preset: projectPlayerPreset(stripWorldbookContainers(publicSources(run.snapshot.preset)),identity?.name), characterIdentities: characterIdentities(run.snapshot), ...(proseStyle.text!==null?{proseStyle:clone(proseStyle)}:{}) })).text);
+          body = text((await call('prose', { temporal:clone(assembly.temporal),draft, playerInput: input, preset: projectPlayerPreset(stripWorldbookContainers(publicSources(run.snapshot.preset)),identity?.name), characterIdentities: characterIdentities(run.snapshot), ...(proseStyle.text!==null?{proseStyle:clone(proseStyle)}:{}) })).text);
         }
         body=text(resolvePlayerText(body,identity?.name));
         attempt.banList = { entries: clone(run.banList), passes: [] };
@@ -517,22 +556,27 @@ export class SceanEngine {
         }
         const frozen=singleWriter?freezeWriterBody(body):null;
         if(validation){Object.assign(validation,{status:'completed',finishedAt:new Date().toISOString(),bodyHash:frozen.bodyHash});attempt.finalBody={bodyHash:frozen.bodyHash,sourceStage:'writer',locallyRepaired:attempt.banList.passes.length>1};await checkpoint();progress('validation','completed');}
-        const proposal = parseObject((await call('post_stat', { ...(frozen?{bodyHash:frozen.bodyHash}:{}),outputContract: postStatOutputContract(run.snapshot.characters), ...(run.snapshot.stateBlueprint ? { stateBlueprint: publicBlueprint(run.snapshot.stateBlueprint) } : {}), finalBody: body, previousState: publicStateForModel(run.state), characters: characterIdentities(run.snapshot) })).text);
+        await saveTemporal(body);
+        const proposal = parseObject((await call('post_stat', { temporal:clone(assembly.temporal), ...(frozen?{bodyHash:frozen.bodyHash}:{}),outputContract: postStatOutputContract(run.snapshot.characters,temporal.candidateRef), ...(run.snapshot.stateBlueprint ? { stateBlueprint: publicBlueprint(run.snapshot.stateBlueprint) } : {}), finalBody: body, previousState: clone(assembly.worldState), characters: characterIdentities(run.snapshot) })).text);
         if(frozen)assertWriterBodyHash(body,frozen.bodyHash);
         const turn = run.turns.length + 1, commitId = id('commit'), bodyHash = hash(body);
         let dialoguePresentation;try{if(dialogueBodyHash===bodyHash)dialoguePresentation=makeDialoguePresentation({body,entries:dialogueOutput?.entries,runId,snapshotHash:run.snapshot.hash,commitId,bodyHash,actors:publicSnapshot(run.snapshot).characters});}catch{}
-        if(singleWriter)attempt.dialoguePresentation={status:dialoguePresentation?'accepted':dialogueOutput?.entries?'ignored_or_body_changed':'not_provided',spans:dialoguePresentation?.spans.length??0};
-        const { state, memories: proposedMemories, stateChanges, playerHistory: proposedPlayerHistory = [] } = applyStatProposal(proposal, run.state, run.snapshot.characters, body, { publicView: true });
+        if(singleWriter)attempt.dialoguePresentation=writerDialogueStatus(dialogueOutput,dialoguePresentation,{bodyChanged:dialogueBodyHash!==bodyHash});
+        const { state, memories: proposedMemories, stateChanges, playerHistory: proposedPlayerHistory = [] } = applyStatProposal(validateTemporalPost(proposal,temporal,body,run.snapshot.stateBlueprint), run.state, run.snapshot.characters, body, { publicView: true });
         const stateProvenance = validateBlueprintStateChanges(run.snapshot.stateBlueprint, proposal.stateChanges, run.snapshot.characters, { source: { id: commitId, version: run.version + 1 }, publicView: true });
         validateBlueprintState(run.snapshot.stateBlueprint, state, run.snapshot.characters);
         const memories = proposedMemories.map((m, index) => ({ ...m, id: `${commitId}-${index}`, version: 1, source: { runId, turn, commitId, bodyHash, requestId, attemptId: attempt.attemptId, snapshotHash: run.snapshot.hash, cardId: run.snapshot.cardId, revision: run.snapshot.revision, rosterHash: hash(run.snapshot.characters) } }));
         const playerHistory = proposedPlayerHistory.map((entry, index) => ({ ...entry, id: `${commitId}-player-${index}`, version: 1, source: { runId, turn, commitId, bodyHash, requestId, attemptId: attempt.attemptId, snapshotHash: run.snapshot.hash, cardId: run.snapshot.cardId, revision: run.snapshot.revision, rosterHash: hash(run.snapshot.characters) } }));
-        const result = { runId, requestId, version: run.version + 1, turn, body, state, memories, playerHistory, commitId, status: 'committed', trace: { ...(writingMode.revision>0?{writingMode:modeRef}:{}), ...(proseStyle.revision>0?{proseStyle:styleRef}:{}), attemptId: attempt.attemptId, ...(operationId ? { operationId } : {}), tools: clone(attempt.tools), stages: attempt.stages.map(s => ({ stage: s.stage, status: s.status })) } };
+        assertNoWritableClock(state,run.snapshot.stateBlueprint);
+        const result = { storyClock:clone(temporal.clockAfter),candidateRef:temporal.candidateRef,runId, requestId, version: run.version + 1, turn, body, state, memories, playerHistory, commitId, status: 'committed', trace: { ...(writingMode.revision>0?{writingMode:modeRef}:{}), ...(proseStyle.revision>0?{proseStyle:styleRef}:{}), attemptId: attempt.attemptId, ...(operationId ? { operationId } : {}), tools: clone(attempt.tools), stages: attempt.stages.map(s => ({ stage: s.stage, status: s.status })) } };
         const now = new Date().toISOString();
-        const next = { ...run, head: commitId, version: run.version + 1, state, ...(run.snapshot.stateBlueprint ? { stateProvenance: [...(run.stateProvenance ?? []), ...stateProvenance] } : {}), memories: [...run.memories, ...memories], playerHistory: [...(run.playerHistory ?? []), ...playerHistory], updatedAt: now,
-          turns: [...run.turns, { turn, requestId, commitId, commitVersion: run.version+1, ...(run.snapshot.stateBlueprint ? {stateProvenanceBefore:clone(run.stateProvenance??[]),stateProvenanceAfter:[...(run.stateProvenance??[]),...stateProvenance]} : {}), input, body, bodyHash, ...(dialoguePresentation?{dialoguePresentation}:{}), stateBefore: clone(run.state), stateAfter: clone(state), memoryIds: memories.map(m => m.id), playerHistoryIds: playerHistory.map(entry => entry.id), attemptId: attempt.attemptId, committedAt: now }],
+        const activityCheckpoints={...run.worldActivityCheckpoints};
+        const activityBefore=recordActivityCheckpoint(activityCheckpoints,temporal.worldActivityBefore),activityAfter=recordActivityCheckpoint(activityCheckpoints,temporal.worldActivityAfter,{compact:!!run.worldRoutine,parentActivity:temporal.worldActivityBefore});
+        const next = { ...run, worldActivityCheckpoints:activityCheckpoints,storyClock:clone(temporal.clockAfter),worldActivity:clone(temporal.worldActivityAfter),storyRevision:run.storyRevision+1,head: commitId, version: run.version + 1, state, ...(run.snapshot.stateBlueprint ? { stateProvenance: [...(run.stateProvenance ?? []), ...stateProvenance] } : {}), memories: [...run.memories, ...memories], playerHistory: [...(run.playerHistory ?? []), ...playerHistory], updatedAt: now,
+          turns: [...run.turns, { clockBefore:clone(temporal.clockBefore),clockAfter:clone(temporal.clockAfter),worldActivityBefore:activityBefore,worldActivityAfter:activityAfter,timeResolution:temporalReceipt(temporal),turn, requestId, commitId, commitVersion: run.version+1, ...(run.snapshot.stateBlueprint ? {stateProvenanceBefore:clone(run.stateProvenance??[]),stateProvenanceAfter:[...(run.stateProvenance??[]),...stateProvenance]} : {}), input, body, bodyHash, ...(dialoguePresentation?{dialoguePresentation}:{}), stateBefore: clone(run.state), stateAfter: clone(state), memoryIds: memories.map(m => m.id), playerHistoryIds: playerHistory.map(entry => entry.id), attemptId: attempt.attemptId, committedAt: now }],
           receipts: { ...run.receipts, [requestId]: { inputHash: hash(input), commitId, attemptId: attempt.attemptId, result } } };
         if (next.narrative) { next.narrative = clone(next.narrative); invalidateNarrative(next); }
+        validateTemporalRun(next);
         activeStage = 'commit'; progress('commit', 'pending');
         attempt.commit = { status: 'pending', contractVersion: 2, stateChanges, stateProvenance, commitId, expectedVersion: run.version, nextVersion: next.version, bodyHash, stateBefore: clone(run.state), stateAfter: state, memories, playerHistory }; await checkpoint();
         checkAbort(signal);

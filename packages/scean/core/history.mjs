@@ -1,3 +1,5 @@
+import {retireWorldRoutine} from './world-routine.mjs';
+import {temporalRestore} from './state-operations.mjs';
 import {invalidateNarrative} from './narrative.mjs';
 import {SceanError,clone,hash,safeId,checkAbort,json} from './contracts.mjs';
 
@@ -51,7 +53,8 @@ export function retireHead(run,{operationId,reason,replacedBy=null,version=run.v
   for(const row of Object.values(next.operationReceipts))if(row.result?.commitId===target.commitId){
     row.result={...Object.fromEntries(['kind','runId','operationId','version','head','retiredCommitId','requestId','commitId'].filter(k=>row.result[k]!==undefined).map(k=>[k,row.result[k]])),status:'retired',retiredBy:operationId,retiredAtVersion:version};
   }
-  next.retired=[...(next.retired??[]),{commitId:target.commitId,requestId:target.requestId,attemptId:target.attemptId,turn:target.turn,bodyHash:target.bodyHash,reason,operationId,retiredAtVersion:version,replacedBy}];
+  next.retired=[...(next.retired??[]),{commitId:target.commitId,requestId:target.requestId,attemptId:target.attemptId,turn:target.turn,...(run.storyClock?{worldActivityBefore:clone(target.worldActivityBefore),worldActivityAfter:clone(target.worldActivityAfter),...(target.timeResolution?.calendarCut?{calendarCut:clone(target.timeResolution.calendarCut)}:{})}:{}),bodyHash:target.bodyHash,reason,operationId,retiredAtVersion:version,replacedBy}];
+  temporalRestore(run,next,target,operationId);retireWorldRoutine(next,operationId);
   return invalidateNarrative(next);
 }
 export async function publishHistory(engine,run,next,operationId,signal){

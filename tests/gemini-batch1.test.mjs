@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import vm from 'node:vm';
 import {AgentDiagnostics,diagnosticAttemptTurns} from '../plugin/agent-diagnostics.mjs';
 import {characterAdviceOutputContract,projectCharacterAdvice} from '../core/character-advice.mjs';
-import {safeFailure,SYSTEMS,SceanEngine} from '../core/engine.mjs';
+import {safeFailure,SYSTEMS} from '../core/engine.mjs';import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {validateRoster} from '../core/contracts.mjs';
 import {validateRoster as portableRoster} from '../sources/card-studio/cardstudio-bundle/lib/w01/core/contracts.mjs';
 import {resolveRoster} from '../sources/card-studio/cardstudio-bundle/lib/scean-integration.js';

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdir,mkdtemp,readFile,rm} from 'node:fs/promises';
 import {resolve,join,relative,isAbsolute} from 'node:path';
 import {DurableStore} from '../adapters/store.mjs';
-import {SceanEngine} from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {SceanHost} from '../plugin/host.mjs';
 import {syntheticLongrun,D_PRIVATE} from '../fixtures/synthetic-longrun-d.mjs';
 import {backfillChapterSummary} from '../core/chapter-summary.mjs';

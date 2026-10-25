@@ -14,6 +14,7 @@ export function normalizeStudioHandoffSnapshot(input) {
     throw new SceanError('STUDIO_SNAPSHOT_HASH_REQUIRED');
   }
   const promoted = [], card = snapshot.card?.data;
+  for(const key of ['storyTimeDefinition','publicEvents','worldRoutineDefinition'])if(!own(snapshot,key)&&own(card?.extensions?.scean??{},key)){snapshot[key]=clone(card.extensions.scean[key]);promoted.push('card.data.extensions.scean.'+key);}
   if (!own(snapshot, 'opening') && typeof card?.first_mes === 'string') {
     snapshot.opening = { id: 'studio-opening-0', title: '已保存主開場', text: card.first_mes };
     promoted.push('card.data.first_mes');

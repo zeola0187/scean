@@ -7,7 +7,7 @@
   "sourceArchiveSha256": null,
   "networkSourceNoticeReady": false,
   "anonymousSourceAccessVerified": false,
-  "note": "SCEAN 1.6.0 versioned release. The detached source receipt records the exact clean public commit, full source ZIP hash, anonymous access and artifact verification without a circular self-hash. Public main remains the prominent source offer. No private history, third-party private styles or RP data are distributed.",
-  "releaseTag": "v1.6.0",
-  "releaseUrl": "https://github.com/zeola0187/scean/releases/tag/v1.6.0"
+  "note": "W29 RC3 prerelease; exact public branch/tag commit and corresponding-source archive hash are provided in the detached descriptor. Accepted Runtime executable bytes are unchanged. No private records or host SDK are distributed.",
+  "releaseTag": "v1.6.2-local.w29.2d.rc3.1",
+  "releaseUrl": "https://github.com/zeola0187/scean/releases/tag/v1.6.2-local.w29.2d.rc3.1"
 }

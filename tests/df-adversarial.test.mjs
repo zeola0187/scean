@@ -4,7 +4,7 @@ import {mkdtemp} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {DurableStore} from '../adapters/store.mjs';
-import {SceanEngine} from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {hash} from '../core/contracts.mjs';
 import {closeChapter,narrativeSourceHash} from '../core/narrative.mjs';
 import {autoChapter,backfillChapterSummary,updateChapterSettings,validateChapterPayload} from '../core/chapter-summary.mjs';

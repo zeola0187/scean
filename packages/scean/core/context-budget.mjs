@@ -39,22 +39,26 @@ export function estimateContextTokens(value) {
 }
 
 const topFields = {
+  calendar_plan:['rpPreset','timeDefinition','clock','source','publicWorld','calendar','forum','medium','outputContract','window','world','worldbook','establishedEvents','instructions'],
+  forum_post:['author','publicContext','background','rpPreset','timeDefinition','clock','source','publicWorld','calendar','forum','medium','outputContract','character','ownState','memory','worldbook','parent','instructions'],
+  forum_reply:['background','rpPreset','timeDefinition','clock','source','publicWorld','calendar','forum','medium','outputContract','character','ownState','memory','worldbook','parent','instructions'],
+  diary:['background','rpPreset','timeDefinition','clock','source','publicWorld','calendar','forum','medium','outputContract','character','ownState','memory','worldbook','parent','instructions'],
   chapter_rerank: ['query', 'candidates', 'instructions'],
   chapter_analysis: ['range', 'turns', 'instructions'],
   chapter_summary: ['detail', 'range', 'turns', 'previousChapters', 'instructions'],
   summary: ['previousSummary', 'turns', 'sourceRange', 'instructions'],
   director: ['assembly', 'conversation', 'writingSkill', 'handoffContract'],
-  character: ['outputContract', 'correction', 'character', 'question', 'publicWorld', 'ownState', 'memory', 'playerInput', 'currentEvent', 'lastCommittedTurn', 'characterIdentities', 'worldbook'],
-  adjudicate: ['mode', 'action', 'state', 'worldbook', 'playerInput', 'recentDialogue', 'characterIdentities', 'stateBlueprint'],
+  character: ['worldRoutine','outputContract', 'correction', 'character', 'question', 'publicWorld', 'ownState', 'memory', 'playerInput', 'currentEvent', 'lastCommittedTurn', 'temporal', 'characterIdentities', 'worldbook'],
+  adjudicate: ['temporal','mode', 'action', 'state', 'worldbook', 'playerInput', 'recentDialogue', 'characterIdentities', 'stateBlueprint'],
   draft: ['context', 'directorBrief', 'writingSkill'],
-  prose: ['draft', 'playerInput', 'preset', 'characterIdentities', 'proseStyle'],
-  writer: ['context','directorHandoff','preset','proseStyle','writingSkill'],
+  prose: ['temporal','draft', 'playerInput', 'preset', 'characterIdentities', 'proseStyle'],
+  writer: ['context','directorHandoff','preset','proseStyle','writingSkill','outputContract'],
   writer_repair: ['bodyHash','ranges','bannedTerms'],
   prose_repair: ['bodyHash', 'ranges', 'bannedTerms'],
-  post_stat: ['bodyHash','finalBody', 'previousState', 'characters', 'stateBlueprint', 'outputContract'],
+  post_stat: ['temporal','bodyHash','finalBody', 'previousState', 'characters', 'stateBlueprint', 'outputContract'],
 };
 for(const stage of ['director','character','adjudicate','draft','prose','prose_repair','writer','writer_repair','post_stat'])topFields[stage].push('playerIdentity');
-const assemblyFields = new Set(['playerInput', 'writingGuidance', 'sources', 'chapterSummary', 'rollingSummary', 'chapterContext', 'recentDialogue', 'worldState', 'memory', 'characters', 'characterIdentities', 'stateBlueprint', 'derivedFacts']);
+const assemblyFields = new Set(['worldRoutine','temporal','playerInput', 'writingGuidance', 'sources', 'chapterSummary', 'rollingSummary', 'chapterContext', 'recentDialogue', 'worldState', 'memory', 'characters', 'characterIdentities', 'stateBlueprint', 'derivedFacts']);
 const sourceFields = new Set(['snapshot', 'card', 'worldbook', 'preset', 'selectedOpening']);
 const escapePath = value => String(value).replaceAll('~', '~0').replaceAll('/', '~1');
 const pointer = path => '/' + path.map(escapePath).join('/');
@@ -74,7 +78,7 @@ export function budgetStage(stage, prompt, options = {}) {
   const original = clone(prompt);
   const candidates = [];
   const metadata = options.sourceMetadata ?? {};
-  const owner = stage === 'character' ? prompt.input.character?.id : null;
+  const owner = ['character','forum_post','forum_reply','diary'].includes(stage) ? prompt.input.character?.id : null;
   const boundary = (path, value, reason) => {
     candidates.push({ sourceID: `stage:${stage}:${pointer(path)}`, path: pointer(path), priority: 0, visibility: 'restricted', estimate: estimateContextTokens(value), mandatory: false, included: false, reason });
   };

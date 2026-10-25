@@ -7,7 +7,7 @@ import {Context} from '@deepseek-ai/cordis';
 import {LlmRuntime,LlmAdapter,LlmError} from '@deepseek-ai/dsh-llm';
 import {createNativeModelPort} from '../plugin/native-model.mjs';
 import {RP_MODEL_STAGES} from '../core/contracts.mjs';
-import {SceanEngine} from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {publicInspection} from '../core/inspection.mjs';
 import {createHistoryFixture} from '../fixtures/synthetic-history-c.mjs';
 

@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import{mkdtemp}from'node:fs/promises';import{tmpdir}from'node:os';import{join}from'node:path';
-import{DurableStore}from'../adapters/store.mjs';import{SceanEngine}from'../core/engine.mjs';import{syntheticLongrun}from'../fixtures/synthetic-longrun-d.mjs';
+import{DurableStore}from'../adapters/store.mjs';import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';import{syntheticLongrun}from'../fixtures/synthetic-longrun-d.mjs';
 import{autoChapter,updateChapterSettings,chapterEligibility}from'../core/chapter-summary.mjs';import{validateNarrative}from'../core/narrative.mjs';import{encodeRunBundle,validateRunBundle}from'../core/save-bundle.mjs';import{hash}from'../core/contracts.mjs';
 const payload={title:'真實來源的合成摘要',summary:'合成船員保留公開承諾，校準工作仍待完成。',keywords:[],characters:[],locations:[],plotThreads:['校準'],emotionalTone:'平靜'};
 const identity=r=>hash(Object.fromEntries(['snapshot','turns','state','memories','playerHistory','receipts','operationReceipts','retired','head'].map(k=>[k,r[k]])));

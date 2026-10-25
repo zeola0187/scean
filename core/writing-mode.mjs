@@ -67,7 +67,7 @@ export function writingModeReference(pin){const value=validateWritingModePin(pin
 export function validateWritingModeReference(value){
  if(!value||value.schemaVersion!==1||Object.keys(value).some(k=>!['schemaVersion','mode','revision','version','loading','hash','skills'].includes(k))||!Number.isSafeInteger(value.revision)||value.revision<0||value.version!==1||value.loading!=='host_whitelist_stage_delivery'||!Array.isArray(value.skills))fail('WRITING_MODE_PIN_CORRUPT');
  writingModeName(value.mode);if(value.skills.length!==(value.mode==='current'?0:2))fail('WRITING_MODE_PIN_CORRUPT');
- for(let i=0;i<value.skills.length;i++){const a=value.skills[i],b=skillsForMode(value.mode)[i];if(Object.keys(a).some(k=>!['id','stage','version','sha256','bytes','estimatedTokens'].includes(k))||a.id!==b.id||a.stage!==b.stage||a.version!==1||typeof a.sha256!=='string'||!/^[a-f0-9]{64}$/.test(a.sha256)||!Number.isSafeInteger(a.bytes)||a.bytes<1||!Number.isSafeInteger(a.estimatedTokens)||a.estimatedTokens<1)fail('WRITING_MODE_PIN_CORRUPT');}
+ for(let i=0;i<value.skills.length;i++){const a=value.skills[i],b=skillsForMode(value.mode)[i];if(Object.keys(a).some(k=>!['id','stage','version','sha256','bytes','estimatedTokens'].includes(k))||a.id!==b.id||a.stage!==b.stage||a.version!==b.version||typeof a.sha256!=='string'||!/^[a-f0-9]{64}$/.test(a.sha256)||!Number.isSafeInteger(a.bytes)||a.bytes<1||!Number.isSafeInteger(a.estimatedTokens)||a.estimatedTokens<1)fail('WRITING_MODE_PIN_CORRUPT');}
  if(value.hash!==methodHash(value.mode,value.skills))fail('WRITING_MODE_PIN_CORRUPT');return value;
 }
 export async function saveRunWritingMode(store,{runId,mode,expectedRevision,operationId,signal}){

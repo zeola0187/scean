@@ -1,4 +1,6 @@
 import {createSceanDiagnosis,diagnosisGuidance} from './lib/scean-diagnosis.js';
+import {readFileSync} from 'node:fs';
+const STUDIO_VERSION=JSON.parse(readFileSync(new URL('./package.json',import.meta.url),'utf8')).version;
 import { createSceanControl, resolveSceanCardContext,resolveSceanFrontendSource,resolveSceanSourceSession,resolveSceanPlaybackStatus } from './lib/scean-integration.js';
 import { createSceanAuditControl } from './lib/scean-audit-control.js';
 import {createWorkReview} from './lib/work-review.js';
@@ -83,7 +85,7 @@ export async function apply(ctx,config = {}) {
   let clientCapabilityRequestAt,hostState='starting',clientRegistry={available:false},archiveRecycle={state:'unavailable'},statusQueue=Promise.resolve();
   const writeStatus=state=>{
     hostState=state;
-    statusQueue=statusQueue.catch(()=>{}).then(async()=>atomicReplace(await contained(root,'.cardstudio-scean/runtime-status.json'),Buffer.from(JSON.stringify({plugin:'@local/dsh-card-studio-scean-test',version:'1.5.0',build:'scean-public-1.5.0',host:hostState,skillCount:skills.length,storedSkillCount:skills.length,toolCount:toolSpecs.length,workspace:loader.canonical,time:new Date().toISOString(),clientRegistry,archiveRecycle,...(clientCapabilityRequestAt?{clientCapabilityRequestAt}:{}),visualVerification:'not-observed'},null,2))));
+    statusQueue=statusQueue.catch(()=>{}).then(async()=>atomicReplace(await contained(root,'.cardstudio-scean/runtime-status.json'),Buffer.from(JSON.stringify({plugin:'@local/dsh-card-studio-scean-test',version:STUDIO_VERSION,build:'scean-local-'+STUDIO_VERSION,host:hostState,skillCount:skills.length,storedSkillCount:skills.length,toolCount:toolSpecs.length,workspace:loader.canonical,time:new Date().toISOString(),clientRegistry,archiveRecycle,...(clientCapabilityRequestAt?{clientCapabilityRequestAt}:{}),visualVerification:'not-observed'},null,2))));
     return statusQueue;
   };
   observeClientRegistry(ctx,new URL('./client.js',import.meta.url),facts=>{

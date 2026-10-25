@@ -13,6 +13,7 @@ import {createNativeBridge} from '../plugin/player-native-bridge.mjs';
 import {nativeFrameBootstrap} from '../plugin/native-frame-source.mjs';
 import {mountCardFrontend} from '../isolated/web/card-frontend.mjs';
 import {mountChapterSettings} from '../isolated/web/chapter-settings-ui.mjs';
+import {mountAgentModels} from '../isolated/web/agent-models-ui.mjs';
 import {mountOpeningSelection} from '../isolated/web/opening-selection-ui.mjs';
 import {captureReadingAnchor,restoreReadingAnchor} from '../isolated/web/reading-layout.mjs';
 
@@ -37,6 +38,7 @@ function fixture({secure=true,crypto=webcrypto,navigationType='navigate',priorVi
   context.mountTurnDuration=options=>mountTurnDuration({...options,now:()=>0,interval:()=>0,clear(){}});
   context.mountCardFrontend=()=>mountCardFrontend({document:context.document,setTimer:()=>0,clearTimer(){}});
   context.mountChapterSettings=options=>mountChapterSettings({...options,document:context.document});
+  context.mountAgentModels=options=>mountAgentModels({...options,document:context.document});
   context.mountWritingMode=options=>mountWritingMode({...options,document:context.document,makeId:()=>webcrypto.randomUUID()});
   context.mountProseStyle=options=>mountProseStyle({...options,document:context.document,makeId:()=>webcrypto.randomUUID()});
   context.mountPlayerIdentity=options=>mountPlayerIdentity({...options,document:context.document,makeId:()=>webcrypto.randomUUID()});

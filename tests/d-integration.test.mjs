@@ -5,7 +5,7 @@ import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {syntheticLongrun,D_PRIVATE,D_SHARED} from '../fixtures/synthetic-longrun-d.mjs';
 import {DurableStore} from '../adapters/store.mjs';
-import {SceanEngine} from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {encodeRunBundle,validateRunBundle,SAVE_LIMITS} from '../core/save-bundle.mjs';
 import {updateSummary,selectNarrative,closeChapter,narrativeView} from '../core/narrative.mjs';
 import {searchHistory,readHistory,pageHistory} from '../core/history-recall.mjs';

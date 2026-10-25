@@ -4,7 +4,7 @@ import { mkdtemp, readFile, writeFile, mkdir, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
-import { SceanEngine, SYSTEMS, assembleSources, receiptOwnsAttempt } from '../core/engine.mjs';
+import {SYSTEMS,assembleSources,receiptOwnsAttempt} from '../core/engine.mjs';import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import { DurableStore } from '../adapters/store.mjs';
 import { Memory } from '../core/memory.mjs';
 import { hash } from '../core/contracts.mjs';
@@ -68,7 +68,7 @@ test('daily turn has zero consultations, full assembly, isolated handoffs and no
   assert.equal(assembly.sources.snapshot.revision, 'r1'); assert.ok(assembly.sources.card); assert.ok(assembly.sources.worldbook); assert.ok(assembly.sources.preset);
   assert.ok(assembly.chapterSummary); assert.deepEqual(assembly.memory.records, []);
   assert.ok(!JSON.stringify(assembly).includes('LIN_PRIVATE')); assert.ok(!JSON.stringify(assembly).includes('MEI_PRIVATE'));
-  assert.deepEqual(Object.keys(model.calls[2].input).sort(), ['characterIdentities', 'draft', 'playerInput', 'preset']);
+  assert.deepEqual(Object.keys(model.calls[2].input).sort(), ['characterIdentities', 'draft', 'playerInput', 'preset','temporal']);
   const inspected = await env.engine.inspect(env.run.runId);
   assert.equal(inspected.availability.directorTools, 'not_called');
   assert.ok(!JSON.stringify(inspected).includes('SECRET_REASONING'));
@@ -95,7 +95,7 @@ test('A1 Director optional CR has owner scope, Stat remains public, advice never
   const cr = model.calls.find(c => c.stage === 'character').input;
   assert.equal(cr.character.id, 'lin'); assert.equal(cr.ownState.secret, 'LIN_PRIVATE'); assert.ok(JSON.stringify(cr).includes('LIN_PRIVATE')); assert.ok(!JSON.stringify(cr).includes('MEI_PRIVATE'));
   const post = model.calls.find(c => c.stage === 'post_stat').input;
-  assert.deepEqual(Object.keys(post).sort(), ['characters', 'finalBody', 'outputContract', 'previousState']); assert.ok(!JSON.stringify(post).includes('would cautiously'));
+  assert.deepEqual(Object.keys(post).sort(), ['characters', 'finalBody', 'outputContract', 'previousState','temporal']); assert.ok(!JSON.stringify(post).includes('would cautiously'));
   assert.ok(!JSON.stringify(result.memories).includes('advice'));
 });
 

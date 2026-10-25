@@ -1,0 +1,27 @@
+// Actual generated Dock + shipped React/CSS and exact display:contents slot topology.
+const React=window.testReact,ReactDOM=window.testReactDOM,checks=[],errors=[],selected=[],cleanups=[];let table,dock,a2;
+const wait=()=>new Promise(resolve=>setTimeout(resolve,20)),assert=(value,message)=>{if(!value)throw new Error(message);};
+document.getElementById('two').style.display='none';const container=document.getElementById('one');container.style.height='auto';
+container.innerHTML='<section id="column" class="Dc7zOa_body"><div class="Dc7zOa_composerSeat"><div id="stack" class="Dc7zOa_composerStack"><div id="dock" data-slot="conversation.input.dock" style="display:contents"></div><div class="RlGAzG_root"><div id="native-composer" class="RlGAzG_card" style="min-height:110px">Synthetic native composer</div></div></div></div></section>';
+const style=document.createElement('style');style.textContent=window.nativeConversationCss;document.head.append(style);
+const root=ReactDOM.createRoot(document.getElementById('dock'));
+const ctx={get(name){return name.split('.').reduce((value,key)=>value?.[key],this);},on:()=>()=>{},typert:{},inject(names,fn){if(names.every(name=>this.get(name)!==undefined))fn(this);},effect(fn){const cleanup=fn();if(typeof cleanup==='function')cleanups.push(cleanup);},locale:{register(_ns,values){table=values.en;return()=>{};},bind:()=>key=>table?.[key]??key},layout:{selectPanel:id=>selected.push(id)},sessions:{list:{getSnapshot:()=>({byId:{A:{id:'A',cwd:'C:/Synthetic Dock',retainedBy:{mainView:1}}}}),subscribe:()=>()=>{}}},slots:{inject(_name,fn){return fn();},register(options,component){if(options.id==='local-cardstudio-entry'){dock=component;root.render(React.createElement(dock));}return()=>{};}},remote:{$mount:async()=>{},cardstudio:{request:async(_id,request)=>({ok:true,value:{ok:true,value:request.action==='workspace'?{workspace:'C:/Synthetic Dock'}:request.action==='acquire'?{lease_id:'synthetic'}:{skills:[],tools:[]}}})}}};
+try{
+ window.testRegistration.factory(name=>{assert(name==='react','unexpected module');return React;}).apply(ctx);for(let i=0;i<80&&!container.querySelector('button');i++)await wait();
+ const column=document.getElementById('column'),stack=document.getElementById('stack'),button=container.querySelector('button');assert(button,'Dock not rendered');
+ for(const scenario of [{name:'wide active',width:2194},{name:'dragged content width',width:2194,userWidth:1450},{name:'hero',width:1800,hero:true},{name:'narrow',width:420},{name:'resized',width:900}]){
+  column.style.width=scenario.width+'px';column.style.setProperty('--dsh-conversation-column-width',scenario.width+'px');if(scenario.userWidth)column.style.setProperty('--dsh-chat-user-width',scenario.userWidth+'px');else column.style.removeProperty('--dsh-chat-user-width');stack.classList.toggle('Dc7zOa_composerHero',!!scenario.hero);await wait();
+  const entry=container.querySelector('[data-cardstudio-dock]').getBoundingClientRect(),composer=document.getElementById('native-composer').getBoundingClientRect(),pass=Math.abs(entry.left-composer.left)<1&&Math.abs(entry.right-composer.right)<1;
+  checks.push({name:scenario.name,pass,entry:{left:entry.left,right:entry.right,width:entry.width},composer:{left:composer.left,right:composer.right,width:composer.width}});
+ }
+ // Batch 1: test the real Dock render before any Panel has injected shared CSS.
+ table.title='合成測試：保留操作契約並檢查三十字以上中文完整入口標籤的舒適閱讀與換行';table.library='合成測試角色卡管理庫長中文入口標籤'.repeat(4);root.render(React.createElement(dock));column.style.width='420px';column.style.setProperty('--dsh-conversation-column-width','420px');await wait();
+ const buttons=container.querySelectorAll('button');assert(buttons.length===2,'Expected two entries');const left=buttons[0].getBoundingClientRect(),right=buttons[1].getBoundingClientRect();assert(Math.abs(left.width-right.width)<1&&left.top===right.top,'Entries must be equal width and side by side');
+ for(const b of buttons){const s=getComputedStyle(b);assert(s.fontSize==='19px'&&s.borderRadius==='4px'&&b.clientHeight>=44&&b.scrollWidth<=b.clientWidth+1&&b.scrollHeight<=b.clientHeight+1,'A2 Dock typography/long-label clipping');assert(s.fontFamily.includes('Microsoft JhengHei'),'Dock Chinese sans missing');}
+ buttons[0].focus();assert(document.activeElement===buttons[0]&&getComputedStyle(buttons[0]).outlineStyle!=='none','Native focus before Panel injection missing');a2={fontSize:getComputedStyle(buttons[0]).fontSize,beforePanelStyleInjection:true,longChineseCharacters:[...buttons].map(b=>b.textContent.length),width:420,buttonHeights:[...buttons].map(b=>b.clientHeight),equalWidths:true,nativeFocus:true};
+ checks.push({name:'equal half-width entries',pass:true});buttons[1].click();assert(selected.at(-1)==='local-cardstudio-library','Library route missing');checks.push({name:'library entry opens independent panel',pass:true});
+ button.click();assert(selected.at(-1)==='local-cardstudio','Dock no longer opens the editor');checks.push({name:'entry opens original main panel',pass:true});
+ if(checks.some(row=>!row.pass))errors.push('Dock edges differ from the native composer.');
+}catch(error){errors.push(error.message);}
+finally{for(const cleanup of cleanups.reverse())await cleanup();root.unmount();}
+document.getElementById('result').textContent=JSON.stringify({checks,errors,a2,scale:devicePixelRatio,scope:'actual generated Dock, React and pinned native composer CSS; synthetic native DOM and Session, no live DSH'});

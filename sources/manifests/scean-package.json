@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-scean",
-  "version": "1.6.0",
+  "version": "1.6.2-local.w29.2d.rc3.1",
   "private": true,
   "type": "module",
   "description": "SCEAN Runtime: automatic chapters, 3+8 hybrid chapter context and complete authorized packets",
@@ -31,14 +31,14 @@
   ],
   "engines": {
     "node": ">=24",
-    "dsh": "0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2"
+    "dsh": "0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2 || 0.2.1-rc.3"
   },
   "os": [
     "win32"
   ],
   "peerDependencies": {
-    "@deepseek-ai/dsh-typert-protocol": "0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2",
-    "@deepseek-ai/dsh-home-paths": "0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2"
+    "@deepseek-ai/dsh-typert-protocol": "0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2 || 0.2.1-rc.3",
+    "@deepseek-ai/dsh-home-paths": "0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2 || 0.2.1-rc.3"
   },
   "peerDependenciesMeta": {
     "@deepseek-ai/dsh-typert-protocol": {

@@ -5,7 +5,7 @@ import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {spawn} from 'node:child_process';
 import {SceanHost} from '../plugin/host.mjs';
-import {SceanEngine} from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {DurableStore} from '../adapters/store.mjs';
 import {Memory} from '../core/memory.mjs';
 import {headOf} from '../core/history.mjs';
@@ -149,7 +149,7 @@ test('W19 abrupt Host process exit before and after canonical publication never 
     const f=await fixture();await f.host.close();
     const code=`
       import {SceanHost} from ${JSON.stringify(new URL('../plugin/host.mjs',import.meta.url).href)};
-      import {SceanEngine} from ${JSON.stringify(new URL('../core/engine.mjs',import.meta.url).href)};
+      import {TemporalFixtureEngine as SceanEngine} from ${JSON.stringify(new URL('../fixtures/temporal-fixture-engine.mjs',import.meta.url).href)};
       import {DurableStore} from ${JSON.stringify(new URL('../adapters/store.mjs',import.meta.url).href)};
       import {Memory} from ${JSON.stringify(new URL('../core/memory.mjs',import.meta.url).href)};
       const store=new DurableStore({root:${JSON.stringify(join(f.root,'store'))}}),model={async generate({stage}){

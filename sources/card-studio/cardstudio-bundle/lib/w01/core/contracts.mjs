@@ -1,3 +1,6 @@
+import {routinePolicy} from './world-routine.mjs';
+import {storyTimeDefinition} from './story-clock.mjs';
+import {validatePublicEvents} from './state-operations.mjs';
 import { createHash, randomUUID } from 'node:crypto';
 import {derivedFactsPackage} from './derived-facts.mjs';
 import { frontendPackage } from './frontend.mjs';
@@ -7,6 +10,9 @@ export class SceanError extends Error {
   constructor(code, message = code) { super(message); this.name = 'SceanError'; this.code = code; }
 }
 export const clone = value => structuredClone(value);
+// Only these interactive RP calls inherit DSH output settings. Background work
+// keeps its existing explicit/default budgets, even when it shares the port.
+export const RP_MODEL_STAGES = Object.freeze(['director','character','adjudicate','draft','prose','prose_repair','writer','writer_repair','post_stat']);
 export const id = prefix => `${prefix}-${randomUUID()}`;
 export function safeId(value) {
   if (typeof value !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/.test(value)) throw new SceanError('INVALID_ID');
@@ -44,7 +50,8 @@ export function parseObject(value) {
 export function validateSnapshot(snapshot) {
   object(snapshot);
   if (snapshot.schemaVersion !== 1 || !snapshot.cardId || snapshot.revision === undefined || !snapshot.card || snapshot.worldbook === undefined || snapshot.preset === undefined || !Array.isArray(snapshot.characters)) throw new SceanError('INVALID_SNAPSHOT');
-  validateRoster(snapshot.characters);
+  validateRoster(snapshot.characters);routinePolicy(snapshot.worldRoutineDefinition,snapshot.characters);
+  const storyDefinition=storyTimeDefinition(snapshot.storyTimeDefinition);validatePublicEvents(snapshot.publicEvents,storyDefinition);
   for (const actor of snapshot.characters) validateCharacterSources(actor, snapshot);
   derivedFactsPackage(snapshot.derivedFacts,snapshot.stateBlueprint,snapshot.characters);
   if (snapshot.frontend) frontendPackage(snapshot.frontend,snapshot.stateBlueprint,snapshot.characters,snapshot.derivedFacts);

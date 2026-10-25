@@ -5,7 +5,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {playerWorldbook,playerRecap} from '../core/player-readers.mjs';
 import {hash} from '../core/contracts.mjs';
-import {SceanEngine} from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {DurableStore} from '../adapters/store.mjs';
 import {syntheticLongrun} from '../fixtures/synthetic-longrun-d.mjs';
 import {backfillChapterSummary} from '../core/chapter-summary.mjs';

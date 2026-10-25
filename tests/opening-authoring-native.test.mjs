@@ -9,7 +9,7 @@ import {nativeHost} from '../sources/card-studio/tests/helpers/portable-host.js'
 import * as studio from '../packages/studio/index.js';
 import {loadSkills,bundledSkillsRoot,readSkill} from '../packages/studio/lib/workspace-setup.js';
 import {SceanHost} from '../plugin/host.mjs';
-import {SceanEngine} from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {Memory} from '../core/memory.mjs';
 import {DurableStore} from '../adapters/store.mjs';
 import {w01Fixture} from '../fixtures/w01-frontends.mjs';

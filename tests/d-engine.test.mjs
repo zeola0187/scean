@@ -3,11 +3,12 @@ import assert from 'node:assert/strict';
 import {mkdtemp} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
-import {SceanEngine} from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {DurableStore} from '../adapters/store.mjs';
 import {updateSummary,selectNarrative} from '../core/narrative.mjs';
 import {searchHistory,HISTORY_REFERENCE_LABEL} from '../core/history-recall.mjs';
-import {hash} from '../core/contracts.mjs';
+import {hash,validateSnapshot} from '../core/contracts.mjs';
+import {constructTemporalFixture} from '../fixtures/temporal-history.mjs';
 import {syntheticLongrun,D_PRIVATE} from '../fixtures/synthetic-longrun-d.mjs';
 
 const code=value=>error=>error.code===value;
@@ -15,7 +16,7 @@ const clone=structuredClone;
 const advice=characterId=>({adviceVersion:1,characterId,observable:{attitude:'calm',intent:'wait'},publicUtterances:['Only public advice.'],withheld:['SYNTHETIC_WITHHELD'],internal:{notes:['SYNTHETIC_INTERNAL']},intendedDisclosures:[]});
 async function setup({turns=100,recentWindow=6,strategy,summaryText='AER_PROMISE_COMPASS_AND_UNFINISHED_CALIBRATION',contextWindow=200000,mutate}={}){
   const root=await mkdtemp(join(tmpdir(),'scean-d-engine-')),store=new DurableStore({root}),run=syntheticLongrun({turns,runId:'d-engine-synthetic',bodyRepeats:0});
-  if(mutate)mutate(run);
+  if(mutate){mutate(run);const {hash:oldHash,...definition}=run.snapshot;run.snapshot=validateSnapshot(definition);for(const row of [...run.memories,...run.playerHistory])row.source.snapshotHash=run.snapshot.hash;constructTemporalFixture(run);}
   await store.create(run);const calls=[];
   const model={async describe({stage}){return {capabilities:{contextWindow:stage==='summary'?200000:contextWindow,outputLimit:4096}};},async generate(args){calls.push(clone({stage:args.stage,input:args.input,context:args.context,tools:args.tools??null}));if(args.stage==='summary')return {text:summaryText,model:'synthetic-d-summary'};if(args.stage==='director')return strategy?strategy(args):{text:'The public crew pauses at the dock.'};if(args.stage==='character')return {text:JSON.stringify(advice(args.input.character.id))};if(args.stage==='draft'||args.stage==='prose')return {text:'The crew waited at the northern dock.'};if(args.stage==='post_stat')return {text:JSON.stringify({contractVersion:2,stateChanges:[],memories:[],playerHistory:[]})};throw Error(args.stage);}};
   const memory={async retrieve({records}){return {records:clone(records),status:'synthetic-local'};}};

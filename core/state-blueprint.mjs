@@ -53,8 +53,10 @@ export function validateBlueprint(blueprint, characters = []) {
   if (!Array.isArray(blueprint.variables) || blueprint.variables.length > BLUEPRINT_LIMITS.variables) fail('BLUEPRINT_VARIABLE_LIMIT');
   const actors = actorsOf(characters), seen = new Set();
   for (const v of blueprint.variables) {
-    fields(v, ['key', 'displayName', 'scope', 'category', 'type', 'visibility'], ['characterId', 'unit', 'min', 'max', 'enumValues', 'readOnly', 'derivedDescription', 'requiredFields']);
+    fields(v, ['key', 'displayName', 'scope', 'category', 'type', 'visibility'], ['characterId', 'unit', 'min', 'max', 'enumValues', 'readOnly', 'derivedDescription', 'requiredFields','temporalKind','authority']);
     target(v, actors);
+    if(v.temporalKind!==undefined&&(!['duration','deadline','timer'].includes(v.temporalKind)||v.category!=='time'))fail('BLUEPRINT_TEMPORAL_KIND');
+    if(v.authority!==undefined&&(v.authority!=='story_clock_projection'||v.scope!=='world'||v.category!=='time'||v.key!=='current'||v.type!=='json'||v.visibility!=='public'||v.readOnly!==true||v.temporalKind!==undefined))fail('BLUEPRINT_CLOCK_AUTHORITY');
     if (!string(v.displayName) || !['number', 'string', 'boolean', 'enum', 'json'].includes(v.type) || !['public', 'restricted'].includes(v.visibility)) fail('BLUEPRINT_VARIABLE');
     if (own(v, 'unit') && (!string(v.unit, 100) || v.type !== 'number')) fail('BLUEPRINT_UNIT');
     for (const k of ['min', 'max']) if (own(v, k) && (v.type !== 'number' || !Number.isFinite(v[k]))) fail('BLUEPRINT_RANGE');

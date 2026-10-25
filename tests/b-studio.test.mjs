@@ -8,7 +8,7 @@ import {createHash} from 'node:crypto';
 import {IsolatedStudioBridge} from '../isolated/studio-bridge.mjs';
 import {pngChunk} from '../vendor/cardstudio-scean/lib/codec.js';
 import {SceanHost} from '../plugin/host.mjs';
-import {SceanEngine} from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {DurableStore} from '../adapters/store.mjs';
 import {Memory} from '../core/memory.mjs';
 
@@ -114,7 +114,7 @@ test('B player state presentation uses public projection, shows latest value del
 test('B imported saved blueprint may omit InitialState: new Run remains unknown; orphan InitialState is rejected',async t=>{
  const unknown=card();unknown.data.extensions.scean.stateBlueprint=bp();const f=await fixture(t,{sourceCard:unknown});
  const handed=await f.request('handoff',{documentId:f.id,expectedRevision:0,presetId:'scean-default'});assert(handed.ok,JSON.stringify(handed));assert.equal(Object.hasOwn(handed.value.snapshot,'initialState'),false);
- const run=await f.host.inspect(handed.value.runId);assert(run.worldView.declared.length>0);assert(run.worldView.declared.every(row=>row.known===false));assert.deepEqual(run.state.world,{});
+ const run=await f.host.inspect(handed.value.runId);assert(run.worldView.declared.length>0);assert(run.worldView.declared.every(row=>row.known===false));assert.equal(run.state.world.time.current.readOnly,true);assert.deepEqual(run.state.world.effects.story_events,{});
  const orphan=card();orphan.data.extensions.scean.initialState=initial();const other=await fixture(t,{sourceCard:orphan});
  const rejected=await other.request('handoff',{documentId:other.id,expectedRevision:0,presetId:'scean-default'});assert.equal(rejected.error.code,'INITIAL_STATE_WITHOUT_BLUEPRINT');
 });

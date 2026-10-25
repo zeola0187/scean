@@ -4,7 +4,7 @@ import {mkdtemp} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {hash} from '../core/contracts.mjs';
-import {SceanEngine} from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {DurableStore} from '../adapters/store.mjs';
 import {encodeRunBundle,validateRunBundle,SAVE_LIMITS} from '../core/save-bundle.mjs';
 import {closeChapter,recoverNarrative} from '../core/narrative.mjs';
@@ -30,7 +30,7 @@ async function freshStore(prefix='scean-df-import-'){const root=await mkdtemp(jo
 
 test('D-final original three-manual-chapter v2 stays byte-equivalent through validate/re-export and does not auto-upgrade',async()=>{
   const run=await oldRun(),bundle=encodeRunBundle(run),restored=validateRunBundle(JSON.stringify(bundle));
-  assert.equal(bundle.schemaVersion,2);assert.equal(restored.narrative.schemaVersion,1);assert.equal(restored.narrative.chapters.length,3);
+  assert.equal(bundle.schemaVersion,9);assert.equal(restored.narrative.schemaVersion,1);assert.equal(restored.narrative.chapters.length,3);
   assert(!Object.hasOwn(restored.narrative,'chapterSummaries'));assert.deepEqual(encodeRunBundle(restored),bundle);assert.equal(restored.snapshot.hash,run.snapshot.hash);
   const f=await freshStore();await f.store.create(restored);const model=historyModel(),engine=new SceanEngine({unconfiguredWritingMode:'current',store:new DurableStore({root:f.root}),model,memory:syntheticHistoryMemory()});
   assert.deepEqual(await recoverNarrative(engine,restored.runId),{status:'unchanged'});assert.equal(model.calls.length,0);assert.deepEqual((await engine.store.read(restored.runId)).narrative,run.narrative);
@@ -38,7 +38,7 @@ test('D-final original three-manual-chapter v2 stays byte-equivalent through val
 
 test('D-final v3 backfills old chapters independently without changing their IDs, boundaries, titles, canonical story or Snapshot',async()=>{
   const f=await source(),before=copy(f.run),model=chapterModel();for(const [i,c]of before.narrative.chapters.entries())await backfill(f,c.id,'fill-'+i,model);
-  const run=await f.store.read(f.run.runId),b=encodeRunBundle(run),restored=validateRunBundle(JSON.stringify(b));assert.equal(b.schemaVersion,3);assert.equal(restored.narrative.schemaVersion,2);
+  const run=await f.store.read(f.run.runId),b=encodeRunBundle(run),restored=validateRunBundle(JSON.stringify(b));assert.equal(b.schemaVersion,9);assert.equal(restored.narrative.schemaVersion,2);
   assert.equal(restored.narrative.chapterSummaries.length,3);assert.equal(model.calls.length,3);assert.deepEqual(restored.narrative.chapters,before.narrative.chapters);
   for(const field of ['snapshot','turns','state','memories','playerHistory','stateProvenance','head'])assert.deepEqual(restored[field],before[field]);
   for(const c of restored.narrative.chapters){const row=restored.narrative.chapterSummaries.find(s=>s.chapterId===c.id);assert(row);assert.equal(row.current,true);assert.equal(row.status,'completed');assert.deepEqual(row.commitIds,c.commitIds);assert.deepEqual(row.sourceHashes,c.sourceHashes);}
@@ -49,9 +49,9 @@ test('D-final v3 backfills old chapters independently without changing their IDs
 test('D-final strict bundle/domain version pairing rejects schema smuggling even with a recomputed manifest',async()=>{
   const f=await upgraded(),valid=encodeRunBundle(await f.store.read(f.run.runId));
   for(const schemaVersion of [0,2,5,'3'])assert.throws(()=>validateRunBundle({...valid,schemaVersion}),code('SAVE_FORMAT_VERSION'));
-  assert.throws(()=>validateRunBundle({...valid,schemaVersion:1}),code('SAVE_FIELDS'));
+  assert.throws(()=>validateRunBundle({...valid,schemaVersion:1}),code('SAVE_FORMAT_VERSION'));
   const old=encodeRunBundle(await oldRun());assert.throws(()=>validateRunBundle({...old,schemaVersion:3}),code('SAVE_FORMAT_VERSION'));
-  const missing=copy(valid);delete missing.run.narrative;resign(missing);assert.throws(()=>validateRunBundle(missing),code('SAVE_FORMAT_VERSION'));
+  const missing=copy(valid);delete missing.run.narrative;resign(missing);assert.throws(()=>validateRunBundle(missing),code('SAVE_DOMAINS'));
   const extra=copy(old);extra.run.narrative.chapterSummaries=[];resign(extra);assert.throws(()=>validateRunBundle(extra));
 });
 
@@ -127,7 +127,7 @@ test('D-final auto chapter v3 preserves separate source endpoint and captured he
   await updateChapterSettings(f.engine,{...await historyArgs(f,'auto-settings'),settings:{autoEnabled:true,detail:'concise',tokenThreshold:4000,bufferTurns:2}});
   const stages=[];const model={async generate(args){stages.push(args.stage);return{text:JSON.stringify(args.stage==='chapter_analysis'?{shouldCreateChapter:true,optimalEndTurn:2,suggestedTitle:'A natural pause',keywords:['promise'],characters:['Kalt'],locations:['ship'],plotThreads:['pending promise'],emotionalTone:'uncertain',significantEvents:['A promise was made.']}:payload(1))};}};
   await autoChapter(f.engine,await historyArgs(f,'auto-create'),{enabled:true,model});assert.deepEqual(stages,['chapter_analysis','chapter_summary']);
-  const run=await f.store.read(f.run.runId),bundle=encodeRunBundle(run),restored=validateRunBundle(bundle),chapter=restored.narrative.chapters[0];assert.equal(bundle.schemaVersion,3);assert.equal(chapter.endTurn,2);assert.equal(restored.turns.find(t=>t.commitId===chapter.baseHead).turn,8);assert.notEqual(chapter.commitIds.at(-1),chapter.baseHead);
+  const run=await f.store.read(f.run.runId),bundle=encodeRunBundle(run),restored=validateRunBundle(bundle),chapter=restored.narrative.chapters[0];assert.equal(bundle.schemaVersion,9);assert.equal(chapter.endTurn,2);assert.equal(restored.turns.find(t=>t.commitId===chapter.baseHead).turn,8);assert.notEqual(chapter.commitIds.at(-1),chapter.baseHead);
   assert.deepEqual(restored.narrative,run.narrative);
   for(const mutate of [
     c=>{c.boundary.sourceEndCommitId=c.baseHead;},

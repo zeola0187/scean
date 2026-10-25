@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { Context } from '@deepseek-ai/cordis';
 import { LlmRuntime, LlmAdapter } from '@deepseek-ai/dsh-llm';
 import { createNativeModelPort } from '../plugin/native-model.mjs';
-import { SceanEngine, safeFailure } from '../core/engine.mjs';
+import {safeFailure} from '../core/engine.mjs';import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import { DurableStore } from '../adapters/store.mjs';
 import { applyStatProposal } from '../core/stat-contract.mjs';
 import { postStatOutputContract } from '../core/post-stat-output.mjs';

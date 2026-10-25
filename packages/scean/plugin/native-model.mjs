@@ -1,10 +1,11 @@
-// DSH 0.2.0-rc.2 native port. Credentials and routing belong to existing DSH services.
+// Reviewed exact DSH RC2/RC3 native port. Credentials and routing belong to existing DSH services.
 import {randomUUID} from 'node:crypto';
 import {outputLimits,safeError,safeUsage,safeContext} from '../adapters/model.mjs';
 import {RP_MODEL_STAGES} from '../core/contracts.mjs';
-const codes=new Set(['NO_ADAPTER','UNKNOWN','AUTH','QUOTA','ACCOUNT_QUOTA','RATE_LIMIT','SERVER','CONTEXT_WINDOW_EXCEEDED','TIMEOUT','TRANSPORT','ABORTED','INVALID_REQUEST','REQUEST_EXTENSION','EMPTY_RESPONSE','MALFORMED_RESPONSE','STREAM_CLOSED','MISSING_CREDENTIAL','INVALID_CREDENTIAL','UNSUPPORTED_CONTENT','INVALID_REPLAY_STATE','UNSUPPORTED_REASONING_EFFORT','INVALID_MODEL_INFO','INVALID_MODEL_CONTEXT','INVALID_MODEL_MAX_TOKENS','INVALID_MODEL_REASONING']);
+const codes=new Set(['CLIENT_UPGRADE_REQUIRED','MODEL_UNSUPPORTED','NO_ADAPTER','UNKNOWN_MODEL','INVALID_CONFIG','INVALID_CATALOG','MODEL_CATALOG_UNAVAILABLE','MODEL_CATALOG_CHANGED','UNKNOWN','AUTH','QUOTA','ACCOUNT_QUOTA','RATE_LIMIT','SERVER','CONTEXT_WINDOW_EXCEEDED','TIMEOUT','TRANSPORT','ABORTED','INVALID_REQUEST','REQUEST_EXTENSION','EMPTY_RESPONSE','MALFORMED_RESPONSE','STREAM_CLOSED','MISSING_CREDENTIAL','INVALID_CREDENTIAL','UNSUPPORTED_CONTENT','INVALID_REPLAY_STATE','UNSUPPORTED_REASONING_EFFORT','INVALID_MODEL_INFO','INVALID_MODEL_CONTEXT','INVALID_MODEL_MAX_TOKENS','INVALID_MODEL_REASONING']);
 const retryable=code=>['MODEL_TIMEOUT','MODEL_TRANSPORT_ERROR','TIMEOUT','TRANSPORT','RATE_LIMIT','SERVER','HTTP_429'].includes(code)||/^HTTP_5\d\d$/.test(code);
-const error=(code,category='model')=>Object.assign(safeError(code,`Generation failed (${code}); incomplete output was not accepted.`),{category});
+const refusalMessages={CLIENT_UPGRADE_REQUIRED:'此模型要求更新 DSH 客戶端；本次已停止，未自動重試或改用其他模型。',MODEL_UNSUPPORTED:'目前的 DSH 不支援此模型；本次已停止，未自動重試或改用其他模型。'};
+const error=(code,category='model')=>Object.assign(safeError(code,refusalMessages[code]??`Generation failed (${code}); incomplete output was not accepted.`),{category});
 const rpStage=stage=>RP_MODEL_STAGES.includes(stage);
 function describedLimit(value){if(value===undefined||value===null)return null;if(!Number.isSafeInteger(value)||value<1)throw error('INVALID_MODEL_MAX_TOKENS');return value;}
 const finishKinds=new Set(['stop','tool-calls','max-tokens','aborted','error']);
@@ -29,23 +30,26 @@ function deadline(parent,timeoutMs){
   controller.signal.addEventListener('abort',notify,{once:true});if(controller.signal.aborted)notify();
   return {signal:controller.signal,run:task=>Promise.race([Promise.resolve().then(()=>{controller.signal.throwIfAborted();return task();}),aborted]),close(){clearTimeout(timer);parent?.removeEventListener('abort',cancel);controller.signal.removeEventListener('abort',notify);}};
 }
-export function createNativeModelPort({llm,agentDefaultModel,budget,usageLedger=budget,generationGate,selection:configuredSelection,stageSelections={},maxTokens,stageMaxTokens,timeoutMs=180000,technicalRetries=0,onTrace=async()=>{}}){
+export function createNativeModelPort({llm,agentDefaultModel,routing,budget,usageLedger=budget,generationGate,selection:configuredSelection,stageSelections={},maxTokens,stageMaxTokens,timeoutMs=180000,technicalRetries=0,onTrace=async()=>{}}){
   if(!llm?.stream||!llm?.resolveModelInfo||!usageLedger?.reserve||!usageLedger?.settle)throw new TypeError('DSH LLM capability service and durable usage journal are required.');
   if(generationGate&&(!generationGate.reserve||!generationGate.settle))throw new TypeError('Generation gate must support durable reserve/settle.');
   if(!Number.isInteger(technicalRetries)||technicalRetries<0||technicalRetries>1)throw new TypeError('At most one technical retry is allowed.');
   if(!Number.isSafeInteger(timeoutMs)||timeoutMs<1||timeoutMs>600000)throw new TypeError('Invalid stage timeout.');
   const limit=outputLimits({maxTokens,stageMaxTokens});
   const backgroundSource=stage=>stageMaxTokens?.[stage]!==undefined?'plugin_stage_limit':maxTokens!==undefined?'plugin_limit':'scean_stage_default';
+  const preparations=new WeakMap();
   async function resolveSelection(stage,context){
+    if(context.routePin){const chosen=context.routePin.routes?.[stage];if(!chosen)throw error('MODEL_SELECTION_REQUIRED');return {requested:selection(chosen.requested),selectionSource:chosen.selectionSource};}
     const candidates=[[context.stageModelSelections?.[stage],'run_stage'],[context.modelSelection,'run'],[stageSelections?.[stage],'plugin_stage'],[configuredSelection,'plugin']];
     const chosen=candidates.find(([value])=>value!=null);
     return {requested:selection(chosen?chosen[0]:await agentDefaultModel?.currentSelection()),selectionSource:chosen?chosen[1]:'dsh_current_selection'};
   }
   return {
     managesDispatchBudget:true,timeoutMs,
+    ...(routing?{captureRoutes:args=>routing.captureRoutes(args)}:{}),
     async describe({stage='director',context={},signal,dispatchBudget}={}){
       const scope=deadline(signal,timeoutMs);
-      try{return await scope.run(async()=>{const route=await (dispatchBudget?dispatchBudget.resolveSelection(()=>resolveSelection(stage,context)):resolveSelection(stage,context));const info=await llm.resolveModelInfo(route.requested.provider,route.requested.model,scope.signal);const outputLimit=rpStage(stage)?describedLimit(info.defaultMaxTokens):limit(stage);return {...route,capabilities:{outputLimit,outputLimitSource:rpStage(stage)?outputLimit===null?'adapter_default_unknown':'dsh_model_default':backgroundSource(stage),outputLimitPhase:'model_description',providerFinalOutputLimit:null,contextWindow:info.context?.contextWindow??null,defaultMaxTokens:info.defaultMaxTokens??null,reasoningEfforts:info.reasoning?.efforts?.map(x=>x.id)??[],defaultReasoningEffort:info.reasoning?.defaultEffort??null,toolUpdate:info.toolUpdate??null}};});}
+      try{return await scope.run(async()=>{const route=await (dispatchBudget?dispatchBudget.resolveSelection(()=>resolveSelection(stage,context)):resolveSelection(stage,context));const info=await llm.resolveModelInfo(route.requested.provider,route.requested.model,scope.signal);const prepared=routing&&llm.prepareCall?await llm.prepareCall({...dispatchBudget?.effectiveSelection??route.requested,...rpStage(stage)?{}:{maxTokens:limit(stage)}},scope.signal):null;if(prepared)preparations.set(context,{stage,route,prepared,epoch:routing?.epoch});const outputLimit=rpStage(stage)?describedLimit(prepared?.config.maxTokens??info.defaultMaxTokens):limit(stage);return {...route,capabilities:{outputLimit,outputLimitSource:rpStage(stage)?outputLimit===null?'adapter_default_unknown':'dsh_model_default':backgroundSource(stage),outputLimitPhase:'model_description',providerFinalOutputLimit:null,contextWindow:prepared?.context?.contextWindow??info.context?.contextWindow??null,defaultMaxTokens:info.defaultMaxTokens??null,reasoningEfforts:info.reasoning?.efforts?.map(x=>x.id)??[],defaultReasoningEffort:info.reasoning?.defaultEffort??null,toolUpdate:info.toolUpdate??null}};});}
       catch(e){throw normalizeFailure(e,scope.signal);}finally{scope.close();}
     },
     async generate({stage,system,input,tools,signal,context={},dispatchBudget}){
@@ -58,7 +62,8 @@ export function createNativeModelPort({llm,agentDefaultModel,budget,usageLedger=
       const requestBytes=Buffer.byteLength(String(system??'')+text+JSON.stringify(toolDefinitions),'utf8')+1024;
       const attempts=[];
       const selectionScope=deadline(signal,timeoutMs);let selected;
-      try{selected=await selectionScope.run(()=>dispatchBudget?dispatchBudget.resolveSelection(()=>resolveSelection(stage,context)):resolveSelection(stage,context));}catch(e){throw normalizeFailure(e,selectionScope.signal);}finally{selectionScope.close();}
+      const cached=preparations.get(context);preparations.delete(context);let firstPrepared=cached?.stage===stage?cached.prepared:null,retryConfig;
+      try{selected=await selectionScope.run(()=>cached?.stage===stage?cached.route:dispatchBudget?dispatchBudget.resolveSelection(()=>resolveSelection(stage,context)):resolveSelection(stage,context));}catch(e){throw normalizeFailure(e,selectionScope.signal);}finally{selectionScope.close();}
       for(let attempt=0;attempt<=retries;attempt++){
         const scope=deadline(signal,timeoutMs),requestId=randomUUID();
         let reservationId,gateId,route,usage=null,actualCostUsd=null,result,failure,finishKind=null;
@@ -73,8 +78,10 @@ export function createNativeModelPort({llm,agentDefaultModel,budget,usageLedger=
             // Omit RP maxTokens: the SDK owns provider/model defaults and any
             // protocol-specific context/thinking adjustments. Never substitute
             // the historical stage defaults or a guessed provider hard limit.
-            const config={...requested,...rpStage(stage)?{}:{maxTokens:limit(stage)}};
-            const prepared=llm.prepareCall?await llm.prepareCall(config,scope.signal):null;
+            if(routing){if(firstPrepared&&cached.epoch!==routing.epoch)throw error('MODEL_CATALOG_CHANGED');await routing.validate(requested,scope.signal);}
+            const preparedEpoch=firstPrepared?cached.epoch:routing?.epoch;
+            const config=retryConfig??{...requested,...rpStage(stage)?{}:{maxTokens:limit(stage)}};
+            const prepared=firstPrepared??(llm.prepareCall?await llm.prepareCall(config,scope.signal):null);firstPrepared=null;
             let effective=prepared?.config,info;
             if(!prepared){
               // Older SDK/test ports have no one-shot handle. Materialize only
@@ -86,6 +93,7 @@ export function createNativeModelPort({llm,agentDefaultModel,budget,usageLedger=
               effective={...config,...effort===undefined?{}:{reasoningEffort:effort},...output===null?{}:{maxTokens:output}};
             }
             const sdkLimit=describedLimit(effective.maxTokens);
+            retryConfig={...effective};
             dispatchBudget?.pinEffective(selection(effective));
             const outputSource=rpStage(stage)?sdkLimit===null?'adapter_default_unknown':prepared?'dsh_sdk_prepared':'dsh_model_default_legacy':backgroundSource(stage);
             // DSH contextWindow is total context metadata; defaultMaxTokens is
@@ -94,7 +102,7 @@ export function createNativeModelPort({llm,agentDefaultModel,budget,usageLedger=
             // prepareCall / provider enforce actual hard limits and report errors.
             route={requested:{...requested},effective:{provider:effective.provider,model:effective.model,maxTokens:sdkLimit,...effective.reasoningEffort===undefined?{}:{reasoningEffort:effective.reasoningEffort}},selectionSource:selected.selectionSource,parameterSource:{maxTokens:outputSource,reasoningEffort:requested.reasoningEffort!==undefined?selected.selectionSource:effective.reasoningEffort!==undefined?'dsh_model_default':'omitted'},outputBudget:{policy:rpStage(stage)?'dsh_rp_inheritance':'scean_background',sdkResolvedMaxTokens:sdkLimit,source:outputSource,phase:prepared?'sdk_prepared':'legacy_description',snapshotBound:!!prepared,adapterDefaultApplied:prepared?.adapterDefaults?.maxTokens===true,contextWindow:describedLimit(prepared?.context?.contextWindow??info?.context?.contextWindow),providerFinalMaxTokens:null,providerFinalSource:'not_exposed_by_sdk'},responseModel:null,responseModelSource:'not_reported',usageSource:'not_reported'};
             scope.signal.throwIfAborted();
-            const request={kind:'generation',caseId:`${context.requestId??'interactive'}:${stage}`,requestId,retry:attempt,meta:{...safeContext(context),provider:effective.provider,model:effective.model,stage,inputBytes:requestBytes,maxTokens:sdkLimit}};
+            const request={kind:'generation',caseId:`${context.requestId??'interactive'}:${stage}`,requestId,retry:attempt,meta:{...safeContext(context),provider:effective.provider,model:effective.model,stage,inputBytes:requestBytes,maxTokens:sdkLimit,...(context.routePin?{routePinHash:context.routePin.hash,globalRevision:context.routePin.globalRevision,runRevision:context.routePin.runRevision}:{})}};
             // Durable reservations are awaited before provider dispatch; pending counts survive a crash.
             if(dispatchBudget)request.meta.consultationDispatch=await dispatchBudget.take();
             try{
@@ -103,6 +111,10 @@ export function createNativeModelPort({llm,agentDefaultModel,budget,usageLedger=
             }catch(e){if(scope.signal.aborted)throw e;throw error(e?.code==='GENERATION_LIMIT_REACHED'?'GENERATION_LIMIT_REACHED':'MODEL_JOURNAL_RESERVE_FAILED','persistence');}
             scope.signal.throwIfAborted();
             const options={...effective,system:String(system??''),messages:[{role:'user',content:[{type:'text',text}]}],signal:scope.signal,purpose:'scean',sessionId:'scean-'+requestId,...toolDefinitions.length?{tools:toolDefinitions}:{}};
+            if(routing&&preparedEpoch!==routing.epoch)throw error('MODEL_CATALOG_CHANGED');
+            // Our direct request owns its Prompt. Middleware cannot mutate its data in place.
+            const freeze=v=>{if(v&&typeof v==='object'&&v!==scope.signal){Object.values(v).forEach(freeze);Object.freeze(v);}};freeze(options);
+            if(context.routePin)Object.assign(route,{routePinHash:context.routePin.hash,globalRevision:context.routePin.globalRevision,runRevision:context.routePin.runRevision});
             const blocks=new Map();let finish;
             for await(const chunk of (prepared?prepared.stream(options):llm.stream(options))){
               scope.signal.throwIfAborted();

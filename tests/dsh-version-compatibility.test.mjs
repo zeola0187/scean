@@ -17,7 +17,7 @@ test('all three package boundaries admit only the reviewed exact DSH versions',a
   const m=JSON.parse(await fs.readFile(path.join(root,rel),'utf8'));
   assert.equal(m.engines.dsh,spec.supportedDshVersions.join(' || '));
   for(const version of spec.supportedDshVersions)assert.equal(evaluatePluginCompatibility(m,{},version),undefined,rel+' '+version);
-  for(const version of ['0.2.0-rc.1','0.2.1-alpha.1','0.2.1-rc.3','0.2.1','0.2.2-rc.1','1.0.0']){
+  for(const version of ['0.2.0-rc.1','0.2.1-alpha.1','0.2.1-rc.4','0.2.1','0.2.2-rc.1','1.0.0']){
    const issue=evaluatePluginCompatibility(m,{},version);assert(issue,rel+' must reject '+version);assert.equal(issue.exempted,false);
   }
  }

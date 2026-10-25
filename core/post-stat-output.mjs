@@ -3,7 +3,7 @@ import { STAT_LIMITS } from './stat-contract.mjs';
 
 // A generation contract, not provider-enforced structured output. The existing
 // applyStatProposal remains the authoritative mechanical/atomic validator.
-export function postStatOutputContract(characters) {
+export function postStatOutputContract(characters,candidateRef) {
   const npcIds = characters.map(actor => safeId(actor.id));
   if (!npcIds.length || npcIds.length > 100 || npcIds.includes('player') || new Set(npcIds).size !== npcIds.length) throw new SceanError('INVALID_STAT_ROSTER');
   const object = (properties, required = Object.keys(properties)) => ({ type: 'object', properties, required, additionalProperties: false });
@@ -32,11 +32,12 @@ export function postStatOutputContract(characters) {
       'NPC private state is outside this public invocation. Do not move private facts to world to bypass permissions.',
       'memory characterIds and knowers are identical NPC-only sets. world_public requires visibility public, epistemic fact and credibility confirmed; other access kinds require nonempty knowers and visibility characters.',
       'Quotes must be exact substrings of finalBody. No duplicate state target, unsafe JSON keys, unbounded JSON, or overwrite of hidden prior data. Existing Host validation enforces these additional constraints.',
+      ...(candidateRef?['Return the supplied candidateRef and temporalCheck.status. Check finalBody against the already settled Host clock and ordered public events: consistent/conflict/uncertain. Do not recalculate time. Do not write current time or effects.story_events; those are read-only Host projections. Typed duration/deadline/timer data are distinct from current time.']:[]),
       'Invalid output rejects the whole turn; Host does not silently drop, retarget or repair invalid changes.',
     ],
-    schema: { $schema: 'https://json-schema.org/draft/2020-12/schema', ...object({ contractVersion: { const: 2 }, stateChanges,
+    schema: { $schema: 'https://json-schema.org/draft/2020-12/schema', ...object({ ...(candidateRef?{candidateRef:{const:candidateRef},temporalCheck:object({status:{enum:['consistent','conflict','uncertain']},quote:text},['status'])}:{}),contractVersion: { const: 2 }, stateChanges,
       memories: { type: 'array', maxItems: STAT_LIMITS.memories, items: memory },
       playerHistory: { type: 'array', maxItems: STAT_LIMITS.memories, items: playerEntry },
-    }, ['contractVersion', 'stateChanges', 'memories']) },
+    }, ['contractVersion', 'stateChanges', 'memories',...(candidateRef?['candidateRef','temporalCheck']:[])]) },
   };
 }

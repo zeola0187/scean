@@ -1,6 +1,6 @@
 // Authenticated RPC adapter only. No file access, HTTP proxy, or Studio database access.
 export function createNativeBridge({call,selectPanel,openSession,getSessionId=()=>null,getViewerId=()=>null,notifications,enableNotifications,onOpeningStarted,onDiagnose,onRunRecycled}){
-  const allowed=new Set(['scriptList','scriptGet','scriptStart','scriptStatus','runRecycleList','runLifecycleStatus','runTrash','runRestore','playerBind','capabilities','list','openingPrepare','openingOffer','openingStart','openingCancel','progress','draftSave','draftGet','turn','rollback','regenerate','operationSubmit','operationStatus','exportRun','importRun','cancel','runView','historySearch','historyRead','historyPage','summaryStatus','summaryStart','summaryCancel','chapterStatus','chapterSettings','chapterSummarize','chapterAuto','chapterCancel','chapterClose','inspect','diagnosticsGrant','diagnosticsRead','diagnosticsRevoke','banList','writingMode','writingModeSave','proseStyle','proseStyleSave','writingStylesImport','playerIdeas','playerWorldbook','playerRecap','playerCollaboration','ownerWorldbook','presentation','presentationSource','presentationPreview','presentationApply','presentationRestore','models']);
+  const allowed=new Set(['scriptList','scriptGet','scriptStart','scriptStatus','runRecycleList','runLifecycleStatus','runTrash','runRestore','playerBind','capabilities','list','openingPrepare','openingOffer','openingStart','openingCancel','progress','draftSave','draftGet','turn','rollback','regenerate','operationSubmit','operationStatus','exportRun','importRun','cancel','runView','historySearch','historyRead','historyPage','summaryStatus','summaryStart','summaryCancel','chapterStatus','chapterSettings','chapterSummarize','chapterAuto','chapterCancel','chapterClose','inspect','diagnosticsGrant','diagnosticsRead','diagnosticsRevoke','banList','writingMode','writingModeSave','proseStyle','proseStyleSave','agentModels','agentModelsSave','writingStylesImport','playerIdeas','playerWorldbook','playerRecap','playerCollaboration','ownerWorldbook','presentation','presentationSource','presentationPreview','presentationApply','presentationRestore','models']);
   const grants=new Map();let disposed=false,privacyEpoch=0,contextEpoch=0,cardScope=null;
   const denied=code=>Object.assign(new Error(code),{code});
   const revoke=grant=>call({action:'diagnosticsRevoke',...grant}).catch(()=>{});
@@ -63,10 +63,14 @@ export function createNativeBridge({call,selectPanel,openSession,getSessionId=()
       let models;try{models=await call({action:'models'});}catch{models={mode:'native',source:'DSH authenticated host',status:'unavailable'};}
       return {mode:'native',dataRootLabel:'SCEAN 插件獨立資料目錄',models,studio:{available:false},native:true,...viewer()};
     }
-    if(['playerDefaults','playerDefaultsSave','chapterProviderSettings','chapterProviderSave','chapterProviderClear'].includes(action)){
+    if(['agentModelCatalog','agentModelDefaults','agentModelDefaultsSave','playerDefaults','playerDefaultsSave','chapterProviderSettings','chapterProviderSave','chapterProviderClear'].includes(action)){
       const value=await call({...payload,action});if(disposed)throw denied('NATIVE_PANEL_CLOSED');return value;
     }
-    if(!allowed.has(action))throw denied('NATIVE_ACTION_DENIED');
+    if(action==='worldRoutineRead'){
+      const keys=['runId','expectedSnapshotHash','expectedLifecycleRevision','view','kind','limit','windowStart','day','eventOffset','threadId','beforeSequence','afterSequence'];
+      if(payload.view!=='player'||!['calendar','forum','thread'].includes(payload.kind)||Object.keys(payload).some(k=>!keys.includes(k)))throw denied('NATIVE_ROUTINE_READ_INVALID');
+    }
+    if(!allowed.has(action)&&action!=='worldRoutineRead')throw denied('NATIVE_ACTION_DENIED');
     const request=scoped({...payload,action}),epoch=privacyEpoch,contextToken=contextEpoch;
       if(action==='operationSubmit'){await notifications?.watch(request);if(contextToken!==contextEpoch)throw denied('NATIVE_CONTEXT_STALE');}
       let value;try{value=await call(request);if(action==='operationSubmit')void notifications?.refresh();}catch(error){if(contextToken!==contextEpoch)throw denied('NATIVE_CONTEXT_STALE');throw error;}

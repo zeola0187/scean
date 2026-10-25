@@ -1,3 +1,5 @@
+import {resolveActivityCheckpoint,projectStoryState} from './state-operations.mjs';
+import {readStoryClock} from './story-clock.mjs';
 import {publicTurnDialogue} from './dialogue-projection.mjs';
 import {openingDisplay} from './player-identity.mjs';
 import {projectDerivedFacts} from './derived-facts.mjs';
@@ -81,10 +83,11 @@ function publicTool(tool){
   }else if(['adjudicate_action','search_history','read_history'].includes(tool.name))base.result=clone(tool.result??{status:'not_recorded'});
   return base;
 }
-export function publicTurnResult(result){
+export function publicTurnResult(result,run){
   if(!result)return {status:'not_recorded'};
-  const projected=pick(result,['runId','requestId','version','turn','body','commitId','status']);
-  if(result.state)projected.state=stateView(result.state);
+  const projected=pick(result,['runId','requestId','version','turn','body','commitId','status','candidateRef','storyClock']);
+  if(result.state){const turn=run?.turns?.find(t=>t.commitId===result.commitId);projected.state=stateView(run&&result.storyClock?projectStoryState(run,{state:result.state,clock:result.storyClock,activity:turn?resolveActivityCheckpoint(run,turn.worldActivityAfter):run.worldActivity}):result.state);}
+  if(run&&result.storyClock)projected.storyClock=readStoryClock(run,result.storyClock);
   if(result.memories)projected.memories=result.memories.map(m=>publicMemory(m,result.runId??m.source?.runId));
   if(result.playerHistory)projected.playerHistory={status:'restricted',count:result.playerHistory.length};
   if(result.trace)projected.trace={...(result.trace.writingMode?{writingMode:publicWritingMode(result.trace.writingMode)}:{}),...(result.trace.proseStyle?{proseStyle:pick(result.trace.proseStyle,['schemaVersion','revision','source'])}:{}),...pick(result.trace,['attemptId','operationId']),stages:(result.trace.stages??[]).map(publicStage),tools:(result.trace.tools??[]).map(publicTool)};
@@ -94,6 +97,7 @@ function publicAttempt(attempt,runId){
   const result=pick(attempt,['schemaVersion','attemptId','runId','requestId','operationId','baseVersion','status','startedAt','finishedAt','input','inputSnapshot','directorComplete','requestOutcome','commitId','error','recovery']);
   if(attempt.writingMode)result.writingMode=publicWritingMode(attempt.writingMode);
   if(attempt.proseStyle)result.proseStyle={...pick(attempt.proseStyle,['schemaVersion','revision','source']),text:restricted()};
+  if(['accepted','unattributed','not_provided','invalid_annotations','body_changed'].includes(attempt.dialoguePresentation?.status))result.dialoguePresentation={status:attempt.dialoguePresentation.status,spans:Number.isSafeInteger(attempt.dialoguePresentation.spans)&&attempt.dialoguePresentation.spans>=0&&attempt.dialoguePresentation.spans<=256?attempt.dialoguePresentation.spans:0};
   if(attempt.assemblyDiagnostics)result.assemblyDiagnostics=publicAssemblyDiagnostics(attempt.assemblyDiagnostics);
   if(attempt.contextPreflights)result.contextPreflights=attempt.contextPreflights.map(publicContextBudget);
   if(attempt.assembly)result.assembly=restricted(attempt.assembly);
@@ -109,17 +113,17 @@ export function publicInspection(run){
   const publicIds=new Set((run.memories??[]).filter(memory=>eligibleMemory(memory,{runId:run.runId,audience:'public'})).map(memory=>memory.id));
   return {...pick(run,['schemaVersion','runId','version','head','openingId','createdAt','updatedAt','banList','availability','lastFailure']),
     history:{retiredCount:run.retired?.length??0,operationCount:Object.keys(run.operationReceipts??{}).length},
-    ...(run.playerIdentity?{playerIdentity:pick(run.playerIdentity,['schemaVersion','name','boundVersion','afterTurn']),openingDisplay:openingDisplay(run)}:{}),snapshot:publicSnapshot(run.snapshot),state:stateView(run.state),
+    ...(run.playerIdentity?{playerIdentity:pick(run.playerIdentity,['schemaVersion','name','boundVersion','afterTurn']),openingDisplay:openingDisplay(run)}:{}),snapshot:publicSnapshot(run.snapshot),...(run.storyClock?{storyClock:readStoryClock(run)}:{}),state:stateView(projectStoryState(run)),
     ...(run.snapshot?.derivedFacts?{derivedFacts:projectDerivedFacts(run)}:{}),
     ...(run.snapshot?.frontend?{frontendDiagnostics:publicFrontendDiagnostics(run)}:{}),
-    ...(run.snapshot?.stateBlueprint ? {worldView:publicBlueprintState(run.snapshot.stateBlueprint,run.state)} : {}),
+    ...(run.snapshot?.stateBlueprint ? {worldView:publicBlueprintState(run.snapshot.stateBlueprint,projectStoryState(run))} : {}),
     memories:(run.memories??[]).map(m=>publicMemory(m,run.runId)),
     playerHistory:{status:'restricted',count:run.playerHistory?.length??0},
     turns:(run.turns??[]).map(turn=>({...publicTurnDialogue(run,turn),...pick(turn,['turn','requestId','commitId','input','body','bodyHash','attemptId','committedAt']),
       memoryIds:(turn.memoryIds??[]).filter(id=>publicIds.has(id)),restrictedMemoryCount:(turn.memoryIds??[]).filter(id=>!publicIds.has(id)).length,
       playerHistory:{status:'restricted',count:turn.playerHistoryIds?.length??0},
-      stateBefore:stateView(turn.stateBefore),stateAfter:stateView(turn.stateAfter)})),
-    receipts:Object.fromEntries(Object.entries(run.receipts??{}).map(([key,r])=>[key,r.status==='retired'?pick(r,['status','commitId','attemptId','retiredBy','retiredAtVersion']):{...pick(r,['inputHash','commitId','attemptId']),result:publicTurnResult(r.result)}])),
+      stateBefore:stateView(projectStoryState(run,{state:turn.stateBefore,clock:turn.clockBefore,activity:run.storyClock?resolveActivityCheckpoint(run,turn.worldActivityBefore):turn.worldActivityBefore})),stateAfter:stateView(projectStoryState(run,{state:turn.stateAfter,clock:turn.clockAfter,activity:run.storyClock?resolveActivityCheckpoint(run,turn.worldActivityAfter):turn.worldActivityAfter}))})),
+    receipts:Object.fromEntries(Object.entries(run.receipts??{}).map(([key,r])=>[key,r.status==='retired'?pick(r,['status','commitId','attemptId','retiredBy','retiredAtVersion']):{...pick(r,['inputHash','commitId','attemptId']),result:publicTurnResult(r.result,run)}])),
     attempts:(run.attempts??[]).map(a=>a.status==='retired'?pick(a,['attemptId','requestId','commitId','status','requestOutcome']):publicAttempt(a,run.runId)),
     diagnostics:{scope:'public',privateContext:'restricted',authorizationRequired:true}};
 }
@@ -128,9 +132,9 @@ export function publicInspection(run){
 export function publicRunView(run,{requestId}={}){
   const last=run.turns?.at(-1),receipt=requestId?run.receipts?.[requestId]:null;
   return {...pick(run,['schemaVersion','runId','version','head','createdAt','updatedAt','banList']),lifecycleRevision:run.recycle?.revision??0,
-    turnCount:run.turns?.length??0,...(run.snapshot?.derivedFacts?{derivedFacts:projectDerivedFacts(run)}:{}),cardFrontend:publicFrontend(run),...(run.playerIdentity?{playerIdentity:pick(run.playerIdentity,['schemaVersion','name','boundVersion','afterTurn']),openingDisplay:openingDisplay(run)}:{}),snapshot:publicSnapshot(run.snapshot),state:stateView(run.state),
-    ...(run.snapshot?.stateBlueprint?{worldView:publicBlueprintState(run.snapshot.stateBlueprint,run.state)}:{}),
-    lastTurn:last?{...publicTurnDialogue(run,last),...pick(last,['turn','requestId','commitId','input','body']),stateBefore:stateView(last.stateBefore),stateAfter:stateView(last.stateAfter)}:null,
+    turnCount:run.turns?.length??0,...(run.snapshot?.derivedFacts?{derivedFacts:projectDerivedFacts(run)}:{}),cardFrontend:publicFrontend(run),...(run.playerIdentity?{playerIdentity:pick(run.playerIdentity,['schemaVersion','name','boundVersion','afterTurn']),openingDisplay:openingDisplay(run)}:{}),snapshot:publicSnapshot(run.snapshot),...(run.storyClock?{storyClock:readStoryClock(run)}:{}),state:stateView(projectStoryState(run)),
+    ...(run.snapshot?.stateBlueprint?{worldView:publicBlueprintState(run.snapshot.stateBlueprint,projectStoryState(run))}:{}),
+    lastTurn:last?{...publicTurnDialogue(run,last),...pick(last,['turn','requestId','commitId','input','body']),stateBefore:stateView(projectStoryState(run,{state:last.stateBefore,clock:last.clockBefore,activity:run.storyClock?resolveActivityCheckpoint(run,last.worldActivityBefore):last.worldActivityBefore})),stateAfter:stateView(projectStoryState(run,{state:last.stateAfter,clock:last.clockAfter,activity:run.storyClock?resolveActivityCheckpoint(run,last.worldActivityAfter):last.worldActivityAfter}))}:null,
     ...(receipt?{requestReceipt:{requestId,commitId:receipt.commitId,status:receipt.status==='retired'?'retired':run.turns.some(t=>t.commitId===receipt.commitId&&t.requestId===requestId)?'committed':'unknown'}}:{}),
     history:{retiredCount:run.retired?.length??0},diagnostics:{scope:'public',privateContext:'restricted'}};
 }
