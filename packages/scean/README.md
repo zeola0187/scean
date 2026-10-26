@@ -1,3 +1,5 @@
+> 1.6.2-local.w29.2d.rc3.2: TIME_TOOL declaration-only repair on the public RC3.1 baseline. Source branch: https://github.com/zeola0187/scean/tree/fix/time-tool-contract-20261026. No new tag, Release page or assets. This backport excludes separate local timecal.1 calendar/display fixes and all nlruntime experiments; it is not the full local timecal.2 installation package.
+
 # W29 RC3 預發行：1.6.2-local.w29.2d.rc3.1
 
 目標為官方 DSH **0.2.1-rc.3**。先備份程式、profile、卡片及 Run 再升級。這是已完成正式原生啟動與一次有界真模型驗收的 RC3 相容版本，並非宣稱全部歷史測試通過。

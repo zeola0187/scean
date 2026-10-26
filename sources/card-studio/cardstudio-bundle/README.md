@@ -1,3 +1,5 @@
+> 1.6.2-local.w29.2d.rc3.2: TIME_TOOL declaration-only repair on the public RC3.1 baseline. Source branch: https://github.com/zeola0187/scean/tree/fix/time-tool-contract-20261026. No new tag, Release page or assets. This backport excludes separate local timecal.1 calendar/display fixes and all nlruntime experiments; it is not the full local timecal.2 installation package.
+
 # SCEAN Studio 1.5.0
 
 Native authoring bundle for the SCEAN suite. The stable package identity

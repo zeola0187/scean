@@ -9,10 +9,10 @@ class Release(unittest.TestCase):
   for d in ['core','adapters','plugin']:
    for p in sorted((R/d).glob('*.mjs')):rows.append([d+'/'+p.name,digest(p)])
   for n in ['single-director','single-writer']:rows.append(['runtime-skills/'+n,digest(R/'runtime-skills'/n/'SKILL.md')])
-  self.assertEqual(hashlib.sha256(json.dumps(rows,ensure_ascii=False,separators=(',',':')).encode()).hexdigest(),'8ce9b4be820feece11bf9dab42c813121e1e99fcb4a17e2d66d70e9ce57d1dbd')
+  self.assertEqual(hashlib.sha256(json.dumps(rows,ensure_ascii=False,separators=(',',':')).encode()).hexdigest(),'a7fc633d42f2826ccf70127035c93fe1119a891c043dbd1c07009f3e432262b0')
  def test_current_exact_manifest_versions(self):
   for n in ['package.json','packages/scean/package.json','packages/studio/package.json']:
-   j=json.loads((R/n).read_text(encoding='utf-8'));self.assertEqual(j['version'],'1.6.2-local.w29.2d.rc3.1');self.assertIn('0.2.1-rc.3',j['engines']['dsh']);self.assertEqual(j['homepage'],'https://github.com/zeola0187/scean')
+   j=json.loads((R/n).read_text(encoding='utf-8'));self.assertEqual(j['version'],'1.6.2-local.w29.2d.rc3.2');self.assertIn('0.2.1-rc.3',j['engines']['dsh']);self.assertEqual(j['homepage'],'https://github.com/zeola0187/scean')
  def test_canonical_build_and_file_set(self):
   m=json.loads((R/'BUILD-MAP.json').read_text(encoding='utf-8'))['runtime'];self.assertEqual(len(m),263)
   for row in m:self.assertEqual((R/row['path']).read_bytes(),(R/row['source']).read_bytes(),row['path'])

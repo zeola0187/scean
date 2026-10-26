@@ -51,13 +51,13 @@
     },
     {
       "path": "README.md",
-      "bytes": 6382,
-      "sha256": "63d723f5b31166fd75e1ab369fb8659370b0035ef1a5e956d8843373e6dca9b8"
+      "bytes": 6760,
+      "sha256": "ab91fa4d41435aa52077b3d7c09c17299ef247213a88de2c5c98fd240dd4d980"
     },
     {
       "path": "SOURCE-AVAILABILITY.md",
-      "bytes": 817,
-      "sha256": "f43a8170104e495464e41cf4dce98f967e163408c4953de924d4e871d7b6211b"
+      "bytes": 1081,
+      "sha256": "b311bfe5d2164e9aa2862f5934a03c8fef6a260febf8b8ecdc14451683c3048c"
     },
     {
       "path": "THIRD-PARTY-LICENSES.json",
@@ -68,6 +68,11 @@
       "path": "THIRD-PARTY-NOTICES.md",
       "bytes": 4597,
       "sha256": "f1b6b4b9ab7340a314d0c6d0da1d4b4a10b1246dd984218fc22842d0fdc23f7d"
+    },
+    {
+      "path": "TIME-TOOL-CONTRACT-PROVENANCE.json",
+      "bytes": 792,
+      "sha256": "6654416ab55eadf05f72fbd6e267d793d19f137161a6fe6c666f11fe5542d92b"
     },
     {
       "path": "W29-RELEASE-PROVENANCE.json",
@@ -461,8 +466,8 @@
     },
     {
       "path": "core/state-operations.mjs",
-      "bytes": 24072,
-      "sha256": "6633ad9b85a6e06997968f4c49ec6571ee862d801360da69d9021a1b44f4c66e"
+      "bytes": 24507,
+      "sha256": "43052e3ecb216b9070e1493daca48783624f89baca541f998728df55095bc69f"
     },
     {
       "path": "core/story-clock.mjs",
@@ -1107,7 +1112,7 @@
     {
       "path": "package.json",
       "bytes": 1628,
-      "sha256": "d39f1a9c14df3d0196ebf1fc2b7db76c587b188c0c526a565a909b7be674cfb1"
+      "sha256": "534b151a8e6f5edbdf8c0db25a52f5470140911279d429a07a3d97107fd41eac"
     },
     {
       "path": "packages/scean/COPYRIGHT",
@@ -1126,13 +1131,13 @@
     },
     {
       "path": "packages/scean/README.md",
-      "bytes": 6382,
-      "sha256": "63d723f5b31166fd75e1ab369fb8659370b0035ef1a5e956d8843373e6dca9b8"
+      "bytes": 6760,
+      "sha256": "ab91fa4d41435aa52077b3d7c09c17299ef247213a88de2c5c98fd240dd4d980"
     },
     {
       "path": "packages/scean/SOURCE-AVAILABILITY.md",
-      "bytes": 817,
-      "sha256": "f43a8170104e495464e41cf4dce98f967e163408c4953de924d4e871d7b6211b"
+      "bytes": 1081,
+      "sha256": "b311bfe5d2164e9aa2862f5934a03c8fef6a260febf8b8ecdc14451683c3048c"
     },
     {
       "path": "packages/scean/THIRD-PARTY-LICENSES.json",
@@ -1411,8 +1416,8 @@
     },
     {
       "path": "packages/scean/core/state-operations.mjs",
-      "bytes": 24072,
-      "sha256": "6633ad9b85a6e06997968f4c49ec6571ee862d801360da69d9021a1b44f4c66e"
+      "bytes": 24507,
+      "sha256": "43052e3ecb216b9070e1493daca48783624f89baca541f998728df55095bc69f"
     },
     {
       "path": "packages/scean/core/story-clock.mjs",
@@ -1547,7 +1552,7 @@
     {
       "path": "packages/scean/package.json",
       "bytes": 1983,
-      "sha256": "668e35f9340ced5902c63af69df7c9ece255f392b9e8606ee05b00ecc08ea0fa"
+      "sha256": "338fc470351a048cd20565eb3b7e65fa89332d5f79c4c4e7efe7c6533b3bf7ca"
     },
     {
       "path": "packages/scean/plugin/README.md",
@@ -1681,8 +1686,8 @@
     },
     {
       "path": "packages/scean/release-source.json",
-      "bytes": 689,
-      "sha256": "2d43a6a8eda2efc0d78dba15863debb395bedb44a1a214c23b9e527f3dd376f1"
+      "bytes": 626,
+      "sha256": "57f6d8c03e7186fba87b319d1ffe178f7fb3b9683c1854427e5276cee3c3e547"
     },
     {
       "path": "packages/scean/runtime-skills/scene-materials/SKILL.md",
@@ -1721,13 +1726,13 @@
     },
     {
       "path": "packages/studio/README.md",
-      "bytes": 1999,
-      "sha256": "0748ecfca289fae6c811faf566ac59242a8d49952aee9a394a8d1a7108624ae4"
+      "bytes": 2377,
+      "sha256": "cbe81944d8eb00476216abc3902fdbeda9e0491fd57de47937bac665e3f38dc2"
     },
     {
       "path": "packages/studio/SOURCE-AVAILABILITY.md",
-      "bytes": 817,
-      "sha256": "f43a8170104e495464e41cf4dce98f967e163408c4953de924d4e871d7b6211b"
+      "bytes": 1081,
+      "sha256": "b311bfe5d2164e9aa2862f5934a03c8fef6a260febf8b8ecdc14451683c3048c"
     },
     {
       "path": "packages/studio/THIRD-PARTY-LICENSES.json",
@@ -2076,8 +2081,8 @@
     },
     {
       "path": "packages/studio/lib/w01/core/state-operations.mjs",
-      "bytes": 24072,
-      "sha256": "6633ad9b85a6e06997968f4c49ec6571ee862d801360da69d9021a1b44f4c66e"
+      "bytes": 24507,
+      "sha256": "43052e3ecb216b9070e1493daca48783624f89baca541f998728df55095bc69f"
     },
     {
       "path": "packages/studio/lib/w01/core/story-clock.mjs",
@@ -2132,12 +2137,12 @@
     {
       "path": "packages/studio/package.json",
       "bytes": 2016,
-      "sha256": "a3614c162ddf732cc1b09ca21332204394d3fecfafbc249423d46992c36a609a"
+      "sha256": "922fa5d2a79cb2be5d77060a66644471e83e41f0558c87ac471a8dff56cd8fa7"
     },
     {
       "path": "packages/studio/release-source.json",
-      "bytes": 647,
-      "sha256": "83fa138f80618bd5912cff4a11410dc73a26aadcec953dc9d421dee5ec516dc0"
+      "bytes": 626,
+      "sha256": "57f6d8c03e7186fba87b319d1ffe178f7fb3b9683c1854427e5276cee3c3e547"
     },
     {
       "path": "packages/studio/rollback-recycle.js",
@@ -2556,8 +2561,8 @@
     },
     {
       "path": "release-source.json",
-      "bytes": 689,
-      "sha256": "2d43a6a8eda2efc0d78dba15863debb395bedb44a1a214c23b9e527f3dd376f1"
+      "bytes": 626,
+      "sha256": "57f6d8c03e7186fba87b319d1ffe178f7fb3b9683c1854427e5276cee3c3e547"
     },
     {
       "path": "runtime-skills/scene-materials/SKILL.md",
@@ -2801,13 +2806,13 @@
     },
     {
       "path": "sources/card-studio/cardstudio-bundle/README.md",
-      "bytes": 1999,
-      "sha256": "0748ecfca289fae6c811faf566ac59242a8d49952aee9a394a8d1a7108624ae4"
+      "bytes": 2377,
+      "sha256": "cbe81944d8eb00476216abc3902fdbeda9e0491fd57de47937bac665e3f38dc2"
     },
     {
       "path": "sources/card-studio/cardstudio-bundle/SOURCE-AVAILABILITY.md",
-      "bytes": 817,
-      "sha256": "f43a8170104e495464e41cf4dce98f967e163408c4953de924d4e871d7b6211b"
+      "bytes": 1081,
+      "sha256": "b311bfe5d2164e9aa2862f5934a03c8fef6a260febf8b8ecdc14451683c3048c"
     },
     {
       "path": "sources/card-studio/cardstudio-bundle/THIRD-PARTY-LICENSES.json",
@@ -3161,8 +3166,8 @@
     },
     {
       "path": "sources/card-studio/cardstudio-bundle/lib/w01/core/state-operations.mjs",
-      "bytes": 24072,
-      "sha256": "6633ad9b85a6e06997968f4c49ec6571ee862d801360da69d9021a1b44f4c66e"
+      "bytes": 24507,
+      "sha256": "43052e3ecb216b9070e1493daca48783624f89baca541f998728df55095bc69f"
     },
     {
       "path": "sources/card-studio/cardstudio-bundle/lib/w01/core/story-clock.mjs",
@@ -3217,12 +3222,12 @@
     {
       "path": "sources/card-studio/cardstudio-bundle/package.json",
       "bytes": 2016,
-      "sha256": "a3614c162ddf732cc1b09ca21332204394d3fecfafbc249423d46992c36a609a"
+      "sha256": "922fa5d2a79cb2be5d77060a66644471e83e41f0558c87ac471a8dff56cd8fa7"
     },
     {
       "path": "sources/card-studio/cardstudio-bundle/release-source.json",
-      "bytes": 647,
-      "sha256": "83fa138f80618bd5912cff4a11410dc73a26aadcec953dc9d421dee5ec516dc0"
+      "bytes": 626,
+      "sha256": "57f6d8c03e7186fba87b319d1ffe178f7fb3b9683c1854427e5276cee3c3e547"
     },
     {
       "path": "sources/card-studio/cardstudio-bundle/rollback-recycle.js",
@@ -4007,7 +4012,7 @@
     {
       "path": "sources/manifests/scean-package.json",
       "bytes": 1983,
-      "sha256": "668e35f9340ced5902c63af69df7c9ece255f392b9e8606ee05b00ecc08ea0fa"
+      "sha256": "338fc470351a048cd20565eb3b7e65fa89332d5f79c4c4e7efe7c6533b3bf7ca"
     },
     {
       "path": "tests/a-lifecycle.test.mjs",
@@ -4616,8 +4621,8 @@
     },
     {
       "path": "tests/release-support.test.py",
-      "bytes": 4240,
-      "sha256": "17f90ce0097f85e79feb83a7d46e4d29efdfc6c3e1a1e1a5631c70fc33032d3e"
+      "bytes": 4310,
+      "sha256": "1ca193930d767cb3630419cb2bf80fdf05804105990eab83d09b9f331c80d2ec"
     },
     {
       "path": "tests/rp-output-inheritance.test.mjs",
@@ -4678,6 +4683,11 @@
       "path": "tests/terminal-progress.test.mjs",
       "bytes": 935,
       "sha256": "68eb7b03eec108c8b0922743c08cd3ca5e9f8cb7f4ed675426b3bd5e58c7b9b3"
+    },
+    {
+      "path": "tests/time-tool-contract.test.mjs",
+      "bytes": 4204,
+      "sha256": "88d874bdd11128d7d647cb1bd22fa63448f39e0d43bc94ab9476843d0b5b7e35"
     },
     {
       "path": "tests/turn-duration.test.mjs",
@@ -4822,7 +4832,7 @@
     {
       "path": "tests/w29-release.test.py",
       "bytes": 3268,
-      "sha256": "b7c52f41039a74821bf5094fbdc420744275b439cd4e5a42c5d47a7a87a41e48"
+      "sha256": "fe78777a293f7a76e01749144a0c9ac7b9d42003babe63dfb5ba2cb0c443abc4"
     },
     {
       "path": "tests/w29-story-clock.test.mjs",
@@ -5052,6 +5062,6 @@
   ],
   "license": "AGPL-3.0-only",
   "licenseExceptions": "THIRD-PARTY-LICENSES.json",
-  "version": "1.6.2-local.w29.2d.rc3.1",
+  "version": "1.6.2-local.w29.2d.rc3.2",
   "sourceUrl": "https://github.com/zeola0187/scean/tree/v1.6.2-local.w29.2d.rc3.1"
 }
