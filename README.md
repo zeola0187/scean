@@ -55,7 +55,7 @@
 
 ## 安裝與更新
 
-目前下載版為 **`1.6.3-local.w29.2d.rc3.1`（預發行）**，目標環境是 **Windows／官方 DSH 0.2.1-rc.3**。
+目前下載版為 **`1.6.3-local.w29.2d.rc3.1`**，是 **SCEAN 的正式發布**，目標環境為 **Windows／官方 DSH 0.2.1-rc.3**；DSH 主程式本身仍是 RC 版本。
 
 1. 等待進行中的生成與保存完成，備份 DSH、Profile、卡片、演出與設定。
 2. 從[此版 Release](https://github.com/zeola0187/scean/releases/tag/v1.6.3-local.w29.2d.rc3.1) 下載 **Suite 完整安裝包**，透過 DSH 的插件／bundle 安裝流程安裝。Suite 已包含 Runtime 與 Card Studio。
@@ -63,7 +63,7 @@
 
 [直接下載 Suite](https://github.com/zeola0187/scean/releases/download/v1.6.3-local.w29.2d.rc3.1/SCEAN-1.6.3-local.w29.2d.rc3.1-suite.tgz) · [SHA256 清單](https://github.com/zeola0187/scean/releases/download/v1.6.3-local.w29.2d.rc3.1/SHA256SUMS.txt)
 
-這裡明確指向 RC3 預發行版；GitHub 的「Latest」正式版入口與預發行列表分開，請依指定版本頁選擇套件。
+此版已設為 GitHub「Latest」。下載、版本說明與原碼均指向上述固定版本；DSH 主程式需求仍是 RC3。
 
 ## 資料與使用限制
 
