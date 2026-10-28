@@ -63,7 +63,7 @@ async function fixture({writer=envelope(),badDirector=false,postFailure=false,re
   if(a.stage==='post_stat'){if(postFailure)throw Object.assign(Error('synthetic failure'),{code:'RATE_LIMIT'});return {text:'{"contractVersion":2,"stateChanges":[],"memories":[]}'};}
   assert.fail('Unexpected extra generation '+a.stage);
  }};
- const engine=new SceanEngine({store,model,memory:new Memory()}),run=await engine.createRun({snapshot:{schemaVersion:1,cardId:'transport-synthetic',revision:'r1',card:{name:'Synthetic workshop'},worldbook:{entries:[]},preset:{style:'PRESERVE_STYLE_CANARY'},characters:[{id:'speaker-a',name:'A',description:'Synthetic public speaker.'}]},...(repair?{banList:['BANNED']}:{})});
+ const engine=new SceanEngine({postBody:false,store,model,memory:new Memory()}),run=await engine.createRun({snapshot:{schemaVersion:1,cardId:'transport-synthetic',revision:'r1',card:{name:'Synthetic workshop'},worldbook:{entries:[]},preset:{style:'PRESERVE_STYLE_CANARY'},characters:[{id:'speaker-a',name:'A',description:'Synthetic public speaker.'}]},...(repair?{banList:['BANNED']}:{})});
  return {engine,run,store,calls,turn:()=>engine.turn({runId:run.runId,requestId:'request-one',input:'Observe the public scene.'})};
 }
 test('actual model packets deliver strict Director schema and mandatory Writer envelope through the budget, without changing style',async()=>{

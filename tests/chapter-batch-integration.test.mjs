@@ -46,7 +46,7 @@ async function fixture({turns=27,bytes=232697,capabilities={contextWindow:32768,
  run.stageModelSelections={chapter_summary:{provider:'synthetic-provider',model:'synthetic-summary'}};
  validateRunBundle(encodeRunBundle(run));
  const store=new DurableStore({root,fault});await store.create(run);
- const engine=new SceanEngine({store,model:{async generate(){throw Error('UNEXPECTED_STORY_MODEL');}},memory:{async retrieve(){throw Error('UNEXPECTED_MEMORY_QUERY');}}});
+ const engine=new SceanEngine({postBody:false,store,model:{async generate(){throw Error('UNEXPECTED_STORY_MODEL');}},memory:{async retrieve(){throw Error('UNEXPECTED_MEMORY_QUERY');}}});
  const closed=await closeChapter(engine,{runId:run.runId,operationId:'manual-close',expectedVersion:run.version,expectedHead:run.head,title:'既有手動章節'});
  run=await store.read(run.runId);assert.equal(validateNarrative(run),true);validateRunBundle(encodeRunBundle(run));
  const calls=[],descriptions=[],progress=[],model={

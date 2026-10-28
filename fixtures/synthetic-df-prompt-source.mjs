@@ -59,7 +59,7 @@ export async function measurePromptCost(turns,{chapters=0,backfill=false,withCha
     if(p.stage==='director')return{text:singleWriterActive?JSON.stringify(p.input.handoffContract.example):'Continue the public watch.'};if(p.stage==='draft'||p.stage==='prose'||p.stage==='writer')return{text:DF_BODY};if(p.stage==='post_stat')return{text:JSON.stringify({contractVersion:2,stateChanges:[],memories:[]})};throw Error('Unexpected synthetic stage '+p.stage);
   }};
   const chapterRecall=withChapterContext?new ChapterRecall({embed:async({texts})=>{syntheticEmbeddingCalls++;return texts.map(()=>[1,0]);},rerankModel:model,embeddingModel:'scripted-large-history'}):undefined;
-  const engine=new SceanEngine({unconfiguredWritingMode:'current',store,model,chapterRecall,memory:{async retrieve(){return{records:[]};},clearCache(){}}});await store.create(run);
+  const engine=new SceanEngine({postBody:false,unconfiguredWritingMode:'current',store,model,chapterRecall,memory:{async retrieve(){return{records:[]};},clearCache(){}}});await store.create(run);
   for(let end=50;;end+=50){const endTurn=Math.min(end,turns-6);await narrative.updateSummary(engine,await request(store,run.runId,`df-summary-${endTurn}`,{endTurn}),{enabled:true,model});if(endTurn===turns-6)break;}
   if(backfill){
     await updateChapterSettings(engine,await request(store,run.runId,'df-settings',{settings:{autoEnabled:false,detail:'auto',tokenThreshold:16000,bufferTurns:6}}));
@@ -72,7 +72,7 @@ export async function measurePromptCost(turns,{chapters=0,backfill=false,withCha
   if(withChapterContext){
     singleWriterActive=true;
     const memory=new Memory({dimensions:2,embed:async({texts})=>{syntheticEmbeddingCalls++;return texts.map(()=>[1,0]);}});
-    const currentEngine=new SceanEngine({store,model,chapterRecall,memory});
+    const currentEngine=new SceanEngine({postBody:false,store,model,chapterRecall,memory});
     await currentEngine.regenerate({...await request(store,run.runId,'df-current-writer-context',{requestId:'df-current-writer-turn'}),chapterContextEnabled:true});
     const current=await store.read(run.runId);validateRunBundle(encodeRunBundle(current));
     assert.deepEqual(singleWriterContextObservations.map(p=>p.stage),['director','writer']);

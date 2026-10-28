@@ -51,7 +51,7 @@ export function calendarView(run,clock=run.storyClock,{backstage=false,limit=24,
  // verified current cut is unavailable to historical Agent-context readers.
  let currentIds=[];if(currentPublicationCut!==null){currentIds=run.worldRoutine?.calendarCuts?.[currentPublicationCut];if(currentPublicationCut!==run.worldRoutine?.currentCalendarCut||!Array.isArray(currentIds)||hash(currentIds)!==currentPublicationCut||hash(clock)!==hash(run.storyClock))fail('CALENDAR_READER_SOURCE_CHANGED');}
 
- return(run.worldRoutine?.publications??[]).filter(p=>allowed.has(p.id)).flatMap(p=>p.events.filter(e=>backstage||e.announcement==='public'&&(tick(p.announcedAt.position.latest,d)<=now||currentIds.includes(p.id)&&hash(p.announcedAt)===hash(clock))).map(e=>{const start=run.worldActivity.occurrences.find(o=>o.eventId===e.id&&o.phase==='start'),end=run.worldActivity.occurrences.find(o=>o.eventId===e.id&&o.phase==='end');return{id:e.id,label:e.label,start:clone(e.start),end:clone(e.end),announcement:e.announcement,sourceRef:{kind:'calendar_plan',publicationId:p.id,eventId:e.id,hash:p.hash},status:start?.status==='pending_resolution'?'pending_resolution':start?.status==='did_not_occur'?'did_not_occur':end?.status==='occurred'?'completed':start?.status==='occurred'?'active':'planned_not_occurred'};})).filter(e=>backstage||e.announcement==='public').slice(-limit);
+ return(run.worldRoutine?.publications??[]).filter(p=>allowed.has(p.id)).flatMap(p=>p.events.filter(e=>backstage||e.announcement==='public'&&(tick(p.announcedAt.position.latest,d)<=now||currentIds.includes(p.id)&&hash(p.announcedAt)===hash(clock))).map(e=>{const start=run.worldActivity.occurrences.find(o=>o.eventId===e.id&&o.phase==='start'),end=run.worldActivity.occurrences.find(o=>o.eventId===e.id&&o.phase==='end');return{id:e.id,label:e.label,start:clone(e.start),end:clone(e.end),announcement:e.announcement,sourceRef:{kind:'calendar_plan',publicationId:p.id,eventId:e.id,hash:p.hash},status:(run.worldActivity.occurrences.filter(o=>o.eventId===e.id&&o.recordVersion===2).at(-1)?.decision)??(start?.status==='pending_resolution'?'pending_resolution':start?.status==='did_not_occur'?'did_not_occur':end?.status==='occurred'?'completed':start?.status==='occurred'?'active':'planned_not_occurred')};})).filter(e=>backstage||e.announcement==='public').slice(-limit);
 }
 function score(query,row){if(!query?.trim())return 0;const s=(row.title??'')+' '+row.text,words=query.toLowerCase().match(/[\p{L}\p{N}]{2,}/gu)??[];let n=0;for(const w of words){if(s.toLowerCase().includes(w))n+=3;for(let i=0;i<Math.min(w.length-1,60);i++)if(s.includes(w.slice(i,i+2)))n++;}return n;}
 export function forumSearch(run,{query='',clock=run.storyClock,limit=3,recent=false,artifactIds}={}){
@@ -66,22 +66,89 @@ export function forumReader(run,{threadId,beforeSequence,afterSequence=0,limit=2
  if(threadId!==undefined){safeId(threadId);const parent=works.find(a=>a.id===threadId&&a.kind==='forum_post');if(!parent)return{status:'source_unavailable',parent:null,entries:[],nextCursor:null};const replies=works.filter(a=>a.parentId===threadId&&a.sequence>afterSequence).sort((a,b)=>a.sequence-b.sequence),page=replies.slice(0,limit);return{status:'available',parent:project(parent),entries:page.map(project),nextCursor:replies.length>page.length?page.at(-1).sequence:null};}
  const posts=works.filter(a=>a.kind==='forum_post'&&a.sequence<(beforeSequence??Infinity)).sort((a,b)=>b.sequence-a.sequence),page=posts.slice(0,limit);return{status:'available',entries:page.map(project),nextCursor:posts.length>page.length?page.at(-1).sequence:null};
 }
-export function jobContract(job,definition){
+// Bounded, content-free failure detail. Never persist model text or parser messages.
+const calendarReasons=new Set(['json','fields','version','kind','window','event_limit','key','duplicate_key','label','scope','announcement','position','start_day','not_future','horizon','interval','required_for_scene','condition']);
+const calendarPaths=new Map([['ROOT','$'],['VERSION','schemaVersion'],['KIND','kind'],['DAY_START','dayStart'],['DAY_END','dayEnd'],['EVENTS','events']]);
+for(let i=0;i<8;i++)for(const field of ['', 'key','label','scope','announcement','requiredForScene','condition','condition.category','condition.key','condition.equals','start','start.dayOrdinal','start.minuteOfDay','end','end.dayOrdinal','end.minuteOfDay'])calendarPaths.set('E'+i+(field?'_'+field.replaceAll('.','_').toUpperCase():''),`events[${i}]`+(field?'.'+field:''));
+export function calendarFailureDiagnostic(error){
+ const d=error?.failureDiagnostic;
+ if(d&&Object.keys(d).length===2&&calendarReasons.has(d.reason)&&typeof d.path==='string'&&/^(?:\$|schemaVersion|kind|dayStart|dayEnd|events(?:\[[0-7]\](?:\.(?:key|label|scope|announcement|requiredForScene|condition(?:\.(?:category|key|equals))?|(?:start|end)(?:\.(?:dayOrdinal|minuteOfDay))?))?)?)$/.test(d.path))return {reason:d.reason,path:d.path};
+ if(error?.code==='INVALID_MODEL_JSON')return {reason:'json',path:'$'};
+ if(typeof error?.code==='string'){const [reason,token]=error.code.replace(/^CALENDAR_/,'').split('__');if(error.code.startsWith('CALENDAR_')&&calendarReasons.has(reason?.toLowerCase())&&calendarPaths.has(token))return {reason:reason.toLowerCase(),path:calendarPaths.get(token)};}
+ return null;
+}
+// Encode only enumerated reason/path tokens into the existing error-code field.
+// This keeps v9/v10 save shape unchanged and old unknown-code readers fail safely.
+export function calendarDiagnosticCode(error){const d=calendarFailureDiagnostic(error);if(!d)return error.code;const token=[...calendarPaths].find(([,path])=>path===d.path)?.[0];return token?'CALENDAR_'+d.reason.toUpperCase()+'__'+token:error.code;}
+function calendarFail(reason,path,code='CALENDAR_CONTRACT'){const e=new SceanError(code);e.failureDiagnostic={reason,path};throw e;}
+function calendarFields(v,allowed,required=allowed,path='$'){
+ if(!v||typeof v!=='object'||Array.isArray(v)||required.some(k=>!Object.hasOwn(v,k))||Object.keys(v).some(k=>!allowed.includes(k)))calendarFail('fields',path);
+}
+export function jobContract(job,definition,sourceClock){
  const string=(max,min=0)=>({type:'string',minLength:min,maxLength:max}),constant=v=>({const:v}),obj=properties=>({type:'object',additionalProperties:false,required:Object.keys(properties),properties});
  if(job.kind==='calendar_plan'){
-  const point=obj({dayOrdinal:{type:'integer',minimum:job.day,maximum:job.day+7},minuteOfDay:{type:'integer',minimum:0,maximum:definition?dayMinutes(definition)-1:99999}}),event=obj({key:{...string(64,1),pattern:'^[A-Za-z0-9][A-Za-z0-9_-]*$'},label:string(300,1),scope:constant('public_world'),start:point,end:point,announcement:{enum:['public','unannounced']},requiredForScene:{type:'boolean'}});
-  event.properties.condition=obj({category:{enum:['facts','resources','locations']},key:string(128,1),equals:{type:['null','boolean','number','string'],maxLength:128}});
-  return{schema:obj({schemaVersion:constant(1),kind:constant(job.kind),dayStart:constant(job.day),dayEnd:constant(job.day+6),events:{type:'array',maxItems:8,items:event}}),example:{schemaVersion:1,kind:job.kind,dayStart:job.day,dayEnd:job.day+6,events:[]},rules:['Return the output object only, never schema/example/rules metadata.','Example is structural only. Choose your own world-compatible PUBLIC plan, including an empty plan when appropriate.','Only unplannedDays may start a new event. Future plans have not happened. No character private schedules or clock/state writes.']};
+  const minutes=definition?dayMinutes(definition):100000,days=job.coverageDays??Array.from({length:7},(_,i)=>job.day+i);
+  const point=()=>obj({dayOrdinal:{type:'integer',minimum:job.day,maximum:job.day+7},minuteOfDay:{type:'integer',minimum:0,maximum:minutes-1}}),start=point(),end=point();
+  start.properties.dayOrdinal={type:'integer',enum:clone(days)};
+  const future=days.filter(day=>!sourceClock||day>sourceClock.position.latest.dayOrdinal||day===sourceClock.position.latest.dayOrdinal&&sourceClock.position.latest.minuteOfDay<minutes-1);
+  if(sourceClock&&future.length)start.oneOf=future.map(day=>({properties:{dayOrdinal:constant(day),minuteOfDay:{minimum:day===sourceClock.position.latest.dayOrdinal?sourceClock.position.latest.minuteOfDay+1:0}}}));
+  end.anyOf=[{properties:{dayOrdinal:{maximum:job.day+6}}},{properties:{dayOrdinal:constant(job.day+7),minuteOfDay:constant(0)}}];
+  const reserved=['con','prn','aux','nul','constructor','prototype'].map(s=>s.split('').map(c=>`[${c}${c.toUpperCase()}]`).join('')).concat(['[cC][oO][mM][1-9]','[lL][pP][tT][1-9]']).join('|');
+  const event=obj({key:{...string(128,1),pattern:`^(?!(?:${reserved})$)[A-Za-z0-9][A-Za-z0-9_-]*$`},label:{...string(300,1),pattern:'\\S'},scope:constant('public_world'),start,end,announcement:{enum:['public','unannounced']},requiredForScene:{type:'boolean'}});
+  event.properties.condition=obj({category:{enum:['facts','resources','locations']},key:{...string(128,1),pattern:'\\S',not:{enum:['constructor','prototype','__proto__']}},equals:{type:['null','boolean','number','string'],maxLength:128}});
+  const exampleDay=future[0],exampleMinute=sourceClock&&exampleDay===sourceClock.position.latest.dayOrdinal?sourceClock.position.latest.minuteOfDay+1:0;
+  const exampleEvents=exampleDay===undefined?[]:[{key:'example_public_event',label:'A small public-world event appropriate to this setting',scope:'public_world',start:{dayOrdinal:exampleDay,minuteOfDay:exampleMinute},end:{dayOrdinal:exampleDay+Math.floor((exampleMinute+1)/minutes),minuteOfDay:(exampleMinute+1)%minutes},announcement:'public',requiredForScene:false}];
+  return{schema:obj({schemaVersion:constant(1),kind:constant(job.kind),dayStart:constant(job.day),dayEnd:constant(job.day+6),events:{type:'array',maxItems:sourceClock&&!future.length?0:8,items:event}}),example:{schemaVersion:1,kind:job.kind,dayStart:job.day,dayEnd:job.day+6,events:exampleEvents},rules:['Return the output object only, never schema/example/rules metadata.','Example is structural only: choose your own world-compatible event, never copy its placeholder. An empty events array is a valid completed plan, not a request to retry.','Each start.dayOrdinal must be in window.unplannedDays. Every start must be strictly later than clock.position.latest, including when precision is day, period or range; never use earliest as an exact current minute.','Each end must be strictly later than start and no later than dayEnd + 1 at minuteOfDay 0. Use timeDefinition hoursPerDay * minutesPerHour; do not assume a 1440-minute day. Keys must be unique valid non-reserved identifiers.','Choose at most 8 world-compatible PUBLIC world events. Future plans have not happened. No character private schedules or clock/state writes.']};
  }
  if(isAmbientAuthor(job))return{schema:obj({schemaVersion:constant(2),kind:constant('forum_post'),author:obj({kind:constant('ambient'),displayName:string(40,1)}),decision:{enum:['publish','decline']},title:string(120),text:string(1600),epistemic:{enum:['subjective','belief','rumor','unverified','experience']}}),example:{schemaVersion:2,kind:'forum_post',author:{kind:'ambient',displayName:'Anonymous visitor'},decision:'publish',title:'Your independently chosen public topic',text:'An attributed subjective ambient statement.',epistemic:'subjective'},rules:['Return only this object. Choose a temporary display name for this post, never a persistent character identity.','No named Character impersonation, private information, world facts, State/Clock/Memory writes, IDs or source claims.','You may decline with empty title/text. A publish needs both. No ambient replies are supported.']};
  return{schema:obj({schemaVersion:constant(1),kind:constant(job.kind),authorId:constant(characterAuthorId(job)),decision:{enum:['publish','decline']},title:string(120),text:string(job.kind==='diary'?2400:1600),epistemic:{enum:['subjective','belief','rumor','unverified','experience']}}),example:{schemaVersion:1,kind:job.kind,authorId:characterAuthorId(job),decision:'publish',title:job.kind==='forum_reply'?'':'Your independently chosen title',text:'Your independently chosen expression, only as the supplied Character.',epistemic:'subjective'},rules:['Return the output object only, never schema/example/rules metadata.','Do not copy example wording; choose your own topic, content and stance. May decline with empty text/title.','Published text must be nonempty; post/diary title must be nonempty. Claims remain attributed speech, never automatic world facts.']};
 }
 export function validateBackgroundProposal(run,job,v,{sourceClock=run.storyClock}={}){
  if(job.kind==='calendar_plan'){
-  routineFields(v,['schemaVersion','kind','dayStart','dayEnd','events']);if(v.schemaVersion!==1||v.kind!==job.kind||v.dayStart!==job.day||v.dayEnd!==job.day+6||!Array.isArray(v.events)||v.events.length>8)fail('CALENDAR_CONTRACT');const d=storyTimeDefinition(run.snapshot.storyTimeDefinition),keys=new Set();
-  const events=v.events.map(e=>{routineFields(e,['key','label','scope','start','end','announcement','condition','requiredForScene'],['key','label','scope','start','end','announcement','requiredForScene']);safeId(e.key);if(keys.has(e.key)||e.scope!=='public_world'||!['public','unannounced'].includes(e.announcement)||!job.coverageDays.includes(e.start.dayOrdinal)||tick(e.end,d)>tick({dayOrdinal:job.day+7,minuteOfDay:0},d)||tick(e.start,d)<=tick(sourceClock.position.latest,d))fail('CALENDAR_CONTRACT');keys.add(e.key);if(e.condition&&(e.condition.equals!==null&&!['string','number','boolean'].includes(typeof e.condition.equals)||typeof e.condition.equals==='number'&&!Number.isFinite(e.condition.equals)||typeof e.condition.equals==='string'&&e.condition.equals.length>128))fail('CALENDAR_CONDITION_INVALID');const out={key:e.key,id:'cal-'+hash([run.runId,job.id,e.key]).slice(0,24),label:e.label,start:clone(e.start),end:clone(e.end),announcement:e.announcement,...e.condition?{condition:clone(e.condition)}:{},requiredForScene:e.requiredForScene};validatePublicEvents([{...out,announcement:undefined}].map(({announcement,key,...rest})=>rest),d);return out;});return{decision:'publish',events};
+  calendarFields(v,['schemaVersion','kind','dayStart','dayEnd','events']);
+  if(v.schemaVersion!==1)calendarFail('version','schemaVersion');if(v.kind!==job.kind)calendarFail('kind','kind');
+  if(v.dayStart!==job.day)calendarFail('window','dayStart');if(v.dayEnd!==job.day+6)calendarFail('window','dayEnd');
+  if(!Array.isArray(v.events)||v.events.length>8)calendarFail('event_limit','events');
+  const d=storyTimeDefinition(run.snapshot.storyTimeDefinition),keys=new Set();
+  const events=v.events.map((e,i)=>{
+   const p=`events[${i}]`;calendarFields(e,['key','label','scope','start','end','announcement','condition','requiredForScene'],['key','label','scope','start','end','announcement','requiredForScene'],p);
+   try{safeId(e.key);}catch{calendarFail('key',p+'.key');}if(keys.has(e.key))calendarFail('duplicate_key',p+'.key');keys.add(e.key);
+   if(typeof e.label!=='string'||!e.label.trim()||e.label.length>300)calendarFail('label',p+'.label');
+   if(e.scope!=='public_world')calendarFail('scope',p+'.scope');if(!['public','unannounced'].includes(e.announcement))calendarFail('announcement',p+'.announcement');
+   for(const k of ['start','end']){calendarFields(e[k],['dayOrdinal','minuteOfDay'],undefined,p+'.'+k);try{tick(e[k],d);}catch{calendarFail('position',p+'.'+k);}}
+   if(!job.coverageDays.includes(e.start.dayOrdinal))calendarFail('start_day',p+'.start.dayOrdinal');
+   if(tick(e.start,d)<=tick(sourceClock.position.latest,d))calendarFail('not_future',p+'.start');
+   if(tick(e.end,d)>tick({dayOrdinal:job.day+7,minuteOfDay:0},d))calendarFail('horizon',p+'.end');
+   if(tick(e.start,d)>=tick(e.end,d))calendarFail('interval',p+'.end');
+   if(typeof e.requiredForScene!=='boolean')calendarFail('required_for_scene',p+'.requiredForScene');
+   if(e.condition!==undefined){calendarFields(e.condition,['category','key','equals'],undefined,p+'.condition');const c=e.condition;
+    if(!['facts','resources','locations'].includes(c.category))calendarFail('condition',p+'.condition.category','CALENDAR_CONDITION_INVALID');
+    if(typeof c.key!=='string'||!c.key.trim()||c.key.length>128||['constructor','prototype','__proto__'].includes(c.key))calendarFail('condition',p+'.condition.key','CALENDAR_CONDITION_INVALID');
+    if(c.equals!==null&&!['string','number','boolean'].includes(typeof c.equals)||typeof c.equals==='number'&&!Number.isFinite(c.equals)||typeof c.equals==='string'&&c.equals.length>128)calendarFail('condition',p+'.condition.equals','CALENDAR_CONDITION_INVALID');
+   }
+   return{key:e.key,id:'cal-'+hash([run.runId,job.id,e.key]).slice(0,24),label:e.label,start:clone(e.start),end:clone(e.end),announcement:e.announcement,...e.condition?{condition:clone(e.condition)}:{},requiredForScene:e.requiredForScene};
+  });return{decision:'publish',events};
  }
  return validateExpressionProposal(job,v);
+}
+/** Read-only scheduling explanation; never claims a job or arms a worker. */
+export function calendarPlanningStatus(run){
+ if(!run.storyClock||!run.worldRoutine?.policy.calendar)return{state:'not_enabled'};
+ const r=run.worldRoutine,day=run.storyClock.position.earliest.dayOrdinal,life=run.recycle?.revision??0;
+ const jobs=r.jobs.filter(j=>j.kind==='calendar_plan'&&j.day===day&&j.basis.epoch===run.storyEpoch&&j.lifecycleRevision===life),attempts=jobs.reduce((n,j)=>n+j.attempts,0);
+ const base={day,windowStart:day,windowEnd:day+6,attemptsUsed:attempts,attemptLimit:ROUTINE_LIMITS.calendarAttemptsPerDay};
+ const covered=new Set(r.publications.filter(p=>activeCalendarIds(run).includes(p.id)).flatMap(p=>p.coverageDays));
+ if(Array.from({length:7},(_,i)=>day+i).every(d=>covered.has(d)))return{...base,state:'planned'};
+ const current=j=>j.clockHash===hash(run.storyClock)&&j.headPin===(run.head??null)&&routineSourceActive(run,j.basis);
+ const waiting=jobs.find(j=>['queued','running'].includes(j.status)&&current(j));
+ if(waiting)return{...base,state:waiting.status};
+ const last=jobs.at(-1),diagnostic=last?calendarFailureDiagnostic({code:last.error}):null;
+ const failed={...last?.error?{error:last.error}:{},...diagnostic?{failureDiagnostic:diagnostic}:{}};
+ if(attempts>=ROUTINE_LIMITS.calendarAttemptsPerDay)return{...base,state:'daily_limit',...failed};
+ const prior=jobs.find(j=>current(j)&&j.status!=='stale');
+ if(prior&&['failed','interrupted'].includes(prior.status))return{...base,state:prior.status,error:prior.error??null,...calendarFailureDiagnostic({code:prior.error})?{failureDiagnostic:calendarFailureDiagnostic({code:prior.error})}:{}};
+ if(last&&!current(last)||last?.status==='stale')return{...base,state:'stale',...failed};
+ return{...base,state:'waiting'};
 }
 export function routineStatus(run){
  if(!run.worldRoutine)return{status:'not_enabled',requires:'Explicit snapshot.worldRoutineDefinition; forum medium must match world setting.'};

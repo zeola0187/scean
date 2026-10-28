@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-scean-suite",
-  "version": "1.6.2-local.w29.2d.rc3.2",
+  "version": "1.6.3-local.w29.2d.rc3.1",
   "private": true,
   "type": "module",
   "description": "SCEAN: native Card Studio, dynamic fronts, durable stories and 3+8 chapter memory",
@@ -54,5 +54,10 @@
   "homepage": "https://github.com/zeola0187/scean",
   "bugs": {
     "url": "https://github.com/zeola0187/scean/issues"
+  },
+  "sceanRelease": {
+    "tag": "v1.6.3-local.w29.2d.rc3.1",
+    "acceptedRuntimeVersion": "1.6.2-local.w29.2d.rc3.1.poststat.1",
+    "releasePolicy": "metadata-only repack of accepted runtime; complete corresponding source is a separate source ZIP"
   }
 }

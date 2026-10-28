@@ -291,10 +291,10 @@ export class SceanHost {
       // The read succeeded and found no publication. Preserve input for a same-ID retry.
       base.status='failed';base.recovery='confirmed_not_committed';
     }
-    if(attempt?.recovery)base.recovery=attempt.recovery;
+    if(attempt?.recovery)base.recovery=attempt.recovery;if(base.lastFailure&&inspected.lastFailure?.bodyAvailable)base.lastFailure={...base.lastFailure,...inspected.lastFailure};
     return {...base,canonical,version:canonical.version,head:canonical.head};
   }
-  async turn({runId,input,requestId,signal,operationId,baseVersion,baseHead,viewerId,[JOB_OWNER]:job}){
+  async turn({runId,input,requestId,signal,operationId,baseVersion,baseHead,viewerId,timeConfirmation,resumeAttemptId,[JOB_OWNER]:job}){
     if(!this.metadata.runs.some(r=>r.runId===runId))fail('RUN_NOT_FOUND','Unknown SCEAN run.');
     if(typeof input!=='string'||!input.trim()||input.length>20000)fail('INPUT','Enter bounded player text.');
     if(typeof requestId!=='string'||!requestId)fail('REQUEST_ID','A stable requestId is required.');
@@ -304,7 +304,7 @@ export class SceanHost {
     if(this.mutationBusy(runId,job)){
       const run=await this.engine.store.read(runId),receipt=run.receipts?.[requestId];
       if(receipt){
-        if(receipt.inputHash!==hash(input))fail('IDEMPOTENCY_CONFLICT','Use a new requestId for changed input.');
+        if(receipt.inputHash!==hash(input)||hash(receipt.timeConfirmation??null)!==hash(timeConfirmation??null))fail('IDEMPOTENCY_CONFLICT','Use a new requestId for changed input or time confirmation.');
         if(receipt.status==='retired')fail('REQUEST_RETIRED','This request belongs to a retired turn.');
         if(!run.turns.some(turn=>turn.requestId===requestId&&turn.commitId===receipt.commitId))fail('COMMIT_OUTCOME_UNKNOWN','The canonical receipt is inconsistent.');
         return publicTurnResult(receipt.result,run);
@@ -319,7 +319,7 @@ export class SceanHost {
     const progress={runId,requestId,operationId,attemptId:null,stage:'memory',status:'pending',sequence:0,events:[]};this.progressByRun.set(runId,progress);
     try{
       await this.draftSave({runId,input,requestId,...(viewerId===undefined?{}:{viewerId})},controller);
-      const executeTurn=()=>this.engine.turn({runId,input,requestId,operationId,baseVersion,baseHead,chapterContextEnabled:this.writerSummaryArmed.has(runId)?false:undefined,signal:signal?AbortSignal.any([controller.signal,signal]):controller.signal,onProgress:event=>{owner.attemptId=event.attemptId;const owned={...event,operationId};Object.assign(progress,owned);progress.events.push(owned);if(progress.events.length>100)progress.events.shift();}});
+      const executeTurn=()=>this.engine.turn({runId,input,requestId,operationId,baseVersion,baseHead,timeConfirmation,resumeAttemptId,chapterContextEnabled:this.writerSummaryArmed.has(runId)?false:undefined,signal:signal?AbortSignal.any([controller.signal,signal]):controller.signal,onProgress:event=>{owner.attemptId=event.attemptId;const owned={...event,operationId};Object.assign(progress,owned);progress.events.push(owned);if(progress.events.length>100)progress.events.shift();}});
       let result;const waits=[10,20,40,80,120,160,200,240,320,400,500,600,800,1000];let observedBackgroundCommit=this.worldRoutine.committing.has(runId);for(let admission=0;;admission++){try{result=await executeTurn();break;}catch(e){observedBackgroundCommit||=this.worldRoutine.committing.has(runId);if(e.code!=='RUN_BUSY'||e.sceanFailure||!observedBackgroundCommit||admission>=waits.length)throw e;await new Promise(r=>setTimeout(r,waits[admission]));}}
       Object.assign(progress,{stage:'commit',status:'committed',commitId:result.commitId});
       const summary=this.metadata.runs.find(row=>row.runId===runId);if(summary)Object.assign(summary,{version:result.version,turnCount:result.turn,updatedAt:new Date(this.now()).toISOString()});
@@ -332,6 +332,16 @@ export class SceanHost {
       return projected;
     }catch(error){const failure=error.sceanFailure??safeFailure(error,progress.stage);Object.assign(progress,{status:failure.code==='COMMIT_OUTCOME_UNKNOWN'?'unknown':failure.category==='cancelled'?'cancelled':'failed',lastFailure:failure});throw error;}
     finally{if(this.activeOperations.get(runId)===owner){this.running.delete(runId);this.activeOperations.delete(runId);}}
+  }
+  async savedSettlementBody({runId,attemptId}){
+    this.requireRun(runId);const run=await this.engine.store.read(runId),a=await this.engine.store.readAttempt(runId,safeId(attemptId)),c=a.bodyCheckpoint;
+    if(!c||c.schemaVersion!==1||a.runId!==runId||c.pins?.runId!==runId||c.pins.snapshotHash!==run.snapshot.hash||typeof c.body!=='string'||c.body.length>200000||hash(c.body)!==c.bodyHash)fail('SETTLEMENT_SOURCE_STALE','找不到完整的已保存正文。');
+    return {runId,attemptId,requestId:a.requestId,status:'saved_not_committed',body:c.body,bodyHash:c.bodyHash};
+  }
+  async resumeSettlement(request){
+    this.requireRun(request.runId);const saved=await this.engine.store.readAttempt(request.runId,request.sourceAttemptId);
+    if(saved.requestId!==request.requestId||!saved.bodyCheckpoint)fail('SETTLEMENT_SOURCE_STALE','已保存正文的來源不符；未派送。');
+    return this.turn({...request,input:saved.input,timeConfirmation:saved.timeConfirmation,resumeAttemptId:saved.attemptId});
   }
   cancel({runId,operationId,requestId,attemptId}){
     const job=this.jobs.cancel({runId,operationId,requestId,attemptId});if(job)return job;
@@ -480,7 +490,7 @@ export class SceanHost {
     const work=new Promise(resolve=>setImmediate(resolve)).then(async()=>{
       // Admission remains reserved through durable job finalization. Let the
       // owning turn finish that bookkeeping before checking background capacity.
-      const finishing=this.jobs.active.get(runId);if(['turn','chapterSettings','regenerate'].includes(finishing?.row.kind))await finishing.promise;
+      const finishing=this.jobs.active.get(runId);if(['turn','chapterSettings','regenerate','settlementResume'].includes(finishing?.row.kind))await finishing.promise;
       if(this.closing||this.automaticSummaryFailures.has(runId)||this.mutationBusy(runId))return;
       const run=await this.engine.store.read(runId);
       if(run.narrative?.chapterSettings?.autoEnabled!==true||headOf(run)!==commitId)return;
@@ -673,6 +683,7 @@ export class SceanHost {
         if(revision>0&&request.expectedLifecycleRevision!==revision)fail('RUN_LIFECYCLE_CHANGED','副本已恢復，請重新讀取後操作；舊頁面的寫入不會自動重送。');
       }
       switch(request.action){
+        case 'settlementBody':value=await this.savedSettlementBody(request);break;
         case 'worldRoutineRead':this.requireRun(request.runId);value=await this.worldRoutine.read(request,authority);break;
         case 'worldRoutinePulse':case 'worldRoutineRetry':case 'diaryRequest':{if(!authority.principal||authority.allowGlobalSettings!==true||request.action==='diaryRequest'&&authority.allowPrivateDiagnostics!==true)fail('WORLD_ROUTINE_DENIED');this.requireRun(request.runId);value=request.action==='worldRoutinePulse'?await this.worldRoutine.drain({...request,signal}):request.action==='worldRoutineRetry'?await this.worldRoutine.retry(request):await this.worldRoutine.diaryRequest(request);break;}
         case 'scriptList':case 'scriptGet':case 'scriptStart':case 'scriptStatus':value=await this.scriptAction(request,scope,authority,signal);break;

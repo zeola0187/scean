@@ -16,12 +16,12 @@ export async function regenerateLast(engine,request){
     // Version stays at current v; only context is from the preceding story head.
     const virtual={
       provisionalTemporalRestore:candidate.storyClock?.sourceRef,
-      root:engine.store.root,
+      root:engine.store.root,settlementDispatches:(...a)=>engine.store.settlementDispatches(...a),reserveSettlementDispatch:(...a)=>engine.store.reserveSettlementDispatch(...a),readAttempt:(...a)=>engine.store.readAttempt(...a),
       withRunLock:async(_id,fn)=>fn(),read:async()=>({...clone(candidate),proseStyle:clone(proseStyle),writingMode:clone(writingMode)}),recoverAttempts:async()=>{},readAttempts:async()=>engine.store.readAttempts(run.runId),
-      writeAttempt:async(_id,attempt)=>{attempts.set(attempt.attemptId,clone(attempt));},
+      writeAttempt:async(_id,attempt)=>{attempts.set(attempt.attemptId,clone(attempt));await engine.store.writeAttempt(run.runId,{...clone(attempt),provisional:true});},
       commit:async(_id,version,next,{signal}={})=>{checkAbort(signal);if(version!==run.version||next.version!==run.version+1)throw new SceanError('VERSION_CONFLICT');candidate=clone(next);for(const key of ['proseStyle','writingMode']){if(Object.hasOwn(run,key))candidate[key]=clone(run[key]);else delete candidate[key];}return clone(candidate);},
     };
-    const isolated=new engine.constructor({store:virtual,model:engine.model,memory:engine.memory,chapterRecall:engine.chapterRecall,recentWindow:engine.recentWindow,unconfiguredWritingMode:engine.unconfiguredWritingMode});
+    const isolated=new engine.constructor({store:virtual,model:engine.model,memory:engine.memory,chapterRecall:engine.chapterRecall,recentWindow:engine.recentWindow,unconfiguredWritingMode:engine.unconfiguredWritingMode,postBody:engine.postBody});
     const progress=event=>{try{request.onProgress?.({...event,provisional:true,...(event.stage==='commit'&&event.status==='committed'?{status:'validated'}:{})});}catch{}};
     const persistAttempts=async status=>{for(const attempt of attempts.values()){
       attempt.status=status;attempt.provisional=status!=='committed';

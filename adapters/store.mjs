@@ -93,6 +93,20 @@ export class DurableStore {
     safeId(attempt.attemptId);
     await this.atomic(path.join(this.runDir(runId), 'attempts', `${attempt.attemptId}.json`), attempt);
   }
+
+  async readSettlementLedger(runId){
+    let data;try{const bytes=await readFile(path.join(this.runDir(runId),'settlement-dispatches.json'),'utf8');if(Buffer.byteLength(bytes)>1024*1024)throw new SceanError('SETTLEMENT_LEDGER_LIMIT');data=JSON.parse(bytes);}catch(e){if(e.code==='ENOENT')return{schemaVersion:1,entries:{}};throw e;}
+    if(data.schemaVersion!==1||!data.entries||typeof data.entries!=='object'||Array.isArray(data.entries)||Object.keys(data.entries).length>4096)throw new SceanError('SETTLEMENT_LEDGER_INVALID');
+    for(const[k,v]of Object.entries(data.entries))if(!/^[a-f0-9]{64}$/.test(k)||!Number.isInteger(v.used)||v.used<0||v.used>2)throw new SceanError('SETTLEMENT_LEDGER_INVALID');return data;
+  }
+  async settlementDispatches(runId,lineage){return(await this.readSettlementLedger(runId)).entries[lineage]?.used??0;}
+  async reserveSettlementDispatch(runId,lineage){
+    if(!this.held.has(runId)||!/^[a-f0-9]{64}$/.test(lineage))throw new SceanError('LOCK_REQUIRED');
+    const data=await this.readSettlementLedger(runId),old=data.entries[lineage]?.used??0;if(old>=2)throw new SceanError('SETTLEMENT_DISPATCH_LIMIT');
+    if(!Object.hasOwn(data.entries,lineage)&&Object.keys(data.entries).length>=4096)throw new SceanError('SETTLEMENT_LEDGER_LIMIT');
+    data.entries[lineage]={used:old+1};await this.atomic(path.join(this.runDir(runId),'settlement-dispatches.json'),data);return old+1;
+  }
+
   async readAttempts(runId) {
     const dir = path.join(this.runDir(runId), 'attempts');
     let names;

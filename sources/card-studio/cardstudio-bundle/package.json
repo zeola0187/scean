@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-card-studio-scean-test",
-  "version": "1.6.2-local.w29.2d.rc3.2",
+  "version": "1.6.3-local.w29.2d.rc3.1",
   "private": true,
   "type": "module",
   "description": "Isolated Card Studio 1.2.0 integration test copy for SCEAN",
@@ -24,7 +24,9 @@
     "LICENSE-SCOPE.md",
     "THIRD-PARTY-LICENSES.json",
     "SOURCE-AVAILABILITY.md",
-    "release-source.json"
+    "release-source.json",
+    "client-template.js",
+    "rollback-recycle.js"
   ],
   "peerDependencies": {
     "@deepseek-ai/dsh-tools": "0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2 || 0.2.1-rc.3",

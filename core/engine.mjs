@@ -1,5 +1,6 @@
+import {postBodySystems,POST_BODY_POLICY,committedTemporalView,postBodyOutputContract,normalizePostBodyProposal,postBodyArgumentRecovery,frozenBodyPins,validateFrozenBody} from './post-body-settlement.mjs';
 import {initializeWorldRoutine,routineContext,routineMetadataRebase} from './world-routine.mjs';
-import {recordActivityCheckpoint,initializeTemporal,prepareTemporalCandidate,candidateView,projectStoryState,validateTemporalPost,temporalCheckpoint,temporalReceipt,validateTemporalRun,TIME_TOOL} from './state-operations.mjs';
+import {preparePostTemporalCandidate,postBodyEventCatalog,recordActivityCheckpoint,initializeTemporal,prepareTemporalCandidate,candidateView,projectStoryState,validateTemporalPost,temporalCheckpoint,temporalReceipt,validateTemporalRun,TIME_TOOL,validateTimeConfirmation,timeToolArgumentRecovery,validateTimeRecovery,timeSourceCatalog} from './state-operations.mjs';
 import {assertNoWritableClock} from './story-clock.mjs';
 import {decodeWriterDialogue,makeDialoguePresentation,writerDialogueStatus} from './dialogue.mjs';
 import {publicSnapshot} from './inspection.mjs';
@@ -25,7 +26,7 @@ import { projectCharacterAdvice,characterAdviceOutputContract } from './characte
 import { selectWorldbooks, stripWorldbookContainers } from './worldbook.mjs';
 import { validateBlueprint, materializeInitialState, validateBlueprintStateChanges, validateBlueprintState } from './state-blueprint.mjs';
 import { budgetStage, reconcileOutputBudget, estimateContextTokens, CONTEXT_ESTIMATE_METHOD } from './context-budget.mjs';
-import {createDispatchBudget} from '../adapters/model.mjs';
+import {createDispatchBudget,createDirectorDispatchBudget} from '../adapters/model.mjs';
 
 // Only machine codes and fixed explanations cross the UI/audit boundary. Provider
 // messages can contain request bodies, file paths or credentials and are not copied.
@@ -52,6 +53,30 @@ export function safeFailure(error, stage = 'request', fallback = 'TURN_FAILED') 
     CHAPTER_RECALL_UNAVAILABLE: '章節檢索未配置；尚未送出 Director。',
     CONTEXT_PACKET_TOO_LARGE: '授權資料封包超過 16MiB 傳輸安全上限；未裁剪內容，本輪未提交。',
     NARRATIVE_COVERAGE_REQUIRED: '未摘要正文超出 50 回合或 200KB 保護上限；本輪未生成。請啟用自動長篇摘要或用手動摘要補齊，再繼續故事。全文仍可從歷史查回。',
+    POST_STATE_FORMAT:'世界結算格式不符；合法正文已保存，本輪尚未提交。可繼續結算已保存正文。',
+    POST_TIME_INVALID:'世界結算的時間表示不合法或早於已知時間；合法正文已保存，尚未提交。',
+    POST_STATE_REPAIR_INTENT_CHANGED:'格式修正改變了原本有效的時間裁定；已停止結算並保存正文，尚未提交。',
+    SETTLEMENT_SOURCE_STALE:'已保存正文的故事版本或來源已改變，不能套用舊結算；正文仍可查看，未覆寫目前故事。',
+    SETTLEMENT_DISPATCH_LIMIT:'這篇已保存正文的兩次結算額度已用盡；未提交，可先查看正文與錯誤，避免重複生成。',
+    SETTLEMENT_LEDGER_INVALID:'結算派送紀錄無法核實；已安全停止，不會重新發放額度或提交。',
+    PUBLIC_EVENT_HISTORY_CONFLICT:'結算試圖改寫已保存的事件結果；已停止，本輪正文仍保留。',
+    NEEDS_TIME_PRECISION:'仍有時間資訊衝突或機械限制；本輪未提交。可用自然語言澄清後送出新輸入，或使用可選的「補充／確認時間」覆寫；不必一律精確到分鐘。',
+    TIME_CONFIRMATION_STALE:'時間確認所依據的故事版本已改變；未派送模型。請重新讀取並確認時間。',
+    TIME_CONFIRMATION_NOT_REFINEMENT:'確認時間必須收窄目前已知範圍；若要前進，請明確選擇「推進至」。',
+    TIME_CONFIRMATION_INVALID:'請填寫完整的日期、時段或時刻，並勾選確認。',
+    TIME_CANDIDATE_UNSETTLED:'時間候選尚未完成，不能先派送依賴時間的建議；本輪未提交。',
+    TIME_CONFIRMATION_ENDPOINT_REQUIRED:'請依玩家指定的本輪終點完成時間提案；尚未提交。',
+    TIME_BEFORE_KNOWN:'目標早於已確定的故事時間；未修改存檔，請釐清日期或更正方式。',
+    TIME_ORIGIN_DAY_UNRESOLVED:'目前未知範圍跨越故事日；不能安全補足起點來源，請澄清日期。',
+    TIME_REFINEMENT_OUTSIDE_BASE:'起點補足超出既有時間範圍；未修改已確定時間。',
+    TIME_REFINEMENT_NOT_NARROWER:'起點提案未補足時間；請保留既有時間或提出合法推進。',
+    TIME_SOURCE_INVALID:'時間依據不是目前有效的公開來源；未提交。',
+    TIME_SOURCE_STALE:'時間來源已失效；請重讀目前演出。',
+    TIME_BASIS_INVALID:'時間提案的來源結構不符；未提交。',
+    TIME_QUOTE_INVALID:'時間提案引文不屬於指定公開來源；未提交。',
+    TIME_PLAYER_ORIGIN_LOCKED:'玩家已指定本輪起點；模型不能重新指定。',
+    TOOL_RECOVERY_INTENT_CHANGED:'修正不得把未完成的推進改成時間不變或另一個目標；本輪未提交。',
+    TIME_CONFIRMATION_REQUIRED:'此時間操作需要玩家明確的結構化確認；模型不能代為確認。',
     MODEL_TIMEOUT: '模型回應逾時；本輪尚未提交，可保留原輸入重試。',
     UNKNOWN_MODEL:'選定模型已不在 DSH 現有清單內；本輪未提交，未改用其他模型。請修復原路由，或以新請求選用另一個現有模型。',
     INVALID_CONFIG:'DSH 供應商或模型設定無效；本輪未提交，請先在 DSH 修復。',
@@ -181,12 +206,12 @@ export function characterIdentities(snapshot) {
 }
 
 export class SceanEngine {
-  constructor({ store, model, memory, chapterRecall, recentWindow = 6, unconfiguredWritingMode = 'single_writer' }) {
+  constructor({ store, model, memory, chapterRecall, recentWindow = 6, unconfiguredWritingMode = 'single_writer', postBody = true }) {
     if (!store || !model?.generate || !memory?.retrieve) throw new SceanError('MISSING_PORT');
     if (!Number.isInteger(recentWindow) || recentWindow < 1 || recentWindow > 50) throw new SceanError('INVALID_RECENT_WINDOW');
     this.store = store; this.model = model; this.memory = memory; this.recentWindow = recentWindow;
     if(!['single_writer','current'].includes(unconfiguredWritingMode))throw new SceanError('WRITING_MODE_UNKNOWN');
-    this.unconfiguredWritingMode=unconfiguredWritingMode;this.chapterRecall = chapterRecall;
+    this.postBody=postBody===true;this.unconfiguredWritingMode=unconfiguredWritingMode;this.chapterRecall = chapterRecall;
   }
   async createRun({ snapshot, initialState = { world: {}, characters: {} }, runId = id('run'), banList = [], openingId, modelSelection, stageModelSelections, playerName: name, chapterAutoEnabled }) {
     safeId(runId); const fixed = validateSnapshot(snapshot);
@@ -230,7 +255,8 @@ export class SceanEngine {
       }
     }
     const latest = attempts.at(-1);
-    const lastFailure = latest && ['failed', 'cancelled'].includes(latest.status) ? { ...safeFailure(latest.error, latest.error?.stage ?? latest.stages?.findLast(s => ['failed', 'cancelled'].includes(s.status))?.stage ?? 'not_recorded'), attemptId: latest.attemptId, requestId: latest.requestId, finishedAt: latest.finishedAt ?? null } : null;
+    const saved=latest?.bodyCheckpoint,used=saved?.lineage&&this.store.settlementDispatches?await this.store.settlementDispatches(runId,saved.lineage):saved?.dispatchesUsed??0;
+    const lastFailure = latest && ['failed', 'cancelled'].includes(latest.status) ? { ...safeFailure(latest.error, latest.error?.stage ?? latest.stages?.findLast(s => ['failed', 'cancelled'].includes(s.status))?.stage ?? 'not_recorded'), attemptId: latest.attemptId, requestId: latest.requestId, finishedAt: latest.finishedAt ?? null,...(saved?{bodyAvailable:true,resumeAttemptId:latest.attemptId,bodyHash:saved.bodyHash,canResume:(!!latest.preparedPost||used<2)&&saved.pins.version===run.version&&saved.pins.head===(run.head??null)}:{}) } : null;
     return { ...run, attempts, lastFailure, availability: { snapshot: 'committed', state: 'committed', memory: 'committed',
       trace: attempts.length ? attempts.at(-1).status : 'not_recorded',
       directorTools: attempts.length ? this.toolAvailability(attempts.at(-1)) : 'not_recorded' } };
@@ -256,13 +282,13 @@ export class SceanEngine {
     const recalled = await this.memory.retrieve({ query, records: clone(records), runId: run.runId, ...(characterId ? { characterId } : {}), audience, signal });
     return audience === 'owner' ? ownerData(recalled, characterId) : publicData(recalled);
   }
-  async turn({ runId, input, requestId, signal, onProgress, operationId, writingGuidance, baseVersion, baseHead, chapterContextEnabled }) {
+  async turn({ runId, input, requestId, signal, onProgress, operationId, writingGuidance, baseVersion, baseHead, chapterContextEnabled, timeConfirmation, resumeAttemptId }) {
     safeId(runId); safeId(requestId); text(input, 20000); if (operationId !== undefined) safeId(operationId);
     return this.store.withRunLock(runId, async () => {
       const run = await this.store.read(runId); validateTemporalRun(run,{provisionalRestore:this.store.provisionalTemporalRestore}); await this.store.recoverAttempts(runId);
       if (run.receipts[requestId]?.status === 'retired') throw new SceanError('REQUEST_RETIRED');
       if (run.receipts[requestId]) {
-        if (run.receipts[requestId].inputHash !== hash(input)) throw new SceanError('IDEMPOTENCY_CONFLICT');
+        if (run.receipts[requestId].inputHash !== hash(input)||hash(run.receipts[requestId].timeConfirmation??null)!==hash(timeConfirmation??null)) throw new SceanError('IDEMPOTENCY_CONFLICT');
         return clone(run.receipts[requestId].result);
       }
       // W19: check the browser's observed head only after canonical dedup, while
@@ -273,10 +299,15 @@ export class SceanEngine {
         if (run.version !== baseVersion&&!routineMetadataRebase(run,baseVersion,baseHead)) throw new SceanError('VERSION_CONFLICT');
         if (headOf(run) !== baseHead) throw new SceanError('HISTORY_HEAD_CONFLICT');
       }
+      timeConfirmation=validateTimeConfirmation(run,timeConfirmation);
       assertHistoryCapacity(run,{turn:true});
       validatePlayerIdentity(run.playerIdentity,run);
       const identity=playerContext(run),bindingHash=identity?hash(identity):null;
-      const priorAttempts = await this.store.readAttempts(runId);
+      const allPriorAttempts = await this.store.readAttempts(runId);
+      const priorAttempts=allPriorAttempts.filter(a=>!this.postBody||a.postBodyPolicy===POST_BODY_POLICY);
+      const resumeSource=resumeAttemptId?await this.store.readAttempt(runId,safeId(resumeAttemptId)):null;
+      if(resumeSource&&(resumeSource.runId!==runId||resumeSource.requestId!==requestId||resumeSource.input!==input||resumeSource.postBodyPolicy!==POST_BODY_POLICY||!resumeSource.bodyCheckpoint))throw new SceanError('SETTLEMENT_SOURCE_STALE');
+      if(priorAttempts.some(a=>a.requestId===requestId&&hash(a.timeConfirmation??null)!==hash(timeConfirmation??null)))throw new SceanError('TIME_CONFIRMATION_REQUEST_CHANGED');
       const routePin=this.model.captureRoutes?await this.model.captureRoutes({run,requestId,kind:'turn',inputHash:hash(input),signal}):null;
       const chapterContextPin={schemaVersion:1,enabled:chapterContextEnabled??run.narrative?.chapterSettings?.autoEnabled===true,settingsVersion:run.narrative?.chapterSettings?.version??0};
       for(const prior of priorAttempts.filter(a=>a.requestId===requestId))if(prior.chapterContextPin&&hash(prior.chapterContextPin)!==hash(chapterContextPin))throw new SceanError('CHAPTER_CONTEXT_REQUEST_CHANGED');
@@ -289,9 +320,9 @@ export class SceanEngine {
       const priorModes=priorAttempts.filter(a=>a.requestId===requestId).map(a=>a.writingMode?validateWritingModePin(a.writingMode):null);
       const writingMode=priorModes.length?(priorModes[0]??await captureWritingMode({...defaultWritingMode(runId),mode:'current'})):await captureWritingMode(await readRunWritingMode(this.store,run,this.unconfiguredWritingMode));
       if(priorModes.some(p=>p&&hash(p)!==hash(writingMode)||p===null&&writingMode.mode!=='current'))throw new SceanError('WRITING_MODE_REQUEST_CONFLICT');
-      const modeRef=writingModeReference(writingMode),systems=systemsForWritingMode(SYSTEMS,writingMode),singleWriter=writingMode.mode==='single_writer';
+      const modeRef=writingModeReference(writingMode),systems=this.postBody?postBodySystems(systemsForWritingMode(SYSTEMS,writingMode)):systemsForWritingMode(SYSTEMS,writingMode),singleWriter=writingMode.mode==='single_writer';
       const withMethod=(stage,payload)=>{const skill=writingMode.skills.find(s=>s.stage===stage);return skill?{...payload,writingSkill:clone(skill)}:payload;};
-      const attempt = { ...(routePin?{modelRouting:{hash:routePin.hash,globalRevision:routePin.globalRevision,runRevision:routePin.runRevision}}:{}),chapterContextPin:clone(chapterContextPin), writingMode:clone(writingMode), proseStyle:clone(proseStyle), schemaVersion: 1, attemptId: id('attempt'), runId, requestId, ...(operationId ? { operationId } : {}), baseVersion: run.version,
+      const attempt = { ...(this.postBody?{postBodyPolicy:POST_BODY_POLICY}:{}),...(resumeSource?{resumedFromAttemptId:resumeSource.attemptId}:{}), ...(routePin?{modelRouting:{hash:routePin.hash,globalRevision:routePin.globalRevision,runRevision:routePin.runRevision}}:{}),chapterContextPin:clone(chapterContextPin), writingMode:clone(writingMode), proseStyle:clone(proseStyle), schemaVersion: 1, attemptId: id('attempt'), runId, requestId, ...(operationId ? { operationId } : {}), baseVersion: run.version,...(timeConfirmation?{timeConfirmation:clone(timeConfirmation)}:{}),
         turnIdentity:{schemaVersion:1,turn:run.turns.length+1,baseHead:headOf(run),snapshotHash:run.snapshot.hash},
         playerBindingHash:bindingHash, status: 'pending', startedAt: new Date().toISOString(), input, inputSnapshot: { cardId: run.snapshot.cardId, revision: run.snapshot.revision, hash: run.snapshot.hash }, stages: [], tools: [], directorComplete: false };
       let sequence = 0;
@@ -307,7 +338,7 @@ export class SceanEngine {
         Promise.resolve().then(operation).then(resolve, reject).finally(() => signal?.removeEventListener('abort', abort));
       });
       await checkpoint();
-      let activeStage = 'memory';
+      let activeStage = 'memory',postAllowance=null,directorAllowance=null,correctionPending=false,toolCorrections=0,unresolvedToolFailure=null; 
       const withPlayer=payload=>identity?{...payload,playerIdentity:{...identity,meaning:'Display name of reserved actor player; never an NPC ID, state key or memory knower.'}}:payload;
       const preflight = async (stage, payload, tools, dispatchBudget) => {
         payload=withPlayer(withMethod(stage,payload));
@@ -384,15 +415,18 @@ export class SceanEngine {
       try {
         checkAbort(signal);
         if(!run.storyClock)throw new SceanError('STORY_CLOCK_REQUIRED');
-        let temporal=prepareTemporalCandidate(run,{kind:'hold'},{requestId,inputHash:hash(input)}),timeToolUsed=false,endpointAdviceUsed=false;
+        let temporal=this.postBody?null:prepareTemporalCandidate(run,timeConfirmation?.schemaVersion===1?{kind:'confirm_time',mode:timeConfirmation.mode,target:timeConfirmation.target,sourceRefs:['player_confirmation']}:{kind:'hold'},{requestId,inputHash:hash(input),input,confirmation:timeConfirmation,pendingEndpoint:timeConfirmation?.schemaVersion===2&&timeConfirmation.role==='endpoint',provisional:timeConfirmation?.schemaVersion!==1}),timeToolUsed=!this.postBody&&timeConfirmation?.schemaVersion===1,endpointAdviceUsed=false;
+        if(this.postBody&&timeConfirmation?.schemaVersion===1)throw new SceanError('TIME_CONFIRMATION_REQUEST_CHANGED');
+        const currentTemporalRef=()=>temporal?.candidateRef??'committed-'+hash([run.head??null,run.storyClock]);
+        const directorTools=this.postBody?DIRECTOR_TOOLS.filter(t=>t.function.name!=='resolve_turn_time'):DIRECTOR_TOOLS;
         const checkpointPins={inputHash:hash(input),routeHash:routePin?.hash??null,writingModeHash:hash(writingMode),styleHash:hash(proseStyle)};
         const saveTemporal=async body=>{attempt.temporalCheckpoint=temporalCheckpoint(run,temporal,{...checkpointPins,...(body!==undefined?{body,bodyHash:hash(body)}:{})});await checkpoint();};
-        await saveTemporal();
+        if(!this.postBody)await saveTemporal();
         const assembled = assembleSources(run.snapshot);
         const recentDialogue = publicData([...clone(run.snapshot.recentDialogue ?? []), ...run.turns.map(t => ({ turn: t.turn, input: t.input, body: t.body }))]);
         const selected = selectWorldbooks(run.snapshot, { playerInput: input, recentDialogue, config: run.snapshot.worldbookSelection ?? {},playerName:run.playerIdentity?.name });
         let narrative = selectNarrative(run, { recentWindow: this.recentWindow }),chapters=null;
-        if(chapterContextPin.enabled){
+        if(chapterContextPin.enabled&&!resumeSource){
           const recall=this.chapterRecall??new ChapterRecall();
           const sources=chapterContextSources(run);
           attempt.assemblyDiagnostics={...assembled.diagnostics,worldbook:selected.diagnostics,chapterRecall:{...sources.diagnostics,status:'pending'}};
@@ -413,12 +447,12 @@ export class SceanEngine {
         const stageSources = projectPlayerSources(stripWorldbookContainers(narrativeSources(assembled.sources)),run);
         stageSources.worldbook = { entries: clone(selected.entries) };
         const clockDependentFacts=run.snapshot.derivedFacts?.bindings.some(b=>b.target.scope==='world'&&(b.target.category==='time'&&b.target.key==='current'||b.target.category==='effects'&&b.target.key==='story_events'));
-        const candidateDerived=()=>projectDerivedFacts(clockDependentFacts?{...run,storyClock:temporal.clockAfter,worldActivity:temporal.worldActivityAfter}:run,{writerOnly:true,...(clockDependentFacts?{temporalCandidate:temporal.candidateRef}:{})});
+        const candidateDerived=()=>projectDerivedFacts(clockDependentFacts?{...run,storyClock:temporal?.clockAfter??run.storyClock,worldActivity:temporal?.worldActivityAfter??run.worldActivity}:run,{writerOnly:true,...(clockDependentFacts?{temporalCandidate:temporal?.candidateRef}:{})});
         const derived=candidateDerived();
         if(derived)attempt.assemblyDiagnostics.derivedFacts={config:clone(derived.config),canonical:clone(derived.canonical),providedFactIds:derived.facts.map(f=>f.id),stageUse:[]};
         const priorRoutine=run.worldRoutine?(await this.store.readAttempts(runId)).find(a=>a.requestId===requestId&&a.assembly?.worldRoutine)?.assembly.worldRoutine:null;
         const routineArtifactIds=priorRoutine?priorRoutine.forum.map(a=>a.id):undefined;
-        const assembly = {
+        let assembly = {
           playerInput: input,
           ...(writingGuidance?{writingGuidance:text(writingGuidance,10000)}:{}),
           sources: stageSources,
@@ -428,22 +462,25 @@ export class SceanEngine {
           recentDialogue: publicData([...seed, ...narrative.recentDialogue]),
           ...(run.snapshot.stateBlueprint ? { stateBlueprint: publicBlueprint(run.snapshot.stateBlueprint) } : {}),
           ...(derived?.facts.length?{derivedFacts:derived}:{}),
-          ...(run.worldRoutine?{worldRoutine:routineContext(run,{query:input,clock:temporal.clockAfter,artifactIds:routineArtifactIds})}:{}),
-          temporal:candidateView(run,temporal),
-          worldState: projectStoryState(run,{clock:temporal.clockAfter,activity:temporal.worldActivityAfter}), memory: { records: [], status: 'pending' },
+          ...(run.worldRoutine?{worldRoutine:routineContext(run,{query:input,clock:temporal?.clockAfter??run.storyClock,artifactIds:routineArtifactIds})}:{}),
+          ...(this.postBody?{}:{timeSources:timeSourceCatalog(run,input)}),
+          temporal:this.postBody?committedTemporalView(run):candidateView(run,temporal),
+          worldState: projectStoryState(run,{clock:temporal?.clockAfter??run.storyClock,activity:temporal?.worldActivityAfter??run.worldActivity}), memory: { records: [], status: 'pending' },
           characters: characterIdentities(run.snapshot),
           characterIdentities: characterIdentities(run.snapshot),
         };
-        await preflight('director', { assembly, conversation: [],...(singleWriter?{handoffContract:writerHandoffContract(assembly,[])}:{}) }, DIRECTOR_TOOLS);
+        if(!resumeSource)await preflight('director', { assembly, conversation: [],...(singleWriter?{handoffContract:writerHandoffContract(assembly,[])}:{}) }, directorTools);
         activeStage = 'memory'; progress('memory', 'pending');
-        assembly.memory = await abortable(() => this.recall(run, input, undefined, signal)); checkAbort(signal);
+        if(!resumeSource)assembly.memory = await abortable(() => this.recall(run, input, undefined, signal)); checkAbort(signal);
         progress('memory', 'completed');
-        attempt.assembly = clone(assembly); await checkpoint();
+        if(resumeSource)assembly=clone(resumeSource.assembly);attempt.assembly = clone(assembly); await checkpoint();
         const conversation = []; let brief; let toolCount = 0; let historyToolCount = 0; let historyTokenEstimate = 0;
-        for (let round = 0; round < 5; round++) {
+        if(!resumeSource)for (let round = 0; round < 5; round++) {
           const evidence=singleWriter?publicToolEvidence(attempt.tools,{snapshotHash:run.snapshot.hash,turn:run.turns.length+1}):null;
-          const director = await call('director', { assembly, conversation: clone(conversation),...(singleWriter?{handoffContract:writerHandoffContract(assembly,evidence)}:{}) }, DIRECTOR_TOOLS);
-          if (!director.toolCalls?.length) { brief = text(director.text); attempt.directorComplete = true; await checkpoint(); break; }
+          const correcting=correctionPending;correctionPending=false;
+          directorAllowance??=createDirectorDispatchBudget({signal,timeoutMs:this.model.timeoutMs??180000,onReserve:async()=>{attempt.directorDispatches=(attempt.directorDispatches??0)+1;await checkpoint();}});
+          const director = await call('director', { assembly, conversation: clone(conversation),...(singleWriter?{handoffContract:writerHandoffContract(assembly,evidence)}:{}) }, directorTools,directorAllowance);
+          if (!director.toolCalls?.length) {if(unresolvedToolFailure)throw new SceanError('TOOL_RECOVERY_INCOMPLETE');if(temporal?.endpointPending)throw new SceanError('TIME_CONFIRMATION_ENDPOINT_REQUIRED');if(temporal?.settlementPending)throw new SceanError('NEEDS_TIME_PRECISION');directorAllowance?.close();directorAllowance=null; brief = text(director.text); attempt.directorComplete = true; await checkpoint(); break; }
           if (round === 4) throw new SceanError('DIRECTOR_TOOL_LIMIT');
           conversation.push({ role: 'assistant', text: director.text, toolCalls: director.toolCalls });
           // Time tools settle before any endpoint-dependent advice in the same batch.
@@ -453,10 +490,14 @@ export class SceanEngine {
             const args = parseObject(tool.arguments);
             const record = { id: tool.id, name: tool.name, arguments: clone(args), status: 'pending', startedAt: new Date().toISOString() }; attempt.tools.push(record); await checkpoint();
             try {
-              activeStage = tool.name;
+              activeStage = tool.name;directorAllowance.check();if(this.postBody&&tool.name==='resolve_turn_time')throw new SceanError('TOOL_NOT_ALLOWED');
+              if(['consult_character','adjudicate_action'].includes(tool.name)&&(temporal?.endpointPending||temporal?.settlementPending))throw new SceanError('TIME_CANDIDATE_UNSETTLED');
               let result;
+              const completed=correcting?attempt.tools.find(t=>t!==record&&t.status==='completed'&&t.name===tool.name&&json(t.arguments)===json(args)&&(['search_history','read_history'].includes(t.name)||t.temporalCandidate===currentTemporalRef())):null;
+              if(completed){if(unresolvedToolFailure?.name===tool.name)unresolvedToolFailure=null;record.result=clone(completed.result);record.status='completed';record.reusedFrom=completed.id;record.temporalCandidate=currentTemporalRef();record.finishedAt=new Date().toISOString();conversation.push({role:'tool',toolCallId:tool.id,name:tool.name,result:clone(record.result)});await checkpoint();continue;}
               if(tool.name==='resolve_turn_time'){
-                const proposed=prepareTemporalCandidate(run,args,{requestId,inputHash:hash(input)});
+                if(unresolvedToolFailure?.name===tool.name&&tool.name==='resolve_turn_time')validateTimeRecovery(unresolvedToolFailure.intent,args);
+                const proposed=prepareTemporalCandidate(run,args,{requestId,inputHash:hash(input),input,confirmation:timeConfirmation});
                 if(endpointAdviceUsed&&proposed.hash!==temporal.hash)throw new SceanError('TIME_OPERATION_AFTER_ADVICE');
                 if(timeToolUsed&&proposed.hash!==temporal.hash)throw new SceanError('TIME_OPERATION_CONFLICT');
                 temporal=proposed;timeToolUsed=true;if(run.worldRoutine)assembly.worldRoutine=routineContext({...run,worldActivity:temporal.worldActivityAfter},{query:input,clock:temporal.clockAfter,artifactIds:routineArtifactIds});assembly.temporal=candidateView(run,temporal);assembly.worldState=projectStoryState(run,{clock:temporal.clockAfter,activity:temporal.worldActivityAfter});
@@ -490,7 +531,7 @@ export class SceanEngine {
                   characterIdentities: characterIdentities(run.snapshot),
                 };
                 record.consultation={dispatchLimit:2,dispatches:0,formatCorrections:0,validation:'pending'};
-                const allowance=createDispatchBudget({signal,timeoutMs:this.model.timeoutMs??180000,onReserve:async count=>{record.consultation.dispatches=count;await checkpoint();}});
+                const allowance=createDispatchBudget({signal:directorAllowance.signal,timeoutMs:this.model.timeoutMs??180000,onReserve:async count=>{record.consultation.dispatches=count;await checkpoint();}});
                 try{
                   await preflight('character',ownerPacket,undefined,allowance);
                   ownerPacket.memory=await abortable(()=>allowance.run(()=>this.recall(run,args.question,actor.id,allowance.signal,'owner')));
@@ -518,16 +559,30 @@ export class SceanEngine {
                 endpointAdviceUsed=true;
                 text(args.action, 10000);
                 if (args.mode !== undefined && !['query', 'calculate', 'adjudicate'].includes(args.mode)) throw new SceanError('INVALID_STAT_MODE');
-                result = await call('adjudicate', { ...(run.snapshot.stateBlueprint ? { stateBlueprint: publicBlueprint(run.snapshot.stateBlueprint) } : {}), mode: args.mode ?? 'adjudicate', action: resolvePlayerText(args.action,identity?.name), temporal:clone(assembly.temporal),state: clone(assembly.worldState), worldbook: clone(assembly.sources.worldbook), playerInput: input, recentDialogue: clone(assembly.recentDialogue), characterIdentities: characterIdentities(run.snapshot) });
+                const adviceAllowance=createDispatchBudget({signal:directorAllowance.signal,timeoutMs:this.model.timeoutMs??180000});try{result = await call('adjudicate', { ...(run.snapshot.stateBlueprint ? { stateBlueprint: publicBlueprint(run.snapshot.stateBlueprint) } : {}), mode: args.mode ?? 'adjudicate', action: resolvePlayerText(args.action,identity?.name), temporal:clone(assembly.temporal),state: clone(assembly.worldState), worldbook: clone(assembly.sources.worldbook), playerInput: input, recentDialogue: clone(assembly.recentDialogue), characterIdentities: characterIdentities(run.snapshot) },undefined,adviceAllowance);}finally{adviceAllowance.close();}
                 record.kind = 'ruling_not_commit';
               } else throw new SceanError('TOOL_NOT_ALLOWED');
-              text(result.text); record.result = { text: result.text, ...(result.advice ? { advice: clone(result.advice) } : {}) }; record.status = 'completed'; record.finishedAt = new Date().toISOString();
+              directorAllowance.check();if(unresolvedToolFailure?.name===tool.name)unresolvedToolFailure=null;text(result.text);record.temporalCandidate=currentTemporalRef(); record.result = { text: result.text, ...(result.advice ? { advice: clone(result.advice) } : {}) }; record.status = 'completed'; record.finishedAt = new Date().toISOString();
               conversation.push({ role: 'tool', toolCallId: tool.id, name: tool.name, result: clone(record.result) }); await checkpoint();
-            } catch (error) { record.status = signal?.aborted ? 'cancelled' : 'failed'; if (!error.category && !['character', 'adjudicate'].includes(activeStage)) error.category = 'tool'; record.error = safeFailure(error, activeStage, 'TOOL_FAILED'); record.finishedAt = new Date().toISOString(); await checkpoint(); throw error; }
+            } catch (error) {
+              record.status=signal?.aborted?'cancelled':'failed';if(!error.category&&!['character','adjudicate'].includes(activeStage))error.category='tool';record.error=safeFailure(error,activeStage,'TOOL_FAILED');record.finishedAt=new Date().toISOString();await checkpoint();
+              checkAbort(signal);const recovery=timeToolArgumentRecovery(error,tool.name,args);
+              if(!recovery||tool.name==='resolve_turn_time'&&(endpointAdviceUsed||timeToolUsed)||toolCorrections>=1||round>=3||toolCount>=6||!directorAllowance.remaining)throw error;
+              directorAllowance.check();toolCorrections++;attempt.toolRecovery={limit:1,used:toolCorrections,code:recovery.code,validation:recovery.validation,status:'feedback_sent'};record.recovery=clone(recovery);
+              conversation.push({role:'tool',toolCallId:tool.id,name:tool.name,result:{text:json(recovery)}});
+              for(const skipped of director.toolCalls.filter(t=>!attempt.tools.some(done=>done.id===t.id))){
+                (attempt.skippedTools??=[]).push({id:skipped.id,name:skipped.name,reason:'earlier_tool_failed'});
+                conversation.push({role:'tool',toolCallId:skipped.id,name:skipped.name,result:{text:json({ok:false,code:'TOOL_NOT_EXECUTED',reason:'earlier_tool_failed',effects:'none',instruction:'This call was not executed. Replan only after the failed dependency is corrected; do not assume any result.'})}});
+              }
+              unresolvedToolFailure={name:tool.name,id:tool.id,intent:recovery.intent??null};correctionPending=true;await checkpoint();break;
+            }
           }
+          if(correcting&&unresolvedToolFailure)throw new SceanError('TOOL_RECOVERY_INCOMPLETE');
+          if(correcting&&attempt.toolRecovery)attempt.toolRecovery.status='corrected';
         }
-        if (!brief) throw new SceanError('MISSING_DIRECTOR_BRIEF');
+        if (!brief&&!resumeSource) throw new SceanError('MISSING_DIRECTOR_BRIEF');
         let body,dialogueOutput=null,dialogueBodyHash=null;
+        if(!resumeSource){
         if(singleWriter){
           activeStage='writer_handoff';
           const handoff=buildWriterHandoff(brief,{assembly,tools:attempt.tools,snapshotHash:run.snapshot.hash,turn:run.turns.length+1});
@@ -535,7 +590,7 @@ export class SceanEngine {
           const writerInput=prepareSingleWriterInput({assembly,handoff,preset:projectPlayerPreset(stripWorldbookContainers(publicSources(run.snapshot.preset)),identity?.name),proseStyle});
           await preflight('writer',writerInput);
           const writerRaw=(await call('writer',writerInput)).text;
-          dialogueOutput=decodeWriterDialogue(writerRaw,{candidateRef:temporal.candidateRef});body=text(dialogueOutput.body);dialogueBodyHash=hash(body);
+          dialogueOutput=decodeWriterDialogue(writerRaw,this.postBody?{postBody:true}:{candidateRef:temporal?.candidateRef});body=text(dialogueOutput.body);dialogueBodyHash=hash(body);
         }else{
           const draft = text((await call('draft', { context: assembly, directorBrief: brief })).text);
           body = text((await call('prose', { temporal:clone(assembly.temporal),draft, playerInput: input, preset: projectPlayerPreset(stripWorldbookContainers(publicSources(run.snapshot.preset)),identity?.name), characterIdentities: characterIdentities(run.snapshot), ...(proseStyle.text!==null?{proseStyle:clone(proseStyle)}:{}) })).text);
@@ -556,25 +611,48 @@ export class SceanEngine {
         }
         const frozen=singleWriter?freezeWriterBody(body):null;
         if(validation){Object.assign(validation,{status:'completed',finishedAt:new Date().toISOString(),bodyHash:frozen.bodyHash});attempt.finalBody={bodyHash:frozen.bodyHash,sourceStage:'writer',locallyRepaired:attempt.banList.passes.length>1};await checkpoint();progress('validation','completed');}
-        await saveTemporal(body);
-        const proposal = parseObject((await call('post_stat', { temporal:clone(assembly.temporal), ...(frozen?{bodyHash:frozen.bodyHash}:{}),outputContract: postStatOutputContract(run.snapshot.characters,temporal.candidateRef), ...(run.snapshot.stateBlueprint ? { stateBlueprint: publicBlueprint(run.snapshot.stateBlueprint) } : {}), finalBody: body, previousState: clone(assembly.worldState), characters: characterIdentities(run.snapshot) })).text);
-        if(frozen)assertWriterBodyHash(body,frozen.bodyHash);
+        if(!this.postBody)await saveTemporal(body);
+        }else{body=resumeSource.bodyCheckpoint.body;dialogueOutput=clone(resumeSource.bodyCheckpoint.dialogueOutput??null);dialogueBodyHash=resumeSource.bodyCheckpoint.dialogueBodyHash??null;}
+        const frozenBody=freezeWriterBody(body),bodyPins=frozenBodyPins(run,{input,routeHash:routePin?.hash??null,writingModeHash:writingMode.hash,styleHash:hash(proseStyle)});
+        if(this.postBody){if(resumeSource)validateFrozenBody(run,resumeSource.bodyCheckpoint,bodyPins);const lineage=hash([requestId,hash(body),bodyPins]);if(!this.store.settlementDispatches||!this.store.reserveSettlementDispatch)throw new SceanError('SETTLEMENT_LEDGER_REQUIRED');const used=await this.store.settlementDispatches(runId,lineage);if(used<(resumeSource?.bodyCheckpoint.dispatchesUsed??0))throw new SceanError('SETTLEMENT_LEDGER_INVALID');attempt.bodyCheckpoint={schemaVersion:1,lineage,body,bodyHash:hash(body),pins:bodyPins,dispatchesUsed:used,dialogueOutput,dialogueBodyHash,status:'body_frozen'};await checkpoint();}
+        let proposal,normalizedPost,preparedPost,appliedPost;
+        if(this.postBody){
+          const cp=attempt.bodyCheckpoint,remaining=2-cp.dispatchesUsed;
+          if(!resumeSource?.preparedPost&&remaining<1)throw new SceanError('SETTLEMENT_DISPATCH_LIMIT');
+          const postInput={finalBody:body,bodyHash:hash(body),playerInput:input,previousState:projectStoryState(run),previousClock:assembly.temporal.clock,timeDefinition:assembly.temporal.definition,worldRules:publicSources(assembly.sources),publicEvents:postBodyEventCatalog(run),recentDialogue:clone(assembly.recentDialogue),...(assembly.rollingSummary?{rollingSummary:clone(assembly.rollingSummary)}:{}),...(assembly.chapterContext?{chapterContext:clone(assembly.chapterContext)}:{}),...(timeConfirmation?{playerOverride:clone(timeConfirmation)}:{}),...(run.snapshot.stateBlueprint?{stateBlueprint:publicBlueprint(run.snapshot.stateBlueprint)}:{}),characters:characterIdentities(run.snapshot),outputContract:postBodyOutputContract(run.snapshot.characters)};
+          let correction=null,lockedTime=null;
+          if(!resumeSource?.preparedPost)postAllowance=createDispatchBudget({signal,timeoutMs:this.model.timeoutMs??180000,limit:remaining,onReserve:async()=>{cp.dispatchesUsed=await this.store.reserveSettlementDispatch(runId,cp.lineage);cp.status='settlement_running';await checkpoint();}});
+          for(let pass=0;;pass++){
+            try{proposal=resumeSource?.preparedPost?clone(resumeSource.preparedPost.proposal):parseObject((await call('post_stat',{...postInput,...(correction?{correction}:{} )},undefined,postAllowance)).text);
+              if(resumeSource?.preparedPost&&(resumeSource.preparedPost.bodyHash!==hash(body)||resumeSource.preparedPost.proposalHash!==hash(proposal)))throw new SceanError('SETTLEMENT_SOURCE_STALE');
+              if(lockedTime&&json(proposal?.time)!==json(lockedTime))throw new SceanError('POST_STATE_REPAIR_INTENT_CHANGED');
+              normalizedPost=normalizePostBodyProposal(proposal);
+              temporal=preparePostTemporalCandidate(run,{kind:'post_body',bodyHash:hash(body),time:normalizedPost.time,eventChanges:normalizedPost.eventChanges},{requestId,inputHash:hash(input),input,confirmation:timeConfirmation});
+              appliedPost=applyStatProposal(normalizedPost.stat,run.state,run.snapshot.characters,body,{publicView:true});
+               validateBlueprintStateChanges(run.snapshot.stateBlueprint,normalizedPost.stat.stateChanges,run.snapshot.characters,{source:{id:attempt.attemptId,version:run.version+1},publicView:true});
+              validateBlueprintState(run.snapshot.stateBlueprint,appliedPost.state,run.snapshot.characters);assertNoWritableClock(appliedPost.state,run.snapshot.stateBlueprint);
+              attempt.preparedPost={proposal:clone(proposal),proposalHash:hash(proposal),bodyHash:hash(body),candidateHash:temporal.hash};cp.status='proposal_prepared';await checkpoint();break;
+            }catch(error){const recovery=postBodyArgumentRecovery(error);if(resumeSource?.preparedPost||pass>=1||!recovery||!postAllowance?.remaining)throw error;if(proposal?.time)try{preparePostTemporalCandidate(run,{kind:'post_body',bodyHash:hash(body),time:proposal.time,eventChanges:[]},{requestId,inputHash:hash(input),input,confirmation:timeConfirmation});lockedTime=clone(proposal.time);}catch{}correction={...recovery,...(lockedTime?{preserveTime:clone(lockedTime)}:{}),previousOutput:clone(proposal??null)};attempt.postStatRecovery={used:1,limit:1,code:error.code};await checkpoint();}
+          }
+          postAllowance?.close();postAllowance=null;
+        }else proposal = parseObject((await call('post_stat', { temporal:clone(assembly.temporal),...(singleWriter?{bodyHash:frozenBody.bodyHash}:{}),outputContract: postStatOutputContract(run.snapshot.characters,temporal?.candidateRef), ...(run.snapshot.stateBlueprint ? { stateBlueprint: publicBlueprint(run.snapshot.stateBlueprint) } : {}), finalBody: body, previousState: clone(assembly.worldState), characters: characterIdentities(run.snapshot) })).text);
+        assertWriterBodyHash(body,frozenBody.bodyHash);
         const turn = run.turns.length + 1, commitId = id('commit'), bodyHash = hash(body);
         let dialoguePresentation;try{if(dialogueBodyHash===bodyHash)dialoguePresentation=makeDialoguePresentation({body,entries:dialogueOutput?.entries,runId,snapshotHash:run.snapshot.hash,commitId,bodyHash,actors:publicSnapshot(run.snapshot).characters});}catch{}
         if(singleWriter)attempt.dialoguePresentation=writerDialogueStatus(dialogueOutput,dialoguePresentation,{bodyChanged:dialogueBodyHash!==bodyHash});
-        const { state, memories: proposedMemories, stateChanges, playerHistory: proposedPlayerHistory = [] } = applyStatProposal(validateTemporalPost(proposal,temporal,body,run.snapshot.stateBlueprint), run.state, run.snapshot.characters, body, { publicView: true });
-        const stateProvenance = validateBlueprintStateChanges(run.snapshot.stateBlueprint, proposal.stateChanges, run.snapshot.characters, { source: { id: commitId, version: run.version + 1 }, publicView: true });
+        const { state, memories: proposedMemories, stateChanges, playerHistory: proposedPlayerHistory = [] } = (this.postBody?appliedPost:applyStatProposal(validateTemporalPost(proposal,temporal,body,run.snapshot.stateBlueprint), run.state, run.snapshot.characters, body, { publicView: true }));
+        const stateProvenance = validateBlueprintStateChanges(run.snapshot.stateBlueprint, this.postBody?normalizedPost.stat.stateChanges:proposal.stateChanges, run.snapshot.characters, { source: { id: commitId, version: run.version + 1 }, publicView: true });
         validateBlueprintState(run.snapshot.stateBlueprint, state, run.snapshot.characters);
         const memories = proposedMemories.map((m, index) => ({ ...m, id: `${commitId}-${index}`, version: 1, source: { runId, turn, commitId, bodyHash, requestId, attemptId: attempt.attemptId, snapshotHash: run.snapshot.hash, cardId: run.snapshot.cardId, revision: run.snapshot.revision, rosterHash: hash(run.snapshot.characters) } }));
         const playerHistory = proposedPlayerHistory.map((entry, index) => ({ ...entry, id: `${commitId}-player-${index}`, version: 1, source: { runId, turn, commitId, bodyHash, requestId, attemptId: attempt.attemptId, snapshotHash: run.snapshot.hash, cardId: run.snapshot.cardId, revision: run.snapshot.revision, rosterHash: hash(run.snapshot.characters) } }));
         assertNoWritableClock(state,run.snapshot.stateBlueprint);
-        const result = { storyClock:clone(temporal.clockAfter),candidateRef:temporal.candidateRef,runId, requestId, version: run.version + 1, turn, body, state, memories, playerHistory, commitId, status: 'committed', trace: { ...(writingMode.revision>0?{writingMode:modeRef}:{}), ...(proseStyle.revision>0?{proseStyle:styleRef}:{}), attemptId: attempt.attemptId, ...(operationId ? { operationId } : {}), tools: clone(attempt.tools), stages: attempt.stages.map(s => ({ stage: s.stage, status: s.status })) } };
+        const result = { storyClock:clone(temporal.clockAfter),candidateRef:temporal?.candidateRef,runId, requestId, version: run.version + 1, turn, body, state, memories, playerHistory, commitId, status: 'committed', trace: { ...(writingMode.revision>0?{writingMode:modeRef}:{}), ...(proseStyle.revision>0?{proseStyle:styleRef}:{}), attemptId: attempt.attemptId, ...(operationId ? { operationId } : {}), tools: clone(attempt.tools), stages: attempt.stages.map(s => ({ stage: s.stage, status: s.status })) } };
         const now = new Date().toISOString();
         const activityCheckpoints={...run.worldActivityCheckpoints};
         const activityBefore=recordActivityCheckpoint(activityCheckpoints,temporal.worldActivityBefore),activityAfter=recordActivityCheckpoint(activityCheckpoints,temporal.worldActivityAfter,{compact:!!run.worldRoutine,parentActivity:temporal.worldActivityBefore});
         const next = { ...run, worldActivityCheckpoints:activityCheckpoints,storyClock:clone(temporal.clockAfter),worldActivity:clone(temporal.worldActivityAfter),storyRevision:run.storyRevision+1,head: commitId, version: run.version + 1, state, ...(run.snapshot.stateBlueprint ? { stateProvenance: [...(run.stateProvenance ?? []), ...stateProvenance] } : {}), memories: [...run.memories, ...memories], playerHistory: [...(run.playerHistory ?? []), ...playerHistory], updatedAt: now,
-          turns: [...run.turns, { clockBefore:clone(temporal.clockBefore),clockAfter:clone(temporal.clockAfter),worldActivityBefore:activityBefore,worldActivityAfter:activityAfter,timeResolution:temporalReceipt(temporal),turn, requestId, commitId, commitVersion: run.version+1, ...(run.snapshot.stateBlueprint ? {stateProvenanceBefore:clone(run.stateProvenance??[]),stateProvenanceAfter:[...(run.stateProvenance??[]),...stateProvenance]} : {}), input, body, bodyHash, ...(dialoguePresentation?{dialoguePresentation}:{}), stateBefore: clone(run.state), stateAfter: clone(state), memoryIds: memories.map(m => m.id), playerHistoryIds: playerHistory.map(entry => entry.id), attemptId: attempt.attemptId, committedAt: now }],
-          receipts: { ...run.receipts, [requestId]: { inputHash: hash(input), commitId, attemptId: attempt.attemptId, result } } };
+          turns: [...run.turns, { clockBefore:clone(temporal.clockBefore),clockAfter:clone(temporal.clockAfter),worldActivityBefore:activityBefore,worldActivityAfter:activityAfter,timeResolution:temporalReceipt(temporal),...(timeConfirmation?{timeConfirmation:clone(timeConfirmation)}:{}),turn, requestId, commitId, commitVersion: run.version+1, ...(run.snapshot.stateBlueprint ? {stateProvenanceBefore:clone(run.stateProvenance??[]),stateProvenanceAfter:[...(run.stateProvenance??[]),...stateProvenance]} : {}), input, body, bodyHash, ...(dialoguePresentation?{dialoguePresentation}:{}), stateBefore: clone(run.state), stateAfter: clone(state), memoryIds: memories.map(m => m.id), playerHistoryIds: playerHistory.map(entry => entry.id), attemptId: attempt.attemptId, committedAt: now }],
+          receipts: { ...run.receipts, [requestId]: { inputHash: hash(input),...(timeConfirmation?{timeConfirmation:clone(timeConfirmation)}:{}), commitId, attemptId: attempt.attemptId, result } } };
         if (next.narrative) { next.narrative = clone(next.narrative); invalidateNarrative(next); }
         validateTemporalRun(next);
         activeStage = 'commit'; progress('commit', 'pending');
@@ -603,8 +681,8 @@ export class SceanEngine {
         for(const event of attempt.stages)if(event.stage==='validation'&&event.status==='pending'){event.status=attempt.status;event.finishedAt=attempt.finishedAt;event.error=clone(attempt.error);}
         if (attempt.commit) attempt.commit.status = attempt.status;
         progress(activeStage, attempt.status);
-        await checkpoint().catch(() => {}); error.sceanFailure = { ...attempt.error, attemptId: attempt.attemptId, requestId, finishedAt: attempt.finishedAt }; throw error;
-      }
+        await checkpoint().catch(() => {}); error.sceanFailure = { ...attempt.error, attemptId: attempt.attemptId, requestId, finishedAt: attempt.finishedAt,...(attempt.bodyCheckpoint?{bodyAvailable:true,resumeAttemptId:attempt.attemptId,bodyHash:attempt.bodyCheckpoint.bodyHash,canResume:!!attempt.preparedPost||attempt.bodyCheckpoint.dispatchesUsed<2}: {}) }; throw error;
+      }finally{directorAllowance?.close();postAllowance?.close();}
     }, { signal });
   }
 }

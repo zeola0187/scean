@@ -29,7 +29,7 @@ function scripted(options={}){
 }
 async function fixture(t,options={}){
   const parent=new URL('../.test-data/',import.meta.url);await mkdir(parent,{recursive:true});const root=await mkdtemp(new URL('player-name-',parent));
-  const model=scripted(options),store=new DurableStore({root:join(root,'store')}),engine=new SceanEngine({unconfiguredWritingMode:'current',store,model,memory:new Memory()});
+  const model=scripted(options),store=new DurableStore({root:join(root,'store')}),engine=new SceanEngine({postBody:false,unconfiguredWritingMode:'current',store,model,memory:new Memory()});
   let host=await new SceanHost({engine,root:join(root,'host')}).init();
   const saved=source(options.alternates),snapshot=buildSavedSnapshot(saved);
   const scope={provider:snapshot.source.provider,cardId:saved.id,authoringSessionId:'name-session',generation:'name-generation',savedRevision:0,savedSha256:saved.sha256};

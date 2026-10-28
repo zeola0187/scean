@@ -1,4 +1,14 @@
-> 1.6.2-local.w29.2d.rc3.2: TIME_TOOL declaration-only repair on the public RC3.1 baseline. Source branch: https://github.com/zeola0187/scean/tree/fix/time-tool-contract-20261026. No new tag, Release page or assets. This backport excludes separate local timecal.1 calendar/display fixes and all nlruntime experiments; it is not the full local timecal.2 installation package.
+# SCEAN 1.6.3-local.w29.2d.rc3.1 — 正文後世界結算
+
+已驗收的 poststat.1 完整成果，目標 DSH 0.2.1-rc.3。
+Director 規劃 → Writer 定稿 → PostStat 裁定時間／狀態 → Host 機械驗證與原子提交。
+時間可維持時段精度；正文完成後的結算失敗可有界續算，不重寫正文。
+新保存格式 v13／續算 sidecar v2 不能直接交給舊 reader；升降版前請保全資料。
+[版本下載](https://github.com/zeola0187/scean/releases/tag/v1.6.3-local.w29.2d.rc3.1) · [完整原碼](https://github.com/zeola0187/scean/tree/v1.6.3-local.w29.2d.rc3.1) · [使用與驗收限制](https://github.com/zeola0187/scean/blob/v1.6.3-local.w29.2d.rc3.1/docs/RELEASE-POSTSTAT.zh-TW.md)
+
+以下保留先前版本的功能及相容性說明。
+
+---
 
 # SCEAN Studio 1.5.0
 
@@ -11,7 +21,7 @@ Original SCEAN code and Skills: AGPL-3.0-only. The independently authored
 advanced-tavern-card-authoring directory retains its complete MIT grant in
 skills/advanced-tavern-card-authoring/SOURCE.txt. Preserve all notices.
 
-Source: https://github.com/zeola0187/scean/tree/main
+Source: https://github.com/zeola0187/scean/tree/v1.6.3-local.w29.2d.rc3.1
 Install/update the complete suite from https://github.com/zeola0187/scean
 Build and regression commands live at the full source checkout root; installed
 component packages have no historical standalone build scripts. Existing

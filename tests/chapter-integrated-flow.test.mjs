@@ -20,7 +20,7 @@ async function fixture({archived=false,missing=false,failArchive=false,failDirec
   if(a.stage==='post_stat')return{text:JSON.stringify({contractVersion:2,stateChanges:[],memories:[],playerHistory:[]})};
   assert.fail('Unexpected stage '+a.stage);
  }};
- const recall=new ChapterRecall({embed:missing?undefined:ports.embed,rerankModel:missing?undefined:model,embeddingModel:'scripted'}),engine=new SceanEngine({store,model,chapterRecall:recall,memory:{async retrieve(){return{records:[]};}}});
+ const recall=new ChapterRecall({embed:missing?undefined:ports.embed,rerankModel:missing?undefined:model,embeddingModel:'scripted'}),engine=new SceanEngine({postBody:false,store,model,chapterRecall:recall,memory:{async retrieve(){return{records:[]};}}});
  if(archived)await store.create(await chapterRecallFixture());
  const hostRoot=join(root,'host'),host=await new SceanHost({engine,root:hostRoot,chapterModelsEnabled:true}).init();
  const runId=archived?'synthetic-chapter-recall':(await host.createRun({snapshot,initialState:{world:{facts:{task:'STATE_MUST_REMAIN'}},characters:{lin:{public:{},private:{secret:'OWNER_STATE_MUST_NOT_LEAK'}}}}})).runId;

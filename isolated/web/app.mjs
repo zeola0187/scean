@@ -20,6 +20,7 @@ import {mountTurnDuration} from './turn-duration.mjs';
 import {renderDialogueBody} from './dialogue-colors.mjs';
 import {mountRunRecycle} from './run-recycle-ui.mjs';
 import {mountScriptLibrary} from './script-library-ui.mjs';
+import {mountTimeConfirmation} from './time-confirmation-ui.mjs';
 const shell=mountPlayerShell();
 const cardFrontend=mountCardFrontend({preserveReading:()=>{
   const reading=shell.reading,anchor=captureReadingAnchor(reading),top=reading.scrollTop;
@@ -31,6 +32,7 @@ let banListDirty=false,banListBusy=false;
 native?.onSelect(selection=>{nativeSelection=selection?.runId??null;nativeNotificationTarget=selection?.notificationTarget??null;if(initialized)void syncNativeContext(nativeSelection).then(()=>openNotificationTarget(nativeNotificationTarget)).catch(error=>setError('turn-error',error));});
 
 const $ = id => document.getElementById(id);
+const timeConfirmation=mountTimeConfirmation({parent:$('time-confirmation')});
 const turnDuration=mountTurnDuration({element:$('turn-duration')});
 const view = new SelectionEpoch();
 const operations = new OperationOwnership();
@@ -231,10 +233,11 @@ function controls(){
   $('input').disabled=!hasRun||busy;
   $('send').disabled=!hasRun||busy||state.generationBlocked||!$('input').value.trim();
   $('cancel').hidden=!state.pending;$('cancel').disabled=!operations.target(view.runId);
-  $('retry').hidden=!state.failure||busy||!state.draft?.input;
-  $('retry').disabled=state.generationBlocked;
+  timeConfirmation.update(state.run,busy,state.failure);
+  $('retry').hidden=!state.failure||state.failure.code==='NEEDS_TIME_PRECISION'&&!state.failure.bodyAvailable||busy||!state.draft?.input;
+  $('retry').disabled=state.generationBlocked||state.failure?.bodyAvailable&&state.failure.canResume===false;$('retry').textContent=state.failure?.bodyAvailable?'繼續結算已保存正文':'重試同一輸入';$('saved-body').hidden=!state.failure?.bodyAvailable;
   $('recheck').hidden=!state.failure||(busy&&!state.operationUnknown);$('recheck').disabled=state.pollBusy;
-  $('provisional').hidden=!state.pending||!!state.localTurn&&!['turn','regenerate'].includes(state.localTurn.kind);
+  $('provisional').hidden=!state.pending||!!state.localTurn&&!['turn','regenerate','settlementResume'].includes(state.localTurn.kind);
   $('pending-input').textContent=regenInput??state.draft?.input??'';
   $('save-status').textContent=!hasRun?'尚未開局':busy?'本輪尚未提交':historySync.dirty?'本輪已保存，正在讀取正文':historySync.newAvailable?'已保存 · 有新正文':`已保存 · v${state.run.version}`;
   newBodyOpen.hidden=!hasRun||!storyHead();newBodyOpen.disabled=pageBusy;newBodyOpen.textContent=historySync.dirty?'已保存，讀取正文中':historySync.newAvailable?'有新正文 · 查看':'查看本輪正文';
@@ -291,7 +294,7 @@ function renderRun(run){
   if(!banListDirty)$('banlist-input').value=(run.banList??[]).map(x=>typeof x==='string'?x:x.text??x.phrase??'').join('\n');
   $('run-title').textContent=titleOf(run.snapshot);shell.story(run,narrativeData,loadedTurns);
   $('run-version').textContent=`固定版本 ${run.snapshot?.revision??'—'} · Run ${run.runId} · 摘要 ${run.snapshot?.hash?.slice(0,12)??'未記錄'} · ${run.turnCount??run.turns?.length??0} 回合`;
-  renderWorld(run.state?.world??{},run.worldView,run.lastTurn??run.turns?.at(-1));
+  renderWorld(run.state?.world??{},run.worldView,run.lastTurn??run.turns?.at(-1),run.storyClock?run.storyClockLabel??'故事時間待同步':null);
   controls();
 }
 function renderChat(){
@@ -524,8 +527,9 @@ async function readHistoryUI(hit){
   try{const result=await api('historyRead',{runId:selected.runId,locator:hit.locator,radius:0});if(serial===recallSerial&&relatedReadCurrent(selected,baseline,result))$('history-read').textContent=`${result.label}\n\n`+result.turns.map(turn=>`第 ${turn.turn} 回合 · ${turn.commitId}\n玩家：${turn.input}\n正文：${turn.body}`).join('\n\n');}
   catch(error){if(serial===recallSerial&&relatedReadCurrent(selected,baseline))$('history-read').textContent=`回讀失敗：${error.message} (${error.code??'unknown'})`;}
 }
-function renderWorld(world,worldView,lastTurn){
+function renderWorld(world,worldView,lastTurn,clockLabel=null){
   $('state-summary').replaceChildren();
+  if(clockLabel){const clock=node('section',undefined,'state-group');clock.dataset.storyClock='true';clock.append(node('h3','故事時間'),node('p',clockLabel));$('state-summary').append(clock);}
   const projected=blueprintStateRows(worldView,lastTurn);
   if(projected){
     for(const [title,rows] of [['主要狀態',projected.declared],['其他狀態',projected.other]]){
@@ -537,7 +541,8 @@ function renderWorld(world,worldView,lastTurn){
   for(const [key,value] of Object.entries(world)){
     const section=node('section',undefined,'state-group');section.append(node('h3',worldLabels[key]??key));
     const list=node('ul');
-    for(const [name,item] of value&&typeof value==='object'&&!Array.isArray(value)?Object.entries(value):[['',value]])list.append(node('li',`${name?name+'：':''}${valueText(item)}`));
+    for(const [name,item] of value&&typeof value==='object'&&!Array.isArray(value)?Object.entries(value):[['',value]]){if(key==='time'&&name==='current'&&item?.authority==='host_story_clock'&&item?.readOnly===true)continue;list.append(node('li',`${name?name+'：':''}${valueText(item)}`));}
+    if(!list.childElementCount)continue;
     section.append(list);$('state-summary').append(section);
   }
   if(!$('state-summary').childElementCount)$('state-summary').append(node('p','尚無世界狀態紀錄。','hint'));
@@ -662,7 +667,7 @@ async function reconcile(){
 async function sendHostOperation(kind,payload={},base={}){
   const selected=view.capture(),operation={...operations.start(selected.runId,payload.requestId),kind};
   const ownership=operations.capture();state.localTurn=operation;state.pending=true;state.submitting=true;state.operationUnknown=false;state.failure=null;
-  if(['turn','regenerate'].includes(kind))turnDuration.clear();
+  if(['turn','regenerate','settlementResume'].includes(kind))turnDuration.clear();
   if(kind==='summaryStart'||kind.startsWith('chapter')){activeNarrativeOperation=operation;narrativeBusy=true;}
   rememberOperation(operation);controls();
   try{
@@ -694,11 +699,15 @@ async function submitTurn(retry=false){
   try{await saveDraft();}catch(error){if(view.current(token)){state.submitting=false;controls();}throw error;}
   if(!view.current(token))return;
   const draft={...state.draft};if(!draft?.input){state.submitting=false;controls();return;}
+  if(retry&&state.failure?.bodyAvailable&&state.failure.requestId===draft.requestId){submissionReading={...readingIntent,requestId:draft.requestId};setError('turn-error',null);await sendHostOperation('settlementResume',{requestId:draft.requestId,sourceAttemptId:state.failure.resumeAttemptId});return;}
+  let confirmedTime;try{confirmedTime=timeConfirmation.read();}catch(error){state.submitting=false;setError('turn-error',error);controls();return;}
+  if(state.run?.settlementPolicy!=='post-body-v1'&&state.failure?.code==='NEEDS_TIME_PRECISION'&&!confirmedTime){state.submitting=false;setError('turn-error',Object.assign(new Error('請先使用「補充／確認時間」，明確確認所缺時間。'),{code:'NEEDS_TIME_PRECISION'}));controls();return;}
+  if(confirmedTime){draft.requestId=requestForInput(null,draft.input);state.draft={...draft};}
   submissionReading={...readingIntent,requestId:draft.requestId};
   setError('turn-error',null);$('progress').textContent='正在交由 Host 接受操作；斷線後會查回同一操作。';
   const prior=state.lastOperation;
   const retryOf=retry&&prior?.kind==='turn'&&prior.requestId===draft.requestId&&['failed','cancelled','interrupted'].includes(prior.status)?prior.operationId:null;
-  await sendHostOperation('turn',{input:draft.input,requestId:draft.requestId,...(retryOf?{retryOf}:{})});
+  await sendHostOperation('turn',{input:draft.input,requestId:draft.requestId,...(confirmedTime?{timeConfirmation:confirmedTime}:{}),...(retryOf?{retryOf}:{})});
 }
 async function refreshConnectionScope(){
   if(native){
@@ -901,6 +910,7 @@ $('input').addEventListener('input',()=>{
   $('draft-status').textContent='輸入草稿尚未保存…';clearTimeout(state.draftTimer);state.draftTimer=setTimeout(()=>saveDraft().catch(()=>{}),450);
 });
 $('retry').addEventListener('click',()=>submitTurn(true).catch(error=>setError('turn-error',error)));
+$('saved-body').addEventListener('click',async()=>{try{const value=await api('settlementBody',{runId:view.runId,attemptId:state.failure.resumeAttemptId});$('saved-body-content').textContent=value.body;$('saved-body-content').hidden=false;}catch(error){setError('turn-error',error);}});
 $('recheck').addEventListener('click',resumeConnection);
 $('cancel').addEventListener('click',async()=>{
   const token=view.capture(),operationToken=operations.capture(),target=operations.target(token.runId);

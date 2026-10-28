@@ -1,4 +1,16 @@
 import {dialoguePalette} from './dialogue.mjs';
+export function calendarPlanningText(planning){
+ if(!planning)return '';
+ const messages={not_enabled:'此故事未啟用自動七日規劃；閱讀不會建立設定。',waiting:'七日規劃尚待背景排程。閱讀不會啟動生成。',queued:'七日規劃已排入等待。',running:'七日規劃生成中。',planned:'七日規劃已完成；只列出已公告的公共事件。',failed:'七日規劃失敗，沒有發布新計畫；不會自動重試。',interrupted:'七日規劃已中斷；派送結果未確認，不會自動重試。',stale:'先前規劃來源已過期；舊結果不會發布。後續有效回合可在剩餘名額內重新排程。',daily_limit:'今天的七日規劃派送已達上限；留在同一故事日不會再自動生成。權威故事時間前進到新一天後，才有新窗口的排程機會。'};
+ const reasons={json:'回覆無法完整解析',fields:'欄位結構不符合契約',version:'契約版本不符',kind:'工作種類不符',window:'七日窗口不符',event_limit:'事件數量或清單格式不符',key:'事件識別不合法',duplicate_key:'事件識別重複',label:'事件標籤不合法',scope:'事件不是公共世界計畫',announcement:'公告種類不合法',position:'事件時間格式不合法',start_day:'事件開始日不在待規劃日期內',not_future:'事件開始時間未晚於目前時間範圍的最晚邊界',horizon:'事件結束超過七日窗口',interval:'事件結束未晚於開始',required_for_scene:'場景條件欄位格式不符',condition:'事件條件格式不符'};
+ let text=messages[planning.state]??'七日規劃狀態待確認。';
+ if(Number.isInteger(planning.attemptsUsed)&&Number.isInteger(planning.attemptLimit))text+=` 本故事日已用 ${planning.attemptsUsed}／${planning.attemptLimit} 次派送名額。`;
+ const d=planning.failureDiagnostic;
+ if(d&&Object.hasOwn(reasons,d.reason)&&typeof d.path==='string'&&d.path.length<=64&&/^[A-Za-z0-9_$.[\]]+$/.test(d.path))text+=` 原因：${reasons[d.reason]}。`;
+ else if(planning.error==='CALENDAR_CONTRACT')text+=' 舊記錄只保存契約拒絕，未記錄具體欄位。';
+ return text;
+}
+export function calendarDiagnosticText(planning){const d=planning?.failureDiagnostic;if(!d||!['json','fields','version','kind','window','event_limit','key','duplicate_key','label','scope','announcement','position','start_day','not_future','horizon','interval','required_for_scene','condition'].includes(d.reason)||typeof d.path!=='string'||d.path.length>64||!/^[A-Za-z0-9_$.[\]]+$/.test(d.path))return '';return `原因代碼：${d.reason}\n欄位：${d.path}`;}
 // Presentation only: dates, statuses and cursors come from worldRoutineRead.
 export function mountWorldRoutineReaders({document=globalThis.document,request,getContext=()=>null,onDismiss=()=>null,preserveReading=()=>()=>{}}={}){
  const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
@@ -26,6 +38,8 @@ export function mountWorldRoutineReaders({document=globalThis.document,request,g
    if(value.status==='not_enabled'){status.textContent='此故事尚未啟用'+(kind==='calendar'?'日曆':'論壇媒介')+'。閱讀不會替故事建立設定。';return;}
    status.textContent='';
    if(kind==='calendar'){
+    status.textContent=calendarPlanningText(value.planning);
+    const diagnostic=calendarDiagnosticText(value.planning);if(diagnostic){const detail=el('details');detail.append(el('summary','診斷細節'),el('p',diagnostic));body.append(detail);}
     const windows=el('nav');windows.style.cssText='display:flex;gap:8px;flex-wrap:wrap';if(value.previousWindow!==null)windows.append(button('較早七日',()=>void load({windowStart:value.previousWindow})));if(value.nextWindow!==null)windows.append(button('較後七日',()=>void load({windowStart:value.nextWindow})));windows.append(button('回到今日',()=>void load({})));body.append(windows);
     const days=el('nav');days.setAttribute('aria-label','故事日期');days.style.cssText='display:flex;gap:6px;flex-wrap:wrap;margin:12px 0';for(const d of value.days){const b=button(`${d.label}（${d.count}）`,()=>void load({windowStart:value.windowStart,day:d.day}));b.setAttribute('aria-pressed',String(d.day===value.selectedDay));days.append(b);}body.append(days);
     for(const row of value.entries){const a=el('article');a.append(el('h3',row.label),el('p',statuses[row.status]??row.status),el('p',`${row.startLabel} ～ ${row.endLabel}`,'hint'),source(row));body.append(a);}if(!value.entries.length)body.append(el('p','這一天沒有已公告的公共事件。'));

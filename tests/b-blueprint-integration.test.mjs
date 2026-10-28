@@ -31,7 +31,7 @@ async function setup({source=snapshot(),post=()=>proposal(),fault,consult=false}
     if(args.stage==='post_stat')return{text:JSON.stringify(post(args))};throw Error('Unexpected stage '+args.stage);
   }};
   const memory={async retrieve(){return{records:[],status:'offline'};}};
-  const engine=new SceanEngine({unconfiguredWritingMode:'current',store,model,memory}),run=await engine.createRun({snapshot:source});return{root,store,model,memory,engine,run,calls};
+  const engine=new SceanEngine({postBody:false,unconfiguredWritingMode:'current',store,model,memory}),run=await engine.createRun({snapshot:source});return{root,store,model,memory,engine,run,calls};
 }
 const play=(f,requestId='blueprint-turn')=>f.engine.turn({runId:f.run.runId,input:'Check the lamp without lighting it.',requestId});
 
@@ -79,14 +79,14 @@ test('B3 legal dynamic state and full task replacements commit together with pro
 test('B3 new schema/card revision opens separate state while an existing Run survives a fresh engine unchanged',async()=>{
   const f=await setup();await play(f);const before=await f.store.read(f.run.runId),source=snapshot();source.revision='r2';source.stateBlueprint.version=2;source.initialState.blueprintVersion=2;source.initialState.values.find(v=>v.key==='fuel').value=40;
   const next=await f.engine.createRun({snapshot:source});assert.equal(next.state.world.resources.fuel,40);assert.notEqual(next.snapshot.hash,before.snapshot.hash);
-  const restarted=new SceanEngine({unconfiguredWritingMode:'current',store:new DurableStore({root:f.root}),model:f.model,memory:f.memory});assert.deepEqual((await restarted.inspect(f.run.runId)).snapshot,before.snapshot);assert.deepEqual((await restarted.inspect(f.run.runId)).state,before.state);
+  const restarted=new SceanEngine({postBody:false,unconfiguredWritingMode:'current',store:new DurableStore({root:f.root}),model:f.model,memory:f.memory});assert.deepEqual((await restarted.inspect(f.run.runId)).snapshot,before.snapshot);assert.deepEqual((await restarted.inspect(f.run.runId)).state,before.state);
 });
 
 test('B3 write interruption before publication preserves typed initial state, then same request can retry after restart',async()=>{
   let enabled=false;const fault=(point)=>{if(enabled&&point==='beforeRename')throw Object.assign(new Error('synthetic persistence failure'),{code:'EIO'});};
   const f=await setup({fault,post:()=>proposal([change('fuel','resources',70)])});const before=await f.store.read(f.run.runId);enabled=true;
   await assert.rejects(play(f),e=>e.code==='EIO');assert.deepEqual(await f.store.read(f.run.runId),before);
-  enabled=false;const restarted=new SceanEngine({unconfiguredWritingMode:'current',store:new DurableStore({root:f.root}),model:f.model,memory:f.memory});const result=await restarted.turn({runId:f.run.runId,input:'Check the lamp without lighting it.',requestId:'blueprint-turn'});assert.equal(result.state.world.resources.fuel,70);assert.equal(result.version,1);
+  enabled=false;const restarted=new SceanEngine({postBody:false,unconfiguredWritingMode:'current',store:new DurableStore({root:f.root}),model:f.model,memory:f.memory});const result=await restarted.turn({runId:f.run.runId,input:'Check the lamp without lighting it.',requestId:'blueprint-turn'});assert.equal(result.state.world.resources.fuel,70);assert.equal(result.version,1);
 });
 
 test('B3 cancelling a pending model result preserves initialized state and does not accept the late proposal',async()=>{
@@ -123,5 +123,5 @@ test('B3 after-publication interruption recovers a single body/state/provenance 
   assert.equal(result.status,'committed');const stored=await f.store.read(f.run.runId),dynamic=stored.stateProvenance.filter(v=>v.kind==='dynamic');
   assert.equal(stored.turns.length,1);assert.equal(stored.version,1);assert.equal(dynamic.length,1);assert.equal(dynamic[0].source.id,result.commitId);assert.equal(dynamic[0].source.version,stored.version);
   assert.equal(stored.receipts['blueprint-turn'].commitId,result.commitId);
-  const restarted=new SceanEngine({unconfiguredWritingMode:'current',store:new DurableStore({root:f.root}),model:f.model,memory:f.memory});await restarted.turn({runId:f.run.runId,input:'Check the lamp without lighting it.',requestId:'blueprint-turn'});assert.equal(f.calls.length,calls);
+  const restarted=new SceanEngine({postBody:false,unconfiguredWritingMode:'current',store:new DurableStore({root:f.root}),model:f.model,memory:f.memory});await restarted.turn({runId:f.run.runId,input:'Check the lamp without lighting it.',requestId:'blueprint-turn'});assert.equal(f.calls.length,calls);
 });

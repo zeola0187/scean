@@ -35,7 +35,7 @@ async function fixture(source=snapshot(),{consultStat=false}={}) {
     throw Error('Unexpected stage '+args.stage);
   }};
   const memory={async retrieve(){return{records:[],status:'synthetic_offline'};}};
-  const engine=new SceanEngine({unconfiguredWritingMode:'current',store,model,memory});
+  const engine=new SceanEngine({postBody:false,unconfiguredWritingMode:'current',store,model,memory});
   const run=await engine.createRun({snapshot:source,initialState:{world:{facts:{lampLit:false}},characters:{}}});
   return{engine,store,calls,run};
 }

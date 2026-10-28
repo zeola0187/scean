@@ -1,14 +1,16 @@
 {
   "schemaVersion": 1,
   "license": "AGPL-3.0-only",
-  "status": "SOURCE_BRANCH_ONLY",
-  "sourceUrl": "https://github.com/zeola0187/scean/tree/fix/time-tool-contract-20261026",
+  "status": "AUTHORIZED_RELEASE_WITH_DETACHED_SOURCE_RECEIPT",
+  "version": "1.6.3-local.w29.2d.rc3.1",
+  "acceptedRuntimeVersion": "1.6.2-local.w29.2d.rc3.1.poststat.1",
+  "sourceUrl": "https://github.com/zeola0187/scean/tree/v1.6.3-local.w29.2d.rc3.1",
+  "releaseTag": "v1.6.3-local.w29.2d.rc3.1",
+  "releaseUrl": "https://github.com/zeola0187/scean/releases/tag/v1.6.3-local.w29.2d.rc3.1",
   "revision": null,
   "sourceArchiveSha256": null,
-  "networkSourceNoticeReady": false,
+  "revisionResolution": "immutable release tag; exact public commit and source ZIP SHA256 in detached release source receipt",
+  "networkSourceNoticeReady": true,
   "anonymousSourceAccessVerified": false,
-  "note": "TIME_TOOL declaration-only backport on RC3.1; no new tag, Release page or assets. Exact public commit recorded in detached push receipt. Full local timecal.2 and nlruntime experiments are not this branch.",
-  "releaseTag": null,
-  "releaseUrl": null,
-  "version": "1.6.2-local.w29.2d.rc3.2"
+  "note": "Anonymous access and exact assets are verified after publication, never pre-claimed. Source hash is detached to avoid self-reference."
 }

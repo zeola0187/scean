@@ -17,7 +17,7 @@ const card=(roster=true)=>({spec:'chara_card_v2',spec_version:'2.0',data:{name:'
 const b64=value=>Buffer.from(typeof value==='object'&&!Buffer.isBuffer(value)?JSON.stringify(value):value).toString('base64');
 async function fixture(t,{absent=false,clock,sourceCard=card(),skipImport=false}={}){
   const root=await mkdtemp(join(tmpdir(),'scean-studio-a-'));let calls=0;
-  const host=await new SceanHost({engine:new SceanEngine({unconfiguredWritingMode:'current',store:new DurableStore({root:join(root,'rp')}),model:{generate(){calls++;throw Error('No model allowed in Studio integration');}},memory:new Memory()}),root:join(root,'host')}).init();
+  const host=await new SceanHost({engine:new SceanEngine({postBody:false,unconfiguredWritingMode:'current',store:new DurableStore({root:join(root,'rp')}),model:{generate(){calls++;throw Error('No model allowed in Studio integration');}},memory:new Memory()}),root:join(root,'host')}).init();
   const bridge=await new IsolatedStudioBridge({root:join(root,'studio'),sceanHost:absent?null:host,...clock?{now:()=>clock.value}:{}}).init();
   t.after(async()=>{await bridge.close();host.close();assert.equal(calls,0);});
   const acquired=await bridge.request({action:'studio.acquire',pageId:'studio-test-page-0001'});assert(acquired.ok,JSON.stringify(acquired));

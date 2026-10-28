@@ -20,6 +20,8 @@ export const WRITING_SKILLS=Object.freeze([
     "relative": "../runtime-skills/scene-writing/SKILL.md"
   }
 ].map(row=>Object.freeze(row)));
+const LEGACY_SINGLE_SKILLS=[{"id":"single-director","stage":"director","version":2,"sha256":"6a5125cb140958b76619042848e31dcf11ebe511a5629614b06038fa0b4a1518","relative":"../runtime-skills/single-director/v2.md"},{"id":"single-writer","stage":"writer","version":2,"sha256":"e6938f336717e4328429698e455d16470f9180d180002b9994d333a8eff3ad20","relative":"../runtime-skills/single-writer/v2.md"}];
+const acceptedSkill=(mode,a,index)=>{const current=skillsForMode(mode)[index];return mode==='single_writer'&&a.version===2?LEGACY_SINGLE_SKILLS[index]:current;};
 const skillsForMode=mode=>mode==='current'?[]:mode==='materials'?WRITING_SKILLS:SINGLE_WRITER_SKILLS;
 export const WRITING_MODE_VERSION=1;
 export function writingModeName(mode){if(!['current','materials','single_writer'].includes(mode))fail('WRITING_MODE_UNKNOWN');return mode;}
@@ -60,14 +62,14 @@ export function validateWritingModePin(pin){
  if(!pin||pin.schemaVersion!==1||Object.keys(pin).some(k=>!['schemaVersion','mode','revision','version','loading','hash','skills'].includes(k))||!Number.isSafeInteger(pin.revision)||pin.revision<0||pin.version!==WRITING_MODE_VERSION||pin.loading!=='host_whitelist_stage_delivery'||!Array.isArray(pin.skills))fail('WRITING_MODE_PIN_CORRUPT');
  writingModeName(pin.mode);const expected=skillsForMode(pin.mode);
  if(pin.skills.length!==expected.length)fail('WRITING_SKILL_CHANGED');
- for(let i=0;i<expected.length;i++){const a=pin.skills[i],b=expected[i];if(Object.keys(a).some(k=>!['id','stage','version','sha256','text','bytes','estimatedTokens'].includes(k))||a.id!==b.id||a.stage!==b.stage||a.version!==b.version||a.sha256!==b.sha256||typeof a.text!=='string'||hash(a.text)!==b.sha256||a.bytes!==Buffer.byteLength(a.text,'utf8')||a.estimatedTokens!==estimateContextTokens(a.text))fail('WRITING_SKILL_CHANGED');}
+ for(let i=0;i<expected.length;i++){const a=pin.skills[i],b=acceptedSkill(pin.mode,a,i);if(Object.keys(a).some(k=>!['id','stage','version','sha256','text','bytes','estimatedTokens'].includes(k))||a.id!==b.id||a.stage!==b.stage||a.version!==b.version||a.sha256!==b.sha256||typeof a.text!=='string'||hash(a.text)!==b.sha256||a.bytes!==Buffer.byteLength(a.text,'utf8')||a.estimatedTokens!==estimateContextTokens(a.text))fail('WRITING_SKILL_CHANGED');}
  if(pin.hash!==methodHash(pin.mode,pin.skills))fail('WRITING_MODE_PIN_CORRUPT');return clone(pin);
 }
 export function writingModeReference(pin){const value=validateWritingModePin(pin);return {...value,skills:value.skills.map(({text,...rest})=>rest)};}
 export function validateWritingModeReference(value){
  if(!value||value.schemaVersion!==1||Object.keys(value).some(k=>!['schemaVersion','mode','revision','version','loading','hash','skills'].includes(k))||!Number.isSafeInteger(value.revision)||value.revision<0||value.version!==1||value.loading!=='host_whitelist_stage_delivery'||!Array.isArray(value.skills))fail('WRITING_MODE_PIN_CORRUPT');
  writingModeName(value.mode);if(value.skills.length!==(value.mode==='current'?0:2))fail('WRITING_MODE_PIN_CORRUPT');
- for(let i=0;i<value.skills.length;i++){const a=value.skills[i],b=skillsForMode(value.mode)[i];if(Object.keys(a).some(k=>!['id','stage','version','sha256','bytes','estimatedTokens'].includes(k))||a.id!==b.id||a.stage!==b.stage||a.version!==b.version||typeof a.sha256!=='string'||!/^[a-f0-9]{64}$/.test(a.sha256)||!Number.isSafeInteger(a.bytes)||a.bytes<1||!Number.isSafeInteger(a.estimatedTokens)||a.estimatedTokens<1)fail('WRITING_MODE_PIN_CORRUPT');}
+ for(let i=0;i<value.skills.length;i++){const a=value.skills[i],b=acceptedSkill(value.mode,a,i);if(Object.keys(a).some(k=>!['id','stage','version','sha256','bytes','estimatedTokens'].includes(k))||a.id!==b.id||a.stage!==b.stage||a.version!==b.version||typeof a.sha256!=='string'||!/^[a-f0-9]{64}$/.test(a.sha256)||!Number.isSafeInteger(a.bytes)||a.bytes<1||!Number.isSafeInteger(a.estimatedTokens)||a.estimatedTokens<1)fail('WRITING_MODE_PIN_CORRUPT');}
  if(value.hash!==methodHash(value.mode,value.skills))fail('WRITING_MODE_PIN_CORRUPT');return value;
 }
 export async function saveRunWritingMode(store,{runId,mode,expectedRevision,operationId,signal}){

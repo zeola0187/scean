@@ -12,7 +12,7 @@ const stat=()=>({text:JSON.stringify({contractVersion:2,stateChanges:[],memories
 const answer=a=>a.stage==='director'?{text:a.input.handoffContract?handoff(): 'Existing public brief.'}:a.stage==='writer'?{text:'Lin places the finished parcel on the table.'}:a.stage==='draft'?{text:'Legacy draft.'}:a.stage==='prose'?{text:a.input.draft}:a.stage==='post_stat'?stat():assert.fail('Unexpected model stage '+a.stage);
 async function fixture({generate=answer,fault,describe}={}){
  const root=await mkdtemp(join(tmpdir(),'scean-single-')),store=new DurableStore({root,fault}),calls=[],model={...(describe?{describe}:{}),async generate(a){calls.push(structuredClone({...a,signal:undefined}));return generate(a);}};
- const engine=new SceanEngine({store,model,memory:new Memory()}),run=await engine.createRun({snapshot,initialState:{world:{facts:{task:'A parcel is ready.'}},characters:{lin:{private:{secret:'OWNER_STATE_CANARY'},public:{}}}}});
+ const engine=new SceanEngine({postBody:false,store,model,memory:new Memory()}),run=await engine.createRun({snapshot,initialState:{world:{facts:{task:'A parcel is ready.'}},characters:{lin:{private:{secret:'OWNER_STATE_CANARY'},public:{}}}}});
  return {root,store,engine,run,calls};
 }
 const select=(f,mode='single_writer',revision=0,operationId='mode-one')=>f.engine.updateWritingMode({runId:f.run.runId,mode,expectedRevision:revision,operationId});
@@ -113,6 +113,6 @@ test('Single Writer admission still rejects a stale Run revision before any gene
 });
 test('the bundled offline synthetic model supports the Single Writer scheduler too',async()=>{
  const root=await mkdtemp(join(tmpdir(),'scean-single-bundled-')),store=new DurableStore({root}),scripted=createScriptedModel({delayMs:0}),calls=[];
- const engine=new SceanEngine({store,memory:new Memory(),model:{async generate(a){calls.push(a.stage);return scripted.generate(a);}}}),run=await engine.createRun({snapshot:syntheticCatalog().cards[0].revisions[0].snapshot});
+ const engine=new SceanEngine({postBody:false,store,memory:new Memory(),model:{async generate(a){calls.push(a.stage);return scripted.generate(a);}}}),run=await engine.createRun({snapshot:syntheticCatalog().cards[0].revisions[0].snapshot});
  await engine.updateWritingMode({runId:run.runId,mode:'single_writer',expectedRevision:0,operationId:'select'});const r=await engine.turn({runId:run.runId,requestId:'synthetic',input:'Check the public scene.'});assert.equal(r.status,'committed');assert.deepEqual(calls,['director','writer','post_stat']);assert.equal((await store.read(run.runId)).turns.length,1);
 });

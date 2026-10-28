@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-scean",
-  "version": "1.6.2-local.w29.2d.rc3.2",
+  "version": "1.6.3-local.w29.2d.rc3.1",
   "private": true,
   "type": "module",
   "description": "SCEAN Runtime: automatic chapters, 3+8 hybrid chapter context and complete authorized packets",
@@ -27,7 +27,8 @@
     "THIRD-PARTY-LICENSES.json",
     "SOURCE-AVAILABILITY.md",
     "release-source.json",
-    "THIRD-PARTY-NOTICES.md"
+    "THIRD-PARTY-NOTICES.md",
+    "authoring/NOTICE.md"
   ],
   "engines": {
     "node": ">=24",

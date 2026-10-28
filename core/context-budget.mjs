@@ -55,10 +55,10 @@ const topFields = {
   writer: ['context','directorHandoff','preset','proseStyle','writingSkill','outputContract'],
   writer_repair: ['bodyHash','ranges','bannedTerms'],
   prose_repair: ['bodyHash', 'ranges', 'bannedTerms'],
-  post_stat: ['temporal','bodyHash','finalBody', 'previousState', 'characters', 'stateBlueprint', 'outputContract'],
+  post_stat: ['playerInput','previousClock','timeDefinition','worldRules','publicEvents','recentDialogue','rollingSummary','chapterContext','playerOverride','correction','temporal','bodyHash','finalBody', 'previousState', 'characters', 'stateBlueprint', 'outputContract'],
 };
 for(const stage of ['director','character','adjudicate','draft','prose','prose_repair','writer','writer_repair','post_stat'])topFields[stage].push('playerIdentity');
-const assemblyFields = new Set(['worldRoutine','temporal','playerInput', 'writingGuidance', 'sources', 'chapterSummary', 'rollingSummary', 'chapterContext', 'recentDialogue', 'worldState', 'memory', 'characters', 'characterIdentities', 'stateBlueprint', 'derivedFacts']);
+const assemblyFields = new Set(['timeSources','worldRoutine','temporal','playerInput', 'writingGuidance', 'sources', 'chapterSummary', 'rollingSummary', 'chapterContext', 'recentDialogue', 'worldState', 'memory', 'characters', 'characterIdentities', 'stateBlueprint', 'derivedFacts']);
 const sourceFields = new Set(['snapshot', 'card', 'worldbook', 'preset', 'selectedOpening']);
 const escapePath = value => String(value).replaceAll('~', '~0').replaceAll('/', '~1');
 const pointer = path => '/' + path.map(escapePath).join('/');

@@ -22,7 +22,7 @@ test('configured production factory connects the saved Run switch despite retire
   if(url.endsWith('/embeddings'))return {ok:true,json:async()=>({data:body.input.map((_,index)=>({index,embedding:[1,0]})),usage:{total_tokens:1,cost:0}})};
   const input=JSON.parse(body.messages[1].content);return {ok:true,json:async()=>({choices:[{message:{content:JSON.stringify({rankings:input.candidates.map((_,index)=>({index,score:100-index}))})},finish_reason:'stop'}],usage:{total_tokens:1,cost:0}})};
  }});
- const engine=new SceanEngine({unconfiguredWritingMode:'current',store,model,memory:{async retrieve(){return {records:[]};}}}),host=await new SceanHost({engine,root:join(root,'host'),chapterProviderSettings:configuration.settings,chapterRuntimeFactory:configuration.runtimeFactory}).init(),authority={principal:{},allowGlobalSettings:true};
+ const engine=new SceanEngine({postBody:false,unconfiguredWritingMode:'current',store,model,memory:{async retrieve(){return {records:[]};}}}),host=await new SceanHost({engine,root:join(root,'host'),chapterProviderSettings:configuration.settings,chapterRuntimeFactory:configuration.runtimeFactory}).init(),authority={principal:{},allowGlobalSettings:true};
  try{
   const status=(await host.request({action:'chapterProviderSettings'},undefined,authority)).value,s=status.settings;s.flags={chapterModelsEnabled:true,chapterRetrievalEnabled:false,chapterEmbeddingEnabled:false};
   s.rerank={mode:'compatible',provider:'',model:'synthetic-rank',baseUrl:'https://synthetic.invalid/v1',environmentFallback:false};

@@ -18,7 +18,7 @@ const saved=(first='Main synthetic opening.',alternates=['Alternative one.','Alt
 async function fixture(t){
  const base=new URL('../.test-data/',import.meta.url);await mkdir(base,{recursive:true});const root=await mkdtemp(new URL('opening-',base));
  let now=1000,modelCalls=0,current;
- const engine=new SceanEngine({unconfiguredWritingMode:'current',store:new DurableStore({root:join(root,'store')}),model:{generate(){modelCalls++;throw Error('MODEL_FORBIDDEN');}},memory:new Memory()});
+ const engine=new SceanEngine({postBody:false,unconfiguredWritingMode:'current',store:new DurableStore({root:join(root,'store')}),model:{generate(){modelCalls++;throw Error('MODEL_FORBIDDEN');}},memory:new Memory()});
  const host=await new SceanHost({engine,root:join(root,'host'),now:()=>now}).init();
  const authority={requireCardScope:true,resolveCardScope:async()=>current,principal:'offline-operator'};
  const select=source=>current={provider:STUDIO_PROVIDER,cardId:source.id,authoringSessionId:'session-A',generation:'generation-A',savedRevision:source.revision,savedSha256:source.sha256};

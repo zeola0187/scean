@@ -195,6 +195,9 @@ export function publicBlueprintState(blueprint, state) {
   }
   function scan(root, scope, characterId) {
     for (const category of categories) for (const [key, value] of Object.entries(root?.[category] ?? {})) {
+      // The dedicated Host Clock label represents this projection in player UI.
+      // Raw Clock diagnostics remain in inspection.state and inspection.storyClock.
+      if (scope==='world' && category==='time' && key==='current' && value?.authority==='host_story_clock' && value?.readOnly===true) continue;
       const t = { scope, ...(characterId ? { characterId } : {}), category, key };
       if (seen.has(targetKey(t))) continue;
       const projected = publicData(value);

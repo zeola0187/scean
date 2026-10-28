@@ -17,7 +17,7 @@ const defer=()=>{let resolve;const promise=new Promise(r=>resolve=r);return {pro
 async function fixture(options={}){
   const parent=fileURLToPath(new URL('../evidence/notifications-test-temp/',import.meta.url));await mkdir(parent,{recursive:true});const root=await mkdtemp(join(parent,'case-'));const calls=[];
   const store=new DurableStore({root:join(root,'store')}),model={async generate(args){calls.push(args.stage);const override=await options.override?.(args);if(override!==undefined)return override;return {text:args.stage==='post_stat'?JSON.stringify({contractVersion:2,stateChanges:[],memories:[],playerHistory:[]}):'PRIVATE_SYNTHETIC_STORY'};}};
-  const engine=new SceanEngine({unconfiguredWritingMode:'current',store,model,memory:new Memory()}),hostRoot=join(root,'host');
+  const engine=new SceanEngine({postBody:false,unconfiguredWritingMode:'current',store,model,memory:new Memory()}),hostRoot=join(root,'host');
   const host=await new SceanHost({engine,root:hostRoot,notificationOptions:options.notificationOptions??{}}).init();
   const {runId}=await host.createRun({snapshot});return {host,store,engine,runId,root,hostRoot,calls};
 }

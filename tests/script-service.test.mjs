@@ -14,7 +14,7 @@ import {STUDIO_PROVIDER} from '../plugin/card-scope.mjs';
 const saved=(revision=0,id='card-A')=>({id,type:'card',revision,sha256:'synthetic-'+revision,card:{data:{name:'Same synthetic title',first_mes:'Main '+revision,alternate_greetings:['Alternate '+revision],extensions:{scean:{characters:[{id:'actor',name:'Actor',description:'Synthetic test actor'}]}}}}});
 async function fixture(t){
   const base=resolve(import.meta.dirname,'../.test-data');await mkdir(base,{recursive:true});const root=await mkdtemp(join(base,'script-service-'));
-  let current,modelCalls=0;const engine=new SceanEngine({store:new DurableStore({root:join(root,'store')}),model:{generate(){modelCalls++;throw Error('MODEL_FORBIDDEN');}},memory:new Memory()});
+  let current,modelCalls=0;const engine=new SceanEngine({postBody:false,store:new DurableStore({root:join(root,'store')}),model:{generate(){modelCalls++;throw Error('MODEL_FORBIDDEN');}},memory:new Memory()});
   let host=await new SceanHost({engine,root:join(root,'host')}).init();
   const select=(source=saved(),session='session-A',generation=1)=>current={provider:STUDIO_PROVIDER,cardId:source.id,authoringSessionId:session,generation,savedRevision:source.revision,savedSha256:source.sha256};select();
   const authority={requireCardScope:true,principal:'synthetic-operator',allowGlobalSettings:true,resolveCardScope:async()=>current};

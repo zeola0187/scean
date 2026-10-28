@@ -1053,6 +1053,22 @@
     {
       "source": "sources/card-studio/cardstudio-bundle/skills/scean-native-authoring/references/world-routine.md",
       "path": "packages/studio/skills/scean-native-authoring/references/world-routine.md"
+    },
+    {
+      "source": "core/post-body-settlement.mjs",
+      "path": "packages/scean/core/post-body-settlement.mjs"
+    },
+    {
+      "source": "runtime-skills/single-director/v2.md",
+      "path": "packages/scean/runtime-skills/single-director/v2.md"
+    },
+    {
+      "source": "runtime-skills/single-writer/v2.md",
+      "path": "packages/scean/runtime-skills/single-writer/v2.md"
+    },
+    {
+      "path": "packages/scean/isolated/web/dialogue.mjs",
+      "source": "isolated/web/dialogue.mjs"
     }
   ]
 }

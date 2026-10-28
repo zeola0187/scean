@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "version": "1.6.3-local.w29.2d.rc3.1",
+  "tag": "v1.6.3-local.w29.2d.rc3.1",
+  "acceptedVersion": "1.6.2-local.w29.2d.rc3.1.poststat.1",
+  "acceptedArchiveSha256": "6bd886cba9f872b39fdd9db6e4e9e1c309fdcc9b974b18fec9de930d5fa9f1a7",
+  "acceptedRuntimeSetFingerprint": "8d0d7a4c9f9e5a37117ede3afa583000bc52579508d09a6b217f02fb148288dd",
+  "userAcceptanceUTC": "2026-10-28T02:16:00Z",
+  "baselinePublicCommit": "af61ba2f275e6e8dd90164ad7c33c6be71ccf9f3",
+  "baselinePrivateCommit": "fa2b4ce2ac7da694e58de697ee1817aa52dfff79",
+  "targetDsh": "0.2.1-rc.3",
+  "paidCallsThisPublication": 0,
+  "formalInstallationModified": false,
+  "userDataIncluded": false,
+  "hostSdkIncluded": false,
+  "unadoptedABArchitectureIncluded": false,
+  "changesFromAcceptedRuntime": "release version, source notices and documentation only; byte-level allowlisted comparison in detached receipt",
+  "offlineAccepted": {
+    "tests": 643,
+    "pass": 642,
+    "fail": 0,
+    "skip": 1
+  },
+  "liveAccepted": {
+    "opportunities": 24,
+    "physicalHTTP": 85,
+    "committed": 23,
+    "safeDeadlineStopped": 1,
+    "costUsd": null
+  },
+  "packagingAdditionalDependency": {
+    "path": "packages/scean/isolated/web/dialogue.mjs",
+    "source": "isolated/web/dialogue.mjs",
+    "reason": "Existing shipped world-routine-ui.mjs imports this module. Same accepted canonical bytes already provided in corresponding source and core/dialogue; close installed package relative-import closure without changing algorithms."
+  }
+}

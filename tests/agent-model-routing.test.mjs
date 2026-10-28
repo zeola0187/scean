@@ -67,7 +67,7 @@ async function setup(t,{single=false,technicalRetries=0}={}){
  ctx.on('llm/adapters-updated',()=>{f.routing.epoch++;});
  const port=createNativeModelPort({llm:ctx.llm,agentDefaultModel:{currentSelection:()=>f.current},routing:f.routing,technicalRetries,usageLedger:{async reserve(r){f.reserves.push(structuredClone(r));await f.beforeReserve?.();return 'r-'+f.reserves.length;},async settle(id,r){f.settles.push({id,...r});}}});
  f.model={...port,generate:args=>{active=args;return port.generate(args);}};
- f.engine=new SceanEngine({store:f.store,model:f.model,memory:new Memory(),unconfiguredWritingMode:single?'single_writer':'current'});
+ f.engine=new SceanEngine({postBody:false,store:f.store,model:f.model,memory:new Memory(),unconfiguredWritingMode:single?'single_writer':'current'});
  f.run=await f.engine.createRun({snapshot:snapshot()});
  f.save=async(roles,scope='@global',extra={})=>{const current=await readModelSettings(f.store,scope);return f.routing.save({scope,roles:modelPreferences(roles),expectedRevision:current.revision,operationId:'save-'+(scope==='@global'?'global':scope)+'-'+current.revision,...extra});};
  f.turn=(requestId='turn-a')=>f.engine.turn({runId:f.run.runId,requestId,input:'Consult the synthetic actors.'});

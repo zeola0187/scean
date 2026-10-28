@@ -49,12 +49,24 @@ export function calendarDate(day,d){
  if(d.calendar.kind==='relative')return {label:`故事第 ${day} 日`,dayOrdinal:day};
  const lengths=d.calendar.monthLengths,a=d.calendar.anchor,yearLength=lengths.reduce((x,n)=>x+n,0),ordinal=(a.year-1)*yearLength+lengths.slice(0,a.month-1).reduce((x,n)=>x+n,0)+a.day-1+day-1;
  let remain=ordinal%yearLength,month=1;while(remain>=lengths[month-1])remain-=lengths[month++-1];const year=Math.floor(ordinal/yearLength)+1,date=remain+1;
- return {year,month,day:date,label:`${d.calendar.era??''}${year}年 ${d.calendar.monthNames?.[month-1]??month}月 ${date}日`,...(d.calendar.weekLength?{weekday:ordinal%d.calendar.weekLength+1}:{})};
+  return {year,month,day:date,label:`${d.calendar.era??''}${year}年 ${d.calendar.monthNames?.[month-1]??`${month}月`} ${date}日`,...(d.calendar.weekLength?{weekday:ordinal%d.calendar.weekLength+1}:{})};
 }
 export function readStoryClock(run,c=run.storyClock){
  const d=storyTimeDefinition(run.snapshot.storyTimeDefinition);validateStoryClock(c,d);
  const view={...clone(c),calendarId:d.calendar.id,earliestDate:calendarDate(c.position.earliest.dayOrdinal,d),latestDate:calendarDate(c.position.latest.dayOrdinal,d),authority:'host_story_clock',readOnly:true};
  return Object.freeze(view);
+}
+// Presentation only; preserve the Clock's precision and the authored day length.
+export function storyClockLabel(run,c=run.storyClock){
+ const d=storyTimeDefinition(run.snapshot.storyTimeDefinition);validateStoryClock(c,d);
+ const date=p=>calendarDate(p.dayOrdinal,d).label;
+ const at=p=>`${date(p)} ${String(Math.floor(p.minuteOfDay/d.minutesPerHour)).padStart(2,'0')}:${String(p.minuteOfDay%d.minutesPerHour).padStart(2,'0')}`;
+ if(c.precision==='day')return date(c.position.earliest);
+ if(c.precision==='period'){
+  const names={morning:'上午',afternoon:'下午',night:'夜間',morning_watch:'早班',afternoon_shift:'下午班',evening_hearth:'晚間',night_drift:'夜航'};
+  return `${date(c.position.earliest)} · ${names[c.periodId]??c.periodId}（時段）`;
+ }
+ return c.precision==='minute'?at(c.position.earliest):`${at(c.position.earliest)} ～ ${at(c.position.latest)}（範圍）`;
 }
 export function resolveTimeOperation(base,op,d,sourceRef,{maxAdvanceDays=31}={}){
  validateStoryClock(base,d);fields(op,['kind','amount','target','sourceRefs'],['kind']);
@@ -70,7 +82,7 @@ export function resolveTimeOperation(base,op,d,sourceRef,{maxAdvanceDays=31}={})
   if(precision!=='period')periodId=undefined;
  }else{
   fields(op.target,['dayOrdinal','dayOffset','nextDay','minuteOfDay','periodId','date']);if(op.amount!==undefined)fail('TIME_OPERATION_INVALID');
-  const t=op.target;const selectors=['dayOrdinal','dayOffset','nextDay','date'].filter(k=>t[k]!==undefined);if(selectors.length!==1)fail('TIME_TARGET_INVALID');
+  const t=op.target;const selectors=['dayOrdinal','dayOffset','nextDay','date'].filter(k=>t[k]!==undefined);if(selectors.length!==1){const e=new SceanError('TIME_TARGET_INVALID');e.timeArgumentIssue={path:'/target',reason:selectors.length?'multiple_date_selectors':'missing_date_selector'};throw e;}
   let day;
   if(t.dayOrdinal!==undefined){if(!int(t.dayOrdinal,1,1000000))fail('TIME_TARGET_INVALID');day=t.dayOrdinal;}
   else if(t.date){if(d.calendar.kind!=='fixed-month')fail('TIME_TARGET_INVALID');fields(t.date,['year','month','day'],['year','month','day']);const c=d.calendar,a=c.anchor,x=t.date;if(!int(x.year,1,1000000)||!int(x.month,1,c.monthLengths.length)||!int(x.day,1,c.monthLengths[x.month-1]))fail('TIME_TARGET_INVALID');const serial=q=>(q.year-1)*c.monthLengths.reduce((s,n)=>s+n,0)+c.monthLengths.slice(0,q.month-1).reduce((s,n)=>s+n,0)+q.day-1;day=serial(x)-serial(a)+1;}
@@ -100,3 +112,31 @@ export function assertTemporalChanges(changes,blueprint){for(const c of changes?
  if(clockAliases.has(c.key)||c.category==='time'&&(['current','now'].includes(c.key)||!typed&&(c.operation!=='set'||!['duration','deadline','timer'].includes(c.value?.temporalKind))))fail('STORY_CLOCK_WRITE_FORBIDDEN');
  if(c.category==='effects'&&c.key==='story_events')fail('PUBLIC_EVENT_WRITE_FORBIDDEN');
 }}
+
+export function normalizePostBodyTime(base,decision,d,sourceRef,{maxAdvanceDays=31}={}){
+ const fail=(code,path,reason)=>{throw Object.assign(new SceanError(code),{validation:{path,reason}});};
+ const object=v=>v!==null&&typeof v==='object'&&!Array.isArray(v),integer=(v,min=0)=>Number.isSafeInteger(v)&&v>=min;
+ const fields=(v,allowed,required,path)=>{if(!object(v)||Object.keys(v).some(k=>!allowed.includes(k))||required.some(k=>!Object.hasOwn(v,k)))fail('POST_STATE_FORMAT',path,'fields');};
+ validateStoryClock(base,d);if(!object(decision))fail('POST_STATE_FORMAT','/time','object_required');
+ let lo=tick(base.position.earliest,d),hi=tick(base.position.latest,d),precision=base.precision,periodId=base.periodId;
+ const keys=Object.keys(decision);
+ if(Object.hasOwn(decision,'unchanged')){
+  fields(decision,['unchanged'],['unchanged'],'/time');if(decision.unchanged!==true)fail('POST_STATE_FORMAT','/time/unchanged','true_required');
+ }else if(Object.hasOwn(decision,'elapsedMinutes')){
+  fields(decision,['elapsedMinutes'],['elapsedMinutes'],'/time');const delta=decision.elapsedMinutes;
+  if(!integer(delta)||delta>maxAdvanceDays*dayMinutes(d))fail('POST_TIME_INVALID','/time/elapsedMinutes','out_of_range');
+  lo+=delta;hi+=delta;if(delta){precision=lo===hi?'minute':base.precision==='day'&&delta%dayMinutes(d)===0?'day':'range';periodId=undefined;}
+ }else{
+  fields(decision,['dayOrdinal','periodId','minuteOfDay'],['dayOrdinal'],'/time');
+  if(!integer(decision.dayOrdinal,1)||decision.dayOrdinal>1000000||Object.hasOwn(decision,'periodId')&&Object.hasOwn(decision,'minuteOfDay'))fail('POST_TIME_INVALID','/time','invalid_position');
+  let start=0,end=dayMinutes(d)-1;precision='day';periodId=undefined;
+  if(Object.hasOwn(decision,'periodId')){const p=d.periods[decision.periodId];if(typeof decision.periodId!=='string'||!p)fail('POST_TIME_INVALID','/time/periodId','unknown_period');start=p.start;end=p.end;precision='period';periodId=decision.periodId;}
+  if(Object.hasOwn(decision,'minuteOfDay')){if(!integer(decision.minuteOfDay)||decision.minuteOfDay>=dayMinutes(d))fail('POST_TIME_INVALID','/time/minuteOfDay','out_of_range');start=end=decision.minuteOfDay;precision='minute';}
+  lo=tick({dayOrdinal:decision.dayOrdinal,minuteOfDay:start},d);hi=tick({dayOrdinal:decision.dayOrdinal,minuteOfDay:end},d);
+  const known=tick(base.position.earliest,d);if(hi<known)fail('POST_TIME_INVALID','/time','before_known_clock');
+  if(lo<known){lo=known;precision=lo===hi?'minute':'range';periodId=undefined;}
+ }
+ if(hi-tick(base.position.earliest,d)>maxAdvanceDays*dayMinutes(d))fail('TIME_OPERATION_LIMIT','/time','advance_limit');
+ const after={...clone(base),position:{earliest:point(lo,d),latest:point(hi,d)},precision,revision:base.revision+1,sourceRef:clone(sourceRef)};
+ delete after.periodId;if(periodId)after.periodId=periodId;validateStoryClock(after,d);return after;
+}

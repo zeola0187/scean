@@ -14,11 +14,11 @@ export function safeError(code,message=code){return Object.assign(new Error(mess
 /** Host-only, per-consultation dispatch allowance shared by transport and format
  * recovery. Reservations are conservative and checkpointed before any dispatch.
  * Never serialize this object into a model packet or a public diagnostic. */
-export function createDispatchBudget({signal,timeoutMs=180000,onReserve=async()=>{},limit=2}={}){
+function boundedDispatchBudget({signal,timeoutMs=180000,onReserve=async()=>{},limit=2}={},maximum=2){
   if(!Number.isSafeInteger(timeoutMs)||timeoutMs<1||timeoutMs>600000)throw safeError('INVALID_CALL_TIMEOUT');
-  if(!Number.isInteger(limit)||limit<1||limit>2)throw safeError('INVALID_DISPATCH_LIMIT');
+  if(!Number.isInteger(limit)||limit<1||limit>maximum)throw safeError('INVALID_DISPATCH_LIMIT');
   const controller=new AbortController();let used=0,closed=false,route,effective;
-  const cancel=()=>controller.abort(safeError('CANCELLED','Consultation cancelled.'));
+  const cancel=()=>controller.abort(signal?.reason?.code==='MODEL_TIMEOUT'?safeError('MODEL_TIMEOUT','Parent planning deadline exceeded.'):safeError('CANCELLED','Consultation cancelled.'));
   signal?.addEventListener('abort',cancel,{once:true});if(signal?.aborted)cancel();
   const timer=setTimeout(()=>controller.abort(safeError('MODEL_TIMEOUT','Consultation deadline exceeded.')),timeoutMs);
   let rejectAbort;const aborted=new Promise((_,reject)=>{rejectAbort=reject;});aborted.catch(()=>{});
@@ -34,6 +34,10 @@ export function createDispatchBudget({signal,timeoutMs=180000,onReserve=async()=
     close(){if(closed)return;closed=true;clearTimeout(timer);signal?.removeEventListener('abort',cancel);controller.abort(safeError('CANCELLED'));controller.signal.removeEventListener('abort',onAbort);},
   };
 }
+export const createDispatchBudget=options=>boundedDispatchBudget(options,2);
+// Five Director rounds, at most two physical SDK dispatches per round. One
+// fixed planning deadline also bounds local argument correction and advice.
+export const createDirectorDispatchBudget=options=>boundedDispatchBudget({...options,limit:10},10);
 export function safeFailure(error,signal){
   if(signal?.aborted||error?.name==='AbortError')return safeError('CANCELLED','Request was cancelled; this turn was not committed.');
   if(error?.name==='TimeoutError')return safeError('MODEL_TIMEOUT','Model request timed out; this turn was not committed.');

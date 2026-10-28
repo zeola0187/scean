@@ -6,7 +6,7 @@ const identity=r=>hash(Object.fromEntries(['snapshot','turns','state','memories'
 async function fixture({turns=100,bodyRepeats=3}={}){
  const root=await mkdtemp(join(tmpdir(),'chapter-target-tx-')),store=new DurableStore({root}),run=syntheticLongrun({turns,bodyRepeats}),calls=[];await store.create(run);
  const model={async describe(){return{capabilities:{contextWindow:32768,outputLimit:4096}};},async generate(a){calls.push(structuredClone({...a,signal:undefined}));return{text:JSON.stringify(a.stage==='chapter_analysis'?{shouldCreateChapter:true,optimalEndTurn:a.input.range.endTurn,suggestedTitle:'合成自然段落',keywords:[],characters:[],locations:[],plotThreads:[],emotionalTone:'平靜',significantEvents:[]}:payload),model:'scripted-target'};}};
- const engine=new SceanEngine({store,model,memory:{retrieve:async()=>({records:[]})}}),args=async op=>{const r=await store.read(run.runId);return{runId:r.runId,operationId:op,expectedVersion:r.version,expectedHead:r.head};};await updateChapterSettings(engine,{...await args('settings'),settings:{autoEnabled:true,tokenThreshold:16000,bufferTurns:0,detail:'auto'}});
+ const engine=new SceanEngine({postBody:false,store,model,memory:{retrieve:async()=>({records:[]})}}),args=async op=>{const r=await store.read(run.runId);return{runId:r.runId,operationId:op,expectedVersion:r.version,expectedHead:r.head};};await updateChapterSettings(engine,{...await args('settings'),settings:{autoEnabled:true,tokenThreshold:16000,bufferTurns:0,detail:'auto'}});
  return{run,store,engine,model,calls,args};
 }
 test('v2 complete-turn target over fifty turns publishes one named source-validated archive and portable history; replay cannot pay twice',async()=>{

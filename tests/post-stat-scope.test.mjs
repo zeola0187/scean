@@ -45,7 +45,7 @@ async function fixture(output, { prepared = false, controller, blueprint } = {})
   if (prepared) llm.prepareCall = async config => ({ config, stream });
   const model = createNativeModelPort({ llm, agentDefaultModel: { currentSelection: () => ({ provider: 'offline', model: 'synthetic' }) },
     usageLedger: { async reserve() { return 'synthetic'; }, async settle(_id, entry) { settlements.push(entry); } } });
-  const engine = new SceanEngine({unconfiguredWritingMode:'current', store, model, memory: { async retrieve() { return { records: [], status: 'synthetic' }; } } });
+  const engine = new SceanEngine({postBody:false,unconfiguredWritingMode:'current', store, model, memory: { async retrieve() { return { records: [], status: 'synthetic' }; } } });
   const run = await engine.createRun({ snapshot: { schemaVersion: 1, cardId: 'synthetic-scope', revision: 1, card: { name: 'Synthetic' }, worldbook: {}, preset: {}, characters, ...(blueprint ? { stateBlueprint: blueprint } : {}) }, ...(blueprint ? {} : { initialState: previous() }) });
   return { root, store, engine, run, requests, settlements, turn: () => engine.turn({ runId: run.runId, requestId: 'scope-test', input: 'Enter the bridge.', signal: controller?.signal }) };
 }
@@ -72,7 +72,8 @@ for (const prepared of [false, true]) test(`engine -> budget -> native ${prepare
   const result = await env.turn();
   assert.equal(result.status, 'committed');
   const options = env.requests.at(-1), input = JSON.parse(options.messages[0].content[0].text);
-  assert.deepEqual(input.outputContract, postStatOutputContract(characters));
+  assert.equal(input.temporal.candidateRef,result.candidateRef);
+  assert.deepEqual(input.outputContract, postStatOutputContract(characters,input.temporal.candidateRef));
   assert.match(options.system, /NEVER be used as stateChanges.characterId/);
   assert(!Object.hasOwn(options, 'responseFormat')); assert(!Object.hasOwn(options, 'tools'));
   assert.equal(env.requests.length, 4);

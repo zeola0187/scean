@@ -17,7 +17,7 @@ export async function fixture(t){
   const base=new URL('../.test-data/',import.meta.url);await mkdir(base,{recursive:true});const root=await mkdtemp(new URL('w02-',base));
   const clock={value:100000},calls=[];
   const model={async generate(args){calls.push(args.stage);if(args.stage==='director')return {text:'Observe independently.'};if(['draft','prose'].includes(args.stage))return {text:'She disagreed and inspected the lamp.'};if(args.stage==='post_stat')return {text:JSON.stringify({contractVersion:2,stateChanges:[],memories:[]})};throw Error('Unexpected offline stage '+args.stage);}};
-  const engine=new SceanEngine({unconfiguredWritingMode:'current',store:new DurableStore({root:join(root,'store')}),model,memory:new Memory()});
+  const engine=new SceanEngine({postBody:false,unconfiguredWritingMode:'current',store:new DurableStore({root:join(root,'store')}),model,memory:new Memory()});
   const host=await new SceanHost({engine,root:join(root,'host'),now:()=>clock.value}).init();
   const workspace=join(root,'studio');await mkdir(workspace);
   const agent={id:'w02-session',status:'idle',session:{header:{cwd:workspace},snapshotEvents:()=>[]},whenIdle:async()=>{},cancel(){}};

@@ -28,7 +28,7 @@ async function fixture({turns=16,bodyRepeats=20,summaryEnabled=true,override}={}
     if(a.stage==='post_stat')return {text:JSON.stringify({contractVersion:2,stateChanges:[],memories:[],playerHistory:[]})};
     throw Error('Unexpected scripted stage '+a.stage);
   }};
-  await store.create(run);const engine=new SceanEngine({unconfiguredWritingMode:'current',store,model,memory:{async retrieve(){return {records:[]};}}}),hostRoot=join(root,'host');
+  await store.create(run);const engine=new SceanEngine({postBody:false,unconfiguredWritingMode:'current',store,model,memory:{async retrieve(){return {records:[]};}}}),hostRoot=join(root,'host');
   const host=await new SceanHost({engine,root:hostRoot,summaryEnabled,chapterModelsEnabled:true}).init();return {root,hostRoot,store,engine,host,model,run,calls};
 }
 async function args(f,operationId,extra={}){const r=await f.store.read(f.run.runId);return {runId:r.runId,operationId,expectedVersion:r.version,expectedHead:r.head,...extra};}

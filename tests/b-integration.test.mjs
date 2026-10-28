@@ -24,7 +24,7 @@ async function setup({source=snapshot(),initial=state(),window=32768,consult=fal
     throw Error('Unexpected stage '+args.stage);
   }};
   const memory={async retrieve(args){recalls.push({audience:args.audience,characterId:args.characterId??null});return{records:structuredClone(args.records),status:'synthetic_offline'};}};
-  const engine=new SceanEngine({unconfiguredWritingMode:'current',store,model,memory});const run=await engine.createRun({snapshot:source,initialState:initial});
+  const engine=new SceanEngine({postBody:false,unconfiguredWritingMode:'current',store,model,memory});const run=await engine.createRun({snapshot:source,initialState:initial});
   return{root,store,model,engine,run,calls,descriptions,recalls};
 }
 const play=(f,requestId='b-turn')=>f.engine.turn({runId:f.run.runId,input:'我在塔門旁等待。',requestId});

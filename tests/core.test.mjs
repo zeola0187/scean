@@ -32,7 +32,7 @@ async function setup(options = {}) {
   const store = new DurableStore({ root, fault: options.fault });
   const model = options.model ?? scripted();
   const memory = options.memory ?? new Memory();
-  const engine = new SceanEngine({unconfiguredWritingMode:'current', store, model, memory });
+  const engine = new SceanEngine({postBody:false,unconfiguredWritingMode:'current', store, model, memory });
   const run = await engine.createRun({ snapshot: snapshot(), initialState: { world: { place: 'harbor' }, characters: { lin: { secret: 'LIN_PRIVATE', public: { role: 'navigator' } }, mei: { secret: 'MEI_PRIVATE' } } }, ...(options.create ?? {}) });
   return { root, store, model, memory, engine, run };
 }
@@ -76,7 +76,7 @@ test('daily turn has zero consultations, full assembly, isolated handoffs and no
 
 test('two committed rounds recall canonical public memories and restart preserves state/source', async () => {
   const env = await setup(); const first = await turn(env);
-  const restarted = new SceanEngine({unconfiguredWritingMode:'current', store: new DurableStore(env.root), model: env.model, memory: new Memory() });
+  const restarted = new SceanEngine({postBody:false,unconfiguredWritingMode:'current', store: new DurableStore(env.root), model: env.model, memory: new Memory() });
   const second = await restarted.turn({ runId: env.run.runId, requestId: 'request-2', input: 'Tell me where Lin put the silver key beside the harbor chart.' });
   assert.equal(second.version, 2);
   const assembly = env.model.calls.filter(c => c.stage === 'director')[1].input.assembly;
@@ -188,7 +188,7 @@ test('real child-process crash leaves lock recoverable and pending attempt becom
   let output = '';
   await new Promise((resolve, reject) => { child.stdout.on('data', chunk => { output += chunk; if (output.includes('LOCKED')) resolve(); }); child.once('error', reject); child.once('exit', code => { if (!output.includes('LOCKED')) reject(new Error(`Child exited ${code}`)); }); });
   child.kill('SIGKILL'); await once(child, 'exit');
-  const restarted = new SceanEngine({unconfiguredWritingMode:'current', store: new DurableStore(env.root), model: env.model, memory: env.memory });
+  const restarted = new SceanEngine({postBody:false,unconfiguredWritingMode:'current', store: new DurableStore(env.root), model: env.model, memory: env.memory });
   await restarted.turn({ runId: env.run.runId, requestId: 'post-crash', input: 'Where is the silver key?' });
   const failed = (await restarted.inspect(env.run.runId)).attempts.find(a => a.attemptId === 'crash-attempt');
   assert.equal(failed.status, 'failed'); assert.equal(failed.recovery, 'interrupted_before_commit');

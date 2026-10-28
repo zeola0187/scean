@@ -40,7 +40,7 @@ test('formal handoff verifies original hash before promoting; keeps immutable so
 
 test('formal handoff yields native public opening and typed initial state without model or IO', async () => {
   const fixed=normalizeStudioHandoffSnapshot(source({stateBlueprint:blueprint(),initialState:initial()}));
-  const engine=new SceanEngine({unconfiguredWritingMode:'current',store:{create:async run=>run},model:{generate(){assert.fail('No model work permitted');}},memory:{retrieve(){assert.fail('No embedding/retrieval work permitted');}}});
+  const engine=new SceanEngine({postBody:false,unconfiguredWritingMode:'current',store:{create:async run=>run},model:{generate(){assert.fail('No model work permitted');}},memory:{retrieve(){assert.fail('No embedding/retrieval work permitted');}}});
   const run=await engine.createRun({snapshot:fixed});
   assert.equal(run.state.world.resources.fuel,0);
   assert.equal(run.state.world.facts?.unknown,undefined);

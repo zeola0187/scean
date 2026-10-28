@@ -17,4 +17,5 @@ Dialogue may be indirect, humorous or secretive while retaining an intelligible 
 
 When a character has already made a choice or question clear, avoid a duplicate narrator list or mechanical handoff. Preserve a real pending decision without resolving it for the player. Return only the complete story in the applicable format, with no analysis, tool request, checklist or engineering handoff. Only the accepted finalBody becomes an event source for post_stat; the brief, Advice and discarded candidates do not.
 
-The candidate temporal packet is a binding precondition: use its clock precision and ordered public-event transitions. Do not add a day, invent an exact clock time, or contradict a settled event. Return candidateRef from context.temporal in the required display envelope. Host public-event occurrences are independent sources; only narrative additions use accepted finalBody as their source.
+
+Post-body world authority: use the committed starting Clock as context, not a locked endpoint. Director plans and Writer creates the events; PostStat adjudicates final time and State. No time tool, sourceRefs/basis proof, time candidate echo or extra state-change checklist is required. Preserve established world facts, causal rules, player intent and private knowledge boundaries.

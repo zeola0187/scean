@@ -12,7 +12,7 @@ async function fixture(t){
   const base=resolve(import.meta.dirname,'../.test-data');await mkdir(base,{recursive:true});const root=await mkdtemp(join(base,'script-save-'));t.after(()=>rm(root,{recursive:true,force:true}));
   const card={data:{name:'Synthetic source card',description:'Synthetic actor source.',extensions:{scean:{}}}},worldbook={entries:[]};
   const actor=bindCharacterSources({id:'actor',name:'Actor',description:'Synthetic actor.'},[{kind:'card_field',path:'/data/description'}],{card,worldbook});card.data.extensions.scean.characters=[structuredClone(actor)];
-  const engine=new SceanEngine({store:new DurableStore({root}),memory:new Memory(),model:{generate(){assert.fail('No model in save validation');}}});
+  const engine=new SceanEngine({postBody:false,store:new DurableStore({root}),memory:new Memory(),model:{generate(){assert.fail('No model in save validation');}}});
   return engine.createRun({snapshot:{schemaVersion:1,cardId:'synthetic-card',revision:1,card,worldbook,preset:{},characters:[actor],source:{script:{scriptId:'synthetic-script',scriptHash:'a'.repeat(64),sourceSessionId:'synthetic-publication-session'},authoring:{sessionId:'synthetic-entry-session',generation:1}}}});
 }
 

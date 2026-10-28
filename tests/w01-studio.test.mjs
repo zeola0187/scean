@@ -20,7 +20,7 @@ async function fixture(t){
  const claim=await loader.acquire(agent,'w01-test-page');
  const call=(action,args={})=>loader.call(agent,loader.records.get(agent.id),claim,action,args);
  const ok=async(action,args={})=>{const result=await call(action,args);assert(result.ok,JSON.stringify(result));return result.value;};
- const engine=new SceanEngine({unconfiguredWritingMode:'current',store:new DurableStore({root:join(root,'store')}),memory:{async retrieve(){return {records:[],status:'offline'};}},model:{async generate({stage}){return {text:stage==='post_stat'?JSON.stringify({contractVersion:2,stateChanges:[{scope:'world',category:'facts',key:'check_1',operation:'set',value:false}],memories:[]}):'Synthetic observation recorded.'};}}});
+ const engine=new SceanEngine({postBody:false,unconfiguredWritingMode:'current',store:new DurableStore({root:join(root,'store')}),memory:{async retrieve(){return {records:[],status:'offline'};}},model:{async generate({stage}){return {text:stage==='post_stat'?JSON.stringify({contractVersion:2,stateChanges:[{scope:'world',category:'facts',key:'check_1',operation:'set',value:false}],memories:[]}):'Synthetic observation recorded.'};}}});
  const host=await new SceanHost({engine,root:join(root,'host')}).init();
  t.after(async()=>{await host.close();await loader.close();});
  return {root,agent,loader,claim,call,ok,engine,host,get service(){return service;}};

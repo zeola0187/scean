@@ -1,9 +1,23 @@
-# Corresponding source — SCEAN 1.6.2-local.w29.2d.rc3.2
+# Corresponding source — SCEAN 1.6.3-local.w29.2d.rc3.1
 
-Source branch: https://github.com/zeola0187/scean/tree/fix/time-tool-contract-20261026
+The complete corresponding source for this release is available without authentication:
+https://github.com/zeola0187/scean/tree/v1.6.3-local.w29.2d.rc3.1
 
-This is a source-branch update, not a new GitHub Release. The detached push receipt records the exact public commit. The baseline is public RC3.1. Only the resolve_turn_time schema and description change: needsPrecision:true excludes kind, amount and target. Runtime validation, authority, failure behavior and save formats remain unchanged.
+Download the matching source ZIP and detached source receipt from:
+https://github.com/zeola0187/scean/releases/tag/v1.6.3-local.w29.2d.rc3.1
 
-The same declaration repair is installed locally as timecal.2 on a separate timecal.1 baseline. The complete local installation contains earlier calendar/display fixes that are outside this narrow public backport. No nlruntime or A/B architecture is included.
+The immutable release tag identifies the exact public commit. The detached
+source receipt records that commit and the matching ZIP SHA256; these values
+are deliberately not self-embedded in the source tree or source ZIP.
+Build: python scripts/build-candidate.py --stage=build-suite-source-NEW.
+Package: python scripts/package-candidate.py --output NEW_OUTSIDE_DIRECTORY.
 
-Canonical inputs, build/export/package tools, synthetic tests and component notices are included. Preserve AGPL-3.0-only, the documented MIT exception and all notices. User cards, Runs, credentials, research, backups and the separately licensed DSH host are excluded. No new tag, Release page or binary asset is claimed.
+This is the complete accepted poststat.1 Runtime, including the earlier local
+time/calendar repairs, with release metadata and public source notices updated.
+It is not merely the earlier rc3.2 declaration-only backport. No Natural Runtime
+A/B or natural-language handoff experiment is activated or imported.
+
+Preserve AGPL-3.0-only, the documented MIT exception and all component notices.
+User cards, Runs, credentials, diagnostic/model logs, backups and the separately
+licensed DSH host SDK are excluded. New v13 saves and v2 recovery sidecars require
+the new reader; preserve post-upgrade data before any software downgrade.

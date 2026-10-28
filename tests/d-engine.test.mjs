@@ -20,7 +20,7 @@ async function setup({turns=100,recentWindow=6,strategy,summaryText='AER_PROMISE
   await store.create(run);const calls=[];
   const model={async describe({stage}){return {capabilities:{contextWindow:stage==='summary'?200000:contextWindow,outputLimit:4096}};},async generate(args){calls.push(clone({stage:args.stage,input:args.input,context:args.context,tools:args.tools??null}));if(args.stage==='summary')return {text:summaryText,model:'synthetic-d-summary'};if(args.stage==='director')return strategy?strategy(args):{text:'The public crew pauses at the dock.'};if(args.stage==='character')return {text:JSON.stringify(advice(args.input.character.id))};if(args.stage==='draft'||args.stage==='prose')return {text:'The crew waited at the northern dock.'};if(args.stage==='post_stat')return {text:JSON.stringify({contractVersion:2,stateChanges:[],memories:[],playerHistory:[]})};throw Error(args.stage);}};
   const memory={async retrieve({records}){return {records:clone(records),status:'synthetic-local'};}};
-  const engine=new SceanEngine({unconfiguredWritingMode:'current',store,model,memory,recentWindow});return {root,store,run,model,memory,engine,calls};
+  const engine=new SceanEngine({postBody:false,unconfiguredWritingMode:'current',store,model,memory,recentWindow});return {root,store,run,model,memory,engine,calls};
 }
 const play=f=>f.engine.turn({runId:f.run.runId,requestId:'d-engine-next',input:'Continue the public watch.'});
 async function summarize(f,endTurn,operationId){const run=await f.store.read(f.run.runId);return updateSummary(f.engine,{runId:run.runId,expectedVersion:run.version,expectedHead:run.head,operationId,endTurn,recentWindow:f.engine.recentWindow},{enabled:true});}
@@ -38,7 +38,7 @@ test('D1 recent window configuration bounds immutable Snapshot seed history and 
   const f=await setup({turns:2,recentWindow:3,mutate:r=>{r.snapshot.chapterSummary='STATIC_AUTHOR_SUMMARY';r.snapshot.recentDialogue=Array.from({length:20},(_,i)=>({input:'seed '+i,body:'SEED_'+i}));}});
   await play(f);const assembly=f.calls.find(c=>c.stage==='director').input.assembly;assert.equal(assembly.chapterSummary,'STATIC_AUTHOR_SUMMARY');assert.equal(assembly.recentDialogue.length,3);assert.equal(assembly.recentDialogue[0].body,'SEED_19');assert.equal(assembly.rollingSummary,undefined);
   assert.equal((await f.store.read(f.run.runId)).snapshot.chapterSummary,'STATIC_AUTHOR_SUMMARY');
-  for(const recentWindow of [0,51,1.5])assert.throws(()=>new SceanEngine({unconfiguredWritingMode:'current',store:f.store,model:f.model,memory:f.memory,recentWindow}),code('INVALID_RECENT_WINDOW'));
+  for(const recentWindow of [0,51,1.5])assert.throws(()=>new SceanEngine({postBody:false,unconfiguredWritingMode:'current',store:f.store,model:f.model,memory:f.memory,recentWindow}),code('INVALID_RECENT_WINDOW'));
 });
 test('D1 no platform quota preserves the complete rolling summary even when estimates exceed reported context',async()=>{
  const f=await setup({turns:10,contextWindow:14000,summaryText:'龜'.repeat(15000)});await summarize(f,4,'large-summary');await play(f);

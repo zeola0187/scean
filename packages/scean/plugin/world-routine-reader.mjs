@@ -1,7 +1,7 @@
 // Public player DTOs. All dates, cutoffs and event statuses are Host projections.
 import {clone,hash,SceanError} from '../core/contracts.mjs';
-import {calendarDate,readStoryClock,storyTimeDefinition,dayMinutes,tick} from '../core/story-clock.mjs';
-import {calendarView,forumReader,routineStatus,routineCut} from '../core/world-routine.mjs';
+import {calendarDate,readStoryClock,storyClockLabel,storyTimeDefinition,dayMinutes,tick} from '../core/story-clock.mjs';
+import {calendarView,forumReader,routineStatus,routineCut,calendarPlanningStatus} from '../core/world-routine.mjs';
 const fail=()=>{throw new SceanError('ROUTINE_QUERY_INVALID');};
 export function publicRoutineRead(run,{kind,windowStart,day,eventOffset=0,threadId,beforeSequence,afterSequence,limit=12}={}){
  const base={runId:run.runId,snapshotHash:run.snapshot.hash,version:run.version,head:run.head??null};
@@ -15,7 +15,7 @@ export function publicRoutineRead(run,{kind,windowStart,day,eventOffset=0,thread
  const forumState=!run.worldRoutine?.policy.forum?'not_enabled':!medium?'medium_unconfigured':binding&&hash(cut.publicState.world[binding.category]?.[binding.key]??null)!==hash(binding.equals)?'medium_unavailable':!run.worldRoutine.policy.authorIds.length?'no_eligible_author':'available';
  const publicStatus={enabled:!!run.worldRoutine,forumState,medium:run.worldRoutine?.policy.medium?.label??run.worldRoutine?.policy.medium?.name??null,forumDays:status.forumDays??null,jobs:(status.jobs??[]).filter(j=>j.kind!=='diary'&&j.day===today).slice(-14).map(j=>({kind:j.kind,status:j.status,day:j.day,error:j.error}))};
  const authors=(run.snapshot.characters??[]).map(a=>({id:a.id,name:a.name}));
- const common={...base,clock,clockLabel:clock.precision==='day'?clock.earliestDate.label:clock.precision==='period'?`${clock.earliestDate.label} · ${clock.periodId}`:positionLabel(clock.position),authors,publicStatus};
+ const common={...base,clock,clockLabel:storyClockLabel(run),authors,publicStatus};
  if(kind==='calendar'){
   const start=windowStart??today;if(!Number.isInteger(start)||start<1||start>today||!Number.isInteger(eventOffset)||eventOffset<0||eventOffset>10000)fail();
   const last=Math.min(start+6,today+6),selected=day??start;if(!Number.isInteger(selected)||selected<start||selected>last)fail();
@@ -24,7 +24,7 @@ export function publicRoutineRead(run,{kind,windowStart,day,eventOffset=0,thread
   const events=[...authored,...calendarView(run,run.storyClock,{limit:2048,currentPublicationCut:run.worldRoutine?.currentCalendarCut??null})].sort((a,b)=>tick(a.start,d)-tick(b.start,d)||a.id.localeCompare(b.id));
   const onDay=(e,n)=>tick(e.start,d)<n*dayMinutes(d)&&tick(e.end,d)>=(n-1)*dayMinutes(d);
   const matching=events.filter(e=>onDay(e,selected)),entries=matching.slice(eventOffset,eventOffset+50).map(e=>({...e,startLabel:pointLabel(e.start),endLabel:pointLabel(e.end)}));
-  return {...common,status:'available',windowStart:start,previousWindow:start>1?Math.max(1,start-7):null,nextWindow:start<today?Math.min(today,start+7):null,today,selectedDay:selected,days:Array.from({length:last-start+1},(_,i)=>({day:start+i,label:calendarDate(start+i,d).label,count:events.filter(e=>onDay(e,start+i)).length})),entries,nextOffset:matching.length>eventOffset+entries.length?eventOffset+entries.length:null};
+  return {...common,status:'available',planning:calendarPlanningStatus(run),windowStart:start,previousWindow:start>1?Math.max(1,start-7):null,nextWindow:start<today?Math.min(today,start+7):null,today,selectedDay:selected,days:Array.from({length:last-start+1},(_,i)=>({day:start+i,label:calendarDate(start+i,d).label,count:events.filter(e=>onDay(e,start+i)).length})),entries,nextOffset:matching.length>eventOffset+entries.length?eventOffset+entries.length:null};
  }
  if(!run.worldRoutine||!run.worldRoutine.policy.forum)return {...common,status:'not_enabled',entries:[],nextCursor:null};
  const value=forumReader(run,{threadId:kind==='thread'?threadId:undefined,beforeSequence,afterSequence,limit});

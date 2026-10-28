@@ -22,7 +22,7 @@ test('C review import reconciles a cancellation-coded acknowledgement failure af
       throw Object.assign(Error('synthetic acknowledgement cancelled after publication'),{code:'CANCELLED'});
     }
   }});
-  const engine=new SceanEngine({unconfiguredWritingMode:'current',store,model:historyModel(),memory:syntheticHistoryMemory()});
+  const engine=new SceanEngine({postBody:false,unconfiguredWritingMode:'current',store,model:historyModel(),memory:syntheticHistoryMemory()});
   const host=await new SceanHost({engine,root:join(root,'host')}).init();
   const result=await host.request({action:'importRun',bundle,acknowledgement:'import-private-run-data'},controller.signal,{principal:'synthetic-review-operator',allowPrivateSaves:true});
   assert.equal((await store.read(bundle.run.runId)).head,bundle.run.head,'the complete import already crossed the atomic publication boundary');
@@ -43,7 +43,7 @@ test('C review import cancellation before publication leaves no visible Run',asy
       throw Object.assign(Error('synthetic cancellation before publication'),{code:'CANCELLED'});
     }
   }});
-  const engine=new SceanEngine({unconfiguredWritingMode:'current',store,model:historyModel(),memory:syntheticHistoryMemory()});
+  const engine=new SceanEngine({postBody:false,unconfiguredWritingMode:'current',store,model:historyModel(),memory:syntheticHistoryMemory()});
   const host=await new SceanHost({engine,root:join(root,'host')}).init();
   const result=await host.request({action:'importRun',bundle,acknowledgement:'import-private-run-data'},controller.signal,{principal:'synthetic-review-operator',allowPrivateSaves:true});
   assert.equal(result.ok,false);

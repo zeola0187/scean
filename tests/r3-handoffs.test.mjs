@@ -29,7 +29,7 @@ const retrieval = { async retrieve({ records }) { return { records: structuredCl
 async function setup({ model = modelFor(), fault, source = snapshot() } = {}) {
   const root = await mkdtemp(path.join(os.tmpdir(), 'scean-r3-handoffs-'));
   const store = new DurableStore({ root, fault });
-  const engine = new SceanEngine({unconfiguredWritingMode:'current', store, model, memory: retrieval });
+  const engine = new SceanEngine({postBody:false,unconfiguredWritingMode:'current', store, model, memory: retrieval });
   const run = await engine.createRun({ snapshot: source, initialState: initialState() });
   return { root, store, engine, model, run };
 }
@@ -94,7 +94,7 @@ test('A1 explicit identity crosses stages, CR receives own full context but excl
 test('R3 invalid identity is rejected at create before any persisted Run or model invocation', async () => {
   for (const badIdentity of [{ gender: 'female', source: 'inferred' }, { source: 'user-explicit' }, { gender: 7, source: 'user-explicit' }, { pronouns: 'she', source: 'user-explicit', private: 'not-an-identity-field' }]) {
     const root = await mkdtemp(path.join(os.tmpdir(), 'scean-r3-handoffs-identity-'));
-    const store = new DurableStore(root), model = modelFor(), engine = new SceanEngine({unconfiguredWritingMode:'current', store, model, memory: retrieval });
+    const store = new DurableStore(root), model = modelFor(), engine = new SceanEngine({postBody:false,unconfiguredWritingMode:'current', store, model, memory: retrieval });
     const source = snapshot(); source.characters[0].identity = badIdentity;
     await assert.rejects(engine.createRun({ snapshot: source }), { code: 'INVALID_ACTOR_IDENTITY' });
     assert.deepEqual(await store.listRuns(), []); assert.equal(model.calls.length, 0);
@@ -135,7 +135,7 @@ test('R3 lost acknowledgement after rename survives restart with exactly one v2 
   armed = true;
   const result = await turn(env); assert.equal(result.status, 'committed'); assert.equal(faults, 1);
   const model = { async generate() { throw new Error('IDEMPOTENT_REPLAY_MUST_NOT_CALL_MODEL'); } };
-  const store = new DurableStore(env.root), engine = new SceanEngine({unconfiguredWritingMode:'current', store, model, memory: retrieval });
+  const store = new DurableStore(env.root), engine = new SceanEngine({postBody:false,unconfiguredWritingMode:'current', store, model, memory: retrieval });
   const replay = await turn({ ...env, engine }); assert.deepEqual(replay, result);
   const saved = await engine.inspect(env.run.runId);
   assert.equal(saved.version, 1); assert.equal(saved.turns.length, 1); assert.equal(saved.memories.length, 1); assert.equal(Object.keys(saved.receipts).length, 1);

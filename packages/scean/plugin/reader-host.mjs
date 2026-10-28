@@ -4,11 +4,11 @@ import {ownerWorldbook} from '../core/owner-worldbook.mjs';
 import {runLifecycle} from '../core/run-lifecycle.mjs';
 import {sameCardContext,sameCardScope,snapshotCardScope} from './card-scope.mjs';
 const fail=code=>{throw new SceanError(code);};
-export const OPERATOR_READ_ACTIONS=new Set(['playerCollaboration','ownerWorldbook']);
+export const OPERATOR_READ_ACTIONS=new Set(['playerCollaboration','ownerWorldbook','settlementBody']);
 export function requireReaderAuthority(action,authority){
  if(!authority.principal||authority.allowGlobalSettings!==true||action==='ownerWorldbook'&&authority.allowPrivateDiagnostics!==true)fail('PLAYER_READER_DENIED');
 }
-const generation=row=>['turn','regenerate'].includes(row?.kind);
+const generation=row=>['turn','regenerate','settlementResume'].includes(row?.kind);
 const stamp=v=>typeof v==='string'&&Number.isFinite(Date.parse(v))?v:null;
 function metadata(row){return {operationId:row.operationId,attemptId:row.attemptId??null,kind:row.kind,status:row.status??'not_recorded',acceptedAt:stamp(row.acceptedAt),finishedAt:stamp(row.finishedAt)};}
 /** UI-only bounded read adapter. No recovery, audit append, grant, or model call. */
