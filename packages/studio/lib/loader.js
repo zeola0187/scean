@@ -15,15 +15,16 @@ import {validSavedPanelArtifact} from './chat-panel-preview.js';
 
 /** Trusted loader. Workspace configuration is data; it cannot name modules, commands, or URLs. */
 export class WorkspaceLoader {
-  constructor({root,agentLookup,activateAddon,skills=[],readMethodSkill=async row=>row,serviceFactory,leaseMs=90000,taskMs=600000,now=Date.now}) {
+  constructor({root,agentLookup,activateAddon,skills=[],readMethodSkill=async row=>row,serviceFactory,leaseMs=90000,taskMs=600000,now=Date.now,onLifecycle=()=>{}}) {
     this.root=root;this.agentLookup=agentLookup;this.activateAddon=activateAddon;this.skills=skills;
-    this.readMethodSkill=readMethodSkill;
+    this.readMethodSkill=readMethodSkill;this.onLifecycle=onLifecycle;
     this.serviceFactory=serviceFactory ?? (()=>new MaterialCardService(root));this.leaseMs=leaseMs;this.now=now;
     this.records=new Map();this.workspace=null;this.closed=false;this.transition=Promise.resolve();
     this.archiveIds=null;this.archived=new Set();this.archiveTask=Promise.resolve();
     if(!Number.isSafeInteger(taskMs)||taskMs<1||taskMs>3600000)throw new TypeError('Host task lifetime must be bounded to at most one hour.');
     this.taskMs=taskMs;this.downloads=new ExportDownloads({now});
   }
+  lifecycle(r,event) { try { this.onLifecycle({...event,sessionHash:sha(r.agent.id).slice(0,12)}); } catch {} }
   async init() {this.canonical=await canonicalRoot(this.root);}
   async isCard(agent) {return !!agent && this.agentLookup(agent.id)===agent && await canonicalRoot(agent.session.header.cwd)===this.canonical;}
   async queue(fn) {const p=this.transition.catch(()=>{}).then(fn);this.transition=p;return p;}
@@ -151,7 +152,7 @@ export class WorkspaceLoader {
       if(r.closing || r.agent!==agent)fail('LEASE','Session generation is closing.');
       const previous=r.pages.get(pageId);if(previous){previous.controller.abort(new DOMException('Page lease replaced','AbortError'));this.clearPage(r,pageId,previous);}
       const selectedSaved=r.selected&&this.workspace.service.read?await this.workspace.service.read(r.selected.document_id):null;
-      const lease={id:randomUUID(),expires:this.now()+this.leaseMs,controller:new AbortController(),selection:r.selected?.document_id??null,selectionRevision:selectedSaved?.revision??null};r.pages.set(pageId,lease);
+      const lease={id:randomUUID(),expires:this.now()+this.leaseMs,controller:new AbortController(),selection:r.selected?.document_id??null,selectionRevision:selectedSaved?.revision??null};r.pages.set(pageId,lease);this.lifecycle(r,{event:'page_acquire',pages:r.pages.size});
       this.trackHostTask(r);
       return {page_id:pageId,lease_id:lease.id,agent_generation:r.generation,workspace_generation:r.workspaceGeneration,workspace:this.canonical,skills:this.methodSkills(r).map(({name,description})=>({name,description})),lease_ms:this.leaseMs,selection_status:await this.selectionStatus(r,{page_id:pageId}),host_task:this.taskInfo(r),authoring_scope:this.scopeInfo(r),character_method:this.methodInfo(r)};
     });
@@ -287,12 +288,12 @@ export class WorkspaceLoader {
   }
   async release(agent,claim) {
     return this.queue(async()=>{
-      const r=this.records.get(agent.id);if(!r)return {released:true};await this.validate(agent,r,claim,{allowArchived:true});const lease=r.pages.get(claim.page_id);lease.controller.abort(new DOMException('Page left workspace','AbortError'));this.clearPage(r,claim.page_id,lease);r.pages.delete(claim.page_id);
+      const r=this.records.get(agent.id);if(!r)return {released:true};await this.validate(agent,r,claim,{allowArchived:true});const lease=r.pages.get(claim.page_id);lease.controller.abort(new DOMException('Page left workspace','AbortError'));this.clearPage(r,claim.page_id,lease);r.pages.delete(claim.page_id);this.lifecycle(r,{event:'page_release',remainingPages:r.pages.size});
       if(!r.pages.size&&!(r.hostTask&&r.agent.status==='running'&&r.hostTask.deadline>this.now()))await this.stopRecord(r,'page-left');return {released:true,remaining_pages:r.pages.size,host_task:this.taskInfo(r)};
     });
   }
   async stopRecord(r,reason='shutdown') {
-    if(r.closing)return;r.closing=true; // Admission closes before cancellation, draining and unregistration.
+    if(r.closing)return;r.closing=true;this.lifecycle(r,{event:'addon_stop',reason}); // Admission closes before cancellation, draining and unregistration.
     r.controller.abort(new DOMException(reason==='task-timeout'?'Host Agent task lifetime expired':'Workspace left: '+reason,'AbortError'));
     r.hostTask?.controller.abort(r.controller.signal.reason);this.downloads.clear(r.agent.id);
     this.workspace?.service.uploads?.clear(r.agent.id);
@@ -305,7 +306,7 @@ export class WorkspaceLoader {
     await r.addon?.dispose();this.records.delete(r.agent.id);
     if(!this.records.size && this.workspace){const service=this.workspace.service;this.workspace=null;await service.close();}
   }
-  async sweep() {return this.queue(async()=>{this.workspace?.service.uploads?.sweep();this.workspace?.service.assetUploads?.sweep();this.downloads.sweep();for(const r of [...this.records.values()]){this.trackHostTask(r);for(const [id,lease] of r.pages)if(lease.expires<=this.now()){lease.controller.abort(new DOMException('Lease expired','AbortError'));this.clearPage(r,id,lease);r.pages.delete(id);}if(r.hostTask?.deadline<=this.now())await this.stopRecord(r,'task-timeout');else if(!r.pages.size&&!(r.hostTask&&r.agent.status==='running'))await this.stopRecord(r,'idle');}});}
+  async sweep() {return this.queue(async()=>{this.workspace?.service.uploads?.sweep();this.workspace?.service.assetUploads?.sweep();this.downloads.sweep();for(const r of [...this.records.values()]){this.trackHostTask(r);for(const [id,lease] of r.pages)if(lease.expires<=this.now()){lease.controller.abort(new DOMException('Lease expired','AbortError'));this.clearPage(r,id,lease);r.pages.delete(id);this.lifecycle(r,{event:'lease_expired',remainingPages:r.pages.size,agentRunning:r.agent.status==='running'});}if(r.hostTask?.deadline<=this.now())await this.stopRecord(r,'task-timeout');else if(!r.pages.size&&!(r.hostTask&&r.agent.status==='running'))await this.stopRecord(r,'idle');}});}
   async disposed(agent) {return this.queue(async()=>{const r=this.records.get(agent.id);if(r?.agent===agent)await this.stopRecord(r);});}
   async close() {this.closed=true;return this.queue(async()=>{for(const r of [...this.records.values()])await this.stopRecord(r);});}
 }

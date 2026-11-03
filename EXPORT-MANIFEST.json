@@ -1,10 +1,9 @@
 {
   "schemaVersion": 1,
-  "title": "SCEAN complete accepted PostStat release corresponding source",
-  "version": "1.6.3-local.w29.2d.rc3.1",
-  "publicReleaseStatus": "AUTHORIZED_PRERELEASE",
-  "sourceUrl": "https://github.com/zeola0187/scean/tree/v1.6.3-local.w29.2d.rc3.1",
-  "acceptedRuntimeVersion": "1.6.2-local.w29.2d.rc3.1.poststat.1",
+  "title": "SCEAN 1.6.4 source candidate",
+  "version": "1.6.4-local.w29.2d.rc3.1",
+  "publicReleaseStatus": "SOURCE_CANDIDATE_NOT_DEPLOYED",
+  "sourceUrl": "https://github.com/zeola0187/scean/tree/v1.6.4-local.w29.2d.rc3.1",
   "files": [
     {
       "path": ".gitattributes",
@@ -23,8 +22,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "bytes": 4882,
-      "sha256": "389c039a3d71db39f25765d592d4872cbfae8c2adc7cbeb4cd63d914ad1bc988"
+      "bytes": 5309,
+      "sha256": "36b78d9e5be51290e3c3eaff27c9b2d2ef71ac12da4212904b503471e21eb3f8"
     },
     {
       "path": "COPYRIGHT",
@@ -994,7 +993,7 @@
     {
       "path": "isolated/web/index.html",
       "bytes": 31065,
-      "sha256": "c317750d88694c9d5be6bf15847fdae4f87d0e5dea2563a8261f6b443c38bab3"
+      "sha256": "fc718f734884a0f353740e56a3ce7f3a37ad9665351ff14032cbe4da9fa9b297"
     },
     {
       "path": "isolated/web/notifications.mjs",
@@ -1143,8 +1142,8 @@
     },
     {
       "path": "package.json",
-      "bytes": 1824,
-      "sha256": "85fc6484299adf4ea15f54bcbecef5b6e27b0d41f5c866309b0a36cb319711ab"
+      "bytes": 1787,
+      "sha256": "01a4b65db2a7f17eede69090d50979db2fae4f224c4233cca7411789941ab440"
     },
     {
       "path": "packages/scean/COPYRIGHT",
@@ -1594,7 +1593,7 @@
     {
       "path": "packages/scean/package.json",
       "bytes": 1936,
-      "sha256": "1d168534f035d4e4e9abcdb71d949b8609c14132410c8c53a2555bf89eebeefd"
+      "sha256": "c4d47f3e0390ff4beeb257e79fc677a155957908c245da2031944265002dba7c"
     },
     {
       "path": "packages/scean/plugin/README.md",
@@ -1629,7 +1628,7 @@
     {
       "path": "packages/scean/plugin/client.js",
       "bytes": 500686,
-      "sha256": "ddcc719d7e45b41189a88215df58b274ff7f73e04b96b3f29ecaf08ac862ed55"
+      "sha256": "9e3cf0cd479aaf498627cad4dc057f306678db0daf291e76e1f8f4796e030e73"
     },
     {
       "path": "packages/scean/plugin/cordis.patch.yml",
@@ -1728,8 +1727,8 @@
     },
     {
       "path": "packages/scean/release-source.json",
-      "bytes": 851,
-      "sha256": "39148e79d8a24a069c4a7ac53f8fe6aab11a75c4f3741266c6d523c5887216de"
+      "bytes": 565,
+      "sha256": "052971744c0ab8407244fbdeced07d48e584fde5c91cfae12d98d852c40ff069"
     },
     {
       "path": "packages/scean/runtime-skills/scene-materials/SKILL.md",
@@ -1799,12 +1798,12 @@
     {
       "path": "packages/studio/client-template.js",
       "bytes": 215745,
-      "sha256": "c04b067554c0e0496b4f293bf6e1d28f8993c782c6a4a64fd5124a104d22c740"
+      "sha256": "7841fbe17bab6dff758c7dc6d9d7a9e49c3ae22172c34eb29a8a26d361c14aad"
     },
     {
       "path": "packages/studio/client.js",
       "bytes": 299682,
-      "sha256": "aa13c1a5c9c30064804780b7b9981510b80308bf379c7c9af5a0858499c65efe"
+      "sha256": "19733110beb920e854521819ca2d6184725dd9f22019eb03d80d8187a0557da9"
     },
     {
       "path": "packages/studio/cordis.patch.yml",
@@ -1813,8 +1812,8 @@
     },
     {
       "path": "packages/studio/index.js",
-      "bytes": 20399,
-      "sha256": "ebb8cc642b22e951f856e470440519c57aa0e56bc2e344f50dd970cd0c1a09e0"
+      "bytes": 20484,
+      "sha256": "021c6d638c7a9345dd67021e8cb456bf8319b2d326bf4182bdd70b2f4a8b7571"
     },
     {
       "path": "packages/studio/lib/archive-lifecycle.js",
@@ -1868,8 +1867,8 @@
     },
     {
       "path": "packages/studio/lib/card-service.js",
-      "bytes": 44963,
-      "sha256": "198de8ad324af65659b5d905ddcabdd3533d662e6259d57420f93bd829d70057"
+      "bytes": 45225,
+      "sha256": "85e598510055557d2c2fd48674337301596d2734c9079bcce9f38e977a44d78d"
     },
     {
       "path": "packages/studio/lib/character-method.js",
@@ -1958,8 +1957,8 @@
     },
     {
       "path": "packages/studio/lib/loader.js",
-      "bytes": 30839,
-      "sha256": "c1641b7f4aad98bdcfa4c9c993e94045a2fcbc8298703ce3b8b7d791c76176b9"
+      "bytes": 31285,
+      "sha256": "cee53e2a96cf5d7c7da5a6befb7429b753af7875d6c88274119675ef410f40ed"
     },
     {
       "path": "packages/studio/lib/material-service.js",
@@ -2053,8 +2052,8 @@
     },
     {
       "path": "packages/studio/lib/tool-definitions.js",
-      "bytes": 23543,
-      "sha256": "221a36b56d3d77045ee91faa516aafd0c159df6dd6ff57153eb2a01ffb54ac70"
+      "bytes": 24181,
+      "sha256": "c27ea73058cfe9d4dcb2fce505453fa2866de45544d6c064eb6428f0fc763e08"
     },
     {
       "path": "packages/studio/lib/upload-buffer.js",
@@ -2189,12 +2188,12 @@
     {
       "path": "packages/studio/package.json",
       "bytes": 1994,
-      "sha256": "55117f8074ca26afaf04fc48ae28e35196ef702e3b4b5c57b5fb1a370313e096"
+      "sha256": "f3c584aa038743bdbd4e2c8f3baeedd2ae322cf21278334fd237979aa1ce534b"
     },
     {
       "path": "packages/studio/release-source.json",
-      "bytes": 851,
-      "sha256": "39148e79d8a24a069c4a7ac53f8fe6aab11a75c4f3741266c6d523c5887216de"
+      "bytes": 565,
+      "sha256": "052971744c0ab8407244fbdeced07d48e584fde5c91cfae12d98d852c40ff069"
     },
     {
       "path": "packages/studio/rollback-recycle.js",
@@ -2514,7 +2513,7 @@
     {
       "path": "plugin/client.js",
       "bytes": 500686,
-      "sha256": "ddcc719d7e45b41189a88215df58b274ff7f73e04b96b3f29ecaf08ac862ed55"
+      "sha256": "9e3cf0cd479aaf498627cad4dc057f306678db0daf291e76e1f8f4796e030e73"
     },
     {
       "path": "plugin/cordis.patch.yml",
@@ -2613,8 +2612,8 @@
     },
     {
       "path": "release-source.json",
-      "bytes": 851,
-      "sha256": "39148e79d8a24a069c4a7ac53f8fe6aab11a75c4f3741266c6d523c5887216de"
+      "bytes": 565,
+      "sha256": "052971744c0ab8407244fbdeced07d48e584fde5c91cfae12d98d852c40ff069"
     },
     {
       "path": "runtime-skills/scene-materials/SKILL.md",
@@ -2889,12 +2888,12 @@
     {
       "path": "sources/card-studio/cardstudio-bundle/client-template.js",
       "bytes": 215745,
-      "sha256": "c04b067554c0e0496b4f293bf6e1d28f8993c782c6a4a64fd5124a104d22c740"
+      "sha256": "7841fbe17bab6dff758c7dc6d9d7a9e49c3ae22172c34eb29a8a26d361c14aad"
     },
     {
       "path": "sources/card-studio/cardstudio-bundle/client.js",
       "bytes": 299682,
-      "sha256": "aa13c1a5c9c30064804780b7b9981510b80308bf379c7c9af5a0858499c65efe"
+      "sha256": "19733110beb920e854521819ca2d6184725dd9f22019eb03d80d8187a0557da9"
     },
     {
       "path": "sources/card-studio/cardstudio-bundle/cordis.patch.yml",
@@ -2903,8 +2902,8 @@
     },
     {
       "path": "sources/card-studio/cardstudio-bundle/index.js",
-      "bytes": 20399,
-      "sha256": "ebb8cc642b22e951f856e470440519c57aa0e56bc2e344f50dd970cd0c1a09e0"
+      "bytes": 20484,
+      "sha256": "021c6d638c7a9345dd67021e8cb456bf8319b2d326bf4182bdd70b2f4a8b7571"
     },
     {
       "path": "sources/card-studio/cardstudio-bundle/lib/archive-lifecycle.js",
@@ -2958,8 +2957,8 @@
     },
     {
       "path": "sources/card-studio/cardstudio-bundle/lib/card-service.js",
-      "bytes": 44963,
-      "sha256": "198de8ad324af65659b5d905ddcabdd3533d662e6259d57420f93bd829d70057"
+      "bytes": 45225,
+      "sha256": "85e598510055557d2c2fd48674337301596d2734c9079bcce9f38e977a44d78d"
     },
     {
       "path": "sources/card-studio/cardstudio-bundle/lib/character-method.js",
@@ -3048,8 +3047,8 @@
     },
     {
       "path": "sources/card-studio/cardstudio-bundle/lib/loader.js",
-      "bytes": 30839,
-      "sha256": "c1641b7f4aad98bdcfa4c9c993e94045a2fcbc8298703ce3b8b7d791c76176b9"
+      "bytes": 31285,
+      "sha256": "cee53e2a96cf5d7c7da5a6befb7429b753af7875d6c88274119675ef410f40ed"
     },
     {
       "path": "sources/card-studio/cardstudio-bundle/lib/material-service.js",
@@ -3148,8 +3147,8 @@
     },
     {
       "path": "sources/card-studio/cardstudio-bundle/lib/tool-definitions.js",
-      "bytes": 23543,
-      "sha256": "221a36b56d3d77045ee91faa516aafd0c159df6dd6ff57153eb2a01ffb54ac70"
+      "bytes": 24181,
+      "sha256": "c27ea73058cfe9d4dcb2fce505453fa2866de45544d6c064eb6428f0fc763e08"
     },
     {
       "path": "sources/card-studio/cardstudio-bundle/lib/upload-buffer.js",
@@ -3284,12 +3283,12 @@
     {
       "path": "sources/card-studio/cardstudio-bundle/package.json",
       "bytes": 1994,
-      "sha256": "55117f8074ca26afaf04fc48ae28e35196ef702e3b4b5c57b5fb1a370313e096"
+      "sha256": "f3c584aa038743bdbd4e2c8f3baeedd2ae322cf21278334fd237979aa1ce534b"
     },
     {
       "path": "sources/card-studio/cardstudio-bundle/release-source.json",
-      "bytes": 851,
-      "sha256": "39148e79d8a24a069c4a7ac53f8fe6aab11a75c4f3741266c6d523c5887216de"
+      "bytes": 565,
+      "sha256": "052971744c0ab8407244fbdeced07d48e584fde5c91cfae12d98d852c40ff069"
     },
     {
       "path": "sources/card-studio/cardstudio-bundle/rollback-recycle.js",
@@ -4074,7 +4073,7 @@
     {
       "path": "sources/manifests/scean-package.json",
       "bytes": 1936,
-      "sha256": "1d168534f035d4e4e9abcdb71d949b8609c14132410c8c53a2555bf89eebeefd"
+      "sha256": "c4d47f3e0390ff4beeb257e79fc677a155957908c245da2031944265002dba7c"
     },
     {
       "path": "tests/a-lifecycle.test.mjs",
@@ -4699,7 +4698,7 @@
     {
       "path": "tests/release-support.test.py",
       "bytes": 4261,
-      "sha256": "101d1b6ccdb3fe558a492b68d326187a1c4bb5919673923bdd092a4c96b2a94c"
+      "sha256": "a64ebdfdf6c2e275bb221c9f67d20cf8919989a8b157a757e68ab49fd86bfed9"
     },
     {
       "path": "tests/rp-output-inheritance.test.mjs",
@@ -5145,6 +5144,11 @@
       "path": "vendor/cardstudio-scean/source-manifest.json",
       "bytes": 6289,
       "sha256": "45bfdb60751e260f6b34f9c393280559bf477f46d46fc9d7a68c46e2db17307e"
+    },
+    {
+      "path": "sources/card-studio/tests/structured-arguments.test.js",
+      "bytes": 4845,
+      "sha256": "6a57bff4b3c40fa5e48ece444bcacf32db4d11f16484f3ecc5e9c9c9fa18f2b2"
     }
   ]
 }

@@ -20,7 +20,7 @@ export const inject = ['agents','tools','skills','commands','typert','workspaceR
 export async function apply(ctx,config = {}) {
   const {root,skillsRoot}=await prepareWorkspace(config,ctx.workspaceRegistry);
   const skills=await loadSkills(skillsRoot,{includeAuthoring:true,tolerantMethods:true});
-  const loader=new WorkspaceLoader({root,skills,readMethodSkill:row=>readSkill(skillsRoot,row),agentLookup:id=>ctx.agents.get(id),activateAddon:async(r)=>{
+  const loader=new WorkspaceLoader({root,skills,onLifecycle:event=>ctx.logger.info('Card Studio lifecycle %s',JSON.stringify(event)),readMethodSkill:row=>readSkill(skillsRoot,row),agentLookup:id=>ctx.agents.get(id),activateAddon:async(r)=>{
     const addon={name:'cardstudio-scean-session-'+r.generation,inject:['tools','skills','systemPrompt'],apply(addonCtx){
       addonCtx.systemPrompt.context({name:'cardstudio-diagnosis',order:9006,text:()=>r.closing?'':diagnosisGuidance(r)});
       addonCtx.systemPrompt.context({name:'cardstudio-selection',order:9000,text:()=>r.selected&&!r.closing
