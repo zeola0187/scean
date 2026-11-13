@@ -14,7 +14,7 @@ import { SceanError, clone, id, safeId, json, hash, checkAbort, text, parseObjec
 import {headOf,assertHistoryCapacity,rollbackLast} from './history.mjs';
 import {regenerateLast} from './regenerate.mjs';
 import {selectNarrative,invalidateNarrative} from './narrative.mjs';
-import {ChapterRecall,chapterContextSources,originalChapterContext} from './chapter-recall.mjs';
+import {ChapterRecall,chapterContextSources,originalChapterContext,chapterContextReceipt} from './chapter-recall.mjs';
 import {seedNewRunChapterSettings} from './chapter-summary.mjs';
 import {searchHistory,readHistory,HISTORY_REFERENCE_LABEL} from './history-recall.mjs';
 import { normalizeBanList, findBans, repairRanges, applyLocalRepairs } from './banlist.mjs';
@@ -349,8 +349,8 @@ export class SceanEngine {
         const capability = description?.capabilities ?? description ?? {};
         try {
           const checked = budgetStage(stage, { system: systems[stage], input: payload }, { contextWindow: capability.contextWindow, outputReserve: capability.outputLimit, outputReserveSource:capability.outputLimitSource, outputReservePhase:capability.outputLimitPhase, tools, requireNarrativeCoverage: true, committedRecentIds: run.turns.slice(-50).map(t=>t.commitId) });
-          (attempt.contextPreflights ??= []).push(checked.diagnostics);
-        } catch (error) { if (error.diagnostics) (attempt.contextPreflights ??= []).push(clone(error.diagnostics)); throw error; }
+          (attempt.contextPreflights ??= []).push({...checked.diagnostics,...(chapterContextReceipt(payload.assembly??payload.context,'preflight_ready')?{chapterDelivery:chapterContextReceipt(payload.assembly??payload.context,'preflight_ready')}:{})});
+        } catch (error) { if (error.diagnostics) (attempt.contextPreflights ??= []).push({...clone(error.diagnostics),...(chapterContextReceipt(payload.assembly??payload.context,error.code==='CONTEXT_PACKET_TOO_LARGE'?'blocked_capacity':'blocked_preflight')?{chapterDelivery:chapterContextReceipt(payload.assembly??payload.context,error.code==='CONTEXT_PACKET_TOO_LARGE'?'blocked_capacity':'blocked_preflight')}:{})}); throw error; }
       };
       const call = async (stage, payload, tools, dispatchBudget) => {
         payload=withPlayer(withMethod(stage,payload));
@@ -379,9 +379,9 @@ export class SceanEngine {
           }
           if (attempt.assemblyDiagnostics?.narrative) {
             const packet = payload.assembly ?? payload.context;
-            const rolling = packet?.rollingSummary;
-            event.narrativeUse = { stage, status: 'assembled_for_port', providerDispatch: 'not_recorded', selectedSummaryId: attempt.assemblyDiagnostics.narrative.selectedSummaryId, deliveredSummaryId: rolling?.id ?? null, summaryStatus: rolling ? 'included' : attempt.assemblyDiagnostics.narrative.selectedSummaryId && ['director', 'draft', 'writer'].includes(stage) ? 'pruned' : 'not_selected_for_stage', recentCount: packet?.recentDialogue?.length ?? 0 };
-            if(['director','draft','writer'].includes(stage)){const chapter=packet?.chapterContext;Object.assign(event.narrativeUse,{contextMode:chapter?.mode??'legacy_rolling',chapterStatus:chapter?.status??null,recentSummaryIds:chapter?.recent.map(r=>r.summaryId)??[],retrievedSummaryIds:chapter?.retrieved.map(r=>r.summaryId)??[],originalCommitIds:packet?.recentDialogue?.map(t=>t.commitId).filter(Boolean)??[],originalsHash:hash(packet?.recentDialogue??[])});}
+            const rolling = packet?.rollingSummary,chapter=packet?.chapterContext;
+            event.narrativeUse = { stage, status: 'assembled_for_port', providerDispatch: 'not_recorded', selectedSummaryId: attempt.assemblyDiagnostics.narrative.selectedSummaryId, deliveredSummaryId: rolling?.id ?? null, summaryKind:chapter?'chapters':rolling?'rolling':'none',summaryStatus: chapter&&[...(chapter.recent??[]),...(chapter.retrieved??[])].length ? 'included' : rolling ? 'included' : attempt.assemblyDiagnostics.narrative.selectedSummaryId && ['director', 'draft', 'writer'].includes(stage) ? 'pruned' : 'not_selected_for_stage', recentCount: packet?.recentDialogue?.length ?? 0 };
+            if(['director','draft','writer'].includes(stage)){Object.assign(event.narrativeUse,{contextMode:chapter?.mode??'legacy_rolling',chapterStatus:chapter?.status??null,recentSummaryIds:chapter?.recent.map(r=>r.summaryId)??[],retrievedSummaryIds:chapter?.retrieved.map(r=>r.summaryId)??[],...(chapterContextReceipt(packet)??{}),originalCommitIds:packet?.recentDialogue?.map(t=>t.commitId).filter(Boolean)??[],originalsHash:hash(packet?.recentDialogue??[])});}
             (attempt.assemblyDiagnostics.narrative.stageUse ??= []).push(event.narrativeUse);
           }
           if(attempt.assemblyDiagnostics?.derivedFacts&&['director','draft','writer'].includes(stage)){
@@ -404,13 +404,13 @@ export class SceanEngine {
           if (response.usage) publicResult.usage = clone(response.usage);
           event.contextBudget.actualUsage = response.usage ? clone(response.usage) : null;
           if (event.worldbookUse) event.worldbookUse.status = 'completed';
-          if (event.narrativeUse) event.narrativeUse.status = 'completed';
+          if (event.narrativeUse) {event.narrativeUse.status = 'completed';if(event.narrativeUse.chapterSummaries)event.narrativeUse.deliveryStatus='completed_port_call';}
           if (event.derivedFactsUse) event.derivedFactsUse.status = 'completed';
           if (response.route) publicResult.route = clone(response.route);
           if (response.attempts) publicResult.attempts = clone(response.attempts);
           json(publicResult); event.result = clone(publicResult); event.status = 'completed'; event.finishedAt = new Date().toISOString(); await checkpoint();
           progress(stage, 'completed'); return publicResult;
-        } catch (error) { const lastCall=error.attempts?.at(-1);reconcileOutputBudget(event.contextBudget,lastCall?.route?.outputBudget,lastCall?.finishKind);if(event.contextBudget&&lastCall?.usage)event.contextBudget.actualUsage=clone(lastCall.usage);if(event.derivedFactsUse)event.derivedFactsUse.status='failed_or_cancelled'; if (event.narrativeUse) event.narrativeUse.status = 'failed_or_cancelled'; if (event.worldbookUse) event.worldbookUse.status = 'failed_or_cancelled'; event.status = error.code === 'CANCELLED' || signal?.aborted ? 'cancelled' : 'failed'; event.error = safeFailure(signal?.aborted ? { code: 'CANCELLED' } : error, stage, 'MODEL_FAILED'); if (error.attempts) event.attempts = clone(error.attempts); event.finishedAt = new Date().toISOString(); progress(stage, event.status); await checkpoint(); throw error; }
+        } catch (error) { const lastCall=error.attempts?.at(-1);reconcileOutputBudget(event.contextBudget,lastCall?.route?.outputBudget,lastCall?.finishKind);if(event.contextBudget&&lastCall?.usage)event.contextBudget.actualUsage=clone(lastCall.usage);if(event.derivedFactsUse)event.derivedFactsUse.status='failed_or_cancelled'; if (event.narrativeUse) {event.narrativeUse.status = 'failed_or_cancelled';if(event.narrativeUse.chapterSummaries)event.narrativeUse.deliveryStatus=error.code==='CONTEXT_PACKET_TOO_LARGE'?'blocked_capacity':'failed_or_cancelled';} if (event.worldbookUse) event.worldbookUse.status = 'failed_or_cancelled'; event.status = error.code === 'CANCELLED' || signal?.aborted ? 'cancelled' : 'failed'; event.error = safeFailure(signal?.aborted ? { code: 'CANCELLED' } : error, stage, 'MODEL_FAILED'); if (error.attempts) event.attempts = clone(error.attempts); event.finishedAt = new Date().toISOString(); progress(stage, event.status); await checkpoint(); throw error; }
       };
       try {
         checkAbort(signal);

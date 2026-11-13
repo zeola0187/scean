@@ -27,12 +27,13 @@ export function mountTimeConfirmation({parent,document=globalThis.document}){
  const period=field('時段 ',select([])),hour=field('時 ',el('input')),minute=field('分 ',el('input'));
  hour.type=minute.type='number';hour.min=minute.min='0';
  const confirmed=field('我確認這份日期／時間用於下一次送出的輸入；不從正文推測。',el('input'));confirmed.type='checkbox';
- const explanation=el('p','這是可選覆寫；未填時由導演依合法來源處理未知時間。起點約束可接續推進，終點約束不可被模型取代。這不會立即修改存檔。確認與正文、State、Clock 一起成功提交才生效；資訊不足或來源變動會停止。開場文字不會自動設定權威時刻。');form.append(explanation);
+ const explanation=el('p');form.append(explanation);
  let control=null,key=null,enabled=false,stale=false;
  const toggle=()=>{enabled=!enabled;form.hidden=!enabled;confirmed.checked=false;};button.onclick=toggle;
  const precision=()=>{labels.get(period).hidden=kind.value!=='period';labels.get(hour).hidden=labels.get(minute).hidden=kind.value!=='minute';};kind.onchange=precision;precision();
  return {
   update(run,busy,error){
+   const postBody=run?.settlementPolicy==='post-body-v1';
    const next=run?.timeControls??null,nextKey=next?JSON.stringify(next.base):null;
    if(nextKey!==key){stale=enabled;enabled=false;form.hidden=true;confirmed.checked=false;control=next;key=nextKey;
     period.replaceChildren();const blank=el('option','請選擇時段');blank.value='';period.append(blank);
@@ -40,7 +41,12 @@ export function mountTimeConfirmation({parent,document=globalThis.document}){
     day.value='';hour.value=minute.value='';if(next){hour.max=String(next.definition.hoursPerDay-1);minute.max=String(next.definition.minutesPerHour-1);mode.value=next.uncertain?'refine':'advance_to';}
    }
    box.hidden=!next;button.disabled=!!busy;form.disabled=!!busy;
-   note.textContent=error?.code==='NEEDS_TIME_PRECISION'?'本輪仍有時間衝突或機械限制，尚未提交。可用自然語言澄清後送出新輸入，或選用下方覆寫；不必一律指定分鐘。':stale?'故事來源已變更，先前時間確認已清除；請重新確認。':next?.initialDayPrecision?'目前只有日精度；導演可依合法來源補足未知時間。下方為可選的玩家起點／終點覆寫。':next?.uncertain?'目前時間保留範圍精度；導演可在已知限制內補足，不必每次填表。':'';
+   button.textContent=postBody?'指定結算時間（選填）':'補充／確認時間';
+   legend.textContent=postBody?'下一次送出的時間限制':'由你確認本輪的故事時間';
+   for(const option of mode.children)option.textContent=option.value==='refine'?(postBody?'指定本輪起點（結算時仍可推進）':'確認本輪起點（模型仍可推進）'):(postBody?'指定本輪終點（結算須符合指定）':'指定本輪終點（模型可補足起點）');
+   explanation.textContent=postBody?'一般可直接在輸入中描述日期、時段或經過多久，故事完成後會結算時間。這裡只為下一次送出加上時間限制：指定起點後仍可推進，指定終點則須符合該時間。若也要改變故事發生的時段，請一併寫在輸入中。成功提交後才會生效；開啟或填寫不會立即修改存檔。':'這是可選覆寫；未填時由導演依合法來源處理未知時間。起點約束可接續推進，終點約束不可被模型取代。這不會立即修改存檔。確認與正文、State、Clock 一起成功提交才生效；資訊不足或來源變動會停止。開場文字不會自動設定權威時刻。';
+   note.textContent=error?.code==='NEEDS_TIME_PRECISION'?'本輪仍有時間衝突或機械限制，尚未提交。可用自然語言澄清後送出新輸入，或選用下方覆寫；不必一律指定分鐘。':stale?'故事來源已變更，先前時間確認已清除；請重新確認。':postBody?'':next?.initialDayPrecision?'目前只有日精度；導演可依合法來源補足未知時間。下方為可選的玩家起點／終點覆寫。':next?.uncertain?'目前時間保留範圍精度；導演可在已知限制內補足，不必每次填表。':'';
+   note.hidden=!note.textContent;
   },
   read(){return enabled?timeConfirmationValue(control,{mode:mode.value,day:day.value,kind:kind.value,period:period.value,hour:hour.value,minute:minute.value,confirmed:confirmed.checked}):null;},
   clear(){enabled=false;confirmed.checked=false;form.hidden=true;},

@@ -17,7 +17,10 @@ function usableCheckpoint(a){
  if(!obj(a)||a.stages!==undefined&&(!Array.isArray(a.stages)||a.stages.some(s=>!obj(s)||typeof s.stage!=='string'))||a.tools!==undefined&&(!Array.isArray(a.tools)||a.tools.some(t=>!obj(t)||typeof t.id!=='string'||typeof t.name!=='string')))return false;
  const h=a.writerHandoff;if(h?.kind==='public_writer_handoff'){
   if(!obj(h.interpretation)||h.sourceCatalog!==undefined&&!Array.isArray(h.sourceCatalog))return false;
-  for(const k of SECTIONS)if(h.interpretation[k]!==undefined&&(!Array.isArray(h.interpretation[k])||h.interpretation[k].some(r=>!obj(r)||typeof r.text!=='string'||!Array.isArray(r.sourceRefs)||r.sourceRefs.some(s=>typeof s!=='string'))))return false;
+  // Post-body handoffs deliberately omit per-statement citations. Keep legacy
+  // requirements and reject malformed citations whenever the field is present.
+  const validRefs=r=>r.sourceRefs===undefined?a.postBodyPolicy==='post-body-v1':Array.isArray(r.sourceRefs)&&r.sourceRefs.every(s=>typeof s==='string');
+  for(const k of SECTIONS)if(h.interpretation[k]!==undefined&&(!Array.isArray(h.interpretation[k])||h.interpretation[k].some(r=>!obj(r)||typeof r.text!=='string'||!validRefs(r))))return false;
  }
  return true;
 }

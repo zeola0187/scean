@@ -1,9 +1,9 @@
 {
   "name": "@local/dsh-scean-openrouter-output-default",
-  "version": "0.1.0-local.3",
+  "version": "0.1.0-local.4",
   "private": true,
   "type": "module",
-  "description": "Reviewed isolated 0.2.2-rc.1 OpenRouter output-default guard",
+  "description": "Pinned DSH 0.2.2-rc.1 OpenRouter output-default guard with complete source notices",
   "license": "AGPL-3.0-only",
   "exports": {
     ".": "./index.mjs"
@@ -30,6 +30,13 @@
     "guard.mjs",
     "sdk-pin.json",
     "cordis.patch.yml",
-    "README.md"
+    "README.md",
+    "LICENSE",
+    "COPYRIGHT",
+    "LICENSE-SCOPE.md",
+    "SOURCE-AVAILABILITY.md",
+    "release-source.json",
+    "THIRD-PARTY-LICENSES.json",
+    "THIRD-PARTY-NOTICES.md"
   ]
 }

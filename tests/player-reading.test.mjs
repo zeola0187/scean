@@ -33,6 +33,7 @@ function fixture({follow=true}={}){
  globalThis.client={state,view,reconcile,poll,loadHistory,historySync,
   getHistory:()=>loadedTurns,getOwn:()=>submissionReading,getEpoch:()=>userScrollEpoch,async submitProbe({historical=false,duringSave=()=>{}}={}){historySync.historical=historical;state.draft=null;$('input').value='Synthetic input';saveDraft=async()=>{state.draft={input:'Synthetic input',requestId:'own-request'};await duringSave();};sendHostOperation=async()=>{};await submitTurn();},setApi(fn){api=fn;},ready(){initialized=true;},
   seed(run,page){view.select(run.runId);pageSerial++;state.run=run;loadedTurns=page.turns;historyPageState=page;historySync.reset();historySync.want(run);historySync.loaded(page);},
+  async resubmitProbe({retry=false,secondSave='ok',bodyAvailable=false}={}){const events=[];state.submitting=false;state.pending=false;state.generationBlocked=false;state.draft={runId:view.runId,input:'Synthetic retry input',requestId:'failed-request'};state.lastOperation={runId:view.runId,operationId:'failed-op',requestId:'failed-request',kind:'turn',status:'failed'};state.failure={requestId:'failed-request',code:'CONTEXT_WINDOW_EXCEEDED',bodyAvailable,resumeAttemptId:'failed-attempt'};$('input').value=state.draft.input;let saves=0;saveDraft=async()=>{saves++;events.push({kind:'save',requestId:state.draft.requestId});if(saves===2&&secondSave==='fail')throw Error('Synthetic draft save failure');if(saves===2&&secondSave==='navigate')view.select('other-run');};sendHostOperation=async(kind,payload)=>events.push({kind,payload});await submitTurn(retry);return JSON.stringify({events,submitting:state.submitting});},
   own(){submissionReading={runId:view.runId,requestId:'own-request',scrollEpoch:userScrollEpoch,canLocate:true};},moved(){userScrollEpoch++;},nextPoll(){state.nextPollAt=0;historySync.retryAt=0;}};`,context);
  context.client.setApi(async(action,payload)=>{calls.push({action,payload});return handler(action,payload);});context.client.ready();context.client.seed(run(1,'c1'),page(1,'c1',['c1']));
  return {client:context.client,calls,element,reading,get ends(){return ends;},setApi(fn){handler=fn;}};
@@ -102,6 +103,18 @@ test('fresh-page submit intent survives late layout and keeps the epoch from bef
  const fresh=fixture({follow:false});await fresh.client.submitProbe();assert.equal(fresh.client.getOwn().canLocate,true);
  const old=fixture({follow:false});await old.client.submitProbe({historical:true});assert.equal(old.client.getOwn().canLocate,false);
  const moved=fixture({follow:false});await moved.client.submitProbe({duringSave:()=>moved.client.moved()});assert.equal(moved.client.getOwn().scrollEpoch,0);assert.equal(moved.client.getEpoch(),1);
+});
+
+test('new send after failure persists a fresh request before dispatch; explicit retry retains original identity',async()=>{
+ const fresh=fixture(),v=JSON.parse(await fresh.client.resubmitProbe());assert.equal(v.events.length,3);assert.equal(v.events[0].requestId,'failed-request');
+ const newId=v.events[1].requestId;assert.notEqual(newId,'failed-request');assert.equal(v.events[2].payload.requestId,newId);assert.equal(v.events[2].payload.retryOf,undefined);
+ const retry=fixture(),r=JSON.parse(await retry.client.resubmitProbe({retry:true}));assert.equal(r.events.length,2);assert.equal(r.events[1].payload.requestId,'failed-request');assert.equal(r.events[1].payload.retryOf,'failed-op');
+ const saved=fixture(),s=JSON.parse(await saved.client.resubmitProbe({retry:true,bodyAvailable:true}));assert.equal(s.events[1].kind,'settlementResume');assert.equal(s.events[1].payload.requestId,'failed-request');
+});
+
+test('failed fresh-draft save or navigation prevents dispatch under the new request',async()=>{
+ const failure=fixture();await assert.rejects(failure.client.resubmitProbe({secondSave:'fail'}),/Synthetic draft save failure/);assert.equal(failure.client.state.submitting,false);
+ const moved=fixture(),v=JSON.parse(await moved.client.resubmitProbe({secondSave:'navigate'}));assert(v.events.every(e=>e.kind==='save'));
 });
 
 test('native parent toast can stay above the input area without inheriting iframe composer geometry',()=>{

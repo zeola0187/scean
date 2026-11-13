@@ -31,6 +31,11 @@ export function openingOf(run) {
 export function requestForInput(draft, input, makeId = () => crypto.randomUUID()) {
   return draft?.input === input && draft.requestId ? draft.requestId : makeId();
 }
+// A deliberate new submission after terminal failure uses current settings.
+// Explicit retries and uncertain/in-flight operations keep their frozen identity.
+export function newTurnRequestNeeded(draft, operation, retry=false) {
+  return !retry&&!!draft?.requestId&&['turn','settlementResume'].includes(operation?.kind)&&operation.requestId===draft.requestId&&(!draft.runId||!operation.runId||draft.runId===operation.runId)&&['failed','cancelled','interrupted'].includes(operation.status);
+}
 export function shouldSubmit(event, composing) { return !!(!composing && !event.isComposing && event.keyCode !== 229 && event.key === 'Enter' && (event.ctrlKey || event.metaKey)); }
 // An epoch changes before selection starts. A response belonging to an earlier
 // run can complete safely, but cannot change the newly selected run's view.

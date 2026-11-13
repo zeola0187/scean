@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "skillVersion": "1.1.0",
-  "runtimeVersion": "1.6.4-local.w29.2d.rc3.1.dsh022.1",
-  "studioVersion": "1.6.4-local.w29.2d.rc3.1.dsh022.1",
+  "runtimeVersion": "1.6.4-local.w29.2d.rc3.1.dsh022.2",
+  "studioVersion": "1.6.4-local.w29.2d.rc3.1.dsh022.2",
   "desktopVersion": "0.2.2-rc.1",
-  "claimsScope": "Structure/data-path proof against official SDK; deployment and live-model evidence has a separate local feature baseline. See docs/DSH022-COMPATIBILITY.md.",
+  "claimsScope": "Local complete-feature installation candidate, not published; offline and clean-install results are recorded separately. No paid model-quality claim.",
   "capabilities": [
     {
       "id": "snapshot",
@@ -34,7 +34,7 @@
         "path": "core/engine.mjs",
         "line": 259,
         "symbol": "async turn",
-        "sha256": "a1604dd70a41728e101716346e70a66ab63005d26a5d65f2dd72fb7476eee0bf",
+        "sha256": "8849410d6ab37a6902247187fca10e28924b90b42666e5b85360d1029d629ca5",
         "priorSha256": "13f418aabc85cd1e6ae9b6ef5920db7e92aafc5cf9d9dd6c5f50ddd9de6cf907",
         "playerNameBaselineSha256": "23686d04b743925c5c94bbb21fd1418984db7cea17ca75580243ee6321ba21e7",
         "beforeDialogueColorsSha256": "f4a83d514153d2d5531f0ec1b9919196a819adffd8dffe729ba0b23d9911228f"
@@ -55,7 +55,7 @@
         "path": "core/engine.mjs",
         "line": 480,
         "symbol": "ownerPacket",
-        "sha256": "a1604dd70a41728e101716346e70a66ab63005d26a5d65f2dd72fb7476eee0bf",
+        "sha256": "8849410d6ab37a6902247187fca10e28924b90b42666e5b85360d1029d629ca5",
         "priorSha256": "13f418aabc85cd1e6ae9b6ef5920db7e92aafc5cf9d9dd6c5f50ddd9de6cf907",
         "playerNameBaselineSha256": "23686d04b743925c5c94bbb21fd1418984db7cea17ca75580243ee6321ba21e7",
         "beforeDialogueColorsSha256": "f4a83d514153d2d5531f0ec1b9919196a819adffd8dffe729ba0b23d9911228f"
@@ -234,7 +234,7 @@
         "path": "core/context-budget.mjs",
         "line": 75,
         "symbol": "budgetStage",
-        "sha256": "8cf025e5189469940fd2a480b557482e4566ce7e0be05fdeabf09e80b3759b67",
+        "sha256": "f7a5e5d67de93657c785c9fe9e18c06d8d800376bb3f8cf2568f44951538f09b",
         "priorSha256": "dd5f2fc80a390c0cf60696d44dca7cab8a75d4b788306cbc35c3c5756d78fd06",
         "playerNameBaselineSha256": "f8e2ecd322373fbb4c64ed9248b098a6124e8484f1d7e2a64eb023605a7f2434",
         "beforeDialogueColorsSha256": "8af924bfc1dfdfd239d1cf9b853de0b45066b5910b0432fec6643ab7faf7b4db",
@@ -419,7 +419,7 @@
         "path": "core/engine.mjs",
         "line": 172,
         "symbol": "no configured numerical dice runner",
-        "sha256": "a1604dd70a41728e101716346e70a66ab63005d26a5d65f2dd72fb7476eee0bf",
+        "sha256": "8849410d6ab37a6902247187fca10e28924b90b42666e5b85360d1029d629ca5",
         "priorSha256": "13f418aabc85cd1e6ae9b6ef5920db7e92aafc5cf9d9dd6c5f50ddd9de6cf907",
         "playerNameBaselineSha256": "23686d04b743925c5c94bbb21fd1418984db7cea17ca75580243ee6321ba21e7",
         "beforeDialogueColorsSha256": "f4a83d514153d2d5531f0ec1b9919196a819adffd8dffe729ba0b23d9911228f"

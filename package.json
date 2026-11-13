@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-scean-suite",
-  "version": "1.6.4-local.w29.2d.rc3.1.dsh022.1",
+  "version": "1.6.4-local.w29.2d.rc3.1.dsh022.2",
   "private": true,
   "type": "module",
   "description": "SCEAN: native Card Studio, dynamic fronts, durable stories and 3+8 chapter memory",
@@ -58,8 +58,9 @@
   },
   "sceanRelease": {
     "baselineTag": "v1.6.4-local.w29.2d.rc3.1",
-    "status": "SOURCE_COMPATIBILITY_PORT",
-    "releasePolicy": "Compatibility delta only; not the complete separately deployed local feature branch. No release artifact published."
+    "compatibilityBaseCommit": "62bc2bb151ac969956b6a1b064554c564f95dc78",
+    "status": "LOCAL_INSTALLATION_CANDIDATE_NOT_PUBLISHED",
+    "releasePolicy": "Prepared locally only. No merge, push, tag, release or Latest change is authorized in this preparation task."
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.1.0",

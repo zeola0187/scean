@@ -391,12 +391,12 @@ export class SceanHost {
     owner.controller.abort();return {status:'pending',cancelRequested:true,operationId:request.operationId};
   }
   chapterContextReadiness(run){
-    const sources=chapterContextSources(run),ports=this.engine.chapterRecall?.capabilities()??{};
+    const sources=chapterContextSources(run),ports=this.engine.chapterRecall?.capabilities()??{},hybridRequired=sources.older.length>8;
     if(run.narrative?.chapterSettings?.autoEnabled!==true)return{status:'off',reason:'saved_run_preference_off'};
-    if(!this.chapterModelsEnabled)return{status:'configuration_required',reason:'CHAPTER_SERVICE_DISABLED',originalsPreserved:true};
-    if(sources.older.length&&!ports.embedding)return{status:'configuration_required',reason:'CHAPTER_EMBEDDING_UNAVAILABLE',originalsPreserved:true};
-    if(sources.older.length&&!ports.rerank)return{status:'configuration_required',reason:'CHAPTER_RERANK_UNAVAILABLE',originalsPreserved:true};
-    return{status:sources.records.length?'ready':'awaiting_first_summary',recentChapters:Math.min(3,sources.records.length),olderCandidates:sources.older.length,recalledMaximum:8,embedding:ports.embedding?'configured':'needed_after_three_chapters',rerank:ports.rerank?'configured':'needed_after_three_chapters',providerConnectivity:'not_probed'};
+    if(hybridRequired&&!this.chapterModelsEnabled)return{status:'configuration_required',reason:'CHAPTER_SERVICE_DISABLED',originalsPreserved:true};
+    if(hybridRequired&&!ports.embedding)return{status:'configuration_required',reason:'CHAPTER_EMBEDDING_UNAVAILABLE',originalsPreserved:true};
+    if(hybridRequired&&!ports.rerank)return{status:'configuration_required',reason:'CHAPTER_RERANK_UNAVAILABLE',originalsPreserved:true};
+    return{status:sources.records.length?'ready':'awaiting_first_summary',recentChapters:Math.min(3,sources.records.length),olderCandidates:sources.older.length,recalledMaximum:8,selectionPolicy:hybridRequired?'hybrid_rerank':'all_older_within_8',embedding:ports.embedding?'configured':hybridRequired?'required':'not_needed_for_small_set',rerank:ports.rerank?'configured':hybridRequired?'required':'not_needed_for_small_set',providerConnectivity:'not_probed'};
   }
   async chapterStatus(request){
     this.requireRun(request.runId);const run=await this.engine.store.read(request.runId);

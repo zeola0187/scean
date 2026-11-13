@@ -1,6 +1,6 @@
 # OpenRouter output default guard
 
-Version `0.1.0-local.3`, for the exact reviewed DSH `0.2.2-rc.1` adapter only. Licensed under the repository's AGPL-3.0-only license.
+Version `0.1.0-local.4`, for the exact reviewed DSH `0.2.2-rc.1` adapter only. Licensed under the repository's AGPL-3.0-only license.
 
 When an OpenRouter chat-completions caller omits an output limit, the reviewed PiAiAdapter still derives one from the model catalog. This can exceed the remaining context budget. The guard removes only the implicit `max_tokens` / `max_completion_tokens` fields; it preserves configured limits, explicit caller limits, other providers, messages, tools and existing payload hooks.
 

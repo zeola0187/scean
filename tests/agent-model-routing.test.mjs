@@ -16,8 +16,22 @@ import {generatePlayerIdeas,IDEA_CATEGORIES} from '../core/player-ideas.mjs';
 import {configuredChapterPorts} from '../adapters/chapter-providers.mjs';
 import {updateSummary,closeChapter} from '../core/narrative.mjs';
 import {backfillChapterSummary} from '../core/chapter-summary.mjs';
+import {newTurnRequestNeeded,requestForInput} from '../isolated/web/view-model.mjs';
 
 const selection=model=>({provider:model==='a'?'route-a':'route-b',model});
+
+test('failed-turn new submission captures changed provider while original retry preserves its pin',async t=>{
+ const f=await setup(t,{single:true});f.failStage='writer';
+ await assert.rejects(f.turn('failed-request'),{code:'SERVER'});
+ const pinFile=path.join(f.store.runDir(f.run.runId),'model-route-pins/turn-failed-request.json'),pinBefore=await fs.readFile(pinFile);
+ f.current=selection('b');f.failStage='writer';const retryStart=f.calls.length;
+ await assert.rejects(f.turn('failed-request'),{code:'SERVER'});assert(f.calls.slice(retryStart).every(c=>c.provider==='route-a'));
+ const draft={runId:f.run.runId,requestId:'failed-request',input:'Consult the synthetic actors.'},operation={runId:f.run.runId,requestId:draft.requestId,kind:'turn',status:'failed'};
+ assert(newTurnRequestNeeded(draft,operation));const newId=requestForInput(null,draft.input,()=> 'new-request'),newStart=f.calls.length;
+ await f.turn(newId);assert(f.calls.slice(newStart).every(c=>c.provider==='route-b'));
+ assert.deepEqual(await fs.readFile(pinFile),pinBefore);assert.equal((await f.store.read(f.run.runId)).turns.length,1);
+ const count=f.calls.length;await f.turn(newId);assert.equal(f.calls.length,count);
+});
 
 test('integrated routed Single Writer preserves strict handoff, same-call annotations and final commit identity after tools',async t=>{
  const f=await setup(t,{single:true});f.withTools=true;const body='Alpha says "Ready."';

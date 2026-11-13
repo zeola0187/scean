@@ -86,7 +86,7 @@ test('presentation uses durable operation receipts after restart and rejects con
 test('two presentation contenders cannot overwrite a newer revision and never take the story write path',async t=>{
  const f=await fixture(t),p=await f.preview(),other=new PresentationHost({store:f.store}),q=await other.preview({runId:f.run.runId,frontend:f.candidate,expectedPresentationRevision:0});
  const before=await readFile(f.file),results=await Promise.allSettled([f.service.apply(args(f,p,'device-one')),other.apply(args(f,q,'device-two'))]);
- assert.equal(results.filter(r=>r.status==='fulfilled').length,1);assert.equal((await f.service.view({runId:f.run.runId})).presentationRevision,1);assert.deepEqual(await readFile(f.file),before);
+ assert.equal(results.filter(r=>r.status==='fulfilled').length,1,JSON.stringify(results.map(r=>({status:r.status,code:r.reason?.code,message:r.reason?.message}))));assert.equal((await f.service.view({runId:f.run.runId})).presentationRevision,1);assert.deepEqual(await readFile(f.file),before);
 });
 
 test('presentation publication failure keeps original; lost acknowledgment reads the committed receipt without applying twice',async t=>{

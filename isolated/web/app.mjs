@@ -4,7 +4,7 @@ import {mountProseStyle} from './prose-style-ui.mjs';
 import {mountPlayerIdentity} from './player-identity-ui.mjs';
 import {mountCardFrontend} from './card-frontend.mjs';
 import {captureReadingAnchor,restoreReadingAnchor} from './reading-layout.mjs';
-import { SelectionEpoch, OperationOwnership, PrivateDiagnosticsSession, generationAvailability, interactiveEnableRequest, progressText, inspectorStageRoute, titleOf, requestForInput, shouldSubmit, committedMessages, worldLabels, valueText, blueprintStateRows, activeDraftReceipt } from './view-model.mjs';
+import { SelectionEpoch, OperationOwnership, PrivateDiagnosticsSession, generationAvailability, interactiveEnableRequest, progressText, inspectorStageRoute, titleOf, requestForInput, newTurnRequestNeeded, shouldSubmit, committedMessages, worldLabels, valueText, blueprintStateRows, activeDraftReceipt } from './view-model.mjs';
 import { mountStudio } from './studio.mjs';
 import { mountPlayerShell } from './player-shell.mjs';
 import {createNotificationClient,mountNotificationControls,showNotificationToast} from './notifications.mjs';
@@ -232,10 +232,13 @@ function controls(){
   playerIdentity.update(state.run,state.pending||state.submitting||historyBusy||backupBusy);
   $('input').disabled=!hasRun||busy;
   $('send').disabled=!hasRun||busy||state.generationBlocked||!$('input').value.trim();
+  const newAttempt=newTurnRequestNeeded(state.draft,state.lastOperation);
+  $('send').textContent=newAttempt?'依目前設定重做本輪':'送出';
+  $('send').title=newAttempt?'重新生成本輪並採用目前 Agent 設定；先前未提交的候選仍保留。':'';
   $('cancel').hidden=!state.pending;$('cancel').disabled=!operations.target(view.runId);
   timeConfirmation.update(state.run,busy,state.failure);
   $('retry').hidden=!state.failure||state.failure.code==='NEEDS_TIME_PRECISION'&&!state.failure.bodyAvailable||busy||!state.draft?.input;
-  $('retry').disabled=state.generationBlocked||state.failure?.bodyAvailable&&state.failure.canResume===false;$('retry').textContent=state.failure?.bodyAvailable?'繼續結算已保存正文':'重試同一輸入';$('saved-body').hidden=!state.failure?.bodyAvailable;
+  $('retry').disabled=state.generationBlocked||state.failure?.bodyAvailable&&state.failure.canResume===false;$('retry').textContent=state.failure?.bodyAvailable?'繼續結算（原模型）':'以原模型重試';$('saved-body').hidden=!state.failure?.bodyAvailable;
   $('recheck').hidden=!state.failure||(busy&&!state.operationUnknown);$('recheck').disabled=state.pollBusy;
   $('provisional').hidden=!state.pending||!!state.localTurn&&!['turn','regenerate','settlementResume'].includes(state.localTurn.kind);
   $('pending-input').textContent=regenInput??state.draft?.input??'';
@@ -702,7 +705,12 @@ async function submitTurn(retry=false){
   if(retry&&state.failure?.bodyAvailable&&state.failure.requestId===draft.requestId){submissionReading={...readingIntent,requestId:draft.requestId};setError('turn-error',null);await sendHostOperation('settlementResume',{requestId:draft.requestId,sourceAttemptId:state.failure.resumeAttemptId});return;}
   let confirmedTime;try{confirmedTime=timeConfirmation.read();}catch(error){state.submitting=false;setError('turn-error',error);controls();return;}
   if(state.run?.settlementPolicy!=='post-body-v1'&&state.failure?.code==='NEEDS_TIME_PRECISION'&&!confirmedTime){state.submitting=false;setError('turn-error',Object.assign(new Error('請先使用「補充／確認時間」，明確確認所缺時間。'),{code:'NEEDS_TIME_PRECISION'}));controls();return;}
-  if(confirmedTime){draft.requestId=requestForInput(null,draft.input);state.draft={...draft};}
+  const newAttempt=newTurnRequestNeeded(draft,state.lastOperation,retry);
+  if(confirmedTime||newAttempt){draft.requestId=requestForInput(null,draft.input);state.draft={...draft};}
+  if(newAttempt){
+    try{await saveDraft();}catch(error){if(view.current(token)){state.submitting=false;controls();}throw error;}
+    if(!view.current(token))return;
+  }
   submissionReading={...readingIntent,requestId:draft.requestId};
   setError('turn-error',null);$('progress').textContent='正在交由 Host 接受操作；斷線後會查回同一操作。';
   const prior=state.lastOperation;

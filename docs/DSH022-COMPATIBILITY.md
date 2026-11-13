@@ -1,3 +1,5 @@
+> Historical PR #1 source-port record. The local complete-feature candidate is described in DSH022-FULL-STAGE-RELEASE.zh-TW.md.
+
 # DSH 0.2.2-rc.1 compatibility source port
 
 This branch adds the exact DSH `0.2.2-rc.1` version to SCEAN and Studio package boundaries and keeps other unreviewed versions rejected. Studio integration tests register the SDK's separate NativeExecutor and exercise real scoped dispatch, argument validation and lease release. There is no story engine, schema, prompt, permission or production-profile change in this port.

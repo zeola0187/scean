@@ -155,6 +155,7 @@ export function budgetStage(stage, prompt, options = {}) {
   diagnostics.estimatedOverflow = contextWindow > 0 && candidateEstimate + toolReserve > contextWindow;
   diagnostics.reason = diagnostics.estimatedOverflow ? 'estimate_only_provider_enforces_actual_limit' : 'no_platform_token_quota';
   // Keep a data/transport safety bound, independent of tokens or model capacity.
-  if (Buffer.byteLength(JSON.stringify(sanitized)) > 16 * 1024 * 1024) throw Object.assign(new SceanError('CONTEXT_PACKET_TOO_LARGE'), { diagnostics });
+  const packetBytes=Buffer.byteLength(JSON.stringify(sanitized));
+  if (packetBytes > 16 * 1024 * 1024) throw Object.assign(new SceanError('CONTEXT_PACKET_TOO_LARGE'), { diagnostics:{...diagnostics,status:'blocked',failureCode:'CONTEXT_PACKET_TOO_LARGE',packetBytes,packetLimitBytes:16*1024*1024,deliveryStatus:'blocked_capacity'} });
   return { prompt: sanitized, diagnostics };
 }

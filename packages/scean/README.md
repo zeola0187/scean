@@ -1,112 +1,59 @@
-# SCEAN 1.6.3-local.w29.2d.rc3.1 — 正文後世界結算
+# SCEAN
 
-已驗收的 poststat.1 完整成果，目標 DSH 0.2.1-rc.3。
-Director 規劃 → Writer 定稿 → PostStat 裁定時間／狀態 → Host 機械驗證與原子提交。
-時間可維持時段精度；正文完成後的結算失敗可有界續算，不重寫正文。
-新保存格式 v13／續算 sidecar v2 不能直接交給舊 reader；升降版前請保全資料。
-[版本下載](https://github.com/zeola0187/scean/releases/tag/v1.6.3-local.w29.2d.rc3.1) · [完整原碼](https://github.com/zeola0187/scean/tree/v1.6.3-local.w29.2d.rc3.1) · [使用與驗收限制](https://github.com/zeola0187/scean/blob/v1.6.3-local.w29.2d.rc3.1/docs/RELEASE-POSTSTAT.zh-TW.md)
+在 DSH 裡製作角色、保存劇本，接著開始可以持續發展的角色扮演。
 
-以下保留先前版本的功能及相容性說明。
+你用自然語言決定行動與對話，SCEAN 組織場景、描寫角色反應，並在正文完成後更新故事狀態、記憶與時間。Runtime 與 Card Studio 包含在同一個 Suite 套件。
 
----
+**本文件目前是本機安裝候選的首頁草稿，版本 `1.6.4-local.w29.2d.rc3.1.dsh022.2`。尚未推送、合併或發布；下列新版下載與來源標籤連結待發布後才會生效。不要把它當成目前 GitHub Latest。**
 
-# W29 RC3 預發行：1.6.2-local.w29.2d.rc3.1
+## 本版整理的功能
 
-目標為官方 DSH **0.2.1-rc.3**。先備份程式、profile、卡片及 Run 再升級。這是已完成正式原生啟動與一次有界真模型驗收的 RC3 相容版本，並非宣稱全部歷史測試通過。
+- 支援本輪核對的官方 **DSH 0.2.2-rc.1／Windows**，Studio 工具沿用明確的工作卡範圍與授權。
+- 導演 → Writer 正文 → PostStat 世界結算 → Host 檢查與保存；既有故事保留原卡片與來源身份。
+- 章節召回保留最近 3 篇摘要。有效舊章不超過 8 篇時全部帶入，這個小集合不需 embedding 或 rerank；更多舊章沿用有界混合檢索。
+- 協作讀取器接受 PostStat 流程合法省略的逐項引用，不修改舊正文或私人欄位權限。
+- 時間入口顯示「指定結算時間（選填）」，保留確認、來源變動失效與忙碌停用。
+- 失敗後可依目前模型設定重做本輪；明確使用原模型重試或繼續結算時，仍保留原請求及模型身份。
 
-新增 StoryClock、七日日曆、角色論壇與有界路人補文、Studio 創作導航及獨立日曆／論壇模型設定。[更新與使用說明](docs/RELEASE-W29-RC3.zh-TW.md)。新版 v10 不可交給舊 2C 降版讀取；既有 Run 不會自動開啟新能力。
+這份候選包含先前 PR #1 未納入的上述局部修補。沒有新增故事存檔格式或自動搬移資料；不是把伺服器 Profile 複製到另一台電腦。
 
----
+## 從本專案首頁安裝
 
-# SCEAN 1.6.0
+本輪乾淨安裝目標是 **官方 DSH 0.2.2-rc.1、Windows**。主力機若尚未使用這個宿主版本，先確認宿主升級及備份方案；不要用版本豁免強制安裝。
 
-SCEAN combines native Card Studio authoring with saved story openings, dynamic
-card fronts, durable story operations, independent reading sidebars and chapter
-memory. Original SCEAN material is **AGPL-3.0-only**; the existing
-advanced-tavern-card-authoring Skill retains its MIT grant. See [LICENSE](LICENSE),
-[scope](LICENSE-SCOPE.md) and [third-party notices](THIRD-PARTY-NOTICES.md).
+1. 等待當下生成、結算與保存完成，正常退出需要更新的 DSH。建立當時最新的程式、Profile、卡片、故事及設定備份。
+2. 新版發布後，從本頁下載固定版本的 [Suite TGZ](https://github.com/zeola0187/scean/releases/download/v1.6.4-local.w29.2d.rc3.1.dsh022.2/SCEAN-1.6.4-local.w29.2d.rc3.1.dsh022.2-suite.tgz) 與 [SHA256SUMS.txt](https://github.com/zeola0187/scean/releases/download/v1.6.4-local.w29.2d.rc3.1.dsh022.2/SHA256SUMS.txt)。核對雜湊後，在官方插件／bundle 安裝流程選擇該 TGZ。
+3. Suite 已包含舞台 Runtime 與 Studio。確認實際版本為 `1.6.4-local.w29.2d.rc3.1.dsh022.2`，再用合成新演出或既有資料的唯讀頁面驗證。
+4. 使用 OpenRouter 且需要輸出預設修補時，另外安裝同版 Release 的 [guard TGZ](https://github.com/zeola0187/scean/releases/download/v1.6.4-local.w29.2d.rc3.1.dsh022.2/SCEAN-OpenRouter-output-default-0.1.0-local.4.tgz)。guard 只支援精確的 DSH 0.2.2-rc.1，不會隨 Suite 自動安裝；安裝不會自動呼叫付費模型。
 
-**完整對應原碼／Source:** https://github.com/zeola0187/scean/tree/v1.6.3-local.w29.2d.rc3.1
+這是「從首頁下載固定版本套件」的流程。不要把純倉庫網址貼入安裝器，期待它自動選擇此 Release：Git 安裝依預設分支解析，而目前公開 `main` 仍有較舊的套件程式。
 
-## 1.6.0：創作工作台與閱讀空間
+現有 RC3 用戶的 [1.6.3 Release](https://github.com/zeola0187/scean/releases/tag/v1.6.3-local.w29.2d.rc3.1) 保留。這份候選不會更改其附件、標籤或 Latest 身份；舊 SDK 的套件准入不等於本輪新增了舊機實測。
 
-創作入口 → 固定工作卡的自然語言對話 → 檢查 → 保存獨立劇本 → 新演出。
-作品的完整 Preset 可以獨立保存並重載；既有演出維持原版本。
-舞台資訊可展開，輸入與三個操作並排；收合側欄會釋放正文寬度。
-創作入口、創作對話與舞台共用此瀏覽器的 SCEAN 底色，原生對話只保留創作入口與舞臺兩個入口。
-舊演出沿原身份相容，章節原文可向後分頁。完整說明及驗收邊界見
-[1.6.0 說明](docs/RELEASE-1.6.0.zh-TW.md)；[版本下載](https://github.com/zeola0187/scean/releases/tag/v1.6.0)。
+## 資料與使用
 
-## 2026-10-21：Single Writer 與文風切換
+保存角色與劇本後開啟新演出；後續修卡不會改寫已存在演出的固定版本。日曆、論壇、章節與模型工作需要作品或使用者的相應設定。
 
-新／未設定故事預設採單一 Writer；已明確保存的舊流程維持原選擇。本局文風可匯入、下拉選擇或自由改寫，從下一新請求生效，重試與既有資料保持原值。公開版只附原創方法與通用能力，不包含私人第三方文風包。使用方式、驗證與限制見 [本批說明](docs/WRITER-MAIN-20261021.zh-TW.md)。
+保持卡片、正文、記憶、來源與操作身份完整。失敗後先查看現有結果，結果不明時不要反覆重送。回退前先保留更新後新增的資料，再還原相配套的程式與設定；不要直接用舊備份覆蓋新進度。
 
-## 1.5.0：Card Studio 診斷回修
+模型生成、向量檢索及背景工作依既有服務設定產生用量。安裝、設定與唯讀驗收不代表授權付費生成。本套件不包含模型憑證、私人故事、Seeker、SDK 或其他服務設定。
 
-編輯室方案 A 與舞臺診斷閉環：檢查這局 → 和 AI 討論 → 明確同意修卡 → 保存新版 → 用新版另開局。來源身份、明確範圍讀取、expectedRevision與開局回執均有核對。診斷與修卡同意沒有固定倒數，僅限同一受控對話、對象與範圍，直到你撤銷或生命週期失效；不跨重啟繼承舊授權。來源缺失暫採唯讀；實體手機與Safari仍待驗收。
+## 驗證與原始碼
 
-2026-10-20 main 修正首次診斷進入／重開，以及工作卡載入時無法操作診斷授權；使用者已回報可用。詳細測試邊界見 [修正說明](docs/W02-REPAIRS-20261020.zh-TW.md)。
+[本版說明與範圍](docs/DSH022-FULL-STAGE-RELEASE.zh-TW.md) 記錄準備方式與未驗項目；實際驗證結果隨套件的 detached receipt 提供。先前伺服器真模型驗收與本版的乾淨安裝／離線測試分別記錄，不互相替代。
 
-詳見 [玩家操作與工具契約](docs/W02-USER-GUIDE.zh-TW.md) 與 [Changelog](CHANGELOG.md)。1.5.0 的版本化下載與完整來源見 [GitHub Release](https://github.com/zeola0187/scean/releases/tag/v1.5.0)；精確 commit、附件雜湊與驗證限制由該版 detached receipt 記錄。
+預定 [完整對應原碼](https://github.com/zeola0187/scean/tree/v1.6.4-local.w29.2d.rc3.1.dsh022.2) 與 [來源 ZIP](https://github.com/zeola0187/scean/releases/download/v1.6.4-local.w29.2d.rc3.1.dsh022.2/SCEAN-1.6.4-local.w29.2d.rc3.1.dsh022.2-source.zip) 將與套件一起提供，目前仍未公開。
 
-## 安裝與更新
-
-在 DSH 的插件／bundle 安裝介面輸入本倉庫主頁網址：
-
-`https://github.com/zeola0187/scean`
-
-無需分支、私有 GitHub token 或 runtime build。套件身分保留為
-`@local/dsh-scean-suite`、`@local/dsh-scean`、
-`@local/dsh-card-studio-scean-test`，三者版本同步為 1.6.0。
-最後一個歷史名稱保留以維持既有工作區及升級相容性。
-從先前 1.3.0 使用 DSH 更新操作；舊鎖檔固定的私人 commit 不屬於新的
-公開歷史，不能把重建舊鎖檔當成取得本公開版本的方法。
-
-支援已核對的 DSH 0.2.0-rc.2、0.2.1-rc.1、0.2.1-rc.2；Node.js 24+，
-目前套件平台為 Windows。保留卡片、Run、Profile 與模型工作授權邊界；
-安裝或設定頁不授權付費生成。先在獨立 Profile 驗證，不覆寫現役資料。
-
-## 從原碼重建
-
-Python 3.11+、Node.js 24+；確定性 client build 不需安裝依賴或網路：
+本機重建使用 Python 3.11+、Node.js 24+：
 
 ```text
-python scripts/build-candidate.py
+pnpm install --frozen-lockfile --ignore-scripts --ignore-pnpmfile
+python scripts/build-candidate.py --stage=build-suite-source-release-check
 python tests/release-support.test.py -v
 python tests/license-distribution.test.py -v
-python scripts/package-candidate.py --output NEW_INSTALL_DIRECTORY
-python tools/export-clean.py --source . --output NEW_SOURCE_DIRECTORY --zip NEW_SOURCE.zip
+python scripts/prepare-release.py --output ../NEW_RELEASE_DIRECTORY
 ```
 
-修改 `sources/card-studio/cardstudio-bundle` 的 canonical Studio source，以及
-`isolated/web`／`plugin` player source；重新生成 clients，勿合併生成檔。
-`EXPORT-MANIFEST.json` 固定白名單位元；SDK、測試輸出、私人資料和 Git
-歷史不會由導出工具帶入。已封存原碼若有修改，須先更新並審核白名單。
+打包工具只接受已核對的 `EXPORT-MANIFEST.json` 位元；原碼若改動，先重新審核與更新白名單。SDK、測試 Profile、快取、Git 歷史及使用者資料不隨包發送。guard 的測試使用攔截 HTTP，不代表真 OpenRouter 帳號或文學品質驗收。
 
-離線 SDK 回歸額外需要自行取得並核對的 DSH app.asar，SDK 不隨本案分發：
-
-```text
-python scripts/prepare-test-sdk.py --asar PATH_TO_REVIEWED_APP_ASAR
-node --require ./scripts/w19-offline-network.cjs --test tests/*.test.mjs
-node --require ./scripts/w19-offline-network.cjs --test authoring/tests/*.test.mjs
-```
-
-[驗收與限制](docs/VALIDATION.md)、[W19 安全邊界](docs/W19-SECURITY.md)、
-[全域章節設定](docs/GLOBAL-CHAPTER-SETTINGS.zh-TW.md)、
-[3＋8 召回](docs/CHAPTER-CONTEXT-RELEASE.zh-TW.md)、
-[原碼取得](SOURCE-AVAILABILITY.md)。原生 Desktop、實體手機／WAN、
-真模型文學品質未因合成測試通過而宣稱完成。原八項主機限制仍保留。
-
-## 1.4.1
-
-主角名稱可設通用預設並在每局覆寫；舊局可補名一次，僅影響後續生成。
-本版亦整合舞臺入口對齊及可還原的素材回收。
-有姓名的故事使用 v4 備份；降版須配對還原升級前 runtime 與資料，
-不可讓舊版寫入較新的姓名／v4 資料。詳見 [姓名與升級說明](docs/PLAYER-NAME.zh-TW.md)。
-
-## 1.4.2
-
-緊湊閱讀版面、邊緣側欄標籤與單一設定入口，將空間留給正文。
-卡片動態面板跟在最新有效正文之後；每局保留一份面板，W01 與 Snapshot 契約不變。
-RP 七個階段沿用該 provider／model 的 DSH 輸出預設，背景摘要與章節額度保持原樣。
-詳見[閱讀介面與輸出設定](docs/READER-AND-RP-OUTPUT.zh-TW.md)。升級前備份資料，等待回合與保存結束後，使用 DSH 官方停用、卸載與安裝流程。
+SCEAN 原創程式與內容採 **AGPL-3.0-only**；`advanced-tavern-card-authoring` 保留 MIT 授權。詳見 [LICENSE](LICENSE)、[授權範圍](LICENSE-SCOPE.md)、[第三方聲明](THIRD-PARTY-NOTICES.md) 與 [原碼取得](SOURCE-AVAILABILITY.md)。
