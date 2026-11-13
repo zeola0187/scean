@@ -1,7 +1,7 @@
 // Reusable steps for driving the isolated official DSH Web through real UI.
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import {launch, DESKTOP, PHONE, STAGE_FRAME} from './cdp-driver.mjs';
+import {launch, attach, DESKTOP, PHONE, STAGE_FRAME} from './cdp-driver.mjs';
 export {DESKTOP, PHONE, STAGE_FRAME};
 const repo = path.resolve(import.meta.dirname, '..');
 export const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -19,3 +19,22 @@ export async function openDsh({label = 'stage-next-dev', device = DESKTOP} = {})
   return {b, h};
 }
 export async function text(b, frame = 'main') { return b.evaluate(`document.body.innerText`, frame); }
+
+// DSH Desktop (Electron) preview started by scripts/desktop-preview.mjs with --cdp.
+export const previewRoot = path.resolve(repo, '..', 'dsh-desktop-preview');
+export async function desktopLaunch(label) { return JSON.parse(await fs.readFile(path.join(previewRoot, label, 'launch.json'), 'utf8')); }
+export async function openDesktop({label, device = DESKTOP, size = [1440, 900]} = {}) {
+  const l = await desktopLaunch(label); if (!l.cdp) throw Error('DESKTOP_WITHOUT_CDP');
+  const b = await attach({port: l.cdp});
+  if (device.mobile) await b.viewport(device); else { await b.send('Emulation.clearDeviceMetricsOverride').catch(() => {}); await b.windowSize(size[0], size[1], l.pid); }
+  await b.waitFor(`document.title.includes('DeepSeek') && document.body.innerText.includes('新会话')`, {timeout: 60000});
+  await sleep(1500);
+  if (await b.evaluate(`[...document.querySelectorAll('button')].some(x=>x.innerText.trim()==='继续')`)) await b.click('继续');
+  return {b, h: l, out: path.join(previewRoot, label)};
+}
+// One entry for both surfaces: --desktop=<label> attaches to Desktop, otherwise the Web harness.
+export async function openSurface({device = DESKTOP} = {}) {
+  const label = process.argv.find(a => a.startsWith('--desktop='))?.slice(10);
+  if (label) return {...await openDesktop({label, device}), surface: 'desktop', label};
+  const r = await openDsh({device}); return {...r, out: path.join(repo, 'evidence', 'stage-next-dev'), surface: 'web', label: 'stage-next-dev'};
+}

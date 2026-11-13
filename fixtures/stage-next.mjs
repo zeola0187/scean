@@ -96,7 +96,7 @@ export const GENRES = {
       {id: 'brok', name: '布洛克', description: '矮人戰士，自稱認得礦坑的每一條礦脈，他的表弟在失蹤的礦工隊裡。', publicDescription: '矮人戰士，自稱認得礦坑的每一條礦脈，他的表弟在失蹤的礦工隊裡。'},
       {id: 'kas', name: '守墓人卡斯', description: '在礦坑入口旁小屋獨居的老人，只回答被問到的問題。', publicDescription: '在礦坑入口旁小屋獨居的老人，只回答被問到的問題。'},
     ],
-    variables: [W('locations', 'player_location', '位置', 'string'), W('resources', 'hp', '生命值', 'number', {min: 0, max: 24, unit: '點'}), W('resources', 'torches', '火把', 'number', {min: 0, max: 10, unit: '支'}), W('resources', 'gold', '金幣', 'number', {min: 0, max: 9999}), W('tasks', 'missing_miners', '失蹤的礦工隊', 'json'), W('effects', 'condition', '狀態', 'string')],
+    variables: [W('locations', 'player_location', '位置', 'string'), W('resources', 'hp', '生命值', 'number', {min: 0, max: 24, unit: '/24'}), W('resources', 'torches', '火把', 'number', {min: 0, max: 10, unit: '支'}), W('resources', 'gold', '金幣', 'number', {min: 0, max: 9999}), W('tasks', 'missing_miners', '失蹤的礦工隊', 'json'), W('effects', 'condition', '狀態', 'string')],
     initial: {player_location: '第二層・坍方走廊', hp: 18, torches: 3, gold: 40, missing_miners: '六人失聯，往第三層', condition: '無'},
     time: {schemaVersion: 1, calendar: {id: 'harvest', version: 1, kind: 'fixed-month', era: '王曆', monthLengths: [30, 30, 30, 30], monthNames: ['播種月', '盛夏月', '收穫月', '霜降月'], anchor: {year: 312, month: 3, day: 12}},
       hoursPerDay: 24, minutesPerHour: 60, periods: {dawn: {start: 300, end: 479, label: '黎明'}, day: {start: 480, end: 1019, label: '白晝'}, dusk: {start: 1020, end: 1199, label: '黃昏'}, deep: {start: 1200, end: 1439, label: '深夜'}},
@@ -154,10 +154,30 @@ function nextTime(def, clock, rule) {
   return i < ids.length ? {dayOrdinal: day, periodId: ids[i]} : {dayOrdinal: day + 1, periodId: ids[i - ids.length]};
 }
 
+async function wrapHostForAckFault(hostModule, out) {
+  const {pathToFileURL} = await import('node:url');
+  const {SceanHost} = await import(pathToFileURL(await fs.realpath(hostModule)).href), original = SceanHost.prototype.request;
+  if (original.__stageNextAck) return;
+  const wrapped = async function (request, signal, authority) {
+    const ack = path.join(out, 'fault-ack.json');
+    if (['turn', 'operationSubmit'].includes(request?.action) && await fs.stat(ack).catch(() => null)) {
+      await fs.unlink(ack).catch(() => {}); const result = await original.call(this, request, signal, authority);
+      await fs.writeFile(path.join(out, 'fault-ack-fired.json'), JSON.stringify({at: new Date().toISOString(), action: request.action, committed: !!result.ok}));
+      if (result.ok) return {ok: false, error: {code: 'CONNECTION_UNKNOWN', message: 'Synthetic acknowledgement lost after canonical publication.'}};
+      return result;
+    }
+    return original.call(this, request, signal, authority);
+  };
+  wrapped.__stageNextAck = true; SceanHost.prototype.request = wrapped;
+}
+
 export const inject = ['llm'];
-export async function apply(ctx) {
+export async function apply(ctx, config = {}) {
   const home = process.env.DSH_HOME; if (!home || !/stage-next-[a-z0-9-]+/.test(home)) throw Error('STAGE_NEXT_ISOLATED_HOME_REQUIRED');
   const out = path.dirname(home), file = path.join(out, 'adapter-calls.json');
+  // Desktop: the Host runs in its own process, so the lost-acknowledgement fault is armed here
+  // (same module instance the loader uses for the installed suite).
+  if (config.hostModule) await wrapHostForAckFault(config.hostModule, out);
   let calls = []; try { calls = JSON.parse(await fs.readFile(file, 'utf8')); } catch {}
   const counters = {};
   class Scripted extends LlmAdapter {
@@ -174,7 +194,14 @@ export async function apply(ctx) {
       if (!input && /^Generate the session title/.test(first)) { stage = 'session_title'; answer = /審閱/.test(first) ? '審閱作品' : /開場/.test(first) ? '改寫開場' : '創作對話'; }
       else if (input && Array.isArray(input.directions) && Array.isArray(input.turns)) { stage = 'ideas'; answer = JSON.stringify({ideas: PRIOR_IDEAS.map((category, i) => ({category, text: IDEAS[genre][i]}))}); }
       else if (input?.range && Array.isArray(input.turns)) { stage = input.detail ? 'chapter_summary' : 'chapter_analysis'; answer = JSON.stringify(stage === 'chapter_analysis' ? {shouldCreateChapter: true, optimalEndTurn: input.range.endTurn, suggestedTitle: '第一段旅程', keywords: [], characters: [], locations: [], plotThreads: [], emotionalTone: '平靜', significantEvents: []} : {title: '第一段旅程', summary: '合成章節摘要：主角與同伴完成了開場後的第一段行動。', keywords: [], characters: [], locations: [], plotThreads: [], emotionalTone: '平靜'}); }
-      else if (input?.handoffContract) { stage = 'director'; answer = JSON.stringify(input.handoffContract.example ?? {}); }
+      else if (input?.handoffContract) {
+        stage = 'director';
+        // Marker phrase → the director cannot place the action in time and asks the player (NEEDS_TIME_PRECISION),
+        // unless the player already supplied a structured override for this input.
+        const asked = raw.includes('需要確認時間'), overridden = /playerOverride|timeOverride|player_override/.test(raw), toolDone = (options.messages ?? []).some(m => m.role === 'tool');
+        if (asked && !overridden && !toolDone && options.tools?.some(t => (t.name ?? t.function?.name) === 'resolve_turn_time')) { stage = 'director_needs_time'; toolCall = {id: 'scripted-time-' + Date.now(), name: 'resolve_turn_time', arguments: JSON.stringify({needsPrecision: true})}; }
+        else answer = JSON.stringify(input.handoffContract.example ?? {});
+      }
       else if (input?.directorHandoff && input?.context) {
         stage = 'writer'; const n = counters[genre] = (counters[genre] ?? 0); const beat = GENRES[genre].beats[n % GENRES[genre].beats.length];
         const fault = await readFault(out, 'writer'); if (fault?.holdMs) await new Promise(r => setTimeout(r, fault.holdMs)); if (fault?.fail) throw Error('SCRIPTED_WRITER_FAULT');
@@ -220,7 +247,7 @@ export async function apply(ctx) {
           else answer = `修改沒有成功：${last?.error?.message ?? '未知原因'}。`;
         } else answer = `收到：「${lastUser.slice(0, 60)}」。你可以請我「改寫開場」或「審閱這份作品」。（隔離驗收用的 scripted 協作回覆，不代表真實模型品質。）`;
       } else { stage = 'unexpected'; await fs.writeFile(path.join(out, 'unexpected-input.json'), JSON.stringify({keys: Object.keys(input ?? {}), tools: options.tools?.map(t => t.name), sample: raw.slice(0, 2000)}, null, 2)); throw Error('STAGE_NEXT_UNEXPECTED_INPUT'); }
-      if (stage !== 'director' && stage !== 'studio_agent' && options.tools?.length) throw Error('UNEXPECTED_TOOL_CAPABILITY:' + stage);
+      if (!['director', 'director_needs_time', 'studio_agent'].includes(stage) && options.tools?.length) throw Error('UNEXPECTED_TOOL_CAPABILITY:' + stage);
       calls.push({index: calls.length + 1, stage, genre, at: new Date().toISOString(), synthetic: true, paid: false}); await fs.writeFile(file, JSON.stringify(calls, null, 2));
       options.signal?.throwIfAborted();
       if (toolCall) { yield {type: 'block-end', index: 0, block: {type: 'tool-call', ...toolCall}}; yield {type: 'usage', usage: {inputTokens: 20, outputTokens: 40, totalTokens: 60}}; yield {type: 'finish', reason: {kind: 'tool-calls'}}; return; }

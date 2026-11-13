@@ -31,15 +31,18 @@ const integer = (v, min=0) => Number.isSafeInteger(v) && v >= min;
 const fields = (v, allowed, required=[]) => { if (!plain(v) || required.some(k=>!Object.hasOwn(v,k)) || Object.keys(v).some(k=>!allowed.includes(k))) fail('SAVE_FIELDS'); };
 const digest = v => typeof v === 'string' && /^[a-f0-9]{64}$/.test(v);
 const ENV = /^(?:api[_-]?key|access[_-]?token|refresh[_-]?token|authorization|bearer[_-]?token|providerCredentials|credentials|permissionToken|csrfToken|hostLease|sdkPath|runtimePath|profilePath|dataRoot|tempPath)$/i;
-const ABS = /^(?:[a-z]:[\\/]|\\\\|file:\/\/|\/[^\s])/i;
+// Environment paths: Windows drive, UNC share, file URL, or a POSIX path with at least two
+// segments whose first segment looks like a directory name ("/home/...", "/../...").
+// Story text that merely starts with a slash ("/24" units, "/roll" inputs, "/3 天") is content.
+const ABS = /^(?:[a-z]:[\\/]|\\\\|file:\/\/|\/[A-Za-z_.~][\w.~-]*\/)/i;
 
 // This is a structural portability boundary, not a semantic secret classifier.
 // Unknown story keys remain intact. No payload-provided reference is opened.
 function bounded(value, { portability=true }={}) {
   let nodes=0,checkPortability=false; const active=new Set(),cardSelectors=new WeakSet();
-  function walk(v, depth,cardPointer=false) {
+  function walk(v, depth,cardPointer=false,at='') {
     if (++nodes > SAVE_LIMITS.nodes || depth > SAVE_LIMITS.depth) fail('SAVE_LIMIT');
-    if (typeof v === 'string') { if(Buffer.byteLength(v,'utf8')>SAVE_LIMITS.bytes)fail('SAVE_LIMIT');if (checkPortability && ABS.test(v)&&!cardPointer) fail('SAVE_ENVIRONMENT_PATH'); if (/\p{Surrogate}/u.test(v)) fail('SAVE_UNICODE'); return; }
+    if (typeof v === 'string') { if(Buffer.byteLength(v,'utf8')>SAVE_LIMITS.bytes)fail('SAVE_LIMIT');if (checkPortability && ABS.test(v)&&!cardPointer) { const e=new SceanError('SAVE_ENVIRONMENT_PATH'); e.portabilityPath=at; throw e; } if (/\p{Surrogate}/u.test(v)) fail('SAVE_UNICODE'); return; }
     if (v === null || typeof v === 'boolean' || (typeof v === 'number' && Number.isFinite(v))) return;
     if ((!Array.isArray(v) && !plain(v)) || active.has(v)) fail('SAVE_JSON');
     if (Object.getOwnPropertySymbols(v).length) fail('SAVE_JSON'); active.add(v);
@@ -51,7 +54,7 @@ function bounded(value, { portability=true }={}) {
       if (checkPortability && ENV.test(key)) fail('SAVE_ENVIRONMENT_FIELD');
       if (checkPortability && /^(?:\$ref|\$include|externalFile|loadFrom|filePath)$/i.test(key) && typeof d.value==='string' && /^(?:\.\.[\\/]|https?:|file:|[a-z]:|[\\/])/i.test(d.value)) fail('SAVE_EXTERNAL_REFERENCE');
       if (/\p{Surrogate}/u.test(key)) fail('SAVE_UNICODE');
-      walk(d.value,depth+1,key==='path'&&cardSelectors.has(v));
+      walk(d.value,depth+1,key==='path'&&cardSelectors.has(v),at+'/'+key.replaceAll('~','~0').replaceAll('/','~1'));
     }
     if (Array.isArray(v) && Object.keys(v).length!==v.length) fail('SAVE_JSON'); active.delete(v);
   }
@@ -71,6 +74,13 @@ function bounded(value, { portability=true }={}) {
     }
     nodes=0;checkPortability=true;walk(value,0);
   }
+}
+
+/** Static pre-start check: would a Run started from this snapshot be portable (savable/exportable)?
+ * Returns null, or {code, path} with a JSON pointer into the snapshot. Same rules as the save boundary. */
+export function snapshotPortabilityIssue(snapshot) {
+  try { bounded({schemaVersion:1,snapshot}); return null; }
+  catch (e) { if (!(e instanceof SceanError)) throw e; return {code:e.code, path:typeof e.portabilityPath==='string'?e.portabilityPath.replace(/^\/snapshot/,''):null}; }
 }
 
 /** Parse raw JSON without accepting duplicate members, before normal JSON.parse. */

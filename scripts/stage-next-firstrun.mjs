@@ -4,16 +4,16 @@
 // Usage: node scripts/stage-next-firstrun.mjs [--phone] [--genre=road|campus|trpg]
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import {openDsh, sleep, DESKTOP, PHONE, STAGE_FRAME} from './stage-next-flow.mjs';
+import {openSurface, sleep, DESKTOP, PHONE, STAGE_FRAME} from './stage-next-flow.mjs';
 const repo = path.resolve(import.meta.dirname, '..');
 const phone = process.argv.includes('--phone'), genre = process.argv.find(a => a.startsWith('--genre='))?.slice(8) ?? 'road';
 const file = {campus: 'campus-rooftop', road: 'road-ferry', trpg: 'trpg-ashmine'}[genre];
 const inputs = {campus: ['我停下腳步，抬頭往樓梯上方看。', '我們繞到音樂教室後面看看。'], road: ['我把車窗搖下來，問加油站老闆前面的路況。', '我們還是決定上路。'], trpg: ['我舉起火把，沿著腳印往下走。', '我伸手碰了碰那扇鐵門。']}[genre];
-const shotDir = path.join(repo, 'evidence', 'firstrun'); await fs.mkdir(shotDir, {recursive: true});
-const {b} = await openDsh({device: phone ? PHONE : DESKTOP});
+const {b, out, surface, label} = await openSurface({device: phone ? PHONE : DESKTOP});
+const shotDir = surface === 'desktop' ? path.join(repo, 'evidence', 'desktop', label, 'firstrun') : path.join(repo, 'evidence', 'firstrun'); await fs.mkdir(shotDir, {recursive: true});
 const tag = `${phone ? 'm' : 'd'}-${genre}`; let n = 0;
 const shot = async name => { const f = path.join(shotDir, `${tag}-${String(++n).padStart(2, '0')}-${name}.png`); await b.shot(f); console.log('shot', path.basename(f)); };
-const report = {genre, phone, steps: [], errors: []};
+const report = {genre, phone, surface, steps: [], errors: []};
 const step = async (name, fn) => { const t = Date.now(); try { await fn(); report.steps.push({name, ok: true, ms: Date.now() - t}); } catch (e) { report.steps.push({name, ok: false, error: e.message}); await shot('FAIL-' + name).catch(() => {}); throw e; } };
 const inStage = {frame: STAGE_FRAME};
 const revision = () => b.evaluate(`Number((/已保存 r(\d+)/.exec(document.body.innerText)||[])[1]??-1)`);
@@ -70,7 +70,7 @@ try {
     await b.waitFor(`!document.querySelector('.pending-zone')?.children.length && document.querySelectorAll('.turn:not(.opening)').length>=${i + 1}`, {...inStage, timeout: 90000}); await sleep(1200); await shot('turn-' + (i + 1));
   });
   if (process.argv.includes('--faults')) {
-    const out = path.join(repo, 'evidence', 'stage-next-dev'), send = async text => { await b.click('css:#composer-input', inStage); await b.type(text); await b.click('送出行動', inStage); };
+    const send = async text => { await b.click('css:#composer-input', inStage); await b.type(text); await b.click('送出行動', inStage); };
     const settled = `!document.querySelector('.pending-zone')?.children.length`;
     await step('fault-settlement', async () => {
       await fs.writeFile(path.join(out, 'fault-post_stat.json'), JSON.stringify({fail: true})); await send('（測試）先停下來想一想。');

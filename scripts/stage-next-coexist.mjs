@@ -2,10 +2,11 @@
 // v2 → legacy (same story visible) → back to v2 → commit a turn → legacy sees it.
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import {openDsh, sleep, STAGE_FRAME} from './stage-next-flow.mjs';
-const repo = path.resolve(import.meta.dirname, '..'), dir = path.join(repo, 'evidence', 'coexist'); await fs.mkdir(dir, {recursive: true});
+import {openSurface, sleep, STAGE_FRAME} from './stage-next-flow.mjs';
+const repo = path.resolve(import.meta.dirname, '..');
 const conversation = process.argv.find(a => a.startsWith('--conversation='))?.slice(15) ?? '請審閱這份作品';
-const {b} = await openDsh();
+const {b, surface, label} = await openSurface();
+const dir = surface === 'desktop' ? path.join(repo, 'evidence', 'desktop', label, 'coexist') : path.join(repo, 'evidence', 'coexist'); await fs.mkdir(dir, {recursive: true});
 const report = {steps: [], errors: []}; let n = 0;
 const shot = async name => b.shot(path.join(dir, `${String(++n).padStart(2, '0')}-${name}.png`));
 const step = async (name, fn) => { try { await fn(); report.steps.push(`ok   ${name}`); } catch (e) { report.steps.push(`FAIL ${name} — ${e.message}`); await shot('FAIL-' + name).catch(() => {}); throw e; } };

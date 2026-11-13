@@ -1,7 +1,7 @@
 // Minimal Chrome DevTools Protocol driver for isolated loopback acceptance.
 // Real mouse/keyboard events (Input.*), per-frame evaluation (the SCEAN stage
 // lives in an opaque sandboxed iframe), screenshots. No dependencies.
-import {spawn} from 'node:child_process';
+import {spawn, execFileSync} from 'node:child_process';
 import {mkdtempSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
@@ -14,35 +14,58 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 export async function launch({port = 9400 + Math.floor(Math.random() * 400), headless = true} = {}) {
   const profile = mkdtempSync(join(tmpdir(), 'scean-cdp-'));
   const proc = spawn(CHROME, [...(headless ? ['--headless=new'] : []), '--disable-gpu', '--hide-scrollbars', '--no-first-run', '--no-default-browser-check', '--disable-site-isolation-trials', '--disable-features=IsolateOrigins,site-per-process', `--user-data-dir=${profile}`, `--remote-debugging-port=${port}`, 'about:blank'], {stdio: 'ignore'});
+  return connect(port, {onClose: async () => { proc.kill(); await sleep(400); try { rmSync(profile, {recursive: true, force: true}); } catch {} }});
+}
+// Attach to an already running Chromium/Electron (e.g. DSH Desktop started with --remote-debugging-port).
+// Out-of-process iframes are reached through flattened auto-attached sessions, so the product's own
+// site-isolation settings stay untouched.
+export async function attach({port, match = t => t.type === 'page' && t.url.startsWith('dsh-app://')}) { return connect(port, {match}); }
+
+async function connect(port, {match = t => t.type === 'page', onClose = async () => {}} = {}) {
   let targets;
-  for (let i = 0; i < 80; i++) { try { targets = await (await fetch(`http://127.0.0.1:${port}/json`)).json(); if (targets.some(t => t.type === 'page')) break; } catch {} await sleep(150); }
-  const ws = new WebSocket(targets.find(t => t.type === 'page').webSocketDebuggerUrl);
+  for (let i = 0; i < 80; i++) { try { targets = await (await fetch(`http://127.0.0.1:${port}/json`)).json(); if (targets.some(match)) break; } catch {} await sleep(150); }
+  const pageTarget = targets.find(match), ws = new WebSocket(pageTarget.webSocketDebuggerUrl);
   await new Promise(r => ws.addEventListener('open', r, {once: true}));
-  let id = 0; const pending = new Map(), contexts = new Map(), listeners = [];
+  // contexts: frameId -> {contextId, sessionId}; frameSessions: frameId -> sessionId of an OOPIF target.
+  let id = 0; const pending = new Map(), contexts = new Map(), frameSessions = new Map(), listeners = [];
   ws.addEventListener('message', e => {
     const m = JSON.parse(e.data);
     if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); return; }
-    if (m.method === 'Runtime.executionContextCreated') { const c = m.params.context; if (c.auxData?.isDefault) contexts.set(c.auxData.frameId, c.id); }
-    if (m.method === 'Runtime.executionContextsCleared') contexts.clear();
+    if (m.method === 'Runtime.executionContextCreated') { const c = m.params.context; if (c.auxData?.isDefault) contexts.set(c.auxData.frameId, {contextId: c.id, sessionId: m.sessionId}); }
+    if (m.method === 'Runtime.executionContextsCleared') for (const [k, v] of contexts) if (v.sessionId === m.sessionId) contexts.delete(k);
+    if (m.method === 'Target.attachedToTarget' && m.params.targetInfo.type === 'iframe') {
+      const sid = m.params.sessionId; frameSessions.set(m.params.targetInfo.targetId, sid);
+      for (const method of ['Runtime.enable', 'Page.enable']) ws.send(JSON.stringify({id: ++id, method, params: {}, sessionId: sid}));
+      ws.send(JSON.stringify({id: ++id, method: 'Runtime.runIfWaitingForDebugger', params: {}, sessionId: sid}));
+    }
+    if (m.method === 'Target.detachedFromTarget') for (const [k, v] of frameSessions) if (v === m.params.sessionId) frameSessions.delete(k);
     for (const l of listeners) l(m);
   });
-  const send = (method, params = {}) => new Promise((resolve, reject) => { const n = ++id; pending.set(n, m => m.error ? reject(Object.assign(Error(method + ': ' + m.error.message), {cdp: m.error})) : resolve(m.result)); ws.send(JSON.stringify({id: n, method, params})); });
+  const send = (method, params = {}, sessionId) => new Promise((resolve, reject) => { const n = ++id; pending.set(n, m => m.error ? reject(Object.assign(Error(method + ': ' + m.error.message), {cdp: m.error})) : resolve(m.result)); ws.send(JSON.stringify({id: n, method, params, ...(sessionId ? {sessionId} : {})})); });
   await send('Page.enable'); await send('Runtime.enable'); await send('DOM.enable');
+  await send('Target.setAutoAttach', {autoAttach: true, waitForDebuggerOnStart: false, flatten: true}).catch(() => {});
   const logs = [];
   listeners.push(m => { if (m.method === 'Runtime.consoleAPICalled' && ['error', 'warning'].includes(m.params.type)) logs.push({type: m.params.type, text: m.params.args.map(a => a.value ?? a.description).join(' ').slice(0, 500)}); if (m.method === 'Runtime.exceptionThrown') logs.push({type: 'exception', text: m.params.exceptionDetails.exception?.description?.slice(0, 500) ?? m.params.exceptionDetails.text}); });
 
-  async function frames() { const {frameTree} = await send('Page.getFrameTree'); const out = []; const walk = (n, depth) => { out.push({id: n.frame.id, url: n.frame.url, name: n.frame.name, depth}); for (const c of n.childFrames ?? []) walk(c, depth + 1); }; walk(frameTree, 0); return out; }
+  async function frames() {
+    const {frameTree} = await send('Page.getFrameTree'); const out = [];
+    const walk = (n, depth, sessionId) => { out.push({id: n.frame.id, url: n.frame.url, name: n.frame.name, depth, sessionId}); for (const c of n.childFrames ?? []) walk(c, depth + 1, sessionId); };
+    walk(frameTree, 0);
+    // Out-of-process iframes (Electron keeps site isolation on) live in their own attached sessions.
+    for (const [, sid] of frameSessions) { try { const r = await send('Page.getFrameTree', {}, sid); if (!out.some(f => f.id === r.frameTree.frame.id)) walk(r.frameTree, 1, sid); } catch {} }
+    return out;
+  }
   // Frame selection: 'main' or a predicate over frame tree rows (e.g. stage iframe = first about:srcdoc child).
   async function contextFor(frame = 'main') {
     const list = await frames();
     const row = frame === 'main' ? list[0] : typeof frame === 'function' ? list.find(frame) : list.find(f => f.id === frame);
     if (!row) throw Error('FRAME_NOT_FOUND');
-    for (let i = 0; i < 40 && !contexts.has(row.id); i++) await sleep(50);
-    return {contextId: contexts.get(row.id), frameId: row.id};
+    for (let i = 0; i < 60 && !contexts.has(row.id); i++) await sleep(50);
+    const c = contexts.get(row.id) ?? {}; return {contextId: c.contextId, sessionId: c.sessionId, frameId: row.id};
   }
   async function evaluate(expr, frame = 'main') {
-    const {contextId} = await contextFor(frame);
-    const r = await send('Runtime.evaluate', {expression: expr, contextId, awaitPromise: true, returnByValue: true, userGesture: true});
+    const {contextId, sessionId} = await contextFor(frame);
+    const r = await send('Runtime.evaluate', {expression: expr, contextId, awaitPromise: true, returnByValue: true, userGesture: true}, sessionId);
     if (r.exceptionDetails) throw Error('EVAL: ' + (r.exceptionDetails.exception?.description ?? r.exceptionDetails.text));
     return r.result.value;
   }
@@ -66,6 +89,11 @@ export async function launch({port = 9400 + Math.floor(Math.random() * 400), hea
   const api = {
     send, frames, evaluate, logs,
     async viewport(device) { await send('Emulation.setDeviceMetricsOverride', device); await send('Emulation.setTouchEmulationEnabled', device.mobile ? {enabled: true, maxTouchPoints: 5} : {enabled: false}); },
+    // Real OS window size (Desktop): Electron has no CDP window bounds, so move the top-level window of `pid`.
+    async windowSize(width, height, pid) {
+      const ps = `Add-Type -Namespace W -Name U -MemberDefinition '[DllImport(\"user32.dll\")] public static extern bool MoveWindow(System.IntPtr h,int x,int y,int w,int ht,bool r); [DllImport(\"user32.dll\")] public static extern bool ShowWindow(System.IntPtr h,int c);'; $h=(Get-Process -Id ${Number(pid)}).MainWindowHandle; [W.U]::ShowWindow($h,9) | Out-Null; [W.U]::MoveWindow($h,40,20,${Number(width)},${Number(height)},$true) | Out-Null`;
+      execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', ps], {windowsHide: true}); await sleep(900);
+      return (await send('Runtime.evaluate', {expression: '({w:innerWidth,h:innerHeight})', returnByValue: true})).result.value; },
     async goto(url) { await send('Page.navigate', {url}); await sleep(600); },
     async waitFor(expr, {frame = 'main', timeout = 20000, label = expr} = {}) { const end = Date.now() + timeout; let last; while (Date.now() < end) { try { last = await evaluate(expr, frame); if (last) return last; } catch (e) { last = e.message; } await sleep(200); } throw Error('WAIT_TIMEOUT: ' + label + ' last=' + JSON.stringify(last)?.slice(0, 200)); },
     async click(target, {frame = 'main', timeout = 15000} = {}) {
@@ -78,7 +106,7 @@ export async function launch({port = 9400 + Math.floor(Math.random() * 400), hea
     async type(text) { await send('Input.insertText', {text}); await sleep(100); },
     async key(key, modifiers = 0) { const map = {Enter: {code: 'Enter', windowsVirtualKeyCode: 13, text: '\r'}, Escape: {code: 'Escape', windowsVirtualKeyCode: 27}}; const k = map[key]; await send('Input.dispatchKeyEvent', {type: 'keyDown', key, modifiers, ...k}); await send('Input.dispatchKeyEvent', {type: 'keyUp', key, modifiers, ...k}); await sleep(150); },
     async shot(file) { const r = await send('Page.captureScreenshot', {format: 'png'}); writeFileSync(file, Buffer.from(r.data, 'base64')); return file; },
-    async close() { try { ws.close(); } catch {} proc.kill(); await sleep(400); try { rmSync(profile, {recursive: true, force: true}); } catch {} },
+    async close() { try { ws.close(); } catch {} await onClose(); },
   };
   return api;
 }
