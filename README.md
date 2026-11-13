@@ -6,6 +6,21 @@
 
 [下載 RC3 完整套件](https://github.com/zeola0187/scean/releases/tag/v1.6.3-local.w29.2d.rc3.1) · [使用與版本說明](https://github.com/zeola0187/scean/blob/v1.6.3-local.w29.2d.rc3.1/docs/RELEASE-POSTSTAT.zh-TW.md) · [完整對應原碼](https://github.com/zeola0187/scean/tree/v1.6.3-local.w29.2d.rc3.1)
 
+## DSH 0.2.2-rc.1 預發版
+
+Windows／官方 **DSH 0.2.2-rc.1** 可下載新版 **`1.6.4-local.w29.2d.rc3.1.dsh022.2`**：[版本與驗收說明](https://github.com/zeola0187/scean/releases/tag/v1.6.4-local.w29.2d.rc3.1.dsh022.2)。這是預發版，既有 RC3 正式版與 GitHub Latest 保留。
+
+1. 等待生成及保存完成，備份 DSH、Profile、卡片、演出與設定。
+2. 下載 [Suite 完整包](https://github.com/zeola0187/scean/releases/download/v1.6.4-local.w29.2d.rc3.1.dsh022.2/SCEAN-1.6.4-local.w29.2d.rc3.1.dsh022.2-suite.tgz) 與 [SHA256SUMS.txt](https://github.com/zeola0187/scean/releases/download/v1.6.4-local.w29.2d.rc3.1.dsh022.2/SHA256SUMS.txt)，核對 SHA256 後，在 DSH 官方插件／bundle 安裝流程選擇 TGZ。Suite 已含舞台 Runtime 與 Card Studio。
+3. 確認載入版本為 `1.6.4-local.w29.2d.rc3.1.dsh022.2`，再以合成新演出或既有資料的唯讀檢查驗收。尚未核對宿主版本時，不要使用版本豁免強裝。
+4. 使用 OpenRouter 且需要輸出預設修補時，另裝 [guard 0.1.0-local.4](https://github.com/zeola0187/scean/releases/download/v1.6.4-local.w29.2d.rc3.1.dsh022.2/SCEAN-OpenRouter-output-default-0.1.0-local.4.tgz)。guard 僅核對 DSH 0.2.2-rc.1，不隨 Suite 自動安裝，也不自動呼叫付費模型。
+
+新版包含章節召回、協作閱讀、時間入口與模型切換修補。已驗證全新 Profile 的官方套件安裝、Web 介面、合成回合保存與重開；主力機的實際封裝 Desktop 安裝尚未驗收。獨立 Profile 不會隔離封裝 Desktop 的 `dsh://` 註冊，需隔離驗收時請使用獨立 Sandbox／VM。
+
+請下載上面的固定 TGZ；把倉庫根網址貼入 Git 安裝器仍會使用舊版預設分支，並不代表安裝此預發版。套件不含 SDK、Seeker、模型憑證或私人資料，安裝也不會搬移伺服器上的故事。
+
+[完整對應原碼](https://github.com/zeola0187/scean/tree/v1.6.4-local.w29.2d.rc3.1.dsh022.2) · [完整 source ZIP](https://github.com/zeola0187/scean/releases/download/v1.6.4-local.w29.2d.rc3.1.dsh022.2/SCEAN-1.6.4-local.w29.2d.rc3.1.dsh022.2-source.zip) · [來源與套件 receipt](https://github.com/zeola0187/scean/releases/download/v1.6.4-local.w29.2d.rc3.1.dsh022.2/SCEAN-1.6.4-local.w29.2d.rc3.1.dsh022.2-source-receipt.json) · [準備驗收記錄](https://github.com/zeola0187/scean/blob/v1.6.4-local.w29.2d.rc3.1.dsh022.2/docs/DSH022-FULL-STAGE-RELEASE.zh-TW.md)
+
 ## 可以用 SCEAN 做什麼
 
 ### 製作角色與故事開場
@@ -55,7 +70,7 @@
 
 ## 安裝與更新
 
-目前下載版為 **`1.6.3-local.w29.2d.rc3.1`**，是 **SCEAN 的正式發布**，目標環境為 **Windows／官方 DSH 0.2.1-rc.3**；DSH 主程式本身仍是 RC 版本。
+既有 RC3 正式下載版為 **`1.6.3-local.w29.2d.rc3.1`**，是 **SCEAN 的正式發布**，目標環境為 **Windows／官方 DSH 0.2.1-rc.3**；DSH 主程式本身仍是 RC 版本。
 
 1. 等待進行中的生成與保存完成，備份 DSH、Profile、卡片、演出與設定。
 2. 從[此版 Release](https://github.com/zeola0187/scean/releases/tag/v1.6.3-local.w29.2d.rc3.1) 下載 **Suite 完整安裝包**，透過 DSH 的插件／bundle 安裝流程安裝。Suite 已包含 Runtime 與 Card Studio。
