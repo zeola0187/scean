@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { Context } from '@deepseek-ai/cordis';
 import Tools from '@deepseek-ai/dsh-tools';
+import * as NativeExecutor from '@deepseek-ai/dsh-tool-executor-native';
 import Skills from '@deepseek-ai/dsh-skill';
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt';
 import Commands from '@deepseek-ai/dsh-commands';
@@ -42,7 +43,7 @@ export async function nativeHost(home, plugin, config = {}, {nativeLifecycle=fal
       scope.provide('agents',{get:id=>agents.get(id)});
     }
   }});
-  await ctx.plugin(Typert);await ctx.plugin(SystemPrompt);await ctx.plugin(Tools,{mode:'native'});await ctx.plugin(Skills);await ctx.plugin(Commands);await ctx.plugin(WorkspaceRegistry);
+  await ctx.plugin(Typert);await ctx.plugin(SystemPrompt);await ctx.plugin(Tools);await ctx.plugin(NativeExecutor);await ctx.plugin(Skills);await ctx.plugin(Commands);await ctx.plugin(WorkspaceRegistry);
   if(nativeLifecycle){await ctx.plugin(Sessions);await ctx.plugin(Agents);await ctx.plugin(SessionProjections);await ctx.plugin(Approval);await ctx.plugin(Permissions);await ctx.plugin(AgentLoop);}
   const fiber=ctx.plugin(plugin,config);await fiber;
   if(fiber.state!==2){await ctx.fiber.dispose();throw new Error('Card Studio Host did not activate: fiber state '+fiber.state);}

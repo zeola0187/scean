@@ -259,7 +259,7 @@ test('only explicit Retry after a confirmed retryable terminal receipt sends ret
       if(action==='runView')return run();return emptyProgress;
     });
     await client.submitTurn(explicit);
-    assert.equal(submitted.requestId,'request-a');assert.equal(submitted.input,'Preserved failed input');
+    if(explicit)assert.equal(submitted.requestId,'request-a');else assert.notEqual(submitted.requestId,'request-a');assert.equal(submitted.input,'Preserved failed input');
     assert.equal(submitted.retryOf,explicit?'failed-job':undefined);assert.notEqual(submitted.operationId,'failed-job');
     assert.equal(submitted.viewerId,client.viewerId);assert.equal(submitted.baseVersion,1);assert.equal(submitted.baseHead,null);
   }

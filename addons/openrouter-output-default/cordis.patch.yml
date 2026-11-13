@@ -1,0 +1,4 @@
+- insert:
+    - id: local-scean-openrouter-output-default
+      name: ./index.mjs
+      config: {}

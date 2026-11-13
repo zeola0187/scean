@@ -4,7 +4,8 @@
     "0.2.0-rc.2",
     "0.2.1-rc.1",
     "0.2.1-rc.2",
-    "0.2.1-rc.3"
+    "0.2.1-rc.3",
+    "0.2.2-rc.1"
   ],
   "reviewedAsarSHA256": {
     "0.2.0-rc.2": "983ca71114e6dfd353fc79af5a1f9481a250ee64c2a3c757673029b811b23bc2",
@@ -12,5 +13,5 @@
     "0.2.1-rc.2": "47874618bf5b3011fcaac10cd4c85f69da333e70d4f99b921207c78d0999512a",
     "0.2.1-rc.3": "04b32e3a872826ba15cfb2081c6a929a8d4ecaa65e09a2543e5a6b30e2eff1f0"
   },
-  "policy": "Only these exact reviewed DSH versions are admitted; no compatibility exemptions are required."
+  "policy": "Only exact reviewed DSH versions are admitted; no compatibility exemptions. SDK 0.2.2-rc.1 validation and deployment boundaries are documented in docs/DSH022-COMPATIBILITY.md."
 }

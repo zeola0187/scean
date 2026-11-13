@@ -13,7 +13,7 @@ import {createNativeBridge} from '../plugin/player-native-bridge.mjs';
 import {clearEditIntent} from '../sources/card-studio/cardstudio-bundle/lib/diagnosis-consent.js';
 
 export const syntheticCard=()=>({spec:'chara_card_v3',spec_version:'3.0',data:{name:'同名合成卡',description:'Independent; she may disagree.',personality:'Independent and kind.',scenario:'Synthetic station.',first_mes:'A lamp is on the desk.',mes_example:'',creator_notes:'',system_prompt:'',post_history_instructions:'',alternate_greetings:['A new synthetic scene.'],group_only_greetings:[],tags:[],creator:'offline QA',character_version:'1',extensions:{scean:{characters:[{id:'keeper',name:'Keeper',description:'Independent station keeper.'}]}},character_book:{entries:[{id:1,keys:['lamp'],content:'A silver lamp.',enabled:true,insertion_order:0,extensions:{}},{id:2,keys:['unmatched'],content:'Unmatched background.',enabled:true,insertion_order:1,extensions:{}}]}}});
-export async function fixture(t){
+export async function fixture(t,{initialCard=true}={}){
   const base=new URL('../.test-data/',import.meta.url);await mkdir(base,{recursive:true});const root=await mkdtemp(new URL('w02-',base));
   const clock={value:100000},calls=[];
   const model={async generate(args){calls.push(args.stage);if(args.stage==='director')return {text:'Observe independently.'};if(['draft','prose'].includes(args.stage))return {text:'She disagreed and inspected the lamp.'};if(args.stage==='post_stat')return {text:JSON.stringify({contractVersion:2,stateChanges:[],memories:[]})};throw Error('Unexpected offline stage '+args.stage);}};
@@ -28,7 +28,7 @@ export async function fixture(t){
   const diagnosis=createSceanDiagnosis(loader,()=>runtime),control=createSceanControl(loader,()=>runtime);
   const invoke=(action,args={},human=true)=>loader.call(agent,r,human?claim:null,action,args);
   const importCard=async(name='synthetic')=>{await writeFile(join(workspace,'imports',name+'.json'),JSON.stringify(syntheticCard()));const imported=await invoke('import',{path:'imports/'+name+'.json',type:'card'});assert(imported.ok,JSON.stringify(imported));return imported.value.id;};
-  const id=await importCard();
+  const id=initialCard?await importCard():null;
   const saved=async()=>{const value=await invoke('read',{document_id:id});assert(value.ok,JSON.stringify(value));return value.value;};
   const scope=()=>resolveSceanCardContext(loader,agent.id);
   const start=async(requestId='w02-handoff-00000001')=>{
