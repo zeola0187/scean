@@ -1,6 +1,6 @@
 {
   "status": "LOCAL_FIXED_VERSION_CANDIDATE_VALIDATED_PUBLICATION_ON_HOLD",
-  "at": "2026-11-13T12:58:37.575847+00:00",
+  "at": "2026-11-13T13:02:42.627584+00:00",
   "version": "1.6.4-local.w29.2d.rc3.1.dsh022.2",
   "guardVersion": "0.1.0-local.4",
   "targetDsh": "0.2.2-rc.1",
@@ -60,6 +60,18 @@
       "logSha256": "4265f00334529468da4f2f1798675f86bcf03df0fd09087404b201f51e2f5b48",
       "startedAt": "2026-11-13T12:41:50.896614+00:00",
       "completedAt": "2026-11-13T12:41:52.635294+00:00"
+    },
+    "source-notice-ui": {
+      "counts": {
+        "tests": 22,
+        "pass": 22,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      "logSha256": "70366d48befeef33e62361a51110525b4238e8d59a79ce31f42a695c2e738f26",
+      "startedAt": "2026-11-13T13:02:13.201022+00:00",
+      "completedAt": "2026-11-13T13:02:16.750246+00:00"
     }
   },
   "pythonChecks": {
@@ -92,7 +104,7 @@
       {
         "package": "@local/dsh-scean-suite",
         "version": "1.6.4-local.w29.2d.rc3.1.dsh022.2",
-        "tgzSha256": "70566ef40382549ee2eb54085297ec6e62d95c7ca5f47f6fb694c002c030fe39"
+        "tgzSha256": "d579500b804db99f60d4776af7842765d24aa72803308141a8a252896c93005e"
       },
       {
         "package": "@local/dsh-scean-openrouter-output-default",

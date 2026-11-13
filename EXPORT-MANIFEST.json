@@ -54,8 +54,8 @@
     },
     {
       "path": "RELEASE-VERIFICATION.json",
-      "bytes": 5889,
-      "sha256": "28bb5137b277dd6ee2bfd395784e48331a6c6d4113b6159fa14206bc42fe92ba"
+      "bytes": 6264,
+      "sha256": "21f1e7d78b417157d283cc26bb7bd7509fd9b6688417c6d3b25c336ce18f33ac"
     },
     {
       "path": "SOURCE-AVAILABILITY.md",
