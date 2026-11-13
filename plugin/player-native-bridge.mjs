@@ -1,5 +1,5 @@
 // Authenticated RPC adapter only. No file access, HTTP proxy, or Studio database access.
-export function createNativeBridge({call,selectPanel,openSession,getSessionId=()=>null,getViewerId=()=>null,notifications,enableNotifications,onOpeningStarted,onDiagnose,onRunRecycled}){
+export function createNativeBridge({call,selectPanel,openSession,getSessionId=()=>null,getViewerId=()=>null,notifications,enableNotifications,onOpeningStarted,onDiagnose,onRunRecycled,onStageUi}){
   const allowed=new Set(['scriptList','scriptGet','scriptStart','scriptStatus','runRecycleList','runLifecycleStatus','runTrash','runRestore','playerBind','capabilities','list','openingPrepare','openingOffer','openingStart','openingCancel','progress','draftSave','draftGet','turn','rollback','regenerate','operationSubmit','operationStatus','exportRun','importRun','cancel','settlementBody','runView','historySearch','historyRead','historyPage','summaryStatus','summaryStart','summaryCancel','chapterStatus','chapterSettings','chapterSummarize','chapterAuto','chapterCancel','chapterClose','inspect','diagnosticsGrant','diagnosticsRead','diagnosticsRevoke','banList','writingMode','writingModeSave','proseStyle','proseStyleSave','agentModels','agentModelsSave','writingStylesImport','playerIdeas','playerWorldbook','playerRecap','playerCollaboration','ownerWorldbook','presentation','presentationSource','presentationPreview','presentationApply','presentationRestore','models']);
   const grants=new Map();let disposed=false,privacyEpoch=0,contextEpoch=0,cardScope=null;
   const denied=code=>Object.assign(new Error(code),{code});
@@ -37,6 +37,9 @@ export function createNativeBridge({call,selectPanel,openSession,getSessionId=()
     if(action==='native.notificationConfigure')return notifications?.configure({enabled:payload.enabled,backgroundEnabled:payload.backgroundEnabled,runId:payload.runId});
     if(action==='catalog')return {cards:[],source:'studio-handoff-only'};
     if(action==='native.context')return context();
+    // Device-local presentation choice between the legacy player and Stage v2.
+    // Both read and write the same Host data; this is not an authority switch.
+    if(action==='native.stageUi'){if(Object.keys(payload).length!==1||!['legacy','next'].includes(payload.ui)||typeof onStageUi!=='function')throw denied('NATIVE_STAGE_UI_INVALID');onStageUi(payload.ui);return {ui:payload.ui};}
     if(action==='native.navigate'){
       // Product navigation stays within the current Session. Only source-return
       // may resolve a different Session, through the authenticated Host read.

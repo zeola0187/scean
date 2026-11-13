@@ -2,6 +2,7 @@ import {SceanError,hash,safeId} from './contracts.mjs';
 import {publicTurnDialogue} from './dialogue-projection.mjs';
 import {bm25,tokenizeForSparseRecall} from './memory.mjs';
 import {headOf,HISTORY_LIMITS} from './history.mjs';
+import {publicTurnChanges} from './turn-changes.mjs';
 
 export const HISTORY_REFERENCE_LABEL='Historical reference — not a current event';
 export const HISTORY_RECALL_LIMITS=Object.freeze({queryChars:512,hits:10,snippetChars:400,positions:32,radius:1,readChars:12000,pageTurns:20,pageBytes:131072,cursorChars:1024});
@@ -100,7 +101,7 @@ export function pageHistory(run,options={}){
   if(options.anchorCommitId!==undefined){const index=locate(run,turns,options.anchorCommitId);if(forward)start=index;else end=index+1;}
   if(forward)end=Math.min(turns.length,start+limit);else start=Math.max(0,end-limit);
   let presentation=options.presentation===true;
-  const projected=new Map(),project=t=>{const key=t.commitId+':'+presentation;if(!projected.has(key))projected.set(key,publicTurn(run,t,presentation));return projected.get(key);};
+  const withChanges=options.changes===true,projected=new Map(),project=t=>{const key=t.commitId+':'+presentation;if(!projected.has(key)){const row=publicTurn(run,t,presentation);if(withChanges){const changes=publicTurnChanges(run,t);if(changes)row.changes=changes;}projected.set(key,row);}return projected.get(key);};
   const response=()=>({...base('history_page',run),status:end>start?'page':turns.length?'end':'empty',turns:turns.slice(start,end).map(project),hasMore:start>0&&start<turns.length,beforeCursor:start>0&&start<turns.length?encodeCursor(run,digest,turns[start].commitId,'beforeCommitId'):null,hasLater:end<turns.length,afterCursor:end<turns.length&&end>0?encodeCursor(run,digest,turns[end-1].commitId,'afterCommitId'):null,anchorCommitId:options.anchorCommitId??null,totalActive:turns.length});
   let result=response();
   // Shrink whole turns first: optional color data must not disappear merely

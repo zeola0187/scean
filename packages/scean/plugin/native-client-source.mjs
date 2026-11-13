@@ -12,7 +12,11 @@ export function nativeClientFactory(React,sharedHTML,createNativeBridge,createNo
       const currentSession=()=>Object.values(child.sessions.list.getSnapshot().byId).find(r=>(r.retainedBy?.mainView??0)>0)?.id??null;
       const call=async request=>{const response=await child.remote.scean.request(request);if(!response?.ok)throw Object.assign(new Error('無法確認 SCEAN 連線結果。'),{code:'RPC_TRANSPORT'});if(!response.value?.ok)throw Object.assign(new Error(response.value?.error?.message??'SCEAN request failed'),response.value?.lastFailure??response.value?.error);return response.value.value;};
       let notificationTarget=null;
-      const notifications=createNotificationClient?.({call:(action,payload)=>call({action,...payload}),getScope:async()=>{const id=currentSession();if(!id)return null;const value=await call({action:'context',sessionId:id});if(currentSession()!==id||!value.cardScope)return null;return {sessionId:id,cardScope:value.cardScope};},showToast:value=>showNotificationToast?.({...value,placement:'top'}),onTarget:async target=>{notificationTarget=target;reset(target.runId);child.layout.selectPanel('local-scean');}});
+      const notifications=createNotificationClient?.({call:(action,payload)=>call({action,...payload}),getScope:async()=>{const id=currentSession();if(!id)return null;const value=await call({action:'context',sessionId:id});if(currentSession()!==id||!value.cardScope)return null;return {sessionId:id,cardScope:value.cardScope};},showToast:value=>{
+        // Stage v2 confirms saves inline (and via aria-live) while it is on screen;
+        // a parent toast there would cover its header on phones.
+        try{if(child.layout.panelInfo.getSnapshot().activePanelId==='local-scean'&&readUi()==='next'&&document.visibilityState==='visible')return;}catch{}
+        showNotificationToast?.({...value,placement:'top'});},onTarget:async target=>{notificationTarget=target;reset(target.runId);child.layout.selectPanel('local-scean');}});
       const enableNotifications=()=>{showNotificationToast?.({placement:'top',message:'背景桌面通知預設關閉。請按啟用以要求此裝置的通知權限。',openLabel:'啟用',open:async()=>{const value=await notifications?.enable();showNotificationToast?.({placement:'top',message:value?.backgroundEnabled?'背景桌面通知已開啟；僅限頁面持續執行時。':'背景桌面通知未開啟；保留頁內保存提示。'});for(const panel of panels)panel.port.postMessage({kind:'notification-settings',value});}});return {...notifications?.capabilities(),status:'confirm_in_parent'};};
       const reset=runId=>{selected=runId??null;showNotificationToast?.({clear:true});for(const notify of selections)notify(selected);};
       const sync=()=>{const next=currentSession();if(next!==sessionId){sessionId=next;notificationTarget=null;reset();notifications?.scopeChanged();}};
@@ -21,13 +25,16 @@ export function nativeClientFactory(React,sharedHTML,createNativeBridge,createNo
       const open=event=>{sync();if(event.detail?.authoringSessionId!==sessionId||!sessionId)return;const runId=event.detail?.runId;reset(typeof runId==='string'&&runId.length<=160?runId:null);child.layout.selectPanel('local-scean');};
       window.addEventListener('scean:open',open);
       window.addEventListener('scean:context',context);
+      const uiKey='scean.stageUi.v1',documents=typeof sharedHTML==='string'?{legacy:sharedHTML,next:null}:sharedHTML;
+      const readUi=()=>{try{const v=localStorage.getItem(uiKey);return v==='legacy'||!documents.next?'legacy':'next';}catch{return documents.next?'next':'legacy';}};
       function Panel(){
-        const frame=React.useRef(null),session=React.useRef(null);
+        const frame=React.useRef(null),session=React.useRef(null),[ui,setUi]=React.useState(readUi);
+        const switchUi=next=>{try{localStorage.setItem(uiKey,next);}catch{}setUi(next);};
         const close=()=>{const old=session.current;session.current=null;if(old){selections.delete(old.notify);panels.delete(old);old.stopPresentation?.();old.port.onmessage=null;old.port.close();void old.bridge.dispose();}};
         React.useEffect(()=>close,[]);
         const connect=()=>{
           close();if(!frame.current?.contentWindow)return;
-          const channel=new MessageChannel(),bridge=createNativeBridge({call,selectPanel:key=>child.layout.selectPanel(key),openSession:id=>child.uiWorkspace.openSession(id),getSessionId:()=>sessionId,getViewerId,notifications,enableNotifications,onRunRecycled:({runId})=>{if(selected===runId)selected=null;},onDiagnose:detail=>window.dispatchEvent(new CustomEvent('scean:diagnose',{detail})),onOpeningStarted:({request,value})=>{if(request.sessionId!==sessionId)return;window.dispatchEvent(new CustomEvent('scean:started',{detail:{schema:1,authoringSessionId:request.sessionId,documentId:request.cardId,generation:request.cardScope?.generation,revision:request.revision,offerId:request.offerId,runId:value.runId,binding:value.binding}}));}});
+          const channel=new MessageChannel(),bridge=createNativeBridge({call,selectPanel:key=>child.layout.selectPanel(key),openSession:id=>child.uiWorkspace.openSession(id),getSessionId:()=>sessionId,getViewerId,notifications,enableNotifications,onRunRecycled:({runId})=>{if(selected===runId)selected=null;},onStageUi:value=>switchUi(value),onDiagnose:detail=>window.dispatchEvent(new CustomEvent('scean:diagnose',{detail})),onOpeningStarted:({request,value})=>{if(request.sessionId!==sessionId)return;window.dispatchEvent(new CustomEvent('scean:started',{detail:{schema:1,authoringSessionId:request.sessionId,documentId:request.cardId,generation:request.cardScope?.generation,revision:request.revision,offerId:request.offerId,runId:value.runId,binding:value.binding}}));}});
           const current={port:channel.port1,bridge,notify:runId=>{bridge.clearContext();channel.port1.postMessage({kind:'context',runId,...(notificationTarget?.runId===runId?{notificationTarget}:{})});}};session.current=current;panels.add(current);selections.add(current.notify);
           channel.port1.onmessage=async event=>{
             const message=event.data;if(session.current!==current||!message||message.kind!=='request'||typeof message.id!=='string'||message.id.length>100)return;
@@ -43,7 +50,7 @@ export function nativeClientFactory(React,sharedHTML,createNativeBridge,createNo
           current.stopPresentation=()=>{media.removeEventListener('change',present);window.removeEventListener('scean:presentation',preferences);window.removeEventListener('storage',preferences);};present();
           current.notify(selected);
         };
-        return h('iframe',{ref:frame,title:'SCEAN 玩家介面','data-scean-native-player':true,sandbox:'allow-scripts allow-downloads allow-forms',srcDoc:sharedHTML,onLoad:connect,style:{width:'100%',height:'100%',minHeight:0,border:0,display:'block',background:'transparent'}});
+        return h('iframe',{key:ui,ref:frame,title:'SCEAN 玩家介面','data-scean-native-player':true,'data-scean-stage-ui':ui,sandbox:'allow-scripts allow-downloads allow-forms',srcDoc:ui==='next'?documents.next:documents.legacy,onLoad:connect,style:{width:'100%',height:'100%',minHeight:0,border:0,display:'block',background:'transparent'}});
       }
       function Entry(){
         // The authenticated read-only status uses Studio's configured workspace

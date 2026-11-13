@@ -21,7 +21,7 @@ export function storyTimeDefinition(input){
  if(d.calendar.weekLength!==undefined&&!int(d.calendar.weekLength,1,100))fail('STORY_CALENDAR_INVALID');
  if(d.calendar.era!==undefined&&(typeof d.calendar.era!=='string'||d.calendar.era.length>64))fail('STORY_CALENDAR_INVALID');
  if(!obj(d.periods)||Object.keys(d.periods).length>24)fail('STORY_CALENDAR_INVALID');
- for(const [key,p]of Object.entries(d.periods)){safeId(key);fields(p,['start','end'],['start','end']);if(!int(p.start,0,dayMinutes(d)-1)||!int(p.end,p.start,dayMinutes(d)-1))fail('STORY_PERIOD_INVALID');}
+ for(const [key,p]of Object.entries(d.periods)){safeId(key);fields(p,['start','end','label'],['start','end']);if(!int(p.start,0,dayMinutes(d)-1)||!int(p.end,p.start,dayMinutes(d)-1))fail('STORY_PERIOD_INVALID');if(p.label!==undefined&&(typeof p.label!=='string'||!p.label.trim()||p.label.length>24||/[<>]/.test(p.label)))fail('STORY_PERIOD_INVALID');}
  fields(d.initial,['dayOrdinal','precision','minuteOfDay','periodId'],['dayOrdinal','precision']);
  initialPosition(d);return d;
 }
@@ -64,7 +64,7 @@ export function storyClockLabel(run,c=run.storyClock){
  if(c.precision==='day')return date(c.position.earliest);
  if(c.precision==='period'){
   const names={morning:'上午',afternoon:'下午',night:'夜間',morning_watch:'早班',afternoon_shift:'下午班',evening_hearth:'晚間',night_drift:'夜航'};
-  return `${date(c.position.earliest)} · ${names[c.periodId]??c.periodId}（時段）`;
+  return `${date(c.position.earliest)} · ${d.periods[c.periodId]?.label??names[c.periodId]??c.periodId}（時段）`;
  }
  return c.precision==='minute'?at(c.position.earliest):`${at(c.position.earliest)} ～ ${at(c.position.latest)}（範圍）`;
 }

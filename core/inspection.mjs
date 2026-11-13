@@ -61,11 +61,14 @@ function publicStage(stage){
   if(stage.result!==undefined)result.result=stage.result?{...pick(stage.result,['model','route','usage','attempts']),content:restricted()}:{status:'not_recorded'};
   return result;
 }
+export const PRESENTATION_THEMES=Object.freeze(['neutral','campus','road','fantasy']);
 export function publicSnapshot(snapshot){
   if(!snapshot)return snapshot;
   const title=snapshot.card?.data?.name??snapshot.card?.name??snapshot.cardId;
   const opening=snapshot.opening?Object.fromEntries(['id','title','text'].filter(key=>typeof snapshot.opening[key]==='string').map(key=>[key,snapshot.opening[key]])):undefined;
-  return {...publicData(pick(snapshot,['schemaVersion','cardId','revision','hash'])),...(opening?{opening}:{}),
+  // Author-chosen presentation theme: a closed enum, never free text or CSS.
+  const theme=snapshot.card?.data?.extensions?.scean?.presentationTheme;
+  return {...publicData(pick(snapshot,['schemaVersion','cardId','revision','hash'])),...(opening?{opening}:{}),...(PRESENTATION_THEMES.includes(theme)?{presentationTheme:theme}:{}),
     card:{name:typeof title==='string'?title:'SCEAN',content:restricted(snapshot.card)},
     worldbook:restricted(snapshot.worldbook),preset:restricted(snapshot.preset),
     characters:(snapshot.characters??[]).map(publicCharacter),source:restricted(snapshot.source)};

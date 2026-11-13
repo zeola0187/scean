@@ -987,6 +987,10 @@
       "source": "core/story-clock.mjs"
     },
     {
+      "path": "packages/scean/core/turn-changes.mjs",
+      "source": "core/turn-changes.mjs"
+    },
+    {
       "path": "packages/scean/core/state-operations.mjs",
       "source": "core/state-operations.mjs"
     },
