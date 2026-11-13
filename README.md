@@ -1,5 +1,21 @@
 # SCEAN
 
+> **DSH 0.2.2-rc.3 安裝請使用下面完整的 `.tgz` 網址。首頁網址 `https://github.com/zeola0187/scean` 是說明頁；把它貼入 DSH 會安裝預設分支的舊版 `1.6.0`，並被 rc.3 拒絕。**
+
+## 可直接貼入 DSH 的安裝來源
+
+1. 開啟 DSH「插件」→「添加插件」→「安装第三方插件」。
+2. 在「包名或地址」欄貼上**下面完整一行**，不要只貼倉庫首頁、Release 說明頁或 Code／Download ZIP 的地址：
+
+```text
+https://github.com/zeola0187/scean/releases/download/v1.6.4-local.w29.2d.rc3.1.dsh022.3/SCEAN-1.6.4-local.w29.2d.rc3.1.dsh022.3-suite.tgz
+```
+
+3. 安裝結果應為 `@local/dsh-scean-suite 1.6.4-local.w29.2d.rc3.1.dsh022.3`。若顯示 `1.6.0`，來源仍是舊版；不要開啟版本豁免。
+4. 也可以先下載該 TGZ，再把下載檔的**完整本機路徑**貼入同一欄位。下載的是 `-suite.tgz`，不是 source ZIP；安裝前仍需等待生成與保存完成並備份資料。
+
+Suite 已含舞台 Runtime 與 Card Studio；其他已安裝插件的相容性警告是獨立問題，Suite 不會更新或啟用那些插件。
+
 在 DSH 裡製作角色、保存劇本，接著開始一場可以持續發展的角色扮演。
 
 你用自然語言決定行動與對話，SCEAN 負責組織場景、描寫角色反應，並在正文完成後更新故事狀態、記憶與時間。從製卡到遊玩、閱讀與回顧，都在同一個工作台完成。
@@ -13,7 +29,7 @@ Windows／官方 **DSH 0.2.2-rc.3** 請下載 **`1.6.4-local.w29.2d.rc3.1.dsh022
 **[直接下載 rc.3 Suite 完整包](https://github.com/zeola0187/scean/releases/download/v1.6.4-local.w29.2d.rc3.1.dsh022.3/SCEAN-1.6.4-local.w29.2d.rc3.1.dsh022.3-suite.tgz)** · [SHA256SUMS.txt](https://github.com/zeola0187/scean/releases/download/v1.6.4-local.w29.2d.rc3.1.dsh022.3/SHA256SUMS.txt) · [版本說明](https://github.com/zeola0187/scean/releases/tag/v1.6.4-local.w29.2d.rc3.1.dsh022.3)
 
 1. 等待生成及保存完成，備份 DSH、Profile、卡片、演出與設定。
-2. 下載固定 TGZ 並核對 SHA256，在 DSH 官方插件／bundle 安裝流程選擇 TGZ。Suite 已包含舞台 Runtime 與 Card Studio。
+2. 將上方完整 TGZ 網址貼入 DSH「包名或地址」；或下載並核對 SHA256 後，貼入 TGZ 的完整本機路徑。Suite 已包含舞台 Runtime 與 Card Studio。
 3. 確認載入版本為 `1.6.4-local.w29.2d.rc3.1.dsh022.3`，再用合成新演出或既有資料的唯讀檢查驗收；不要使用版本豁免強裝。
 4. 如需 OpenRouter 輸出預設修補，另裝 [guard 0.1.0-local.5](https://github.com/zeola0187/scean/releases/download/v1.6.4-local.w29.2d.rc3.1.dsh022.3/SCEAN-OpenRouter-output-default-0.1.0-local.5.tgz)。此 guard 僅支援已核對的 DSH 0.2.2-rc.3，不隨 Suite 自動安裝，也不會在預設安裝時自動呼叫付費模型。
 
