@@ -5,13 +5,14 @@ import argparse, hashlib, json, struct
 from pathlib import Path
 p=argparse.ArgumentParser()
 p.add_argument('--asar',required=True)
+p.add_argument('--version',default='0.2.2-rc.3')
 a=p.parse_args()
 root=Path(__file__).resolve().parents[1]
 archive=Path(a.asar).resolve()
 digest=lambda data:hashlib.sha256(data).hexdigest()
-actual=hashlib.file_digest(archive.open('rb'),'sha256').hexdigest()
-reviewed=json.loads((root/'dsh-compatibility.json').read_text())['reviewedAsarSHA256']['0.2.1-rc.2']
-if actual!=reviewed:raise RuntimeError('Reviewed rc.2 archive required')
+actual=hashlib.sha256(archive.read_bytes()).hexdigest()
+reviewed=json.loads((root/'dsh-compatibility.json').read_text())['reviewedAsarSHA256'][a.version]
+if actual!=reviewed:raise RuntimeError('Exact reviewed archive required for '+a.version)
 dest=root/'node_modules'
 if dest.exists():raise RuntimeError('Use a fresh test dependency directory')
 with archive.open('rb') as f:

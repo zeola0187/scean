@@ -1,1 +1,5 @@
-{"sdkVersion":"0.2.2-rc.1","adapterMethodSha256":"b4a3fcd54df44e557cba3c5f76e7098e984322c0b614c217e87e9afd2fb41199","sdkModuleSha256":"1a3ae58f9b4493e15459cc5000ec80f21b5d3f4a9dea6ffb6bc28e5b8817ae8a"}
+{
+  "sdkVersion": "0.2.2-rc.3",
+  "adapterMethodSha256": "c81f59b6149b1d3e67e712591cb1352bd3049c5243aa81e22e9be877cae318c0",
+  "sdkModuleSha256": "e956da3d7300e1426e13e14f47e6f981dd1ca345633a406568ee5058ad93e9d8"
+}

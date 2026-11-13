@@ -37,7 +37,7 @@ class PreparedRelease(unittest.TestCase):
                         if row.get('package') == '@local/dsh-scean-suite':
                             self.assertFalse(any(name.startswith('package/addons/') for name in names))
                         if row.get('package') == '@local/dsh-scean-openrouter-output-default':
-                            self.assertEqual(json.load(archive.extractfile('package/package.json'))['version'], '0.1.0-local.4')
+                            self.assertEqual(json.load(archive.extractfile('package/package.json'))['version'], '0.1.0-local.5')
                             self.assertIn('package/THIRD-PARTY-NOTICES.md', names)
                 else:
                     with zipfile.ZipFile(temp / 'a' / row['name']) as archive:

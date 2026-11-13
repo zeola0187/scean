@@ -1,19 +1,19 @@
 {
   "name": "@local/dsh-scean-openrouter-output-default",
-  "version": "0.1.0-local.4",
+  "version": "0.1.0-local.5",
   "private": true,
   "type": "module",
-  "description": "Pinned DSH 0.2.2-rc.1 OpenRouter output-default guard with complete source notices",
+  "description": "Pinned DSH 0.2.2-rc.3 OpenRouter output-default guard with complete source notices",
   "license": "AGPL-3.0-only",
   "exports": {
     ".": "./index.mjs"
   },
   "engines": {
     "node": ">=24",
-    "dsh": "0.2.2-rc.1"
+    "dsh": "0.2.2-rc.3"
   },
   "peerDependencies": {
-    "@deepseek-ai/dsh": "0.2.2-rc.1"
+    "@deepseek-ai/dsh": "0.2.2-rc.3"
   },
   "peerDependenciesMeta": {
     "@deepseek-ai/dsh": {

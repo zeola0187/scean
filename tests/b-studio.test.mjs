@@ -44,7 +44,7 @@ test('B Studio saves Blueprint/InitialState through original revision/codec and 
  const original=card();original.data.extensions.other={preserve:'yes'};original.data.extensions.scean.future={preserve:true};const f=await fixture(t,{sourceCard:original});
  const saved=await f.request('patch',save(f));assert(saved.ok,JSON.stringify(saved));assert.equal(saved.value.blueprintSaved,true);assert.equal(saved.value.rosterSaved,false);assert.equal(saved.value.scopeRestored,true);
  const read=await f.request('read',{documentId:f.id});assert.equal(read.value.revision,1);assert.deepEqual(read.value.card.data.extensions.other,{preserve:'yes'});assert.deepEqual(read.value.card.data.extensions.scean.future,{preserve:true});assert.deepEqual(read.value.card.data.extensions.scean.stateBlueprint,bp());
- const exported=await f.request('export',{documentId:f.id,expectedRevision:1});assert(exported.ok);const exportedCard=JSON.parse(Buffer.from(exported.value.base64,'base64'));assert.deepEqual(exportedCard.data.extensions.scean.initialState,initial());
+ const exported=await f.request('export',{documentId:f.id,expectedRevision:1});assert(exported.ok,JSON.stringify(exported));const exportedCard=JSON.parse(Buffer.from(exported.value.base64,'base64'));assert.deepEqual(exportedCard.data.extensions.scean.initialState,initial());
 });
 
 test('B Studio rejects missing authorization, stale scope, invalid actor/type/unit/task before scope transition',async t=>{
@@ -74,7 +74,7 @@ test('B Studio Blueprint save works while SCEAN absent and restores scope on inj
  const f=await fixture(t,{absent:true}),operation=f.bridge.operation.bind(f.bridge);let failed=false;
  f.bridge.operation=async(...args)=>{if(args[1]==='patch'&&!failed){failed=true;throw Object.assign(Error('synthetic'),{code:'INJECTED_WRITE_FAILURE'});}return operation(...args);};
  assert.equal((await f.request('patch',save(f))).error.code,'INJECTED_WRITE_FAILURE');assert.equal(f.bridge.loader.records.get(f.bridge.agent.id).scope.mode,'content');assert.equal((await f.request('read',{documentId:f.id})).value.revision,0);
- const renewed=await f.request('renew');const saved=await f.request('patch',save(f,{expectedScopeEpoch:renewed.value.claim.authoring_scope.epoch}));assert(saved.ok,JSON.stringify(saved));assert((await f.request('export',{documentId:f.id,expectedRevision:1})).ok);
+ const renewed=await f.request('renew');const saved=await f.request('patch',save(f,{expectedScopeEpoch:renewed.value.claim.authoring_scope.epoch}));assert(saved.ok,JSON.stringify(saved));const exported=await f.request('export',{documentId:f.id,expectedRevision:1});assert(exported.ok,JSON.stringify(exported));
 });
 
 test('B form payload retains unknown omission, false/zero, source and declared UI labels/units',()=>{

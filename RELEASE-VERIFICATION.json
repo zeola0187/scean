@@ -1,179 +1,83 @@
 {
-  "status": "LOCAL_FIXED_VERSION_CANDIDATE_VALIDATED_PUBLICATION_ON_HOLD",
-  "at": "2026-11-13T13:02:42.627584+00:00",
-  "version": "1.6.4-local.w29.2d.rc3.1.dsh022.2",
-  "guardVersion": "0.1.0-local.4",
-  "targetDsh": "0.2.2-rc.1",
-  "preparedFromCommit": "62bc2bb151ac969956b6a1b064554c564f95dc78",
-  "productionRuntimeFunctionalMatch": {
-    "comparedFiles": 267,
-    "exactBytes": 255,
-    "expectedMetadataAndSourceLinkDifferences": 12,
-    "coreAndHostFilesExact": 5,
-    "clientsOnlySourceNoticeMetadataChanged": 3
-  },
+  "status": "RC3_PRERELEASE_ISOLATED_VALIDATION",
+  "at": "2026-11-13T14:46:50.923163+00:00",
+  "version": "1.6.4-local.w29.2d.rc3.1.dsh022.3",
+  "guardVersion": "0.1.0-local.5",
+  "targetDsh": "0.2.2-rc.3",
+  "baselineRevision": "a11d851652531ae1ac38119ea245f2e6f5fcb231",
+  "baselineSourceArchiveSha256": "00c3871ea918fe4b31728f225ec2721c256bc0514cf40965c1ce9109cc119e2b",
+  "candidateRevision": null,
+  "packagedSdk": "14cfd81c9135bf0afb89417543c94f9ecfe09266574452a9b106890c698725ae",
   "tests": {
     "full": {
       "counts": {
-        "tests": 1719,
-        "pass": 1717,
+        "tests": 1749,
+        "pass": 1748,
         "fail": 0,
         "cancelled": 0,
-        "skipped": 2
+        "skipped": 1
       },
-      "logSha256": "57d800c7139774998c8c8632ebd4670460f2960886fd5496f061f7910b33f8c1",
-      "startedAt": "2026-11-13T12:44:57.256249+00:00",
-      "completedAt": "2026-11-13T12:48:16.708353+00:00"
+      "seconds": 189.47,
+      "logSha256": "9a423c244014bc58206ec4fb6b1264226726e83fc8e459d3aa91a16dcfcb110b",
+      "node": "24.21.0",
+      "network": "non-loopback blocked",
+      "providers": "synthetic only"
     },
-    "guard": {
-      "counts": {
-        "tests": 26,
-        "pass": 26,
-        "fail": 0,
-        "cancelled": 0,
-        "skipped": 0
-      },
-      "logSha256": "c0d0910fb2b6916a25eb0588a05f689e1f8959b0f01653a3554da02d77e2411b",
-      "startedAt": "2026-11-13T12:16:12.473579+00:00",
-      "completedAt": "2026-11-13T12:16:18.323702+00:00"
+    "rc3Replay": {
+      "tests": 4,
+      "pass": 4,
+      "fail": 0
     },
-    "guard-sealed": {
-      "counts": {
-        "tests": 26,
-        "pass": 26,
-        "fail": 0,
-        "cancelled": 0,
-        "skipped": 0
-      },
-      "logSha256": "34fa651b3c4569c3298019604a68d8f73b51b556c0dfeaf11b6c986c8b767070",
-      "startedAt": "2026-11-13T12:16:12.473579+00:00",
-      "completedAt": "2026-11-13T12:16:18.545162+00:00"
+    "releasePackaging": {
+      "passed": 11,
+      "failed": 0
     },
-    "presentation": {
-      "counts": {
-        "tests": 13,
-        "pass": 13,
-        "fail": 0,
-        "cancelled": 0,
-        "skipped": 0
-      },
-      "logSha256": "4265f00334529468da4f2f1798675f86bcf03df0fd09087404b201f51e2f5b48",
-      "startedAt": "2026-11-13T12:41:50.896614+00:00",
-      "completedAt": "2026-11-13T12:41:52.635294+00:00"
+    "installedLifecycle": {
+      "syntheticThemes": [
+        "indicator",
+        "fantasy"
+      ],
+      "frontendStatus": "ready",
+      "revision": 1,
+      "guardActivated": true,
+      "guardOriginalMethodRestored": true,
+      "sceanDisposed": "inactive",
+      "modelCalls": 0
     },
-    "source-notice-ui": {
-      "counts": {
-        "tests": 22,
-        "pass": 22,
-        "fail": 0,
-        "cancelled": 0,
-        "skipped": 0
-      },
-      "logSha256": "70366d48befeef33e62361a51110525b4238e8d59a79ce31f42a695c2e738f26",
-      "startedAt": "2026-11-13T13:02:13.201022+00:00",
-      "completedAt": "2026-11-13T13:02:16.750246+00:00"
+    "publicationFocused": {
+      "passed": 55,
+      "failed": 0
     }
   },
-  "pythonChecks": {
-    "releaseSupportPassed": 8,
-    "licenseDistributionPassed": 6,
-    "preparedReleasePassed": 3,
-    "preparedSourcePassed": 7
-  },
-  "presentationRace": {
-    "rootCauseResolved": true,
-    "cause": "A nonblocking bakery lock can return RUN_BUSY to both initial contenders; the previous test wrongly required exactly one initial winner.",
-    "realFilesystemInterleavingsPassed": 20,
-    "explicitRetryPublishesOnce": true,
-    "stalePreviewRejected": true,
-    "canonicalStoryBytesUnchanged": true,
-    "productLockChanged": false
-  },
-  "freshFrozenLockfileInstall": {
-    "passed": true,
-    "freshStore": true,
-    "exactPinnedDependencies": 31,
-    "scriptsExecuted": false
-  },
-  "freshOfficialPluginManagerInstall": {
-    "passed": true,
-    "freshHomeAndStore": true,
-    "noExemptions": true,
-    "noSkippedBundles": true,
-    "packages": [
-      {
-        "package": "@local/dsh-scean-suite",
-        "version": "1.6.4-local.w29.2d.rc3.1.dsh022.2",
-        "tgzSha256": "d579500b804db99f60d4776af7842765d24aa72803308141a8a252896c93005e"
-      },
-      {
-        "package": "@local/dsh-scean-openrouter-output-default",
-        "version": "0.1.0-local.4",
-        "tgzSha256": "7eeefed6d6fe1dde92efe7541177556b853f727607a114b9fdf5d75bcbc3fe96"
-      }
-    ]
-  },
-  "cleanRuntime": {
-    "stageLoaded": true,
-    "studioLoaded": true,
-    "unauthenticatedHttp": 401,
-    "authenticatedFrontendHttp": 200,
-    "syntheticOfflineCalls": 3,
-    "savedTurns": 1,
-    "savedVersion": 1,
-    "reloadedBodyMatches": true,
-    "duplicateWithoutExtraCall": true,
-    "persistenceBoundary": "Installed library public engine API under a clean official SDK Profile; no production Desktop story turn",
-    "guardActiveInEmptyProfile": false,
-    "guardPhaseInEmptyProfile": "disposed",
-    "guardAutomaticPaidCalls": 0
-  },
-  "sourceNoticeBrowserCheck": {
-    "freshInstalledWebUi": true,
-    "playerVisible": true,
-    "studioVisible": true,
-    "immutableTargetMatchesCandidate": true,
-    "publicDestinationOpened": false
-  },
-  "localSourceProofTool": {
-    "script": "scripts/check-prepared-source.py",
-    "testCasesPassed": 7,
-    "networkOrPublicationPerformed": false,
-    "purpose": "Verify detached asset hashes, source manifest and exact committed tree plus all seven source notice targets; remote checks remain independent."
-  },
-  "paidApiRequests": 0,
-  "credentialsIncluded": false,
+  "explicitExclusions": [
+    {
+      "file": "tests/legacy-fixture-tool.test.mjs",
+      "reason": "published archive omits prepare-legacy-playback-fixture.mjs"
+    },
+    {
+      "test": "actual sealed timecal3 reader rejects new v12",
+      "reason": "sealed timecal3 reader not supplied"
+    },
+    {
+      "test": "actual timecal4 reader refuses new schema13",
+      "reason": "timecal4 reader not supplied"
+    }
+  ],
+  "productionWrites": 0,
+  "paidModelCalls": 0,
+  "publicMutations": 0,
   "userDataIncluded": false,
   "hostSdkIncluded": false,
-  "seekerIncluded": false,
-  "productionWrites": 0,
-  "publicMutations": 0,
-  "packagedDesktopStarted": false,
-  "protocolAssociationEdited": false,
-  "publicationHold": {
-    "merge": true,
-    "push": true,
-    "tag": true,
-    "release": true,
-    "latest": true,
-    "anonymousDownloadsVerified": false
-  },
-  "explicitExclusions": [
-    "legacy fixture preparation script not supplied",
-    "sealed timecal3 reader not supplied",
-    "timecal4 reader not supplied"
-  ],
-  "remaining": [
-    "Main-machine installation and actual paths not inspected",
-    "Actual GitHub download unavailable before authorized publication",
-    "Actual unmodified packaged Desktop clean-install acceptance requires a separate OS sandbox/VM; fresh Web UI is not equivalent",
-    "No new live provider model-quality test"
-  ],
-  "resolvedFixtureIssues": [
-    "Removed use of a non-public service property in the isolated driver",
-    "Provided the required durable usage journal to the native model port",
-    "Aligned visible source offers to the planned immutable tag",
-    "Replaced an obsolete Studio version label with the generic SCEAN license label",
-    "Reproduced the zero-winner nonblocking lock interleaving and corrected the test contract without changing product locking"
+  "guardAutomaticallyInstalled": false,
+  "realDesktopUi": "NOT_TESTED",
+  "liveProvider": "NOT_TESTED",
+  "installation": "Official rc.3 PluginManager: isolated installation PASS; installed bytes match archives; packaged Studio/stage and guard lifecycle PASS. Production Desktop not installed.",
+  "sourcePublication": "See detached release receipt for exact published commit and remote verification.",
+  "notes": [
+    "Guard runtime wrapper/index unchanged; exact rc.3 reviewed fingerprints added.",
+    "No story engine, model prompt, permission policy or data migration changes.",
+    "Initial sandbox-only failures reproduced and resolved using permitted local links/loopback with isolated HOME and outbound network guard.",
+    "Two test receipt paths made fixture-local and export assertion diagnostics improved.",
+    "Final publication source uses a portable offline harness and verified canonical/generated source-offer URLs. Desktop production deployment remains outside this release validation."
   ]
 }

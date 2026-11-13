@@ -1,59 +1,38 @@
 # SCEAN
 
-在 DSH 裡製作角色、保存劇本，接著開始可以持續發展的角色扮演。
+在 DSH 裡製作角色、保存劇本，接著開始持續發展的角色扮演。Suite 完整包包含舞台 Runtime 與 Card Studio。
 
-你用自然語言決定行動與對話，SCEAN 組織場景、描寫角色反應，並在正文完成後更新故事狀態、記憶與時間。Runtime 與 Card Studio 包含在同一個 Suite 套件。
+## DSH 0.2.2-rc.3 預發版
 
-**本文件目前是本機安裝候選的首頁草稿，版本 `1.6.4-local.w29.2d.rc3.1.dsh022.2`。尚未推送、合併或發布；下列新版下載與來源標籤連結待發布後才會生效。不要把它當成目前 GitHub Latest。**
+Windows／官方 **DSH 0.2.2-rc.3** 請使用 **`1.6.4-local.w29.2d.rc3.1.dsh022.3`**。
 
-## 本版整理的功能
+[下載 Suite 完整包](https://github.com/zeola0187/scean/releases/download/v1.6.4-local.w29.2d.rc3.1.dsh022.3/SCEAN-1.6.4-local.w29.2d.rc3.1.dsh022.3-suite.tgz) · [SHA256SUMS](https://github.com/zeola0187/scean/releases/download/v1.6.4-local.w29.2d.rc3.1.dsh022.3/SHA256SUMS.txt) · [版本說明](https://github.com/zeola0187/scean/releases/tag/v1.6.4-local.w29.2d.rc3.1.dsh022.3) · [相容性與驗證範圍](docs/DSH022-RC3-COMPATIBILITY.md)
 
-- 支援本輪核對的官方 **DSH 0.2.2-rc.1／Windows**，Studio 工具沿用明確的工作卡範圍與授權。
-- 導演 → Writer 正文 → PostStat 世界結算 → Host 檢查與保存；既有故事保留原卡片與來源身份。
-- 章節召回保留最近 3 篇摘要。有效舊章不超過 8 篇時全部帶入，這個小集合不需 embedding 或 rerank；更多舊章沿用有界混合檢索。
-- 協作讀取器接受 PostStat 流程合法省略的逐項引用，不修改舊正文或私人欄位權限。
-- 時間入口顯示「指定結算時間（選填）」，保留確認、來源變動失效與忙碌停用。
-- 失敗後可依目前模型設定重做本輪；明確使用原模型重試或繼續結算時，仍保留原請求及模型身份。
+1. 等待生成及保存完成，備份 DSH、Profile、卡片、演出與設定。
+2. 下載上面的固定 TGZ 並核對 SHA256，在 DSH 官方插件／bundle 安裝流程選擇該 TGZ。
+3. 確認載入版本為 `1.6.4-local.w29.2d.rc3.1.dsh022.3`，再用新建的合成演出或既有資料的唯讀檢查驗收。
+4. 如需 OpenRouter 輸出預設修補，另裝 [guard 0.1.0-local.5](https://github.com/zeola0187/scean/releases/download/v1.6.4-local.w29.2d.rc3.1.dsh022.3/SCEAN-OpenRouter-output-default-0.1.0-local.5.tgz)。此 guard 僅支援已核對的 DSH 0.2.2-rc.3，不隨 Suite 自動安裝，也不會在預設安裝時自動呼叫付費模型。
 
-這份候選包含先前 PR #1 未納入的上述局部修補。沒有新增故事存檔格式或自動搬移資料；不是把伺服器 Profile 複製到另一台電腦。
+若遇到 `ERR_PNPM_UNEXPECTED_STORE`，先核對現有 profile 的 `node_modules/.modules.yaml` 與安裝器使用的 store，再保全資料並採 profile 範圍修復；不要刪除依賴、清理正在引用的備份資料夾或直接改全域 store。
 
-## 從本專案首頁安裝
+請下載固定 TGZ。把倉庫根網址貼入 Git 安裝器會解析預設分支，不代表安裝此預發版。不要使用版本豁免強裝。
 
-本輪乾淨安裝目標是 **官方 DSH 0.2.2-rc.1、Windows**。主力機若尚未使用這個宿主版本，先確認宿主升級及備份方案；不要用版本豁免強制安裝。
+## 這版改動與驗證
 
-1. 等待當下生成、結算與保存完成，正常退出需要更新的 DSH。建立當時最新的程式、Profile、卡片、故事及設定備份。
-2. 新版發布後，從本頁下載固定版本的 [Suite TGZ](https://github.com/zeola0187/scean/releases/download/v1.6.4-local.w29.2d.rc3.1.dsh022.2/SCEAN-1.6.4-local.w29.2d.rc3.1.dsh022.2-suite.tgz) 與 [SHA256SUMS.txt](https://github.com/zeola0187/scean/releases/download/v1.6.4-local.w29.2d.rc3.1.dsh022.2/SHA256SUMS.txt)。核對雜湊後，在官方插件／bundle 安裝流程選擇該 TGZ。
-3. Suite 已包含舞台 Runtime 與 Studio。確認實際版本為 `1.6.4-local.w29.2d.rc3.1.dsh022.2`，再用合成新演出或既有資料的唯讀頁面驗證。
-4. 使用 OpenRouter 且需要輸出預設修補時，另外安裝同版 Release 的 [guard TGZ](https://github.com/zeola0187/scean/releases/download/v1.6.4-local.w29.2d.rc3.1.dsh022.2/SCEAN-OpenRouter-output-default-0.1.0-local.4.tgz)。guard 只支援精確的 DSH 0.2.2-rc.1，不會隨 Suite 自動安裝；安裝不會自動呼叫付費模型。
+依實際封裝 rc.3 SDK 核對舞台與 Studio，加入精確 engine／peer 邊界；guard 更新實際 adapter 指紋，補測 prefix digest 與 signed-thinking replay。舞台核心、Studio runtime 邏輯、guard wrapper 與權限政策沒有改動。
 
-這是「從首頁下載固定版本套件」的流程。不要把純倉庫網址貼入安裝器，期待它自動選擇此 Release：Git 安裝依預設分支解析，而目前公開 `main` 仍有較舊的套件程式。
+離線回歸 **1,748 通過、0 失敗、1 個既有 skip**；另外三項缺失歷史 fixture 明確排除。官方 PluginManager 全新隔離 profile 安裝成功；安裝後的 Studio 匯入、儲存與舞台啟動、guard 啟用及釋放均完成合成測試。測試沒有使用正式使用者資料或付費模型。
 
-現有 RC3 用戶的 [1.6.3 Release](https://github.com/zeola0187/scean/releases/tag/v1.6.3-local.w29.2d.rc3.1) 保留。這份候選不會更改其附件、標籤或 Latest 身份；舊 SDK 的套件准入不等於本輪新增了舊機實測。
+**正式 Desktop UI 與真實模型尚未驗收。** 本版仍是預發版，既有 [1.6.3 正式 Release](https://github.com/zeola0187/scean/releases/tag/v1.6.3-local.w29.2d.rc3.1) 與 GitHub Latest 保留。若使用 DSH 0.2.2-rc.1，可參閱 [先前 .2 預發版](https://github.com/zeola0187/scean/releases/tag/v1.6.4-local.w29.2d.rc3.1.dsh022.2)。
 
-## 資料與使用
+## 使用與資料
 
-保存角色與劇本後開啟新演出；後續修卡不會改寫已存在演出的固定版本。日曆、論壇、章節與模型工作需要作品或使用者的相應設定。
+從創作入口製作或匯入卡片，檢查並保存劇本，再到舞台選擇保存版本與開場。修改作品不會覆寫既有演出的固定版本。章節、時間、世界日常與不同模型分工沿用既有設定。
 
-保持卡片、正文、記憶、來源與操作身份完整。失敗後先查看現有結果，結果不明時不要反覆重送。回退前先保留更新後新增的資料，再還原相配套的程式與設定；不要直接用舊備份覆蓋新進度。
+模型生成、向量召回及背景工作依服務設定產生用量。安裝不等於授權付費生成。更新或降版前先保全新增故事資料，不要用整份舊 profile 覆蓋新進度。
 
-模型生成、向量檢索及背景工作依既有服務設定產生用量。安裝、設定與唯讀驗收不代表授權付費生成。本套件不包含模型憑證、私人故事、Seeker、SDK 或其他服務設定。
+## 原始碼與授權
 
-## 驗證與原始碼
+[固定版本原始碼](https://github.com/zeola0187/scean/tree/v1.6.4-local.w29.2d.rc3.1.dsh022.3) · [完整對應 source ZIP](https://github.com/zeola0187/scean/releases/download/v1.6.4-local.w29.2d.rc3.1.dsh022.3/SCEAN-1.6.4-local.w29.2d.rc3.1.dsh022.3-source.zip) · [來源與套件收據](https://github.com/zeola0187/scean/releases/download/v1.6.4-local.w29.2d.rc3.1.dsh022.3/SCEAN-1.6.4-local.w29.2d.rc3.1.dsh022.3-source-receipt.json)
 
-[本版說明與範圍](docs/DSH022-FULL-STAGE-RELEASE.zh-TW.md) 記錄準備方式與未驗項目；實際驗證結果隨套件的 detached receipt 提供。先前伺服器真模型驗收與本版的乾淨安裝／離線測試分別記錄，不互相替代。
-
-預定 [完整對應原碼](https://github.com/zeola0187/scean/tree/v1.6.4-local.w29.2d.rc3.1.dsh022.2) 與 [來源 ZIP](https://github.com/zeola0187/scean/releases/download/v1.6.4-local.w29.2d.rc3.1.dsh022.2/SCEAN-1.6.4-local.w29.2d.rc3.1.dsh022.2-source.zip) 將與套件一起提供，目前仍未公開。
-
-本機重建使用 Python 3.11+、Node.js 24+：
-
-```text
-pnpm install --frozen-lockfile --ignore-scripts --ignore-pnpmfile
-python scripts/build-candidate.py --stage=build-suite-source-release-check
-python tests/release-support.test.py -v
-python tests/license-distribution.test.py -v
-python scripts/prepare-release.py --output ../NEW_RELEASE_DIRECTORY
-```
-
-打包工具只接受已核對的 `EXPORT-MANIFEST.json` 位元；原碼若改動，先重新審核與更新白名單。SDK、測試 Profile、快取、Git 歷史及使用者資料不隨包發送。guard 的測試使用攔截 HTTP，不代表真 OpenRouter 帳號或文學品質驗收。
-
-SCEAN 原創程式與內容採 **AGPL-3.0-only**；`advanced-tavern-card-authoring` 保留 MIT 授權。詳見 [LICENSE](LICENSE)、[授權範圍](LICENSE-SCOPE.md)、[第三方聲明](THIRD-PARTY-NOTICES.md) 與 [原碼取得](SOURCE-AVAILABILITY.md)。
+套件與完整來源不包含 SDK、Seeker、模型憑證、私人故事或 profile。SCEAN 原創內容採 **AGPL-3.0-only**；保留 `advanced-tavern-card-authoring` 的 MIT 授權。詳見 [LICENSE](LICENSE)、[授權範圍](LICENSE-SCOPE.md) 與[第三方聲明](THIRD-PARTY-NOTICES.md)。

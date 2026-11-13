@@ -9,7 +9,7 @@ const piRoot=path.resolve(path.dirname(adapterFile),'../../../@earendil-works/pi
 const {streamSimple}=await import(pathToFileURL(path.join(piRoot,'api/openai-completions.js')));
 const {normalizeContext}=await import(pathToFileURL(path.join(piRoot,'utils/transcript.js')));
 import {pathToFileURL} from 'node:url';
-const reviewedHash='b4a3fcd54df44e557cba3c5f76e7098e984322c0b614c217e87e9afd2fb41199';
+const reviewedHash='c81f59b6149b1d3e67e712591cb1352bd3049c5243aa81e22e9be877cae318c0';
 class Candidate extends Original {constructor(...args){super(...args);const h=installOutputDefaultGuard(this,{expectedMethodHash:reviewedHash});assert(h.active);}}
 import {installOutputDefaultGuard,methodHash} from './guard.mjs';
 import {activate,apply as applyBridge} from './index.mjs';

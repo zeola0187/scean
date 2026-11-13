@@ -1,6 +1,6 @@
 # OpenRouter output default guard
 
-Version `0.1.0-local.4`, for the exact reviewed DSH `0.2.2-rc.1` adapter only. Licensed under the repository's AGPL-3.0-only license.
+Prerelease `0.1.0-local.5`, for the exact reviewed DSH `0.2.2-rc.3` adapter only. Validated in an isolated profile; production Desktop and live-provider acceptance are not claimed. Licensed under the repository's AGPL-3.0-only license.
 
 When an OpenRouter chat-completions caller omits an output limit, the reviewed PiAiAdapter still derives one from the model catalog. This can exceed the remaining context budget. The guard removes only the implicit `max_tokens` / `max_completion_tokens` fields; it preserves configured limits, explicit caller limits, other providers, messages, tools and existing payload hooks.
 
@@ -18,4 +18,4 @@ node --require ./scripts/w19-offline-network.cjs --test addons/openrouter-output
 
 The SDK integration tests use the actual PiAiAdapter, Cordis and LlmRuntime with intercepted HTTP and synthetic fixtures. They make no paid requests. `SDK_ROOT` may select another extracted SDK root containing `node_modules`; the default is this repository root. Test state stays under ignored `.test-addon` directories.
 
-Both the official packaged Desktop SDK (pi-ai 1.3.0) and the npm-resolved dependency set (pi-ai 1.5.2) have been tested. This is not live OpenRouter account or provider acceptance. Runtime files match the locally deployed addon; this README and the portable SDK test lookup are documentation/test adaptations.
+The rc.3 candidate is tested against the SDK extracted from the installed Desktop archive, whose SHA256 is recorded in `dsh-compatibility.json` at the repository root. The rc.3 method adds signed-thinking prefix binding; the additional replay tests verify unchanged matching-prefix replay, changed/missing-prefix omission, and completions history with only the implicit output limit removed. The wrapper implementation remains unchanged; the reviewed exact method/module fingerprints are updated. The former rc.1 method is rejected by this candidate. npm dependency lockfile resolution is recorded separately and is not a second SDK runtime acceptance claim. No live OpenRouter account or provider acceptance is claimed.
