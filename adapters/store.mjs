@@ -1,3 +1,5 @@
+import {encodeRunBundle} from '../core/save-bundle.mjs';
+import {validateTemporalRun} from '../core/state-operations.mjs';
 import { mkdir, open, readFile, rename, unlink, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -74,6 +76,7 @@ export class DurableStore {
     return this.withRunLock(run.runId, async () => {
       try { await this.read(run.runId,{includeTrashed:true}); throw new SceanError('RUN_EXISTS'); }
       catch (error) { if (error.code !== 'RUN_NOT_FOUND') throw error; }
+      validateTemporalRun(run);if(run.worldRoutine)encodeRunBundle(run);
       await this.atomic(path.join(this.runDir(run.runId), 'current.json'), run, { ...options, commit: true }); return clone(run);
     },options);
   }
@@ -82,6 +85,7 @@ export class DurableStore {
     const prior = await this.read(runId);
     if(json(prior.recycle??null)!==json(next.recycle??null))throw new SceanError('RUN_LIFECYCLE_CHANGED');
     if (prior.version !== expectedVersion || !Number.isSafeInteger(next.version) || next.version !== expectedVersion + 1 || next.runId !== runId) throw new SceanError('VERSION_CONFLICT');
+    validateTemporalRun(next);if(next.worldRoutine)encodeRunBundle(next);
     await this.atomic(path.join(this.runDir(runId), 'current.json'), next, { ...options, commit: true });
     return clone(next);
   }
@@ -89,6 +93,20 @@ export class DurableStore {
     safeId(attempt.attemptId);
     await this.atomic(path.join(this.runDir(runId), 'attempts', `${attempt.attemptId}.json`), attempt);
   }
+
+  async readSettlementLedger(runId){
+    let data;try{const bytes=await readFile(path.join(this.runDir(runId),'settlement-dispatches.json'),'utf8');if(Buffer.byteLength(bytes)>1024*1024)throw new SceanError('SETTLEMENT_LEDGER_LIMIT');data=JSON.parse(bytes);}catch(e){if(e.code==='ENOENT')return{schemaVersion:1,entries:{}};throw e;}
+    if(data.schemaVersion!==1||!data.entries||typeof data.entries!=='object'||Array.isArray(data.entries)||Object.keys(data.entries).length>4096)throw new SceanError('SETTLEMENT_LEDGER_INVALID');
+    for(const[k,v]of Object.entries(data.entries))if(!/^[a-f0-9]{64}$/.test(k)||!Number.isInteger(v.used)||v.used<0||v.used>2)throw new SceanError('SETTLEMENT_LEDGER_INVALID');return data;
+  }
+  async settlementDispatches(runId,lineage){return(await this.readSettlementLedger(runId)).entries[lineage]?.used??0;}
+  async reserveSettlementDispatch(runId,lineage){
+    if(!this.held.has(runId)||!/^[a-f0-9]{64}$/.test(lineage))throw new SceanError('LOCK_REQUIRED');
+    const data=await this.readSettlementLedger(runId),old=data.entries[lineage]?.used??0;if(old>=2)throw new SceanError('SETTLEMENT_DISPATCH_LIMIT');
+    if(!Object.hasOwn(data.entries,lineage)&&Object.keys(data.entries).length>=4096)throw new SceanError('SETTLEMENT_LEDGER_LIMIT');
+    data.entries[lineage]={used:old+1};await this.atomic(path.join(this.runDir(runId),'settlement-dispatches.json'),data);return old+1;
+  }
+
   async readAttempts(runId) {
     const dir = path.join(this.runDir(runId), 'attempts');
     let names;
@@ -164,9 +182,9 @@ export class DurableStore {
     }
   }
   async withRunLock(runId, fn, { signal, namespace } = {}) {
-    if(namespace!==undefined&&!['prose-style','writing-mode','writing-styles'].includes(namespace))throw new SceanError('LOCK_NAMESPACE');
+    if(namespace!==undefined&&!['prose-style','writing-mode','writing-styles','agent-models','agent-model-defaults','model-route-pins'].includes(namespace))throw new SceanError('LOCK_NAMESPACE');
     const lockKey=namespace?namespace+':'+runId:runId;
-    const dir = namespace==='writing-styles'?path.join(this.root,'settings-locks','writing-styles'):path.join(this.runDir(runId), namespace?namespace+'-tickets':'writer-tickets'); await mkdir(dir, { recursive: true }); checkAbort(signal);
+    const dir = ['writing-styles','agent-model-defaults'].includes(namespace)?path.join(this.root,'settings-locks',namespace):path.join(this.runDir(runId), namespace?namespace+'-tickets':'writer-tickets'); await mkdir(dir, { recursive: true }); checkAbort(signal);
     const token = randomUUID(); const phaseFile = phase => path.join(dir, `${token}.${phase}.json`);
     const owner = { pid: process.pid, token, ticket: null, phase: 'choosing', createdAt: new Date().toISOString() };
     let acquired = false;

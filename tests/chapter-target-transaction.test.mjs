@@ -1,12 +1,12 @@
 import test from 'node:test';import assert from 'node:assert/strict';import{mkdtemp}from'node:fs/promises';import{tmpdir}from'node:os';import{join}from'node:path';
-import{DurableStore}from'../adapters/store.mjs';import{SceanEngine}from'../core/engine.mjs';import{syntheticLongrun}from'../fixtures/synthetic-longrun-d.mjs';
+import{DurableStore}from'../adapters/store.mjs';import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';import{syntheticLongrun}from'../fixtures/synthetic-longrun-d.mjs';
 import{autoChapter,updateChapterSettings,chapterEligibility}from'../core/chapter-summary.mjs';import{validateNarrative}from'../core/narrative.mjs';import{encodeRunBundle,validateRunBundle}from'../core/save-bundle.mjs';import{hash}from'../core/contracts.mjs';
 const payload={title:'真實來源的合成摘要',summary:'合成船員保留公開承諾，校準工作仍待完成。',keywords:[],characters:[],locations:[],plotThreads:['校準'],emotionalTone:'平靜'};
 const identity=r=>hash(Object.fromEntries(['snapshot','turns','state','memories','playerHistory','receipts','operationReceipts','retired','head'].map(k=>[k,r[k]])));
 async function fixture({turns=100,bodyRepeats=3}={}){
  const root=await mkdtemp(join(tmpdir(),'chapter-target-tx-')),store=new DurableStore({root}),run=syntheticLongrun({turns,bodyRepeats}),calls=[];await store.create(run);
  const model={async describe(){return{capabilities:{contextWindow:32768,outputLimit:4096}};},async generate(a){calls.push(structuredClone({...a,signal:undefined}));return{text:JSON.stringify(a.stage==='chapter_analysis'?{shouldCreateChapter:true,optimalEndTurn:a.input.range.endTurn,suggestedTitle:'合成自然段落',keywords:[],characters:[],locations:[],plotThreads:[],emotionalTone:'平靜',significantEvents:[]}:payload),model:'scripted-target'};}};
- const engine=new SceanEngine({store,model,memory:{retrieve:async()=>({records:[]})}}),args=async op=>{const r=await store.read(run.runId);return{runId:r.runId,operationId:op,expectedVersion:r.version,expectedHead:r.head};};await updateChapterSettings(engine,{...await args('settings'),settings:{autoEnabled:true,tokenThreshold:16000,bufferTurns:0,detail:'auto'}});
+ const engine=new SceanEngine({postBody:false,store,model,memory:{retrieve:async()=>({records:[]})}}),args=async op=>{const r=await store.read(run.runId);return{runId:r.runId,operationId:op,expectedVersion:r.version,expectedHead:r.head};};await updateChapterSettings(engine,{...await args('settings'),settings:{autoEnabled:true,tokenThreshold:16000,bufferTurns:0,detail:'auto'}});
  return{run,store,engine,model,calls,args};
 }
 test('v2 complete-turn target over fifty turns publishes one named source-validated archive and portable history; replay cannot pay twice',async()=>{

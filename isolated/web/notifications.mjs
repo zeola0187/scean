@@ -64,7 +64,7 @@ export function createNotificationClient({call,getScope=async()=>({}),onTarget=(
     finally{busy=false;}
   }
   async function watch(request){
-    if(disposed||!settings.enabled||!settings.destinationId||!['turn','regenerate'].includes(request.kind))return;
+    if(disposed||!settings.enabled||!settings.destinationId||!['turn','regenerate','settlementResume'].includes(request.kind))return;
     try{
       const scope=await context();if(!scope)return;
       const payload={...scope,runId:request.runId,requestId:request.requestId,operationId:request.operationId,kind:request.kind,baseVersion:request.baseVersion,baseHead:request.baseHead,destinationId:settings.destinationId,...(request.retryOf?{retryOf:request.retryOf}:{})};

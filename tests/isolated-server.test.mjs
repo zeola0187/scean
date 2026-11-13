@@ -88,7 +88,8 @@ test('interactive mode is explicit, per-launch locked, confirmation-bound and do
     assert.equal((await call(server,enable,{Origin:server.origin,'X-Scean-Token':'wrong'})).status,403);
     assert.equal(generated,0);
     const enabled=await(await call(server,enable,{Origin:server.origin})).json();assert.equal(enabled.ok,true);assert.equal(enabled.value.enabled,true);assert.equal(generated,0);
-    for(let n=0;n<7;n++){const turn=await(await call(server,{action:'turn',runId,requestId:'manual-fake-'+n,operationId:'manual-op-'+n,input:'安靜觀察，不要求諮詢。'})).json();assert.equal(turn.ok,true,JSON.stringify(turn));}
+    // Single Writer uses three model calls per turn; nine turns still exercise more than 24.
+    for(let n=0;n<9;n++){const turn=await(await call(server,{action:'turn',runId,requestId:'manual-fake-'+n,operationId:'manual-op-'+n,input:'安靜觀察，不要求諮詢。'})).json();assert.equal(turn.ok,true,JSON.stringify(turn));}
     assert(generated>24);assert.equal((await ledger.summary()).generationRequests,generated);assert.equal((await ledger.summary()).unknownCostRequests,generated);assert.equal((await ledger.summary()).monetaryEnforcement,false);
     assert.equal(await readFile(gatePath,'utf8'),before);
     const sessionText=await readFile(join(dataRoot,'isolated-session.json'),'utf8');assert(!sessionText.includes(boot.interactive.activationToken));
@@ -96,7 +97,7 @@ test('interactive mode is explicit, per-launch locked, confirmation-bound and do
     const restart=await(await fetch(server.origin+'/api/bootstrap')).json();assert.equal(restart.interactive.enabled,false);assert.notEqual(restart.interactive.activationToken,boot.interactive.activationToken);
     assert.equal((await(await call(server,enable,{Origin:server.origin})).json()).error.code,'INTERACTIVE_CONFIRMATION_REQUIRED');
     const after=await(await call(server,{action:'turn',runId,requestId:'after-restart',input:'不可自動生成。'})).json();assert.equal(after.error.code,'INTERACTIVE_GENERATION_LOCKED');
-    assert.equal((await(await call(server,{action:'list'})).json()).value[0].turnCount,7);assert.equal(await readFile(gatePath,'utf8'),before);
+    assert.equal((await(await call(server,{action:'list'})).json()).value[0].turnCount,9);assert.equal(await readFile(gatePath,'utf8'),before);
   }finally{await server.close();}
 });
 

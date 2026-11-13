@@ -7,6 +7,7 @@ import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {Context} from '@deepseek-ai/cordis';
 import Tools from '@deepseek-ai/dsh-tools';
+import * as NativeExecutor from '@deepseek-ai/dsh-tool-executor-native';
 import Skills from '@deepseek-ai/dsh-skill';
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt';
 import Commands from '@deepseek-ai/dsh-commands';
@@ -24,7 +25,7 @@ async function fixture(t){
  await mkdir(join(root,'evidence','studio-sessions'),{recursive:true});const dir=await mkdtemp(join(root,'evidence','studio-sessions','native-'));
  await mkdir(join(dir,'.cardstudio-scean'),{recursive:true});await writeFile(join(dir,'.cardstudio-scean/workspace.json'),JSON.stringify({schemaVersion:1,capability:'card-studio-scean-test',title:'Synthetic native authoring'}));
  await cp(join(root,'.integration/cardstudio/skills'),join(dir,'.cardstudio-scean/skills'),{recursive:true});
- const ctx=new Context(),agents=new Map(),events=[];ctx.provide('workspaceRegistry',{archivedSessionIds:new Set()});await ctx.plugin(Typert);await ctx.plugin(SystemPrompt);await ctx.plugin(Tools,{mode:'native'});await ctx.plugin(Skills);ctx.provide('agents',{get:id=>agents.get(id)});await ctx.plugin(Commands);
+ const ctx=new Context(),agents=new Map(),events=[];ctx.provide('workspaceRegistry',{archivedSessionIds:new Set()});await ctx.plugin(Typert);await ctx.plugin(SystemPrompt);await ctx.plugin(Tools);await ctx.plugin(NativeExecutor);await ctx.plugin(Skills);ctx.provide('agents',{get:id=>agents.get(id)});await ctx.plugin(Commands);
  const make=(id,cwd)=>({id,status:'idle',session:{header:{cwd},snapshotEvents:()=>[],append:(type,data)=>{events.push(type);return events.length;}},cancel(){},async whenIdle(){},prompt(){assert.fail('No actual model invocation authorized');}});
  const a=make('synthetic-native-agent',dir),other=make('synthetic-other',root);for(const x of [a,other]){x.ctx=createScope(ctx,x).ctx;agents.set(x.id,x);}
  const store=new DurableStore({root:join(dir,'scean-store')}),host=await new SceanHost({engine:new SceanEngine({store,model:{generate(){assert.fail('No RP model authorized for Studio handoff');}},memory:new Memory()}),root:join(dir,'scean-host')}).init();

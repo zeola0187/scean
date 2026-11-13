@@ -240,3 +240,5 @@ body.player-shell .composer-actions{grid-column:2;grid-row:1;width:auto;margin:0
   body.player-shell .composer-actions{grid-template-columns:repeat(3,44px);grid-auto-columns:44px}
   body.player-shell .composer-actions button{min-width:44px;padding-inline:3px}
 }
+/* Independent global settings tabs, shared on desktop and mobile. */
+.global-settings-tabs{display:flex;flex-wrap:wrap;gap:.45rem;margin:1rem 0}.global-settings-tabs button[aria-selected="true"]{background:var(--accent,#275f4b);color:white}.agent-models-form fieldset{min-width:0;margin:.75rem 0;padding:.75rem}.agent-models-form select{display:block;width:100%;max-width:100%;white-space:normal}.agent-models-form .hint{overflow-wrap:anywhere}.global-settings-tabs [role="tab"]{flex:1 1 auto}.agent-models-form button{white-space:normal}

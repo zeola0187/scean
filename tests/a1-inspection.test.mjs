@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdir,mkdtemp,readFile} from 'node:fs/promises';
 import {join} from 'node:path';
 import {SceanHost} from '../plugin/host.mjs';
-import {SceanEngine} from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {Memory} from '../core/memory.mjs';
 import {DurableStore} from '../adapters/store.mjs';
 import {startServer} from '../isolated/server.mjs';
@@ -25,7 +25,7 @@ async function environment(){
     if(stage==='post_stat')return {text:JSON.stringify({contractVersion:2,stateChanges:[],memories:[{schemaVersion:2,text:'PRIVATE_MEMORY',characterIds:['kalt'],knowers:['kalt'],visibility:'characters',access:{kind:'private'},epistemic:{kind:'experience'},credibility:'subjective',participants:{speakers:[],actors:['kalt'],decisionMakers:[]}}],playerHistory:[{text:'PLAYER_ONLY_HISTORY',epistemic:{kind:'experience'},credibility:'subjective',participants:{speakers:[],actors:['player'],decisionMakers:[]}}]})};
     throw Error('Unexpected stage');
   }};
-  const host=await new SceanHost({root:join(root,'host'),now:()=>now,engine:new SceanEngine({unconfiguredWritingMode:'current',store:new DurableStore({root:join(root,'store')}),model,memory:new Memory()})}).init();
+  const host=await new SceanHost({root:join(root,'host'),now:()=>now,engine:new SceanEngine({postBody:false,unconfiguredWritingMode:'current',store:new DurableStore({root:join(root,'store')}),model,memory:new Memory()})}).init();
   const created=await host.createRun({snapshot,initialState:{world:{},characters:{kalt:{private:{secret:'KALT_PRIVATE_STATE'}}}}});
   return {host,root,created,advance:()=>{now+=600001;}};
 }

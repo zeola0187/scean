@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdtemp} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {SceanEngine} from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {SceanHost} from '../plugin/host.mjs';
 import {DurableStore} from '../adapters/store.mjs';
 import {syntheticLongrun,D_PRIVATE} from '../fixtures/synthetic-longrun-d.mjs';
@@ -12,7 +12,7 @@ import {hash} from '../core/contracts.mjs';
 async function fixture({enabled=false,model}={}){
   const root=await mkdtemp(join(tmpdir(),'scean-d-host-')),store=new DurableStore({root:join(root,'store')}),run=syntheticLongrun({turns:35});
   await store.create(run);let calls=0;
-  const engine=new SceanEngine({unconfiguredWritingMode:'current',store,model:model??{async generate(){calls++;return {text:'Public derived summary.',model:'synthetic-d-host'};}},memory:{async retrieve(){return {records:[]};}}});
+  const engine=new SceanEngine({postBody:false,unconfiguredWritingMode:'current',store,model:model??{async generate(){calls++;return {text:'Public derived summary.',model:'synthetic-d-host'};}},memory:{async retrieve(){return {records:[]};}}});
   const host=await new SceanHost({engine,root:join(root,'host'),summaryEnabled:enabled}).init();
   return {host,engine,store,run,calls:()=>calls};
 }

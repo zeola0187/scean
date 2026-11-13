@@ -14,15 +14,22 @@
 </head>
 <body>
   <header class="topbar"><div><h1>SCEAN <span>舞台</span></h1><p>里程碑 D · 隔離試玩</p></div><button id="global-chapter-open" type="button" class="quiet">舞臺全域設定</button><div id="connection" role="status">連線中…</div></header>
-  <p class="hint" id="scean-source-offer" aria-label="原碼與授權">原碼與授權（AGPL-3.0-only）：<a href="https://github.com/zeola0187/scean/tree/main" target="_blank" rel="noopener noreferrer">https://github.com/zeola0187/scean/tree/main</a>；受限視窗可複製網址開啟。</p>
+  <p class="hint" id="scean-source-offer" aria-label="原碼與授權">原碼與授權（AGPL-3.0-only）：<a href="https://github.com/zeola0187/scean/tree/v1.6.4-local.w29.2d.rc3.1.dsh022.3" target="_blank" rel="noopener noreferrer">https://github.com/zeola0187/scean/tree/v1.6.4-local.w29.2d.rc3.1.dsh022.3</a>；受限視窗可複製網址開啟。</p>
   <div id="mode-banner" class="mode-banner" role="note">正在確認執行環境</div>
   <dialog id="global-chapter-dialog" aria-labelledby="global-chapter-dialog-title">
     <div class="section-heading"><h2 id="global-chapter-dialog-title">舞臺全域設定</h2><button id="global-chapter-close" type="button" class="quiet">關閉設定</button></div>
-  <section aria-label="預設主角名稱"><h3>預設主角名稱</h3>
+  <nav class="global-settings-tabs" role="tablist" aria-label="舞臺全域設定分頁">
+    <button id="global-general-tab" type="button" role="tab" data-global-settings-tab="general" aria-controls="global-general-panel" aria-selected="true">一般</button>
+    <button id="global-agent-models-tab" type="button" role="tab" data-global-settings-tab="models" aria-controls="global-agent-models-panel" aria-selected="false" tabindex="-1">Agent 模型</button>
+    <button id="global-summary-tab" type="button" role="tab" data-global-settings-tab="summary" aria-controls="global-summary-panel" aria-selected="false" tabindex="-1">進階摘要服務</button>
+  </nav>
+  <section id="global-general-panel" role="tabpanel" aria-labelledby="global-general-tab" aria-label="預設主角名稱"><h3>預設主角名稱</h3>
     <form id="player-default-form"><label for="player-default-name">之後新局預填的名稱（可留空）</label><input id="player-default-name" maxlength="80" autocomplete="off"><button id="player-default-save" type="submit" disabled>保存預設主角名稱</button></form>
     <p id="player-default-status" class="hint" role="status"></p>
     <p class="hint">每局可另填姓名；舊局不隨預設變更。只支援故事文字中的 {{user}}，未知宏與 W01 自訂前端宏保持原樣。</p>
   </section>
+  <section id="global-agent-models-panel" role="tabpanel" aria-labelledby="global-agent-models-tab" hidden><h3>Agent 模型</h3><p class="hint">Director、Character、Writer、Stat、日曆與論壇可分別選用既有 DSH 模型。日曆未另設時繼承 Stat，論壇繼承 Character；論壇模型不改變發言角色與權限。</p></section>
+  <section id="global-summary-panel" role="tabpanel" aria-labelledby="global-summary-tab" hidden>
   <details id="global-chapter-settings" class="global-chapter-settings">
     <summary>進階：摘要服務、章節記憶與金鑰</summary>
     <p class="hint">自動摘要請使用故事內的「本局自動摘要」開關；新故事預設開啟，舊故事明確關閉的設定保持不變。這裡只管理共用服務，不是另一個故事開關。保存或開啟設定不會發出模型請求。</p>
@@ -59,6 +66,7 @@
     </form>
     <p id="global-chapter-status" class="hint" role="status">尚未讀取全域設定。</p><p id="global-chapter-error" class="error" role="alert"></p>
   </details>
+  </section>
   </dialog>
   <div class="layout">
     <aside class="library" aria-label="選卡與遊玩紀錄">
@@ -171,7 +179,8 @@
           <div class="composer-actions"><span id="draft-status" class="hint sr-only" role="status">開局後即可輸入。Enter 換行；Ctrl / ⌘ + Enter 送出。</span><button id="cancel" type="button" class="quiet" hidden>取消本輪</button><button id="send" type="submit" disabled>送出行動 ↑</button></div>
         </form>
         <div id="turn-error" class="error" role="alert" hidden></div>
-        <div class="recovery"><button id="retry" type="button" hidden>重試同一輸入</button><button id="recheck" type="button" class="quiet" hidden>查詢儲存結果</button></div>
+        <div id="time-confirmation" aria-live="polite"></div>
+        <div class="recovery"><button id="retry" type="button" hidden>重試同一輸入</button><button id="saved-body" type="button" hidden>閱讀已保存正文</button><pre id="saved-body-content" hidden style="white-space:pre-wrap"></pre><button id="recheck" type="button" class="quiet" hidden>查詢儲存結果</button></div>
       </section>
       <section class="state-panel" aria-label="已保存世界狀態"><h2>此刻的世界 <span>已提交</span></h2><div id="state-summary"><p class="hint">開局後顯示世界狀態。</p></div></section>
       <button id="agent-diagnose" type="button" class="quiet">檢查這局的問題</button>

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtemp,readFile,mkdir,writeFile} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
-import {SceanEngine} from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {DurableStore} from '../adapters/store.mjs';
 import {Memory} from '../core/memory.mjs';
 import {hash} from '../core/contracts.mjs';
@@ -16,7 +16,7 @@ const roster=()=>[
 ];
 const snapshot=()=>{const characters=roster();return {schemaVersion:1,cardId:'a1-original-synthetic',revision:'r1',card:{data:{name:'合成研究船',description:'星港日常。',extensions:{scean:{characters:structuredClone(characters)}}}},worldbook:{entries:[{content:'星港很安靜。',constant:true}]},preset:{style:'繁體中文'},characters};};
 const state=()=>({
-  world:{locations:{kalt:'workshop',ael:'workshop',sio:'bridge'},tasks:{inspection:{status:'active',assignedTo:['kalt','sio']},fullThermalCycle:{status:'pending'}},resources:{fuel:72},time:{elapsedSeconds:0}},
+  world:{locations:{kalt:'workshop',ael:'workshop',sio:'bridge'},tasks:{inspection:{status:'active',assignedTo:['kalt','sio']},fullThermalCycle:{status:'pending'}},resources:{fuel:72},time:{elapsedSeconds:{temporalKind:'duration',seconds:0}}},
   characters:{
     kalt:{public:{role:'工程師'},private:{facts:{secret:'KALT_STATE_SECRET'}}},
     ael:{public:{role:'觀測員'},private:{facts:{secret:'AEL_STATE_SECRET'}}},
@@ -38,7 +38,7 @@ async function fixture({targets=[],reveal=false,postStat,body='卡爾特把工�
     if(args.stage==='post_stat')return{text:JSON.stringify(postStat?postStat(args):{contractVersion:2,stateChanges:[],memories:[]})};
     throw Error('Unexpected stage '+args.stage);
   }};
-  const engine=new SceanEngine({unconfiguredWritingMode:'current',store,model,memory});const run=await engine.createRun({snapshot:snapshot(),initialState:initial});
+  const engine=new SceanEngine({postBody:false,unconfiguredWritingMode:'current',store,model,memory});const run=await engine.createRun({snapshot:snapshot(),initialState:initial});
   const records=seeded(run.runId);await store.withRunLock(run.runId,()=>store.commit(run.runId,0,{...run,version:1,memories:records}));
   return {engine,store,memory,runId:run.runId,calls,rankInputs,root,records};
 }

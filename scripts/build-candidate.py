@@ -36,6 +36,9 @@ for destination in [root/'studio/cardstudio-bundle',root/'authoring/.integration
   for p in destination.rglob('*'):
    if p.is_symlink():raise RuntimeError('Linked compatibility output refused')
  shutil.copytree(canonical,destination,dirs_exist_ok=True)
+# The standalone authoring acceptance/export view is generated from the same
+# canonical native guidance, never a separately maintained capability copy.
+shutil.copytree(canonical/'skills/scean-native-authoring',root/'authoring/skills/scean-native-authoring',dirs_exist_ok=True)
 stage.mkdir()
 report={'schemaVersion':1,'status':'PASS','files':rows,'runtimeFileCount':len(rows),'sdkIncluded':False,'modelCalls':0,'productionWrites':0,'historicalOverlaysRequired':False,'withheldSkillsAbsent':True}
 (stage/'rebuild-verification.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')

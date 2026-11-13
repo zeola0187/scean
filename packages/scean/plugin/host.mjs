@@ -1,3 +1,4 @@
+import {WorldRoutineHost} from './world-routine-host.mjs';
 import {writingStyleLibraryView,styleSelectionAvailability,importWritingStylePack} from '../core/writing-style-library.mjs';
 import {writingModeAvailability} from '../core/writing-mode.mjs';
 import {playerName,bindPlayerIdentity} from '../core/player-identity.mjs';
@@ -30,7 +31,7 @@ import {PresentationHost} from './presentation-host.mjs';
 import {changeRunLifecycle,lifecycleView} from '../core/run-lifecycle.mjs';
 import {ScriptStore,scriptSummary} from '../core/script-store.mjs';
 const LIFECYCLE_ACTIONS=new Set(['runRecycleList','runLifecycleStatus','runTrash','runRestore']);
-const RUN_MUTATIONS=new Set(['playerBind','draftSave','turn','rollback','regenerate','operationSubmit','summaryStart','chapterSettings','chapterSummarize','chapterAuto','chapterClose','banList','writingModeSave','proseStyleSave','presentationApply','presentationRestore']);
+const RUN_MUTATIONS=new Set(['playerBind','draftSave','turn','rollback','regenerate','operationSubmit','summaryStart','chapterSettings','chapterSummarize','chapterAuto','chapterClose','banList','writingModeSave','proseStyleSave','agentModelsSave','presentationApply','presentationRestore']);
 const PLAYBACK_STATUSES=new Set(['available','unselected','source_missing','source_recycled','source_pending','session_archived','unavailable']);
 
 function fail(code,message){throw Object.assign(new Error(message),{code});}
@@ -53,12 +54,13 @@ function terminalDraft(run,draft){
   return {runId:run.runId,input:'',requestId:null,status:outcome.status,...(outcome.status==='retired'?{retiredRequestId:draft.requestId}:{})};
 }
 export class SceanHost {
-  constructor({engine,root,now=()=>Date.now(),bindingTtlMs=86400000,summaryEnabled=false,chapterModelsEnabled=false,chapterRetrievalEnabled=false,chapterProviderSettings,chapterRuntimeFactory,onChapterConfigurationChanged,maxConcurrentOperations=4,jobLedgerOptions={},notificationOptions={}}) {
+  constructor({engine,root,now=()=>Date.now(),bindingTtlMs=86400000,summaryEnabled=false,chapterModelsEnabled=false,chapterRetrievalEnabled=false,chapterProviderSettings,chapterRuntimeFactory,modelRouting,onChapterConfigurationChanged,maxConcurrentOperations=4,jobLedgerOptions={},notificationOptions={},worldRoutineAutomatic=true,worldRoutineTrace}) {
+    this.routineRunIds=new Set();this.worldRoutine=new WorldRoutineHost(this,{automatic:worldRoutineAutomatic,onTrace:worldRoutineTrace});
     this.summaryEnabled=summaryEnabled===true;this.summaryRunning=new Map();
     this.chapterModelsEnabled=chapterModelsEnabled===true;this.chapterRunning=new Map();this.chapterAutoArmed=new Set();this.closing=false;
     this.writerSummaryArmed=new Set();this.automaticSummaryFailures=new Map();
     this.chapterRetrievalEnabled=chapterModelsEnabled===true;this.chapterContextArmed=new Set();
-    this.chapterProviderSettings=chapterProviderSettings;this.chapterRuntimeFactory=chapterRuntimeFactory;this.onChapterConfigurationChanged=onChapterConfigurationChanged;this.globalSettingsUpdating=false;this.globalSettingsRevision=null;
+    this.modelRouting=modelRouting;this.routingSaves=new Set();this.chapterProviderSettings=chapterProviderSettings;this.chapterRuntimeFactory=chapterRuntimeFactory;this.onChapterConfigurationChanged=onChapterConfigurationChanged;this.globalSettingsUpdating=false;this.globalSettingsRevision=null;
     this.engine=engine;this.root=root;this.now=now;this.bindingTtlMs=bindingTtlMs;this.openings=new OpeningSelections(this);this.scripts=new ScriptStore({root});this.scriptSaves=new Set();
     this.presentations=engine.store?.root?new PresentationHost({store:engine.store,now}):null;this.presentationSaves=new Set();this.ideaJobs=new Map();
     if(!Number.isSafeInteger(maxConcurrentOperations)||maxConcurrentOperations<1||maxConcurrentOperations>16)fail('HOST_CONCURRENCY','Use a Host concurrency limit between 1 and 16.');
@@ -83,7 +85,7 @@ export class SceanHost {
         try{
           await this.engine.store.withRunLock(row.runId,()=>this.engine.store.recoverAttempts(row.runId));
           await recoverNarrative(this.engine,row.runId);
-          const run=await this.engine.store.read(row.runId),draft=this.metadata.drafts[row.runId];
+          const run=await this.engine.store.read(row.runId),draft=this.metadata.drafts[row.runId];if(run.worldRoutine)this.routineRunIds.add(row.runId);
           for(const [viewerId,pageDraft]of Object.entries(this.metadata.pageDrafts[row.runId]??{})){const terminal=terminalDraft(run,pageDraft);if(terminal)this.metadata.pageDrafts[row.runId][viewerId]=terminal;}
           if(draft?.requestId&&run.receipts?.[draft.requestId]?.inputHash===hash(draft.input)){
             const terminal=terminalDraft(run,draft);
@@ -94,7 +96,7 @@ export class SceanHost {
       }
       await this.persist();
     }
-    await this.jobs.init();await this.notifications.init();
+    await this.jobs.init();await this.notifications.init();await this.worldRoutine.init();
     if(this.chapterProviderSettings){
       try{this.applyChapterProviderConfiguration(await this.chapterProviderSettings.status({transport:false}),false);}
       catch{this.chapterModelsEnabled=false;this.chapterRetrievalEnabled=false;this.engine.chapterRecall=undefined;this.globalSettingsRevision=null;}
@@ -153,6 +155,12 @@ export class SceanHost {
       throw error;
     }finally{this.globalSettingsUpdating=false;}
   }
+  requireModelAuthority(authority){if(!authority.principal||authority.allowGlobalSettings!==true)fail('MODEL_SETTINGS_DENIED','模型設定只供已驗證的舞臺操作者使用。');}
+  async saveAgentModels(request,signal){
+    if(this.closing)fail('HOST_CLOSING');
+    const work=this.modelRouting.save({scope:request.scope,roles:request.roles,expectedRevision:request.expectedRevision,operationId:request.operationId,signal});this.routingSaves.add(work);
+    try{await work;return await this.modelRouting.status(request.scope);}finally{this.routingSaves.delete(work);}
+  }
   async playerDefaultsAction(request,signal,authority){
     if(!authority.principal||authority.allowGlobalSettings!==true)fail('PLAYER_SETTINGS_DENIED','只有已驗證的舞臺操作者可設定預設主角名稱。');
     const current=this.metadata.playerDefaults;
@@ -178,7 +186,7 @@ export class SceanHost {
     const id=run.runId??run.id;
     if(!id)fail('CORE_CONTRACT','Core did not return a run identity.');
     if(!this.metadata.runs.some(r=>r.runId===id))this.metadata.runs.push({runId:id,cardId:snapshot.cardId,revision:snapshot.revision,createdAt:new Date(this.now()).toISOString()});
-    await this.persist();return {runId:id,snapshot:publicSnapshot(run.snapshot),run:publicInspection(run)};
+    await this.persist();if(run.worldRoutine){this.routineRunIds.add(id);this.worldRoutine.schedule(id);}return {runId:id,snapshot:publicSnapshot(run.snapshot),run:publicInspection(run)};
   }
   listRuns(){return plain(this.metadata.runs);}
   async refreshRuns(){if(this.engine.store?.listRuns)this.metadata.runs=await this.engine.store.listRuns();return this.listRuns();}
@@ -207,7 +215,7 @@ export class SceanHost {
     safeId(request.runId);if(request.operationId!==undefined)safeId(request.operationId);
     if(request.action==='runLifecycleStatus')return lifecycleView(await this.engine.store.read(request.runId,{includeTrashed:true}),request.operationId);
     this.assertMutationAvailable(request.runId);
-    if(this.ideaJobs.has(request.runId)||this.presentationSaves.size||(this.proseStyleSaves?.size??0)||(this.writingModeSaves?.size??0)||this.draftQueues.has(request.runId))fail('RUN_BUSY','請等生成、摘要與保存完成後再操作副本。');
+    if(this.routingSaves.size||this.ideaJobs.has(request.runId)||this.presentationSaves.size||(this.proseStyleSaves?.size??0)||(this.writingModeSaves?.size??0)||this.draftQueues.has(request.runId))fail('RUN_BUSY','請等生成、摘要與保存完成後再操作副本。');
     const owner={kind:'run-lifecycle'};this.auxRunning.set(request.runId,owner);
     try{
       const run=await this.engine.store.read(request.runId,{includeTrashed:true});
@@ -283,10 +291,10 @@ export class SceanHost {
       // The read succeeded and found no publication. Preserve input for a same-ID retry.
       base.status='failed';base.recovery='confirmed_not_committed';
     }
-    if(attempt?.recovery)base.recovery=attempt.recovery;
+    if(attempt?.recovery)base.recovery=attempt.recovery;if(base.lastFailure&&inspected.lastFailure?.bodyAvailable)base.lastFailure={...base.lastFailure,...inspected.lastFailure};
     return {...base,canonical,version:canonical.version,head:canonical.head};
   }
-  async turn({runId,input,requestId,signal,operationId,baseVersion,baseHead,viewerId,[JOB_OWNER]:job}){
+  async turn({runId,input,requestId,signal,operationId,baseVersion,baseHead,viewerId,timeConfirmation,resumeAttemptId,[JOB_OWNER]:job}){
     if(!this.metadata.runs.some(r=>r.runId===runId))fail('RUN_NOT_FOUND','Unknown SCEAN run.');
     if(typeof input!=='string'||!input.trim()||input.length>20000)fail('INPUT','Enter bounded player text.');
     if(typeof requestId!=='string'||!requestId)fail('REQUEST_ID','A stable requestId is required.');
@@ -296,10 +304,10 @@ export class SceanHost {
     if(this.mutationBusy(runId,job)){
       const run=await this.engine.store.read(runId),receipt=run.receipts?.[requestId];
       if(receipt){
-        if(receipt.inputHash!==hash(input))fail('IDEMPOTENCY_CONFLICT','Use a new requestId for changed input.');
+        if(receipt.inputHash!==hash(input)||hash(receipt.timeConfirmation??null)!==hash(timeConfirmation??null))fail('IDEMPOTENCY_CONFLICT','Use a new requestId for changed input or time confirmation.');
         if(receipt.status==='retired')fail('REQUEST_RETIRED','This request belongs to a retired turn.');
         if(!run.turns.some(turn=>turn.requestId===requestId&&turn.commitId===receipt.commitId))fail('COMMIT_OUTCOME_UNKNOWN','The canonical receipt is inconsistent.');
-        return publicTurnResult(receipt.result);
+        return publicTurnResult(receipt.result,run);
       }
     }
     this.assertMutationAvailable(runId,job);
@@ -311,15 +319,29 @@ export class SceanHost {
     const progress={runId,requestId,operationId,attemptId:null,stage:'memory',status:'pending',sequence:0,events:[]};this.progressByRun.set(runId,progress);
     try{
       await this.draftSave({runId,input,requestId,...(viewerId===undefined?{}:{viewerId})},controller);
-      const result=await this.engine.turn({runId,input,requestId,operationId,baseVersion,baseHead,chapterContextEnabled:this.writerSummaryArmed.has(runId)?false:undefined,signal:signal?AbortSignal.any([controller.signal,signal]):controller.signal,onProgress:event=>{owner.attemptId=event.attemptId;const owned={...event,operationId};Object.assign(progress,owned);progress.events.push(owned);if(progress.events.length>100)progress.events.shift();}});
+      const executeTurn=()=>this.engine.turn({runId,input,requestId,operationId,baseVersion,baseHead,timeConfirmation,resumeAttemptId,chapterContextEnabled:this.writerSummaryArmed.has(runId)?false:undefined,signal:signal?AbortSignal.any([controller.signal,signal]):controller.signal,onProgress:event=>{owner.attemptId=event.attemptId;const owned={...event,operationId};Object.assign(progress,owned);progress.events.push(owned);if(progress.events.length>100)progress.events.shift();}});
+      let result;const waits=[10,20,40,80,120,160,200,240,320,400,500,600,800,1000];let observedBackgroundCommit=this.worldRoutine.committing.has(runId);for(let admission=0;;admission++){try{result=await executeTurn();break;}catch(e){observedBackgroundCommit||=this.worldRoutine.committing.has(runId);if(e.code!=='RUN_BUSY'||e.sceanFailure||!observedBackgroundCommit||admission>=waits.length)throw e;await new Promise(r=>setTimeout(r,waits[admission]));}}
       Object.assign(progress,{stage:'commit',status:'committed',commitId:result.commitId});
       const summary=this.metadata.runs.find(row=>row.runId===runId);if(summary)Object.assign(summary,{version:result.version,turnCount:result.turn,updatedAt:new Date(this.now()).toISOString()});
       if(this.metadata.drafts[runId]?.requestId===requestId){delete this.metadata.drafts[runId];try{await this.persist();}catch{progress.draftCleanup='pending_restart_reconciliation';}}
       if(viewerId!==undefined&&this.metadata.pageDrafts[runId]?.[viewerId]?.requestId===requestId){delete this.metadata.pageDrafts[runId][viewerId];try{await this.persist();}catch{progress.draftCleanup='pending_restart_reconciliation';}}
-      this.scheduleChapterAfterTurn(runId,result.commitId);
-      return publicTurnResult(result);
+      const projected=publicTurnResult(result,result.storyClock?await this.engine.store.read(runId):undefined);
+      // Finish projection IO before arming the existing background callback:
+      // finally must release the foreground owner before its next microtask.
+      this.scheduleChapterAfterTurn(runId,result.commitId);if(this.routineRunIds.has(runId))this.worldRoutine.schedule(runId);
+      return projected;
     }catch(error){const failure=error.sceanFailure??safeFailure(error,progress.stage);Object.assign(progress,{status:failure.code==='COMMIT_OUTCOME_UNKNOWN'?'unknown':failure.category==='cancelled'?'cancelled':'failed',lastFailure:failure});throw error;}
     finally{if(this.activeOperations.get(runId)===owner){this.running.delete(runId);this.activeOperations.delete(runId);}}
+  }
+  async savedSettlementBody({runId,attemptId}){
+    this.requireRun(runId);const run=await this.engine.store.read(runId),a=await this.engine.store.readAttempt(runId,safeId(attemptId)),c=a.bodyCheckpoint;
+    if(!c||c.schemaVersion!==1||a.runId!==runId||c.pins?.runId!==runId||c.pins.snapshotHash!==run.snapshot.hash||typeof c.body!=='string'||c.body.length>200000||hash(c.body)!==c.bodyHash)fail('SETTLEMENT_SOURCE_STALE','找不到完整的已保存正文。');
+    return {runId,attemptId,requestId:a.requestId,status:'saved_not_committed',body:c.body,bodyHash:c.bodyHash};
+  }
+  async resumeSettlement(request){
+    this.requireRun(request.runId);const saved=await this.engine.store.readAttempt(request.runId,request.sourceAttemptId);
+    if(saved.requestId!==request.requestId||!saved.bodyCheckpoint)fail('SETTLEMENT_SOURCE_STALE','已保存正文的來源不符；未派送。');
+    return this.turn({...request,input:saved.input,timeConfirmation:saved.timeConfirmation,resumeAttemptId:saved.attemptId});
   }
   cancel({runId,operationId,requestId,attemptId}){
     const job=this.jobs.cancel({runId,operationId,requestId,attemptId});if(job)return job;
@@ -369,12 +391,12 @@ export class SceanHost {
     owner.controller.abort();return {status:'pending',cancelRequested:true,operationId:request.operationId};
   }
   chapterContextReadiness(run){
-    const sources=chapterContextSources(run),ports=this.engine.chapterRecall?.capabilities()??{};
+    const sources=chapterContextSources(run),ports=this.engine.chapterRecall?.capabilities()??{},hybridRequired=sources.older.length>8;
     if(run.narrative?.chapterSettings?.autoEnabled!==true)return{status:'off',reason:'saved_run_preference_off'};
-    if(!this.chapterModelsEnabled)return{status:'configuration_required',reason:'CHAPTER_SERVICE_DISABLED',originalsPreserved:true};
-    if(sources.older.length&&!ports.embedding)return{status:'configuration_required',reason:'CHAPTER_EMBEDDING_UNAVAILABLE',originalsPreserved:true};
-    if(sources.older.length&&!ports.rerank)return{status:'configuration_required',reason:'CHAPTER_RERANK_UNAVAILABLE',originalsPreserved:true};
-    return{status:sources.records.length?'ready':'awaiting_first_summary',recentChapters:Math.min(3,sources.records.length),olderCandidates:sources.older.length,recalledMaximum:8,embedding:ports.embedding?'configured':'needed_after_three_chapters',rerank:ports.rerank?'configured':'needed_after_three_chapters',providerConnectivity:'not_probed'};
+    if(hybridRequired&&!this.chapterModelsEnabled)return{status:'configuration_required',reason:'CHAPTER_SERVICE_DISABLED',originalsPreserved:true};
+    if(hybridRequired&&!ports.embedding)return{status:'configuration_required',reason:'CHAPTER_EMBEDDING_UNAVAILABLE',originalsPreserved:true};
+    if(hybridRequired&&!ports.rerank)return{status:'configuration_required',reason:'CHAPTER_RERANK_UNAVAILABLE',originalsPreserved:true};
+    return{status:sources.records.length?'ready':'awaiting_first_summary',recentChapters:Math.min(3,sources.records.length),olderCandidates:sources.older.length,recalledMaximum:8,selectionPolicy:hybridRequired?'hybrid_rerank':'all_older_within_8',embedding:ports.embedding?'configured':hybridRequired?'required':'not_needed_for_small_set',rerank:ports.rerank?'configured':hybridRequired?'required':'not_needed_for_small_set',providerConnectivity:'not_probed'};
   }
   async chapterStatus(request){
     this.requireRun(request.runId);const run=await this.engine.store.read(request.runId);
@@ -468,7 +490,7 @@ export class SceanHost {
     const work=new Promise(resolve=>setImmediate(resolve)).then(async()=>{
       // Admission remains reserved through durable job finalization. Let the
       // owning turn finish that bookkeeping before checking background capacity.
-      const finishing=this.jobs.active.get(runId);if(['turn','chapterSettings','regenerate'].includes(finishing?.row.kind))await finishing.promise;
+      const finishing=this.jobs.active.get(runId);if(['turn','chapterSettings','regenerate','settlementResume'].includes(finishing?.row.kind))await finishing.promise;
       if(this.closing||this.automaticSummaryFailures.has(runId)||this.mutationBusy(runId))return;
       const run=await this.engine.store.read(runId);
       if(run.narrative?.chapterSettings?.autoEnabled!==true||headOf(run)!==commitId)return;
@@ -495,7 +517,7 @@ export class SceanHost {
       const result=await this.engine[action]({...request,chapterContextEnabled:undefined,signal:signal?AbortSignal.any([signal,controller.signal]):controller.signal,onProgress:event=>{owner.attemptId=event.attemptId;Object.assign(progress,event,{operationId:request.operationId});progress.events.push({...event,provisional:true});if(progress.events.length>100)progress.events.shift();}});
       Object.assign(progress,{status:result.status,stage:action,version:result.version});
       await this.refreshRuns();await this.persist().catch(()=>{});
-      return {...publicTurnResult(result),...Object.fromEntries(['kind','operationId','head','retiredCommitId','retiredBy','retiredAtVersion'].filter(k=>result[k]!==undefined).map(k=>[k,result[k]]))};
+      return {...publicTurnResult(result,result.storyClock?await this.engine.store.read(request.runId):undefined),...Object.fromEntries(['kind','operationId','head','retiredCommitId','retiredBy','retiredAtVersion'].filter(k=>result[k]!==undefined).map(k=>[k,result[k]]))};
     }catch(error){Object.assign(progress,{status:controller.signal.aborted?'cancelled':'failed',lastFailure:safeFailure(error,action)});throw error;}
     finally{if(this.activeOperations.get(request.runId)===owner){this.running.delete(request.runId);this.activeOperations.delete(request.runId);}}
   }
@@ -623,6 +645,11 @@ export class SceanHost {
       signal?.throwIfAborted();
       if(OPERATOR_READ_ACTIONS.has(request.action))requireReaderAuthority(request.action,authority);
       if(['playerDefaults','playerDefaultsSave'].includes(request.action))return {ok:true,value:await this.playerDefaultsAction(request,signal,authority)};
+      if(['agentModelCatalog','agentModelDefaults','agentModelDefaultsSave'].includes(request.action)){
+        this.requireModelAuthority(authority);if(!this.modelRouting)fail('MODEL_ROUTING_UNAVAILABLE');
+        if(request.action==='agentModelCatalog')return {ok:true,value:await this.modelRouting.catalog()};
+        return {ok:true,value:request.action==='agentModelDefaults'?await this.modelRouting.status():await this.saveAgentModels({...request,scope:'@global'},signal)};
+      }
       if(CHAPTER_SETTINGS_ACTIONS.has(request.action))return {ok:true,value:await this.chapterProviderAction(request,signal,authority)};
       let value;
       let scope,scopedRun;
@@ -656,9 +683,15 @@ export class SceanHost {
         if(revision>0&&request.expectedLifecycleRevision!==revision)fail('RUN_LIFECYCLE_CHANGED','副本已恢復，請重新讀取後操作；舊頁面的寫入不會自動重送。');
       }
       switch(request.action){
+        case 'settlementBody':value=await this.savedSettlementBody(request);break;
+        case 'worldRoutineRead':this.requireRun(request.runId);value=await this.worldRoutine.read(request,authority);break;
+        case 'worldRoutinePulse':case 'worldRoutineRetry':case 'diaryRequest':{if(!authority.principal||authority.allowGlobalSettings!==true||request.action==='diaryRequest'&&authority.allowPrivateDiagnostics!==true)fail('WORLD_ROUTINE_DENIED');this.requireRun(request.runId);value=request.action==='worldRoutinePulse'?await this.worldRoutine.drain({...request,signal}):request.action==='worldRoutineRetry'?await this.worldRoutine.retry(request):await this.worldRoutine.diaryRequest(request);break;}
         case 'scriptList':case 'scriptGet':case 'scriptStart':case 'scriptStatus':value=await this.scriptAction(request,scope,authority,signal);break;
         case 'playerCollaboration':case 'ownerWorldbook':value=await this.playerReaders.read(request,signal,authority,scope);break;
         case 'runRecycleList':case 'runLifecycleStatus':case 'runTrash':case 'runRestore':{const work=this.runLifecycleAction(request,signal,authority,scope);this.lifecycleSaves??=new Set();this.lifecycleSaves.add(work);try{value=await work;}finally{this.lifecycleSaves.delete(work);}break;}
+        case 'agentModels':case 'agentModelsSave':
+          this.requireModelAuthority(authority);this.requireRun(request.runId);if(!this.modelRouting)fail('MODEL_ROUTING_UNAVAILABLE');
+          value=request.action==='agentModels'?await this.modelRouting.status(request.runId):await this.saveAgentModels({...request,scope:request.runId},signal);break;
         case 'playerIdeas':
           if(!authority.principal||authority.allowGlobalSettings!==true)fail('PLAYER_ACTION_DENIED','請由已授權的舞臺操作取得想法。');
           value=await this.playerIdeas(request,signal);break;
@@ -754,5 +787,5 @@ export class SceanHost {
       return {ok:true,value};
     }catch(e){const failure=signal?.aborted?safeFailure({code:'CANCELLED'},'request'):e.sceanFailure??safeFailure(e,'request','SCEAN_ERROR');return {ok:false,error:failure,lastFailure:failure};}
   }
-  async close(){this.closing=true;await Promise.allSettled([...this.scriptSaves,...[...this.openings.rows.values()].map(row=>row.promise).filter(Boolean),...(this.lifecycleSaves??[])]);for(const row of this.ideaJobs.values())row.controller.abort();await Promise.allSettled([...this.ideaJobs.values()].map(row=>row.promise));this.presentations?.close();await Promise.allSettled([...this.presentationSaves,...(this.proseStyleSaves??[]),...(this.writingModeSaves??[])]);this.chapterProviderSettings?.close();this.chapterAutoArmed.clear();this.writerSummaryArmed.clear();this.chapterContextArmed.clear();const chapterTasks=[...this.chapterRunning.values()].map(o=>o.promise);for(const {controller} of this.chapterRunning.values())controller.abort(Object.assign(new Error('Host closed.'),{code:'CANCELLED'}));for(const {controller} of this.summaryRunning.values())controller.abort();this.agentDiagnostics.rows.clear();this.diagnosticGrants.clear();for(const c of this.running.values())c.abort(Object.assign(new Error('SCEAN plugin unloaded.'),{code:'CANCELLED'}));await this.jobs.close();await Promise.allSettled([...chapterTasks,...(this.chapterBackground??[])]);}
+  async close(){this.closing=true;await this.worldRoutine.close();await Promise.allSettled([...this.routingSaves,...this.scriptSaves,...[...this.openings.rows.values()].map(row=>row.promise).filter(Boolean),...(this.lifecycleSaves??[])]);for(const row of this.ideaJobs.values())row.controller.abort();await Promise.allSettled([...this.ideaJobs.values()].map(row=>row.promise));this.presentations?.close();await Promise.allSettled([...this.presentationSaves,...(this.proseStyleSaves??[]),...(this.writingModeSaves??[])]);this.chapterProviderSettings?.close();this.chapterAutoArmed.clear();this.writerSummaryArmed.clear();this.chapterContextArmed.clear();const chapterTasks=[...this.chapterRunning.values()].map(o=>o.promise);for(const {controller} of this.chapterRunning.values())controller.abort(Object.assign(new Error('Host closed.'),{code:'CANCELLED'}));for(const {controller} of this.summaryRunning.values())controller.abort();this.agentDiagnostics.rows.clear();this.diagnosticGrants.clear();for(const c of this.running.values())c.abort(Object.assign(new Error('SCEAN plugin unloaded.'),{code:'CANCELLED'}));await this.jobs.close();await Promise.allSettled([...chapterTasks,...(this.chapterBackground??[])]);}
 }

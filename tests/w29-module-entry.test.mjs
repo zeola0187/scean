@@ -1,0 +1,2 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {spawnSync} from 'node:child_process';
+for(const file of ['forum-authors.mjs','ambient-forum.mjs','world-routine-context.mjs','world-routine.mjs','contracts.mjs','save-bundle.mjs','engine.mjs'])test('W29D cold Core import has no initialization cycle: '+file,()=>{const url=new URL('../core/'+file,import.meta.url).href,result=spawnSync(process.execPath,['--input-type=module','-e','await import(process.argv[1])',url],{encoding:'utf8',timeout:10000});assert.equal(result.status,0,result.stderr);});

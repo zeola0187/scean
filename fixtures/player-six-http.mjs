@@ -18,9 +18,9 @@ export async function sixHttp(t){
   const id=await ledger.reserve({caseId:'six-'+args.stage,requestId:randomUUID(),meta:{stage:args.stage,provider:'synthetic',model:'scripted-six'}});let result;
   try{
    if(args.stage==='ideas')result=ideasHandler?await ideasHandler(args):{text:JSON.stringify({ideas:IDEA_CATEGORIES.map((category,index)=>({category,text:'合成方向 '+(index+1)}))})};
-   else if(args.stage==='director')result={text:JSON.stringify({handoffVersion:1,sceneIntent:'Observe the synthetic public gauge without new player decisions.',knownFacts:[],effectiveConstraints:[],expressedCommitmentsOrRefusals:[],characterPositions:[],unknowns:[]})};
-   else if(args.stage==='writer')result={text:'合成紀錄員查看儀表，讓玩家決定接下來要談的事情。'};
-   else if(args.stage==='post_stat')result={text:JSON.stringify({contractVersion:2,stateChanges:[],memories:[]})};
+   else if(args.stage==='director')result={text:JSON.stringify({sceneIntent:'Observe the synthetic public gauge without new player decisions.'})};
+   else if(args.stage==='writer')result={text:JSON.stringify({finalBody:'合成紀錄員查看儀表，讓玩家決定接下來要談的事情。',dialogue:[]})};
+   else if(args.stage==='post_stat')result={text:JSON.stringify({time:{elapsedMinutes:20},stateChanges:[]})};
    else throw Object.assign(Error('Unexpected synthetic stage'),{code:'SCRIPTED_STAGE_UNSUPPORTED'});
    await ledger.settle(id,{status:'completed',actualCostUsd:0,usage:{inputTokens:17,outputTokens:26,totalTokens:43}});
    return{...result,model:'scripted-six',usage:{inputTokens:17,outputTokens:26,totalTokens:43,costUSD:0}};

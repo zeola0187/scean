@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "version": "1.6.2-local.w29.2d.rc3.2",
+  "sourceBaseline": "https://github.com/zeola0187/scean/commit/17ed84c82f5140f39105f70fccd5d577cf1c7565",
+  "sourceBranch": "fix/time-tool-contract-20261026",
+  "status": "SOURCE_BRANCH_ONLY",
+  "runtimeFingerprint": "a7fc633d42f2826ccf70127035c93fe1119a891c043dbd1c07009f3e432262b0",
+  "change": "TIME_TOOL.parameters/description only; precision=true excludes kind/amount/target",
+  "runtimeValidationChanged": false,
+  "saveFormatChanged": false,
+  "separateLocalCalendarFixesIncluded": false,
+  "nlruntimeArchitectureIncluded": false,
+  "fullLocalTimecal2Package": false,
+  "userDataIncluded": false,
+  "hostSdkIncluded": false,
+  "paidCalls": 0,
+  "newTag": false,
+  "releasePage": false,
+  "binaryAssetsUploaded": false
+}

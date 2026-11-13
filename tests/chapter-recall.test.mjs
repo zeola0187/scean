@@ -6,7 +6,7 @@ import {tmpdir} from 'node:os';
 import {ChapterRecall,chapterContextSources} from '../core/chapter-recall.mjs';
 import {chapterRecallFixture,chapterRecallPorts} from '../fixtures/synthetic-chapter-recall.mjs';
 import {DurableStore} from '../adapters/store.mjs';
-import {SceanEngine} from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {SceanHost} from '../plugin/host.mjs';
 import {encodeRunBundle,validateRunBundle} from '../core/save-bundle.mjs';
 import {updateSummary} from '../core/narrative.mjs';
@@ -29,7 +29,7 @@ async function setup({providerError,window=200000,missingPorts=false,tools=false
     if(a.stage==='post_stat')return {text:JSON.stringify({contractVersion:2,stateChanges:[],memories:[],playerHistory:[]})};
     throw Error('Unexpected scripted stage '+a.stage);
   }};
-  const recall=new ChapterRecall({embed:missingPorts?undefined:ports.embed,rerankModel:missingPorts?undefined:model,embeddingModel:'scripted-vector'}),engine=new SceanEngine({unconfiguredWritingMode:'current',store,model,chapterRecall:recall,memory:{async retrieve(){return {records:[]};}}});return {run,root,store,engine,model,recall,ports,calls};
+  const recall=new ChapterRecall({embed:missingPorts?undefined:ports.embed,rerankModel:missingPorts?undefined:model,embeddingModel:'scripted-vector'}),engine=new SceanEngine({postBody:false,unconfiguredWritingMode:'current',store,model,chapterRecall:recall,memory:{async retrieve(){return {records:[]};}}});return {run,root,store,engine,model,recall,ports,calls};
 }
 async function request(f,operationId,extra={}){const run=await f.store.read(f.run.runId);return {runId:run.runId,operationId,expectedVersion:run.version,expectedHead:run.head,...extra};}
 

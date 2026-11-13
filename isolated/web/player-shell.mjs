@@ -96,8 +96,9 @@ export function mountPlayerShell(){
   const sc=el('button','清空文風','quiet');sc.id='prose-style-clear';sc.type='button';const cancel=el('button','取消修改','quiet');cancel.id='prose-style-cancel';cancel.type='button';const reload=el('button','重新讀取已保存文風','quiet');reload.id='prose-style-reload';reload.type='button';
   const st=el('p','請先選一局故事。','hint');st.id='prose-style-status';st.setAttribute('role','status');sf.append(pickLabel,pick,imp,impFile,el('p','選擇會載入完整文風 Skill；改寫內容後即為自訂，不會疊加另一份風格。','hint'),sl,si,ss,sc,cancel,reload,st);style.append(sf,el('p','文風由 Host 在單一 Writer 開始書寫前完整載入，不靠模型自行決定讀取。保存後下一個新回合採用；正在生成或同一請求重試保留原設定，舊正文與固定快照不變。','hint'),el('p','此欄僅在文風上優先於 Preset；不改事件、行動者、玩家決策、拒絕與結果。清空並保存可還原原行為。','hint'));
   const examples=el('details');examples.append(el('summary','可改寫的範例'));for(const [id,label] of [['prose-style-example-light','填入輕快對話範例'],['prose-style-example-quiet','填入克制描寫範例']]){const b=el('button',label,'quiet');b.id=id;b.type='button';examples.append(b);}style.append(examples);runInfo.append(style);
+  const modelSection=el('section');modelSection.id='run-agent-models-panel';modelSection.append(el('h3','本局 Agent 模型'));const modelOpen=el('button','讀取本局 Agent 模型','quiet');modelOpen.id='run-agent-models-open';modelOpen.type='button';modelSection.append(modelOpen);runInfo.append(modelSection);
   const about=el('details');about.id='about-panel';about.append(el('summary','來源、授權與連線資訊'),$('scean-source-offer'),$('mode-banner'));
-  const help=document.querySelector('.help');help.open=true;about.append(help,el('p','模型由目前啟動的既有設定提供；此介面沒有切換模型的接口。','hint'));
+  const help=document.querySelector('.help');help.open=true;about.append(help,el('p','模型可在舞臺全域設定的「Agent 模型」分頁選取；本局資料可另行覆寫。','hint'));
 
   const runHeader=document.querySelector('.run-header'),runTitle=$('run-title'),saveStatus=$('save-status');const brand=top.firstElementChild;brand.remove();
   top.classList.add('product-nav');top.setAttribute('aria-label','SCEAN 產品導覽');

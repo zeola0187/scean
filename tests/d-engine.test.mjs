@@ -3,11 +3,12 @@ import assert from 'node:assert/strict';
 import {mkdtemp} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
-import {SceanEngine} from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {DurableStore} from '../adapters/store.mjs';
 import {updateSummary,selectNarrative} from '../core/narrative.mjs';
 import {searchHistory,HISTORY_REFERENCE_LABEL} from '../core/history-recall.mjs';
-import {hash} from '../core/contracts.mjs';
+import {hash,validateSnapshot} from '../core/contracts.mjs';
+import {constructTemporalFixture} from '../fixtures/temporal-history.mjs';
 import {syntheticLongrun,D_PRIVATE} from '../fixtures/synthetic-longrun-d.mjs';
 
 const code=value=>error=>error.code===value;
@@ -15,11 +16,11 @@ const clone=structuredClone;
 const advice=characterId=>({adviceVersion:1,characterId,observable:{attitude:'calm',intent:'wait'},publicUtterances:['Only public advice.'],withheld:['SYNTHETIC_WITHHELD'],internal:{notes:['SYNTHETIC_INTERNAL']},intendedDisclosures:[]});
 async function setup({turns=100,recentWindow=6,strategy,summaryText='AER_PROMISE_COMPASS_AND_UNFINISHED_CALIBRATION',contextWindow=200000,mutate}={}){
   const root=await mkdtemp(join(tmpdir(),'scean-d-engine-')),store=new DurableStore({root}),run=syntheticLongrun({turns,runId:'d-engine-synthetic',bodyRepeats:0});
-  if(mutate)mutate(run);
+  if(mutate){mutate(run);const {hash:oldHash,...definition}=run.snapshot;run.snapshot=validateSnapshot(definition);for(const row of [...run.memories,...run.playerHistory])row.source.snapshotHash=run.snapshot.hash;constructTemporalFixture(run);}
   await store.create(run);const calls=[];
   const model={async describe({stage}){return {capabilities:{contextWindow:stage==='summary'?200000:contextWindow,outputLimit:4096}};},async generate(args){calls.push(clone({stage:args.stage,input:args.input,context:args.context,tools:args.tools??null}));if(args.stage==='summary')return {text:summaryText,model:'synthetic-d-summary'};if(args.stage==='director')return strategy?strategy(args):{text:'The public crew pauses at the dock.'};if(args.stage==='character')return {text:JSON.stringify(advice(args.input.character.id))};if(args.stage==='draft'||args.stage==='prose')return {text:'The crew waited at the northern dock.'};if(args.stage==='post_stat')return {text:JSON.stringify({contractVersion:2,stateChanges:[],memories:[],playerHistory:[]})};throw Error(args.stage);}};
   const memory={async retrieve({records}){return {records:clone(records),status:'synthetic-local'};}};
-  const engine=new SceanEngine({unconfiguredWritingMode:'current',store,model,memory,recentWindow});return {root,store,run,model,memory,engine,calls};
+  const engine=new SceanEngine({postBody:false,unconfiguredWritingMode:'current',store,model,memory,recentWindow});return {root,store,run,model,memory,engine,calls};
 }
 const play=f=>f.engine.turn({runId:f.run.runId,requestId:'d-engine-next',input:'Continue the public watch.'});
 async function summarize(f,endTurn,operationId){const run=await f.store.read(f.run.runId);return updateSummary(f.engine,{runId:run.runId,expectedVersion:run.version,expectedHead:run.head,operationId,endTurn,recentWindow:f.engine.recentWindow},{enabled:true});}
@@ -37,7 +38,7 @@ test('D1 recent window configuration bounds immutable Snapshot seed history and 
   const f=await setup({turns:2,recentWindow:3,mutate:r=>{r.snapshot.chapterSummary='STATIC_AUTHOR_SUMMARY';r.snapshot.recentDialogue=Array.from({length:20},(_,i)=>({input:'seed '+i,body:'SEED_'+i}));}});
   await play(f);const assembly=f.calls.find(c=>c.stage==='director').input.assembly;assert.equal(assembly.chapterSummary,'STATIC_AUTHOR_SUMMARY');assert.equal(assembly.recentDialogue.length,3);assert.equal(assembly.recentDialogue[0].body,'SEED_19');assert.equal(assembly.rollingSummary,undefined);
   assert.equal((await f.store.read(f.run.runId)).snapshot.chapterSummary,'STATIC_AUTHOR_SUMMARY');
-  for(const recentWindow of [0,51,1.5])assert.throws(()=>new SceanEngine({unconfiguredWritingMode:'current',store:f.store,model:f.model,memory:f.memory,recentWindow}),code('INVALID_RECENT_WINDOW'));
+  for(const recentWindow of [0,51,1.5])assert.throws(()=>new SceanEngine({postBody:false,unconfiguredWritingMode:'current',store:f.store,model:f.model,memory:f.memory,recentWindow}),code('INVALID_RECENT_WINDOW'));
 });
 test('D1 no platform quota preserves the complete rolling summary even when estimates exceed reported context',async()=>{
  const f=await setup({turns:10,contextWindow:14000,summaryText:'龜'.repeat(15000)});await summarize(f,4,'large-summary');await play(f);
@@ -68,7 +69,7 @@ test('D2 legal large original reaches the next Director without a platform token
  await play(f);assert.equal(f.calls.filter(c=>c.stage==='director').length,2);const trace=(await f.store.readAttempts(f.run.runId)).at(-1);assert(trace.tools[0].historyBudget.estimatedTokens>6000);assert.equal(trace.tools[0].historyBudget.tokenQuota,null);
 });
 for(const [name,args,error] of [['search_history',{query:'compass',externalPath:'C:/secret'},'INVALID_HISTORY_TOOL_ARGUMENTS'],['read_history',{commitId:'d-commit-0001',runId:'other-run'},'HISTORY_CROSS_RUN'],['read_history',{commitId:'missing-commit'},'HISTORY_COMMIT_NOT_FOUND'],['read_history',{commitId:'d-commit-0001',radius:2},'HISTORY_READ_RADIUS']])test(`D2 ${name} rejects ${error} safely`,async()=>{
-  const f=await setup({turns:5,strategy:()=>({text:'',toolCalls:[{id:'bad-history',name,arguments:args}]})});const before=await f.store.read(f.run.runId);await assert.rejects(play(f),code(error));assert.deepEqual(await f.store.read(f.run.runId),before);
+  const f=await setup({turns:5,strategy:({input})=>({text:'',toolCalls:[{id:'bad-history-'+input.conversation.length,name,arguments:args}]})});const before=await f.store.read(f.run.runId);await assert.rejects(play(f),code(error));assert.deepEqual(await f.store.read(f.run.runId),before);
 });
 test('D1 a new committed story invalidates pending summary before a late summary result',async()=>{
   const f=await setup({turns:10});let release,started;const pending=new Promise(resolve=>{release=resolve;}),begun=new Promise(resolve=>{started=resolve;});const synthetic={describe:f.model.describe,async generate(){started();await pending;return{text:'LATE_SUMMARY',model:'synthetic-late'};}};

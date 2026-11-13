@@ -2,7 +2,7 @@ import { randomUUID, createHash } from 'node:crypto';
 
 // Provider maximum is a validation ceiling, not a request default or a price limit.
 export const MODEL_OUTPUT_LIMIT = 384000;
-export const DEFAULT_STAGE_MAX_TOKENS = Object.freeze({ director:4096, character:4096, adjudicate:4096, draft:4096, prose:8192, writer:8192, writer_repair:4096, post_stat:4096, summary:4096, chapter_analysis:4096, chapter_summary:4096, chapter_rerank:4096, ideas:1536 });
+export const DEFAULT_STAGE_MAX_TOKENS = Object.freeze({ calendar_plan:4096,forum_post:2048,forum_reply:2048,diary:3072,director:4096, character:4096, adjudicate:4096, draft:4096, prose:8192, writer:8192, writer_repair:4096, post_stat:4096, summary:4096, chapter_analysis:4096, chapter_summary:4096, chapter_rerank:4096, ideas:1536 });
 export const VERIFIED_PRICING = Object.freeze({ verifiedAt:'2026-10-15', source:'https://api-docs.deepseek.com/quick_start/pricing/', model:'deepseek-flash', servedModel:'DeepSeek-V4.1-Flash', maxOutput:MODEL_OUTPUT_LIMIT, billing:'provider-reported-only; unknown remains null' });
 export function outputLimits({maxTokens,stageMaxTokens={},providerOutputLimit}={}) {
   if(!stageMaxTokens||typeof stageMaxTokens!=='object'||Array.isArray(stageMaxTokens))throw safeError('INVALID_MAX_TOKENS');
@@ -14,25 +14,30 @@ export function safeError(code,message=code){return Object.assign(new Error(mess
 /** Host-only, per-consultation dispatch allowance shared by transport and format
  * recovery. Reservations are conservative and checkpointed before any dispatch.
  * Never serialize this object into a model packet or a public diagnostic. */
-export function createDispatchBudget({signal,timeoutMs=180000,onReserve=async()=>{}}={}){
+function boundedDispatchBudget({signal,timeoutMs=180000,onReserve=async()=>{},limit=2}={},maximum=2){
   if(!Number.isSafeInteger(timeoutMs)||timeoutMs<1||timeoutMs>600000)throw safeError('INVALID_CALL_TIMEOUT');
+  if(!Number.isInteger(limit)||limit<1||limit>maximum)throw safeError('INVALID_DISPATCH_LIMIT');
   const controller=new AbortController();let used=0,closed=false,route,effective;
-  const cancel=()=>controller.abort(safeError('CANCELLED','Consultation cancelled.'));
+  const cancel=()=>controller.abort(signal?.reason?.code==='MODEL_TIMEOUT'?safeError('MODEL_TIMEOUT','Parent planning deadline exceeded.'):safeError('CANCELLED','Consultation cancelled.'));
   signal?.addEventListener('abort',cancel,{once:true});if(signal?.aborted)cancel();
   const timer=setTimeout(()=>controller.abort(safeError('MODEL_TIMEOUT','Consultation deadline exceeded.')),timeoutMs);
   let rejectAbort;const aborted=new Promise((_,reject)=>{rejectAbort=reject;});aborted.catch(()=>{});
   const onAbort=()=>rejectAbort(controller.signal.reason);controller.signal.addEventListener('abort',onAbort,{once:true});if(controller.signal.aborted)onAbort();
   const check=()=>{if(controller.signal.aborted)throw controller.signal.reason;if(closed)throw safeError('CANCELLED');};
   return {
-    signal:controller.signal,limit:2,get used(){return used;},get remaining(){return closed||controller.signal.aborted?0:2-used;},check,
+    signal:controller.signal,limit,get used(){return used;},get remaining(){return closed||controller.signal.aborted?0:limit-used;},check,
     async resolveSelection(resolve){check();route??=Promise.resolve().then(resolve);return structuredClone(await route);},
     get effectiveSelection(){return effective?structuredClone(effective):null;},
     pinEffective(value){check();effective??=structuredClone(value);return structuredClone(effective);},
-    async take(){check();if(used>=2)throw safeError('CONSULTATION_DISPATCH_LIMIT','Consultation dispatch allowance exhausted.');const index=++used;try{await onReserve(index);}catch{throw Object.assign(safeError('CONSULTATION_CHECKPOINT_FAILED','Consultation checkpoint failed; request was not dispatched.'),{category:'persistence'});}check();return index;},
+    async take(){check();if(used>=limit)throw safeError('CONSULTATION_DISPATCH_LIMIT','Consultation dispatch allowance exhausted.');const index=++used;try{await onReserve(index);}catch{throw Object.assign(safeError('CONSULTATION_CHECKPOINT_FAILED','Consultation checkpoint failed; request was not dispatched.'),{category:'persistence'});}check();return index;},
     run(operation){check();return Promise.race([Promise.resolve().then(()=>{check();return operation();}),aborted]);},
     close(){if(closed)return;closed=true;clearTimeout(timer);signal?.removeEventListener('abort',cancel);controller.abort(safeError('CANCELLED'));controller.signal.removeEventListener('abort',onAbort);},
   };
 }
+export const createDispatchBudget=options=>boundedDispatchBudget(options,2);
+// Five Director rounds, at most two physical SDK dispatches per round. One
+// fixed planning deadline also bounds local argument correction and advice.
+export const createDirectorDispatchBudget=options=>boundedDispatchBudget({...options,limit:10},10);
 export function safeFailure(error,signal){
   if(signal?.aborted||error?.name==='AbortError')return safeError('CANCELLED','Request was cancelled; this turn was not committed.');
   if(error?.name==='TimeoutError')return safeError('MODEL_TIMEOUT','Model request timed out; this turn was not committed.');
@@ -42,7 +47,7 @@ export function safeFailure(error,signal){
 }
 export function reportedCost(usage){return Number.isFinite(usage?.cost)&&usage.cost>=0?usage.cost:null;}
 export function safeUsage(usage){return usage?Object.fromEntries(['prompt_tokens','completion_tokens','total_tokens','inputTokens','outputTokens','totalTokens','cacheReadTokens','cacheWriteTokens','cacheReadInputTokens','cacheWriteInputTokens'].filter(k=>Number.isFinite(usage[k])&&usage[k]>=0).map(k=>[k,usage[k]])):null;}
-export function safeContext(context={}){return Object.fromEntries(['runId','attemptId','requestId'].filter(k=>typeof context[k]==='string').map(k=>[k,context[k].slice(0,160)]));}
+export function safeContext(context={}){return Object.fromEntries(['runId','attemptId','requestId','operationId'].filter(k=>typeof context[k]==='string').map(k=>[k,context[k].slice(0,160)]));}
 const sha=value=>createHash('sha256').update(JSON.stringify(value)).digest('hex');
 function validateBase(base){const url=new URL(base);if(url.protocol!=='https:'||url.username||url.password||url.hostname!=='api.deepseek.com')throw safeError('UNAUTHORIZED_DEEPSEEK_ENDPOINT');return url.toString().replace(/\/$/,'');}
 export function parseCompletion(data){

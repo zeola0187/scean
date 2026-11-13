@@ -1,12 +1,12 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';import path from 'node:path';
-import {DurableStore} from '../adapters/store.mjs';import {SceanEngine} from '../core/engine.mjs';import {SceanHost} from '../plugin/host.mjs';import {Memory} from '../core/memory.mjs';
+import {DurableStore} from '../adapters/store.mjs';import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';import {SceanHost} from '../plugin/host.mjs';import {Memory} from '../core/memory.mjs';
 import {changeRunLifecycle,lifecycleView} from '../core/run-lifecycle.mjs';import {w01Fixture} from '../fixtures/w01-frontends.mjs';import {createNativeBridge} from '../plugin/player-native-bridge.mjs';import {encodeRunBundle} from '../core/save-bundle.mjs';
 const code=c=>e=>e.code===c,deferred=()=>{let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve};};
 async function fixture(t){const base=path.resolve(import.meta.dirname,'../.test-data');await fs.mkdir(base,{recursive:true});const root=await fs.mkdtemp(path.join(base,'run-recycle-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));
  const snapshot=structuredClone(w01Fixture('fantasy').snapshot);snapshot.source={provider:'@local/dsh-card-studio-scean-test',card:{id:snapshot.cardId,revision:snapshot.revision}};
  const calls=[],model={async generate(a){calls.push(a.stage);return {text:a.stage==='director'?JSON.stringify({handoffVersion:1,sceneIntent:'Observe.',knownFacts:[],effectiveConstraints:[],expressedCommitmentsOrRefusals:[],characterPositions:[],unknowns:[]}):a.stage==='post_stat'?'{"contractVersion":2,"stateChanges":[],"memories":[]}':'A quiet synthetic room.'};}};
- const store=new DurableStore({root:path.join(root,'store')}),engine=new SceanEngine({store,model,memory:new Memory()}),host=await new SceanHost({engine,root:path.join(root,'host')}).init();t.after(()=>host.close());
+ const store=new DurableStore({root:path.join(root,'store')}),engine=new SceanEngine({postBody:false,store,model,memory:new Memory()}),host=await new SceanHost({engine,root:path.join(root,'host')}).init();t.after(()=>host.close());
  const first=await host.createRun({snapshot}),run=await store.read(first.runId),scope={provider:snapshot.source.provider,cardId:snapshot.cardId,authoringSessionId:'synthetic-session',generation:1},authority={principal:'operator',allowGlobalSettings:true,requireCardScope:true,resolveCardScope:()=>scope};
  const request=(action,payload={})=>host.request({...payload,action,sessionId:scope.authoringSessionId,cardScope:scope},undefined,authority),args=(run,action='trash',operationId=action+'-one')=>({runId:run.runId,action,operationId,expectedVersion:run.version,expectedHead:run.head??null,expectedLifecycleRevision:run.recycle?.revision??0,confirmed:true});
  return {root,snapshot,store,engine,host,run,scope,authority,request,args,calls,model};

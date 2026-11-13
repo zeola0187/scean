@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "version": "1.6.2-local.w29.2d.rc3.1",
+  "targetDsh": "0.2.1-rc.3",
+  "acceptedLocalSourceCommit": "23ce209415e79c9a73bda9ab6a0cb7a56881f23f",
+  "originalIntegrationCommit": "347cb8ef9d02b7ba32387373e5814da469d328d2",
+  "phase2dSourceCommit": "f19a775d111848d655a67fb3f4ef65fecb8d7eb5",
+  "acceptedRuntimeFingerprint": "8ce9b4be820feece11bf9dab42c813121e1e99fcb4a17e2d66d70e9ce57d1dbd",
+  "privateRemoteBase": "e1676093af7ac45187dc967b8bd53b51a3def794",
+  "publicRemoteBase": "08d1bf65a2c169e0fcaabdc7ae9a4764696fbd5c",
+  "historyPolicy": "One normal import commit on each existing repository history; no local sealed-root history is pushed. No automatic merge.",
+  "packagePolicy": "Clean reviewed public projection; original acceptance package is not distributed. Executable Runtime bytes preserved; documentation/source-offer metadata changes explicitly mapped.",
+  "paidCallsThisPublication": 0,
+  "userDataIncluded": false,
+  "hostSdkIncluded": false
+}

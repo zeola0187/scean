@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { normalizeStudioHandoffSnapshot } from '../plugin/studio-handoff.mjs';
 import { validateSnapshot } from '../core/contracts.mjs';
-import { SceanEngine } from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import { publicSnapshot } from '../core/inspection.mjs';
 import { buildSavedSnapshot } from '../vendor/cardstudio-scean/lib/scean-integration.js';
 
@@ -40,7 +40,7 @@ test('formal handoff verifies original hash before promoting; keeps immutable so
 
 test('formal handoff yields native public opening and typed initial state without model or IO', async () => {
   const fixed=normalizeStudioHandoffSnapshot(source({stateBlueprint:blueprint(),initialState:initial()}));
-  const engine=new SceanEngine({unconfiguredWritingMode:'current',store:{create:async run=>run},model:{generate(){assert.fail('No model work permitted');}},memory:{retrieve(){assert.fail('No embedding/retrieval work permitted');}}});
+  const engine=new SceanEngine({postBody:false,unconfiguredWritingMode:'current',store:{create:async run=>run},model:{generate(){assert.fail('No model work permitted');}},memory:{retrieve(){assert.fail('No embedding/retrieval work permitted');}}});
   const run=await engine.createRun({snapshot:fixed});
   assert.equal(run.state.world.resources.fuel,0);
   assert.equal(run.state.world.facts?.unknown,undefined);

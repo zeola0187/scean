@@ -1,18 +1,20 @@
 # SCEAN
 
-> **DSH 0.2.2-rc.3 安裝請使用下面完整的 `.tgz` 網址。首頁網址 `https://github.com/zeola0187/scean` 是說明頁；把它貼入 DSH 會安裝預設分支的舊版 `1.6.0`，並被 rc.3 拒絕。**
+> **現在可直接複製本頁網址 `https://github.com/zeola0187/scean` 到 DSH 安裝。預設分支已包含 rc.3 相容 Suite `1.6.4-local.w29.2d.rc3.1.dsh022.3`，不需要版本豁免。**
 
 ## 可直接貼入 DSH 的安裝來源
 
 1. 開啟 DSH「插件」→「添加插件」→「安装第三方插件」。
-2. 在「包名或地址」欄貼上**下面完整一行**，不要只貼倉庫首頁、Release 說明頁或 Code／Download ZIP 的地址：
+2. 在「包名或地址」欄貼上**下面完整一行**，也就是瀏覽器顯示的本專案首頁網址：
 
 ```text
-https://github.com/zeola0187/scean/releases/download/v1.6.4-local.w29.2d.rc3.1.dsh022.3/SCEAN-1.6.4-local.w29.2d.rc3.1.dsh022.3-suite.tgz
+https://github.com/zeola0187/scean
 ```
 
-3. 安裝結果應為 `@local/dsh-scean-suite 1.6.4-local.w29.2d.rc3.1.dsh022.3`。若顯示 `1.6.0`，來源仍是舊版；不要開啟版本豁免。
-4. 也可以先下載該 TGZ，再把下載檔的**完整本機路徑**貼入同一欄位。下載的是 `-suite.tgz`，不是 source ZIP；安裝前仍需等待生成與保存完成並備份資料。
+3. 安裝結果應為 `@local/dsh-scean-suite 1.6.4-local.w29.2d.rc3.1.dsh022.3`。若仍顯示 `1.6.0`，先取消並改用下方固定版本 TGZ；不要開啟版本豁免。
+4. 想固定安裝這一版，可使用下方 Release 的 Suite TGZ 直鏈；或先下載 TGZ，再把下載檔的**完整本機路徑**貼入同一欄位。不要把 Release 說明頁或 source ZIP 當作安裝來源。安裝前先等待生成與保存完成並備份資料。
+
+首頁根網址會跟隨日後更新的預設安裝版本；固定 TGZ 則保持對應版本。既有安裝不會因首頁更新而自動升級。
 
 Suite 已含舞台 Runtime 與 Card Studio；其他已安裝插件的相容性警告是獨立問題，Suite 不會更新或啟用那些插件。
 
@@ -29,7 +31,7 @@ Windows／官方 **DSH 0.2.2-rc.3** 請下載 **`1.6.4-local.w29.2d.rc3.1.dsh022
 **[直接下載 rc.3 Suite 完整包](https://github.com/zeola0187/scean/releases/download/v1.6.4-local.w29.2d.rc3.1.dsh022.3/SCEAN-1.6.4-local.w29.2d.rc3.1.dsh022.3-suite.tgz)** · [SHA256SUMS.txt](https://github.com/zeola0187/scean/releases/download/v1.6.4-local.w29.2d.rc3.1.dsh022.3/SHA256SUMS.txt) · [版本說明](https://github.com/zeola0187/scean/releases/tag/v1.6.4-local.w29.2d.rc3.1.dsh022.3)
 
 1. 等待生成及保存完成，備份 DSH、Profile、卡片、演出與設定。
-2. 將上方完整 TGZ 網址貼入 DSH「包名或地址」；或下載並核對 SHA256 後，貼入 TGZ 的完整本機路徑。Suite 已包含舞台 Runtime 與 Card Studio。
+2. 將首頁根網址或上方固定 TGZ 直鏈貼入 DSH「包名或地址」；或下載並核對 SHA256 後，貼入 TGZ 的完整本機路徑。Suite 已包含舞台 Runtime 與 Card Studio。
 3. 確認載入版本為 `1.6.4-local.w29.2d.rc3.1.dsh022.3`，再用合成新演出或既有資料的唯讀檢查驗收；不要使用版本豁免強裝。
 4. 如需 OpenRouter 輸出預設修補，另裝 [guard 0.1.0-local.5](https://github.com/zeola0187/scean/releases/download/v1.6.4-local.w29.2d.rc3.1.dsh022.3/SCEAN-OpenRouter-output-default-0.1.0-local.5.tgz)。此 guard 僅支援已核對的 DSH 0.2.2-rc.3，不隨 Suite 自動安裝，也不會在預設安裝時自動呼叫付費模型。
 
@@ -37,7 +39,7 @@ Windows／官方 **DSH 0.2.2-rc.3** 請下載 **`1.6.4-local.w29.2d.rc3.1.dsh022
 
 若遇到 `ERR_PNPM_UNEXPECTED_STORE`，先核對現有 profile 所屬 store；不要刪除依賴、清理正在被引用的備份資料夾或直接改全域 store。
 
-請下載上面的固定 TGZ；把倉庫根網址貼入 Git 安裝器仍會使用舊版預設分支，不代表安裝此預發版。套件不含 SDK、Seeker、模型憑證或私人資料，也不會搬移伺服器上的故事。
+首頁根網址與此處固定 TGZ 目前都可安裝上述 rc.3 相容版本。套件不含 SDK、Seeker、模型憑證或私人資料，也不會搬移伺服器上的故事。
 
 [完整對應原碼](https://github.com/zeola0187/scean/tree/v1.6.4-local.w29.2d.rc3.1.dsh022.3) · [完整 source ZIP](https://github.com/zeola0187/scean/releases/download/v1.6.4-local.w29.2d.rc3.1.dsh022.3/SCEAN-1.6.4-local.w29.2d.rc3.1.dsh022.3-source.zip) · [來源與套件 receipt](https://github.com/zeola0187/scean/releases/download/v1.6.4-local.w29.2d.rc3.1.dsh022.3/SCEAN-1.6.4-local.w29.2d.rc3.1.dsh022.3-source-receipt.json) · [相容性與測試限制](https://github.com/zeola0187/scean/blob/v1.6.4-local.w29.2d.rc3.1.dsh022.3/docs/DSH022-RC3-COMPATIBILITY.md)
 

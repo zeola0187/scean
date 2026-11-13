@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {SceanEngine} from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {DurableStore} from '../adapters/store.mjs';
 import {publicInspection} from '../core/inspection.mjs';
 import {HISTORY_C,createHistoryFixture,playHistory,historyArgs,recallOwner,syntheticHistoryMemory} from '../fixtures/synthetic-history-c.mjs';
 
 const code=expected=>e=>e.code===expected;
 const current=f=>f.store.read(f.run.runId);
-const restart=f=>new SceanEngine({unconfiguredWritingMode:'current',store:new DurableStore({root:f.root}),model:f.model,memory:f.memory});
+const restart=f=>new SceanEngine({postBody:false,unconfiguredWritingMode:'current',store:new DurableStore({root:f.root}),model:f.model,memory:f.memory});
 async function two(){const f=await createHistoryFixture();await playHistory(f,'private','origin');const first=await current(f);await playHistory(f,'share','exchange');return{...f,first};}
 function deferred(){let resolve;const promise=new Promise(r=>resolve=r);return{promise,resolve};}
 function pause(f,stage='draft'){const started=deferred(),release=deferred();f.model.override=async a=>{if(a.stage===stage){started.resolve();await release.promise;}};return{started:started.promise,release:()=>release.resolve()};}

@@ -15,9 +15,9 @@ export class JobLedger {
     await mkdir(this.root,{recursive:true});
     try{
       const data=JSON.parse(await readFile(join(this.root,'operations.json'),'utf8'));
-      if(data.schemaVersion!==1||!Array.isArray(data.records)||data.records.length>this.capacity)throw new Error('Invalid operation journal.');
+      if(![1,2].includes(data.schemaVersion)||!Array.isArray(data.records)||data.records.length>this.capacity)throw new Error('Invalid operation journal.');
       const ids=new Set();
-      for(const row of data.records){safeId(row.runId);safeId(row.operationId);if(row.requestId!==null)safeId(row.requestId);const key=`${row.runId}:${row.operationId}`;if(ids.has(key)||!STATUSES.has(row.status)||!/^[a-f0-9]{64}$/.test(row.fingerprint))throw new Error('Invalid operation record.');ids.add(key);}
+      for(const row of data.records){safeId(row.runId);safeId(row.operationId);if(row.requestId!==null)safeId(row.requestId);const key=`${row.runId}:${row.operationId}`;if(ids.has(key)||!STATUSES.has(row.status)||row.timeConfirmationHash!==undefined&&!/^[a-f0-9]{64}$/.test(row.timeConfirmationHash)||!/^[a-f0-9]{64}$/.test(row.fingerprint))throw new Error('Invalid operation record.');ids.add(key);}
       this.records=data.records;
     }catch(error){if(error.code!=='ENOENT')throw Object.assign(new Error('Operation journal cannot be read safely.'),{code:'HOST_JOB_LEDGER'});}
     return this;
@@ -26,7 +26,7 @@ export class JobLedger {
     const op=this.queue.catch(()=>{}).then(async()=>{
       const temporary=join(this.root,`operations.${randomUUID()}.tmp`);let handle;
       try{
-        handle=await open(temporary,'wx',0o600);await handle.writeFile(JSON.stringify({schemaVersion:1,records:this.records}),'utf8');await handle.sync();await handle.close();handle=null;
+        handle=await open(temporary,'wx',0o600);await handle.writeFile(JSON.stringify({schemaVersion:this.records.some(r=>r.kind==='settlementResume')?2:1,records:this.records}),'utf8');await handle.sync();await handle.close();handle=null;
         await this.fault?.('beforeRename');
         for(let retry=0;;retry++){try{await rename(temporary,join(this.root,'operations.json'));break;}catch(error){if(retry>=2||!['EPERM','EACCES','EBUSY'].includes(error.code))throw error;await new Promise(resolve=>setTimeout(resolve,10*(retry+1)));}}
         let dir;try{dir=await open(this.root,'r');await dir.sync();}catch(error){if(!['EPERM','EISDIR','EINVAL','EACCES','ENOTSUP','EBADF'].includes(error.code))throw error;}finally{await dir?.close();}

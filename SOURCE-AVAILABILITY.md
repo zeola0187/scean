@@ -1,28 +1,11 @@
-# Corresponding source — SCEAN 1.6.0
+# Complete corresponding source
 
-Source and license: https://github.com/zeola0187/scean/tree/main
-Installation/update homepage: https://github.com/zeola0187/scean
-Release packages and the detached exact-commit/source-hash descriptor:
-https://github.com/zeola0187/scean/releases/tag/v1.6.0
+SCEAN release: `1.6.4-local.w29.2d.rc3.1.dsh022.3`.
 
-The same source address is visibly offered in SCEAN and Studio. A restricted
-host frame may prevent opening a new tab; copy the displayed address instead.
-No browser sandbox or host permission is expanded for this notice.
+Fixed source tag: https://github.com/zeola0187/scean/tree/v1.6.4-local.w29.2d.rc3.1.dsh022.3
 
-The source ZIP contains complete covered code, canonical inputs, build/export/
-package tools, dependency information, synthetic tests and necessary notices.
-Installation TGZs alone do not replace that full source. A detached release-source
-descriptor records the exact commit and source ZIP hash after sealing; it is
-distributed beside the archives to avoid a circular self-hash. The bundled
-release-source.json points to public main; the detached descriptor pins the
-versioned release tag, exact commit and source archive hash. Receipt-only fields
-inside the package remain unset. Validate the detached receipt with:
+The matching Release provides the complete corresponding source ZIP, Suite/Runtime/Studio packages, optional guard package, detached source receipt and SHA256SUMS. The detached receipt records the exact source commit and anonymous verification; in-tree metadata deliberately avoids a self-referential archive hash or an unverified publication attestation.
 
-`python scripts/check-release.py --config PATH_TO_RELEASE_DESCRIPTOR`
+The source ZIP contains canonical inputs, generated runtime code, build tools, synthetic tests, licenses and notices. It excludes host SDK dependencies, credentials, profiles, stories, databases, caches and Git history. Seeker is a separate project.
 
-Before publishing a modified network version, observe anonymous access to the
-matching corresponding source and preserve a prominent offer to its users.
-The checker validates configuration and recorded attestations, not network
-availability. See LICENSE for the actual terms. Retain the MIT exception and
-all component notices. Private cards, RP, Runs, keys and the separately licensed
-DSH host are outside the original SCEAN license grant merely through use.
+Original SCEAN content is AGPL-3.0-only. Preserve the MIT grant for advanced-tavern-card-authoring and all third-party notices. Installation TGZs are not substitutes for the complete corresponding source ZIP.

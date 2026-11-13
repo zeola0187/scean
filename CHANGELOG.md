@@ -1,3 +1,13 @@
+# 1.6.4-local.w29.2d.rc3.1 (source candidate)
+
+- Card Studio declares structured tool arguments and rejects malformed patch inputs before writing.
+- Lease lifecycle diagnostics distinguish page acquisition, release, expiry and addon disposal without recording card contents. Existing reconnect never replays writes.
+- Source candidate only: no production deployment, model-provider validation or published release is claimed.
+
+# 1.6.3-local.w29.2d.rc3.1
+
+正文後 PostStat 世界結算、減輕 Director／Writer 輸出、有界正文保留續算；完整前置時間修補。保存 v13／sidecar v2。詳見 docs/RELEASE-POSTSTAT.zh-TW.md。
+
 # 1.6.0 — 2026-10-24
 
 - Card Studio 固定對話工作卡、完整 Preset 獨立保存與版本衝突保護；檢查後保存固定劇本，選擇或另開演出。

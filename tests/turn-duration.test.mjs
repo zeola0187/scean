@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {SceanHost} from '../plugin/host.mjs';
-import {SceanEngine} from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {DurableStore} from '../adapters/store.mjs';
 import {Memory} from '../core/memory.mjs';
 import {headOf} from '../core/history.mjs';
@@ -15,7 +15,7 @@ async function fixture(t,options={}){
  const parent=path.resolve(import.meta.dirname,'../.test-tmp/');await fs.mkdir(parent,{recursive:true});const root=await fs.mkdtemp(path.join(parent,'turn-duration-'));let clock=Date.UTC(2026,0,1);const calls=[];
  const store=new DurableStore({root:path.join(root,'store'),fault:(...args)=>options.fault?.(...args)});
  const model={async generate(args){clock+=1000;calls.push(args.stage);const custom=await options.override?.(args);if(custom)return custom;return {text:args.stage==='director'?JSON.stringify({handoffVersion:1,sceneIntent:'A synthetic quiet room.',knownFacts:[],effectiveConstraints:[],expressedCommitmentsOrRefusals:[],characterPositions:[],unknowns:[]}):args.stage==='post_stat'?'\u007b"contractVersion":2,"stateChanges":[],"memories":[]\u007d':'Synthetic final body.'};}};
- const engine=new SceanEngine({store,model,memory:new Memory()}),hostRoot=path.join(root,'host'),host=await new SceanHost({engine,root:hostRoot,now:()=>clock}).init();
+ const engine=new SceanEngine({postBody:false,store,model,memory:new Memory()}),hostRoot=path.join(root,'host'),host=await new SceanHost({engine,root:hostRoot,now:()=>clock}).init();
  const run=await host.createRun({snapshot});t.after(async()=>{await host.close();await fs.rm(root,{recursive:true,force:true});});
  return {host,hostRoot,engine,store,runId:run.runId,calls,now:()=>clock,advance:ms=>clock+=ms};
 }

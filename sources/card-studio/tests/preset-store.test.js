@@ -101,7 +101,7 @@ test('cancellation before publication is empty, cancellation after publication i
 });
 
 test('document paths, missing operation/CAS and non-JSON values are rejected',async t=>{
- const f=await fixture(t);for(const documentId of ['../escape','C:/Users/private','a/b',''])await assert.rejects(f.store.read({...args,documentId}),{code:'PRESET_DOCUMENT'});
+ const f=await fixture(t);for(const documentId of ['../escape','C:/fixture/private','a/b',''])await assert.rejects(f.store.read({...args,documentId}),{code:'PRESET_DOCUMENT'});
  await assert.rejects(save(f.store,{},0,undefined),{code:'PRESET_OPERATION'});await assert.rejects(save(f.store,{},undefined,'missing'),{code:'PRESET_REVISION_REQUIRED'});
  const cyclic={};cyclic.self=cyclic;let invoked=false;const getter={get value(){invoked=true;return 'unsafe';}},oddArray=[1];oddArray.length=2;oddArray['01']=2;
  for(const value of [[],null,{x:undefined},{x:NaN},{x:-0},{x:new Date()},cyclic,getter,{x:[,1]},{x:oddArray},{x:1n},{x:'\ud800'}])assert.throws(()=>normalizePreset(value),{code:'PRESET_INVALID'});

@@ -5,10 +5,12 @@ import path from 'node:path';
 import {collaborationView,attemptCanonical} from '../core/collaboration-reader.mjs';
 import {PlayerReaders} from '../plugin/reader-host.mjs';
 import {SceanHost} from '../plugin/host.mjs';
-import {SceanEngine} from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {DurableStore} from '../adapters/store.mjs';
 import {Memory} from '../core/memory.mjs';
 import {hash} from '../core/contracts.mjs';
+import {buildWriterHandoff} from '../core/writer-workflow.mjs';
+import {SceanEngine as CurrentEngine} from '../core/engine.mjs';
 const code=c=>e=>e.code===c,authority={principal:'synthetic-human',allowGlobalSettings:true,allowPrivateDiagnostics:true};
 const raw=()=>({runId:'run-a',snapshot:{hash:'snapshot-a'},version:1,head:'commit-a',turns:[{turn:1,commitId:'commit-a',attemptId:'attempt-a',requestId:'req-a'}],receipts:{'req-a':{attemptId:'attempt-a',commitId:'commit-a',result:{trace:{attemptId:'attempt-a'}}}}});
 const advice=()=>({kind:'advice_not_event',adviceVersion:1,characterId:'npc-a',observable:{attitude:'calm',intent:'consider'},publicUtterances:['Public words'],intendedDisclosures:[],withheld:['WITHHELD-CANARY'],internal:{notes:['INTERNAL-CANARY']}});
@@ -18,7 +20,7 @@ test('malformed nested public fields cannot smuggle private objects or unbounded
 test('canonical owner does not mistake earlier same-request failure or retired receipt for current success',()=>{const run=raw();assert.equal(attemptCanonical(run,'earlier','req-a').status,'not_committed');const a=attempt();a.attemptId='earlier';a.status='failed';const v=collaborationView(run,{attempt:a});assert.equal(v.operation.canonicalStatus,'not_committed');assert(!v.source.commitId);run.turns=[];run.receipts['req-a'].status='retired';assert.equal(attemptCanonical(run,'attempt-a','req-a').status,'retired');assert(!collaborationView(run,{attempt:attempt()}).source.commitId);run.turns=raw().turns;run.receipts['req-a'].attemptId='foreign';assert.equal(attemptCanonical(run,'attempt-a','req-a').status,'unknown');});
 test('identity mismatch, absent checkpoint and no-call/pending differ explicitly',()=>{const a=attempt();a.inputSnapshot.hash='wrong';a.turnIdentity.snapshotHash='wrong';assert.equal(collaborationView(raw(),{attempt:a}).status,'association_unknown');assert.equal(collaborationView(raw(),{sourceStatus:'source_pending'}).status,'source_pending');const b=attempt();b.tools=[];assert.equal(collaborationView(raw(),{attempt:b}).records.find(r=>r.id==='director-tools').status,'not_called');b.directorComplete=false;b.status='pending';assert.equal(collaborationView(raw(),{attempt:b}).records.find(r=>r.id==='director-tools').status,'source_pending');});
 test('long Unicode Q/A reconstruct exactly with revision-bound chunks and bounded wire',()=>{const a=attempt(),body=('合成🙂\n"\\').repeat(6000);a.tools=[{id:'stat-one',name:'adjudicate_action',arguments:{action:'Question'},status:'completed',result:{text:body}}];const first=collaborationView(raw(),{attempt:a});let row=first.records.find(r=>r.id==='tool:stat-one'),text=row.answer,offset=row.nextContentOffset;assert(Buffer.byteLength(JSON.stringify(first))<=48000);while(offset!==null){const value=collaborationView(raw(),{attempt:a},{recordId:row.id,contentField:'answer',contentOffset:offset,expectedReadRevision:first.source.readRevision});assert(Buffer.byteLength(JSON.stringify(value))<=48000);row=value.records[0];assert(row.answer.isWellFormed());text+=row.answer;offset=row.nextContentOffset;}assert.equal(text,body);a.status='failed';assert.throws(()=>collaborationView(raw(),{attempt:a},{expectedReadRevision:first.source.readRevision}),code('READER_SOURCE_CHANGED'));});
-async function fixture(t,{holdWriter=false}={}){const parent=path.resolve(import.meta.dirname,'../.test-tmp');await fs.mkdir(parent,{recursive:true});const root=await fs.mkdtemp(path.join(parent,'collab-'));let release,entered;const waiting=new Promise(r=>entered=r),gate=new Promise(r=>release=r);let calls=0,director=0;const store=new DurableStore({root:path.join(root,'store')}),model={async generate(a){calls++;if(a.stage==='director'){if(director++===0)return {text:'Consult.',toolCalls:[{id:'character-one',name:'consult_character',arguments:{characterId:'npc-a',question:'How to respond?'}},{id:'stat-one',name:'adjudicate_action',arguments:{action:'Check the public condition.',mode:'query'}}]};return {text:JSON.stringify({handoffVersion:1,sceneIntent:'A synthetic room.',knownFacts:[],effectiveConstraints:[],expressedCommitmentsOrRefusals:[],characterPositions:[],unknowns:[]})};}if(a.stage==='character')return{text:JSON.stringify({adviceVersion:1,characterId:'npc-a',observable:{attitude:'calm',intent:'consider'},publicUtterances:['A public answer.'],withheld:['WITHHELD-CANARY'],internal:{notes:['INTERNAL-CANARY']},intendedDisclosures:[]})};if(a.stage==='adjudicate')return{text:'The public condition is unchanged.'};if(a.stage==='writer'){entered();if(holdWriter)await gate;return{text:'Synthetic body.'};}return{text:JSON.stringify({contractVersion:2,stateChanges:[],memories:[]})};}},engine=new SceanEngine({store,model,memory:new Memory()}),host=await new SceanHost({engine,root:path.join(root,'host')}).init(),created=await host.createRun({snapshot:{schemaVersion:1,cardId:'synthetic-card',revision:1,card:{name:'Same'},worldbook:{entries:[{name:'Hidden',content:'Owner entry',visibility:'private'}]},characters:[{id:'npc-a',name:'NPC-A',description:'Synthetic.'}],preset:{}}});t.after(async()=>{release();await host.close();await fs.rm(root,{recursive:true,force:true});});return {host,store,runId:created.runId,waiting,release,calls:()=>calls};}
+async function fixture(t,{holdWriter=false}={}){const parent=path.resolve(import.meta.dirname,'../.test-tmp');await fs.mkdir(parent,{recursive:true});const root=await fs.mkdtemp(path.join(parent,'collab-'));let release,entered;const waiting=new Promise(r=>entered=r),gate=new Promise(r=>release=r);let calls=0,director=0;const store=new DurableStore({root:path.join(root,'store')}),model={async generate(a){calls++;if(a.stage==='director'){if(director++===0)return {text:'Consult.',toolCalls:[{id:'character-one',name:'consult_character',arguments:{characterId:'npc-a',question:'How to respond?'}},{id:'stat-one',name:'adjudicate_action',arguments:{action:'Check the public condition.',mode:'query'}}]};return {text:JSON.stringify({handoffVersion:1,sceneIntent:'A synthetic room.',knownFacts:[],effectiveConstraints:[],expressedCommitmentsOrRefusals:[],characterPositions:[],unknowns:[]})};}if(a.stage==='character')return{text:JSON.stringify({adviceVersion:1,characterId:'npc-a',observable:{attitude:'calm',intent:'consider'},publicUtterances:['A public answer.'],withheld:['WITHHELD-CANARY'],internal:{notes:['INTERNAL-CANARY']},intendedDisclosures:[]})};if(a.stage==='adjudicate')return{text:'The public condition is unchanged.'};if(a.stage==='writer'){entered();if(holdWriter)await gate;return{text:'Synthetic body.'};}return{text:JSON.stringify({contractVersion:2,stateChanges:[],memories:[]})};}},engine=new SceanEngine({postBody:false,store,model,memory:new Memory()}),host=await new SceanHost({engine,root:path.join(root,'host')}).init(),created=await host.createRun({snapshot:{schemaVersion:1,cardId:'synthetic-card',revision:1,card:{name:'Same'},worldbook:{entries:[{name:'Hidden',content:'Owner entry',visibility:'private'}]},characters:[{id:'npc-a',name:'NPC-A',description:'Synthetic.'}],preset:{}}});t.after(async()=>{release();await host.close();await fs.rm(root,{recursive:true,force:true});});return {host,store,runId:created.runId,waiting,release,calls:()=>calls};}
 test('actual scripted checkpoint while Writer runs then canonical commit; reader generates/writes nothing',async t=>{const f=await fixture(t,{holdWriter:true}),r=await f.store.read(f.runId);await f.host.jobs.submit({kind:'turn',runId:f.runId,operationId:'op-one',requestId:'req-one',input:'Observe.',baseVersion:r.version,baseHead:r.head??null});await f.waiting;const q={action:'playerCollaboration',runId:f.runId},before=hash(await f.store.read(f.runId)),calls=f.calls(),v=await f.host.request(q,null,authority);assert(v.ok,JSON.stringify(v));assert.equal(v.value.operation.canonicalStatus,'not_committed');assert(v.value.records.some(x=>x.kind==='adjudicate_action'));assert(!JSON.stringify(v).includes('WITHHELD-CANARY'));assert.equal(hash(await f.store.read(f.runId)),before);assert.equal(f.calls(),calls);f.release();await f.host.jobs.active.get(f.runId)?.promise;const done=await f.host.request(q,null,authority);assert(done.ok);assert.equal(done.value.operation.canonicalStatus,'committed');assert(done.value.source.commitId);assert.equal(done.value.records.find(x=>x.id==='post-stat').status,'completed');});
 test('operator access is checked before source reads; selected reads do not enumerate or recover attempts',async t=>{const f=await fixture(t);let reads=0;const read=f.store.read.bind(f.store);f.store.read=(...a)=>{reads++;return read(...a);};const q={action:'ownerWorldbook',runId:f.runId};assert.equal((await f.host.request(q,null,{})).error.code,'PLAYER_READER_DENIED');assert.equal(reads,0);f.store.readAttempts=()=>{throw Error('NO_ENUMERATION');};f.store.recoverAttempts=()=>{throw Error('NO_RECOVERY');};const v=await f.host.request(q,null,authority);assert(v.ok);assert.equal(v.value.entries[0].title,'Hidden');const c=await f.host.request({...q,action:'playerCollaboration'},null,authority);assert(c.ok);assert.equal(c.value.status,'not_recorded');});
 test('scope revocation during await and lifecycle change discard result, no wider fallback',async()=>{let scope={provider:'@local/dsh-card-studio-scean-test',cardId:'card-a',authoringSessionId:'session-a',generation:1};const run={...raw(),snapshot:{hash:'s',cardId:'card-a',revision:1,source:{provider:scope.provider,card:{id:'card-a',revision:1}},worldbook:{entries:[]}}};let n=0;const host={requireRun(){},engine:{store:{async read(){n++;if(n===1)scope={...scope,generation:2};return run;}}},jobs:{ledger:{records:[]}},progressByRun:new Map()},reader=new PlayerReaders(host),a={...authority,requireCardScope:true,resolveCardScope:async()=>scope};await assert.rejects(reader.read({action:'ownerWorldbook',runId:run.runId,cardScope:{...scope,generation:1}},null,a,{...scope,generation:1}),code('CARD_CONTEXT_CHANGED'));});
@@ -29,3 +31,72 @@ test('scope await cannot publish owner source after an intervening recycle/resto
 test('large legal attempt choices are visibly bounded for list and detail wire responses',()=>{const a=attempt(),attempts=Array.from({length:100},(_,i)=>({operationId:'o'+String(i)+'a'.repeat(150),attemptId:'a'+String(i)+'b'.repeat(150),kind:'turn',status:'committed',acceptedAt:'2026-01-01T00:00:00Z'}));a.tools[0].result.advice.publicUtterances=['合成🙂'.repeat(5000)];const first=collaborationView(raw(),{attempt:a,attempts});assert(first.coverage.attemptChoicesOmitted>0);assert(Buffer.byteLength(JSON.stringify(first))<=48000);const row=first.records.find(r=>r.id==='tool:character-one');const detail=collaborationView(raw(),{attempt:a,attempts},{recordId:row.id,contentField:'answer',contentOffset:row.nextContentOffset});assert(Buffer.byteLength(JSON.stringify(detail))<=48000);assert(detail.coverage.attemptChoicesOmitted>0);});
 test('contradictory snapshot identities and corrupt nested checkpoint rows never become ready data',()=>{for(const field of ['inputSnapshot','turnIdentity']){const a=attempt();if(field==='inputSnapshot')a.inputSnapshot.hash='wrong';else a.turnIdentity.snapshotHash='wrong';assert.equal(collaborationView(raw(),{attempt:a}).status,'association_unknown');}for(const corrupt of [a=>a.stages=[null],a=>a.tools=[null],a=>a.writerHandoff={kind:'public_writer_handoff',interpretation:{knownFacts:[null]}},a=>a.writerHandoff={kind:'public_writer_handoff',interpretation:{knownFacts:{}}}]){const a=attempt();corrupt(a);const v=collaborationView(raw(),{attempt:a});assert.equal(v.status,'source_corrupt');assert.equal(v.records.length,0);}});
 test('terminal no-tool failure is not indefinitely pending, and receipt evidence remains distinct from missing raw',()=>{const a=attempt();a.tools=[];a.directorComplete=false;a.status='failed';assert.equal(collaborationView(raw(),{attempt:a}).records.find(r=>r.id==='director-tools').status,'not_recorded');const v=collaborationView(raw(),{operation:{attemptId:'attempt-a',requestId:'req-a',kind:'turn',status:'committed'},sourceStatus:'source_missing'});assert.equal(v.status,'source_missing');assert.equal(v.operation.canonicalStatus,'committed');assert.equal(v.records.length,0);});
+
+function postBodyAttempt(section){
+ const a=attempt();a.postBodyPolicy='post-body-v1';
+ const assembly={...a.assembly,temporal:{policy:'post-body-v1'},sources:{},recentDialogue:[],characters:[]};
+ a.writerHandoff=buildWriterHandoff({sceneIntent:'A synthetic public scene.',knownFacts:section},{assembly,tools:a.tools,snapshotHash:a.inputSnapshot.hash,turn:1});
+ a.stages.find(s=>s.stage==='writer').prompt.input.directorHandoff=structuredClone(a.writerHandoff);
+ return a;
+}
+
+test('post-body producer handoffs without citations remain readable public projections',()=>{
+ for(const section of [['A public synthetic fact.'],[{text:'A public synthetic fact.'}]]){
+  const a=postBodyAttempt(section),before=hash(a),v=collaborationView(raw(),{attempt:a}),wire=JSON.stringify(v);
+  assert.equal(v.status,'ready');assert.equal(v.operation.canonicalStatus,'committed');
+  assert.equal(v.records.find(r=>r.kind==='consult_character').deliveryStatus,'public_reference_in_completed_writer_packet');
+  assert.equal(v.records.find(r=>r.kind==='consult_character').directorCited,false);
+  const handoff=JSON.parse(v.records.find(r=>r.kind==='handoff').answer);
+  assert.equal(handoff.interpretation.knownFacts[0].text,'A public synthetic fact.');
+  assert.deepEqual(handoff.interpretation.knownFacts[0].sourceRefs,[]);
+  assert(handoff.sourceCatalog.some(r=>r.id==='tool:character-one'));
+  for(const secret of ['WITHHELD-CANARY','INTERNAL-CANARY','STATE-PRIVATE-CANARY','OWNER-CANARY','RAW-STAGE-CANARY'])assert(!wire.includes(secret),secret);
+  assert.equal(hash(a),before);
+ }
+});
+
+test('optional post-body citations do not relax legacy or malformed checkpoint checks',()=>{
+ const legacy=postBodyAttempt([{text:'Public fact.'}]);delete legacy.postBodyPolicy;
+ assert.equal(collaborationView(raw(),{attempt:legacy}).status,'source_corrupt');
+ for(const refs of [null,'input',{},['input',7]]){
+  const a=postBodyAttempt([{text:'Public fact.'}]);a.writerHandoff.interpretation.knownFacts[0].sourceRefs=refs;
+  const v=collaborationView(raw(),{attempt:a});assert.equal(v.status,'source_corrupt');assert.equal(v.records.length,0);
+ }
+ const a=postBodyAttempt([{text:'Public fact.'}]);a.writerHandoff.interpretation.knownFacts[0].sourceRefs=['input'];
+ delete a.postBodyPolicy;const v=collaborationView(raw(),{attempt:a});
+ assert.equal(v.status,'ready');assert.deepEqual(JSON.parse(v.records.find(r=>r.kind==='handoff').answer).interpretation.knownFacts[0].sourceRefs,['input']);
+});
+
+test('a post-body checkpoint saved later is readable after reopening without migration or writes',async t=>{
+ const f=await fixture(t),run=await f.store.read(f.runId),a=postBodyAttempt([{text:'A later synthetic public fact.'}]);
+ a.runId=run.runId;a.inputSnapshot.hash=run.snapshot.hash;a.turnIdentity.snapshotHash=run.snapshot.hash;
+ a.status='failed';const request={action:'playerCollaboration',runId:run.runId,attemptId:a.attemptId};
+ const reader=new PlayerReaders(f.host);
+ assert.equal((await reader.read(request,null,authority)).status,'source_missing');
+ await f.store.writeAttempt(run.runId,a);
+ const file=path.join(f.store.runDir(run.runId),'attempts',a.attemptId+'.json'),before=await fs.readFile(file),runHash=hash(await f.store.read(run.runId)),calls=f.calls();
+ const reopened=new PlayerReaders({...f.host,requireRun:f.host.requireRun.bind(f.host),engine:{store:new DurableStore({root:f.store.root})}});
+ const result=await reopened.read(request,null,authority);
+ assert.equal(result.status,'ready');assert(result.records.some(r=>r.kind==='consult_character'));
+ assert.deepEqual(await fs.readFile(file),before);assert.equal(hash(await f.store.read(run.runId)),runHash);assert.equal(f.calls(),calls);
+});
+
+test('a new complete post-body turn reopens as committed collaboration with no data rewrite',async t=>{
+ const parent=path.resolve(import.meta.dirname,'../.test-tmp');await fs.mkdir(parent,{recursive:true});
+ const root=await fs.mkdtemp(path.join(parent,'post-body-reader-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));
+ const store=new DurableStore({root}),calls=[],model={async generate(a){calls.push(a.stage);
+  if(a.stage==='director')return{text:JSON.stringify({sceneIntent:'A synthetic scene.',knownFacts:['A saved synthetic public fact.']})};
+  if(a.stage==='writer')return{text:JSON.stringify({finalBody:'The synthetic observer waits.',dialogue:[]})};
+  if(a.stage==='post_stat')return{text:JSON.stringify({time:{unchanged:true},stateChanges:[]})};
+  throw Error('Unexpected synthetic stage');
+ }};
+ const engine=new CurrentEngine({store,model,memory:new Memory()}),created=await engine.createRun({runId:'later-reader-run',snapshot:{schemaVersion:1,cardId:'synthetic-card',revision:1,card:{name:'Synthetic'},worldbook:{entries:[]},characters:[{id:'observer',name:'Synthetic observer',description:'A public synthetic observer.'}],preset:{}}});
+ await engine.turn({runId:created.runId,requestId:'later-request',operationId:'later-operation',input:'Observe the synthetic room.'});
+ const run=await store.read(created.runId),attempt=await store.readAttempt(run.runId,run.turns[0].attemptId),file=path.join(store.runDir(run.runId),'attempts',attempt.attemptId+'.json'),before=await fs.readFile(file),runHash=hash(run);
+ assert.equal(attempt.postBodyPolicy,'post-body-v1');assert.equal(attempt.writerHandoff.interpretation.knownFacts[0].sourceRefs,undefined);
+ const host={requireRun(){},engine:{store:new DurableStore({root})},jobs:{ledger:{records:[{runId:run.runId,operationId:attempt.operationId,requestId:attempt.requestId,attemptId:attempt.attemptId,kind:'turn',status:'committed'}]}},progressByRun:new Map()};
+ const result=await new PlayerReaders(host).read({action:'playerCollaboration',runId:run.runId},null,authority);
+ assert.equal(result.status,'ready');assert.equal(result.operation.canonicalStatus,'committed');assert.equal(result.operation.turnLabel,1);
+ assert.equal(result.source.commitId,run.head);assert(result.records.some(r=>r.kind==='handoff'));
+ assert.deepEqual(calls,['director','writer','post_stat']);assert.deepEqual(await fs.readFile(file),before);assert.equal(hash(await store.read(run.runId)),runHash);
+});

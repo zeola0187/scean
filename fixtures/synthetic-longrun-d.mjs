@@ -1,3 +1,4 @@
+import {constructTemporalFixture} from './temporal-history.mjs';
 import {hash,validateSnapshot} from '../core/contracts.mjs';
 import {materializeInitialState} from '../core/state-blueprint.mjs';
 import {encodeRunBundle,validateRunBundle} from '../core/save-bundle.mjs';
@@ -9,12 +10,13 @@ import {narrativeSourceHash} from '../core/narrative.mjs';
 export const D_PRIVATE='SYNTHETIC_D_KALT_ONLY: pump seal serial Q7 has an internal fracture.';
 export const D_SHARED='Kalt told Sio that a pump inspection is pending; the serial and fracture remain undisclosed.';
 const copy=structuredClone;
-export function syntheticLongrun({turns=100,runId=`synthetic-d-${turns}`,bodyRepeats=5,chapters=0}={}){
+export function syntheticLongrun({turns=100,runId=`synthetic-d-${turns}`,bodyRepeats=5,chapters=0,validate=true,transformSnapshot}={}){
   if(!Number.isSafeInteger(turns)||turns<0||turns>1000)throw Error('Synthetic fixture supports 0..1000 turns');
   const raw=historySnapshot();raw.cardId='synthetic-longrun-d';raw.card={name:'Synthetic research ship D',description:'Offline long-form storage, archive and history fixture.'};
   // One initial provenance row remains constant; no growing per-turn state snapshots.
   raw.stateBlueprint.variables=raw.stateBlueprint.variables.filter(v=>v.key==='fuel');
   raw.initialState.values=raw.initialState.values.filter(v=>v.key==='fuel');
+  transformSnapshot?.(raw);
   const snapshot=validateSnapshot(raw),initial=materializeInitialState(snapshot.stateBlueprint,snapshot.initialState,snapshot.characters);
   const stamp='2026-10-16T00:00:00.000Z';
   const run={schemaVersion:1,runId,version:turns,head:null,snapshot,baselineState:copy(initial.state),state:copy(initial.state),baselineProvenance:copy(initial.provenance),stateProvenance:copy(initial.provenance),turns:[],memories:[],playerHistory:[],receipts:{},operationReceipts:{},retired:[],banList:[],createdAt:stamp,updatedAt:stamp};
@@ -50,5 +52,5 @@ export function syntheticLongrun({turns=100,runId=`synthetic-d-${turns}`,bodyRep
     run.version=turns+chapters;
   }
   // Run the exact production portable-domain validation, including every source/ACL/receipt.
-  validateRunBundle(encodeRunBundle(run));return run;
+  constructTemporalFixture(run);if(validate)validateRunBundle(encodeRunBundle(run));return run;
 }

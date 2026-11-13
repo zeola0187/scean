@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {mkdtemp} from 'node:fs/promises';import {tmpdir} from 'node:os';import {join} from 'node:path';
-import {SceanEngine} from '../core/engine.mjs';import {SceanHost} from '../plugin/host.mjs';import {DurableStore} from '../adapters/store.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';import {SceanHost} from '../plugin/host.mjs';import {DurableStore} from '../adapters/store.mjs';
 import {ChapterRecall,chapterContextSources} from '../core/chapter-recall.mjs';
 import {chapterRecallFixture,chapterRecallPorts} from '../fixtures/synthetic-chapter-recall.mjs';
 import {validateNarrative} from '../core/narrative.mjs';import {encodeRunBundle,validateRunBundle} from '../core/save-bundle.mjs';
@@ -20,7 +20,7 @@ async function fixture({archived=false,missing=false,failArchive=false,failDirec
   if(a.stage==='post_stat')return{text:JSON.stringify({contractVersion:2,stateChanges:[],memories:[],playerHistory:[]})};
   assert.fail('Unexpected stage '+a.stage);
  }};
- const recall=new ChapterRecall({embed:missing?undefined:ports.embed,rerankModel:missing?undefined:model,embeddingModel:'scripted'}),engine=new SceanEngine({store,model,chapterRecall:recall,memory:{async retrieve(){return{records:[]};}}});
+ const recall=new ChapterRecall({embed:missing?undefined:ports.embed,rerankModel:missing?undefined:model,embeddingModel:'scripted'}),engine=new SceanEngine({postBody:false,store,model,chapterRecall:recall,memory:{async retrieve(){return{records:[]};}}});
  if(archived)await store.create(await chapterRecallFixture());
  const hostRoot=join(root,'host'),host=await new SceanHost({engine,root:hostRoot,chapterModelsEnabled:true}).init();
  const runId=archived?'synthetic-chapter-recall':(await host.createRun({snapshot,initialState:{world:{facts:{task:'STATE_MUST_REMAIN'}},characters:{lin:{public:{},private:{secret:'OWNER_STATE_MUST_NOT_LEAK'}}}}})).runId;

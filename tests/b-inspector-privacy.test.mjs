@@ -7,7 +7,7 @@ import {budgetStage} from '../core/context-budget.mjs';
 import {publicInspection,publicTurnResult} from '../core/inspection.mjs';
 import {hash} from '../core/contracts.mjs';
 import {SceanHost} from '../plugin/host.mjs';
-import {SceanEngine} from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {DurableStore} from '../adapters/store.mjs';
 import {Memory} from '../core/memory.mjs';
 
@@ -57,7 +57,7 @@ async function hostFixture(){
     if(['draft','prose'].includes(stage))return{text:'Public body'};
     return{text:JSON.stringify({contractVersion:2,stateChanges:[],memories:[]})};
   }};
-  const store=new DurableStore({root:join(root,'store')}),engine=new SceanEngine({unconfiguredWritingMode:'current',store,model,memory:new Memory()});
+  const store=new DurableStore({root:join(root,'store')}),engine=new SceanEngine({postBody:false,unconfiguredWritingMode:'current',store,model,memory:new Memory()});
   const host=await new SceanHost({engine,root:join(root,'host'),now:()=>now}).init();
   const created=await host.createRun({snapshot:{schemaVersion:1,cardId:'synthetic-privacy',revision:'r1',card:{name:'Synthetic ship'},worldbook:{entries:[]},preset:{},characters:[{id:'kalt',name:'Kalt',description:'Private background'}]}});
   const run=await store.read(created.runId),memory={...privateMemory(created.runId),text:'harbor private equipment',knowers:['kalt'],characterIds:['kalt'],source:{...privateMemory(created.runId).source,turn:0,commitId:'synthetic-seed',bodyHash:'synthetic-body',snapshotHash:run.snapshot.hash}};

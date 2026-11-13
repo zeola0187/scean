@@ -11,7 +11,7 @@ import * as studioPlugin from '../packages/studio/index.js';
 import {loadSkills,readSkill,bundledSkillsRoot,retiredSkillNames,nativeAuthoringSkillNames} from '../packages/studio/lib/workspace-setup.js';
 import {toolSpecs} from '../packages/studio/lib/tool-definitions.js';
 import {buildSavedSnapshot} from '../packages/studio/lib/scean-integration.js';
-import {SceanEngine} from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {DurableStore} from '../adapters/store.mjs';
 import {w01Fixture} from '../fixtures/w01-frontends.mjs';
 const sha=b=>createHash('sha256').update(b).digest('hex');
@@ -103,7 +103,7 @@ test('new Skill example executes registered frontend read/validate/preview/save/
  assert((await s.bridge.setAuthoringScope(s.agent,{claim:s.claim,mode:'full',expected_epoch:scope.value.authoring_scope.epoch},new AbortController().signal)).ok);
  assert.equal((await ok('dynamic_save',{...candidate,expected_revision:0})).revision,1);const saved=await read(),current=await ok('dynamic_read');assert.equal(saved.revision,1);assert.deepEqual(saved.card.data.extensions.syntheticPreserved,card.data.extensions.syntheticPreserved);assert.equal(saved.card.data.first_mes,card.data.first_mes);assert.deepEqual(saved.card.data.extensions.scean.characters,card.data.extensions.scean.characters);assert.equal((await ok('dynamic_preview')).html,preview.html);
  const changed=structuredClone(current.derivedFacts);changed.facts[0].description+=' changed';assert.equal((await call('dynamic_validate',{derived_facts:changed})).error.code,'DERIVED_HASH_MISMATCH');delete changed.hash;assert.equal((await ok('dynamic_validate',{derived_facts:changed})).valid,true);
- const engine=new SceanEngine({unconfiguredWritingMode:'current',store:new DurableStore({root:path.join(s.home,'synthetic-runs')}),model:{async generate(){assert.fail('NO_MODEL');}},memory:{async retrieve(){return {records:[]};}}}),run=await engine.createRun({snapshot:buildSavedSnapshot(saved)});
+ const engine=new SceanEngine({postBody:false,unconfiguredWritingMode:'current',store:new DurableStore({root:path.join(s.home,'synthetic-runs')}),model:{async generate(){assert.fail('NO_MODEL');}},memory:{async retrieve(){return {records:[]};}}}),run=await engine.createRun({snapshot:buildSavedSnapshot(saved)});
  const patch={expected_revision:1,expected_source_hash:current.frontend.hash,field:'html',old_text:'觀測手帳',new_text:'觀測手帳・修訂'};assert.equal((await ok('dynamic_patch',patch)).revision,2);
  assert.equal((await call('dynamic_patch',patch)).error.code,'REVISION_CONFLICT');assert.equal((await call('dynamic_patch',{...patch,expected_revision:2})).error.code,'FRONTEND_SOURCE_CONFLICT');
  const latest=await ok('dynamic_read');assert.notEqual(latest.frontend.hash,current.frontend.hash);assert.equal((await read()).revision,2);assert.equal((await engine.store.read(run.runId)).snapshot.frontend.hash,current.frontend.hash);

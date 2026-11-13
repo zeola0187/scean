@@ -12,13 +12,13 @@ const statuses=new Set(['watching','ready','consumed','suppressed']);
 export class NotificationLedger {
   constructor(root,{capacity=1024,fault}={}){this.root=root;this.capacity=capacity;this.fault=fault;this.queue=Promise.resolve();this.state=null;this.available=true;}
   validate(value){
-    if(value?.schemaVersion!==1||!Array.isArray(value.watches)||value.watches.length>this.capacity)fail();
+    if(![1,2].includes(value?.schemaVersion)||!Array.isArray(value.watches)||value.watches.length>this.capacity)fail();
     safeId(value.storeId);const ids=new Set();
     const keys=new Set(['id','runId','requestId','operationId','kind','destinationId','sessionId','cardProvider','cardId','snapshotHash','baseVersion','baseHead','createdAt','expiresAt','status','event','reason','consumedAt']);
     for(const row of value.watches){
       if(Object.keys(row).some(key=>!keys.has(key)))fail();
       for(const key of ['id','runId','requestId','operationId','destinationId','sessionId','cardId'])safeId(row[key]);
-      if(ids.has(row.id)||!statuses.has(row.status)||!['turn','regenerate'].includes(row.kind)||!/^[a-f0-9]{64}$/.test(row.snapshotHash)||!Number.isSafeInteger(row.baseVersion)||row.baseVersion<0||!Number.isFinite(row.createdAt)||!Number.isFinite(row.expiresAt))fail();
+      if(ids.has(row.id)||!statuses.has(row.status)||!['turn','regenerate','settlementResume'].includes(row.kind)||row.kind==='settlementResume'&&value.schemaVersion!==2||!/^[a-f0-9]{64}$/.test(row.snapshotHash)||!Number.isSafeInteger(row.baseVersion)||row.baseVersion<0||!Number.isFinite(row.createdAt)||!Number.isFinite(row.expiresAt))fail();
       if(row.baseHead!==null)safeId(row.baseHead);ids.add(row.id);
       if(row.event){
         if(Object.keys(row.event).some(key=>!['eventId','commitId','attemptId','commitVersion','committedAt'].includes(key)))fail();
@@ -48,7 +48,7 @@ export class NotificationLedger {
   transaction(work){
     const operation=this.queue.catch(()=>{}).then(async()=>{
       if(!this.available||!this.state)fail();const next=clone(this.state),result=await work(next);
-      this.validate(next);if(JSON.stringify(next)===JSON.stringify(this.state))return result;
+      if(next.watches.some(row=>row.kind==='settlementResume'))next.schemaVersion=2;this.validate(next);if(JSON.stringify(next)===JSON.stringify(this.state))return result;
       try{await this.write(next);this.state=next;}
       catch{try{this.state=await this.read();}catch{this.available=false;}fail();}
       return result;

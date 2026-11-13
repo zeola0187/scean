@@ -24,7 +24,7 @@
 | story-rules | model_guidance | 人物演繹、文風、因果、事件知情判斷靠模型 | `core/prompt-r3.mjs:3` / `tests/r3-handoffs.test.mjs` |
 | semantic-secrecy | model_guidance | 自由文字披露無語義保密保證，作者分域＋模型遵循 | `core/character-advice.mjs:20` / `authoring/tests/acceptance.test.mjs` |
 | arbitrary-scripts | requires_host_ui | 不執行任意 JS/EJS/MVU/TavernHelper/regex replacement | `studio/cardstudio-bundle/lib/scean-integration.js:30` / `authoring/tests/acceptance.test.mjs` |
-| deterministic-rules | requires_host_ui | 沒有確定性骰子/消耗公式/時間排程/任意事件predicate | `core/engine.mjs:106` / `authoring/tests/acceptance.test.mjs` |
+| deterministic-rules | requires_host_ui | 沒有通用骰子、消耗公式或任意規則引擎；StoryClock／公共事件已有 Host 契約 | `core/engine.mjs:106` / `authoring/tests/acceptance.test.mjs` |
 | custom-ui | requires_host_ui | 專屬控制臺/地圖/操作按鈕需另實作Host/UI；本輪不做 | `plugin/player-native-bridge.mjs:2` / `tests/milestone-a-ui.test.mjs` |
 | owner-summary-writer | requires_host_ui | 只有ownerSummaryContext契約，無產生及儲存流程 | `core/memory-policy.mjs:136` / `tests/a1-memory.test.mjs` |
 | missing-author-choice | author_decision | 未定初值/公式/披露/性別等不可杜撰；ready必須解決 | `core/contracts.mjs:44` / `authoring/tests/acceptance.test.mjs` |
@@ -34,3 +34,6 @@
 | player-history | runtime_executable | 與NPC記憶分離，Host提供來源；不自動進NPC/Writer | `core/memory-policy.mjs:123` / `tests/a1-integration.test.mjs` |
 | poststat-output-contract | runtime_executable | 具體npcStateIds供模型；仍是prompt_contract_only；Host全輪拒絕非法scope | `core/post-stat-output.mjs:6` / `tests/post-stat-scope.test.mjs` |
 | player-shared-shell | runtime_executable | 既有responsive共用前端、native bridge；本輪無專屬frontend | `isolated/web/player-shell.mjs:4` / `tests/milestone-a-ui.test.mjs` |
+
+
+W29 現行能力：唯一 StoryClock、公共七日規劃、角色論壇主文／跨日留言、附來源的 RP 回流、零模型日曆／論壇閱讀、獨立日曆／論壇模型選擇，以及新卡顯式選用的有界路人氣氛主文。見 [world-routine.md](world-routine.md)。日記自動頻率尚未決定，不可宣稱自動日記已啟用。

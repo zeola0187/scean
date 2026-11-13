@@ -4,9 +4,9 @@ import {ChapterProviderSettings} from './chapter-settings.mjs';
 import {configuredChapterPorts} from '../adapters/chapter-providers.mjs';
 import {createNativeModelPort} from './native-model.mjs';
 
-export function createChapterConfiguration({ctx,config,dataRoot,usageLedger,legacyNativeModel,fetchImpl=fetch}){
+export function createChapterConfiguration({ctx,config,dataRoot,usageLedger,legacyNativeModel,modelRouting,fetchImpl=fetch}){
   const settings=new ChapterProviderSettings({credentialSource:()=>ctx.get('credentials'),scope:{profile:ctx.get('profileContext')?.name??'host',dataRoot},config,nativeSelection:()=>ctx.agentDefaultModel.currentSelection()});
-  const nativeModel=createNativeModelPort({llm:ctx.llm,agentDefaultModel:ctx.agentDefaultModel,usageLedger,stageMaxTokens:config.stageMaxTokens,timeoutMs:config.timeoutMs,technicalRetries:config.technicalRetries});
+  const nativeModel=createNativeModelPort({llm:ctx.llm,agentDefaultModel:ctx.agentDefaultModel,routing:modelRouting,usageLedger,stageMaxTokens:config.stageMaxTokens,timeoutMs:config.timeoutMs,technicalRetries:config.technicalRetries});
   const ports=configuredChapterPorts({settings,nativeModel,legacyNativeModel,usageLedger,fetchImpl});
   const runtimeFactory=status=>{
     if(!status.settings.flags.chapterModelsEnabled)return undefined;

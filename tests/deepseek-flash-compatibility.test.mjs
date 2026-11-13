@@ -20,10 +20,10 @@ test('shipped Flash alias capabilities resolve without authentication or network
  const f=await fixture();const oldFetch=globalThis.fetch;globalThis.fetch=()=>assert.fail('Capability lookup must not dispatch');
  try{
   const model=await f.ctx.llm.resolveModelInfo('deepseek-official','deepseek-flash');
-  assert.equal(model.id,'deepseek-flash');assert.equal(model.context.contextWindow,1000000);
+  assert.equal(model.id,'deepseek-flash');assert.equal(model.context.contextWindow,1048576);
   assert.equal(model.defaultMaxTokens,256000);assert.equal(model.toolUpdate,'addition-only');assert.equal(model.systemPromptUpdate,'in-history');
   assert.deepEqual(model.reasoning.efforts.map(x=>x.id),['off','low','high','max']);
-  const described=await f.port.describe({stage:'prose'});assert.equal(described.requested.model,'deepseek-flash');assert.equal(described.capabilities.outputLimit,256000);assert.equal(described.capabilities.outputLimitSource,'dsh_model_default');assert.equal(described.capabilities.contextWindow,1000000);
+  const described=await f.port.describe({stage:'prose'});assert.equal(described.requested.model,'deepseek-flash');assert.equal(described.capabilities.outputLimit,256000);assert.equal(described.capabilities.outputLimitSource,'dsh_model_default');assert.equal(described.capabilities.contextWindow,1048576);
   assert.equal(f.authCalls(),0);
  }finally{globalThis.fetch=oldFetch;await f.ctx.fiber.dispose();}
 });

@@ -1,13 +1,14 @@
 {
   "schemaVersion": 1,
   "license": "AGPL-3.0-only",
-  "status": "RELEASE_WITH_DETACHED_VERIFICATION",
-  "sourceUrl": "https://github.com/zeola0187/scean/tree/main",
+  "status": "FIXED_TAG_SOURCE_OFFER",
+  "version": "1.6.4-local.w29.2d.rc3.1.dsh022.3",
+  "baselineTag": "v1.6.4-local.w29.2d.rc3.1",
+  "sourceUrl": "https://github.com/zeola0187/scean/tree/v1.6.4-local.w29.2d.rc3.1.dsh022.3",
+  "note": "Fixed source tag; exact commit, archive hashes and public verification are recorded in the detached release receipt.",
+  "releaseTag": "v1.6.4-local.w29.2d.rc3.1.dsh022.3",
   "revision": null,
   "sourceArchiveSha256": null,
-  "networkSourceNoticeReady": false,
   "anonymousSourceAccessVerified": false,
-  "note": "SCEAN 1.6.0 versioned release. The detached source receipt records the exact clean public commit, full source ZIP hash, anonymous access and artifact verification without a circular self-hash. Public main remains the prominent source offer. No private history, third-party private styles or RP data are distributed.",
-  "releaseTag": "v1.6.0",
-  "releaseUrl": "https://github.com/zeola0187/scean/releases/tag/v1.6.0"
+  "networkSourceNoticeReady": false
 }

@@ -3,6 +3,7 @@ import {mountTurnDuration} from '../isolated/web/turn-duration.mjs';
 import {mountWritingMode} from '../isolated/web/writing-mode-ui.mjs';
 import {mountProseStyle} from '../isolated/web/prose-style-ui.mjs';
 import {mountPlayerIdentity} from '../isolated/web/player-identity-ui.mjs';
+import {mountTimeConfirmation} from '../isolated/web/time-confirmation-ui.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
@@ -13,6 +14,7 @@ import {createNativeBridge} from '../plugin/player-native-bridge.mjs';
 import {nativeFrameBootstrap} from '../plugin/native-frame-source.mjs';
 import {mountCardFrontend} from '../isolated/web/card-frontend.mjs';
 import {mountChapterSettings} from '../isolated/web/chapter-settings-ui.mjs';
+import {mountAgentModels} from '../isolated/web/agent-models-ui.mjs';
 import {mountOpeningSelection} from '../isolated/web/opening-selection-ui.mjs';
 import {captureReadingAnchor,restoreReadingAnchor} from '../isolated/web/reading-layout.mjs';
 
@@ -32,14 +34,16 @@ function fixture({secure=true,crypto=webcrypto,navigationType='navigate',priorVi
     window:{addEventListener(event,fn){windowListeners.set(event,fn);}},
     sessionStorage:{getItem:key=>storage.get(key)??null,setItem:(key,value)=>storage.set(key,value)},
     createNotificationClient:()=>({watch:async()=>{},refresh(){},dispose(){},target:eventId=>targetResolver(eventId)}),mountNotificationControls:()=>({render(){}}),showNotificationToast(){},
-    mountPlayerIdeas:()=>({update(){},reset(){},dispose(){}}),mountPlayerReaders:()=>({update(){},reset(){},dispose(){}}),renderDialogueBody:(el,item)=>{el.textContent=item.body;return {status:'neutral'};},mountRunRecycle:()=>({update(){},reset(){},addAction(){},lookup(){}}),mountPresentationPanel:()=>({update(){},reset(){},dispose(){}}),
-    mountPlayerShell:()=>({show(){},committed(){},atEnd:()=>false,reading:{scrollTop:0,scrollHeight:100,addEventListener(){},getBoundingClientRect:()=>({top:0,bottom:100})},scrollEnd(){}}),mountStudio(){}};
+    mountWorldRoutineReaders:()=>({update(){},reset(){},dispose(){}}),mountScriptLibrary:()=>({render(){},reset(){}}),mountPlayerIdeas:()=>({update(){},reset(){},dispose(){}}),mountPlayerReaders:()=>({update(){},reset(){},dispose(){}}),renderDialogueBody:(el,item)=>{el.textContent=item.body;return {status:'neutral'};},mountRunRecycle:()=>({update(){},reset(){},addAction(){},lookup(){}}),mountPresentationPanel:()=>({update(){},reset(){},dispose(){}}),
+    mountPlayerShell:()=>({placeRecycle(){},setNavigation(){},story(){},show(){},committed(){},atEnd:()=>false,reading:{scrollTop:0,scrollHeight:100,addEventListener(){},getBoundingClientRect:()=>({top:0,bottom:100})},scrollEnd(){}}),mountStudio(){}};
   context.mountTurnDuration=options=>mountTurnDuration({...options,now:()=>0,interval:()=>0,clear(){}});
   context.mountCardFrontend=()=>mountCardFrontend({document:context.document,setTimer:()=>0,clearTimer(){}});
   context.mountChapterSettings=options=>mountChapterSettings({...options,document:context.document});
+  context.mountAgentModels=options=>mountAgentModels({...options,document:context.document});
   context.mountWritingMode=options=>mountWritingMode({...options,document:context.document,makeId:()=>webcrypto.randomUUID()});
   context.mountProseStyle=options=>mountProseStyle({...options,document:context.document,makeId:()=>webcrypto.randomUUID()});
   context.mountPlayerIdentity=options=>mountPlayerIdentity({...options,document:context.document,makeId:()=>webcrypto.randomUUID()});
+  context.mountTimeConfirmation=options=>mountTimeConfirmation({...options,document:context.document});
   context.mountOpeningSelection=options=>mountOpeningSelection({...options,document:context.document});
   vm.createContext(context);
   const executable=source.replace(/^import .*;\r?\n/gm,'').replace(/^init\(\);\s*$/m,'');
@@ -255,7 +259,7 @@ test('only explicit Retry after a confirmed retryable terminal receipt sends ret
       if(action==='runView')return run();return emptyProgress;
     });
     await client.submitTurn(explicit);
-    assert.equal(submitted.requestId,'request-a');assert.equal(submitted.input,'Preserved failed input');
+    if(explicit)assert.equal(submitted.requestId,'request-a');else assert.notEqual(submitted.requestId,'request-a');assert.equal(submitted.input,'Preserved failed input');
     assert.equal(submitted.retryOf,explicit?'failed-job':undefined);assert.notEqual(submitted.operationId,'failed-job');
     assert.equal(submitted.viewerId,client.viewerId);assert.equal(submitted.baseVersion,1);assert.equal(submitted.baseHead,null);
   }
@@ -330,15 +334,15 @@ test('native presentation storage sanitizes settings, preserves saved normal and
   Object.defineProperty(globalThis,'localStorage',{configurable:true,value:{getItem:key=>stored.get(key)??null,setItem:(key,value)=>{stored.set(key,value);writes.push(value);}}});
   try{
     const bridge=createNativeBridge({selectPanel(){},call:()=>assert.fail('presentation is local only')});
-    assert.deepEqual(await bridge.request('native.presentationGet'),{schemaVersion:1,theme:'system',readingSize:'large',...layoutDefaults,persistence:'default'});assert.equal(writes.length,0);
+    assert.deepEqual(await bridge.request('native.presentationGet'),{schemaVersion:1,theme:'system',readingSize:'normal',...layoutDefaults,persistence:'default'});assert.equal(writes.length,0);
     stored.set('scean.presentation.v1',JSON.stringify({schemaVersion:1,theme:'dark',readingSize:'normal',unexpected:'PRIVATE'}));
     assert.deepEqual(await bridge.request('native.presentationGet'),{schemaVersion:1,theme:'dark',readingSize:'normal',...layoutDefaults,persistence:'saved'});
     await bridge.request('native.presentationSave',{schemaVersion:1,theme:'light',readingSize:'large',unexpected:'PRIVATE'});
     assert(!writes.at(-1).includes('PRIVATE'));assert.deepEqual(JSON.parse(writes.at(-1)),{schemaVersion:1,theme:'light',readingSize:'large',...layoutDefaults});
     stored.set('scean.presentation.v1',JSON.stringify({schemaVersion:1,theme:'dark',readingSize:'normal',padding:'x'.repeat(1024)}));
-    assert.deepEqual(await bridge.request('native.presentationGet'),{schemaVersion:1,theme:'system',readingSize:'large',...layoutDefaults,persistence:'default'});
+    assert.deepEqual(await bridge.request('native.presentationGet'),{schemaVersion:1,theme:'system',readingSize:'normal',...layoutDefaults,persistence:'default'});
     stored.set('scean.presentation.v1',JSON.stringify({schemaVersion:1,theme:'dark',readingSize:'normal',padding:'字'.repeat(400)}));
-    assert.deepEqual(await bridge.request('native.presentationGet'),{schemaVersion:1,theme:'system',readingSize:'large',...layoutDefaults,persistence:'default'});
+    assert.deepEqual(await bridge.request('native.presentationGet'),{schemaVersion:1,theme:'system',readingSize:'normal',...layoutDefaults,persistence:'default'});
     await assert.rejects(bridge.request('native.presentationSave',{schemaVersion:1,theme:'invalid',readingSize:'large'}),{code:'NATIVE_PRESENTATION_INVALID'});
     Object.defineProperty(globalThis,'localStorage',{configurable:true,get(){throw new Error('Storage unavailable');}});
     assert.equal((await bridge.request('native.presentationGet')).persistence,'unavailable');

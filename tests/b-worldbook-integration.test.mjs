@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdtemp} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
-import {SceanEngine} from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {DurableStore} from '../adapters/store.mjs';
 
 // Synthetic data and a capturing model port. No network or generation provider.
@@ -35,7 +35,7 @@ async function fixture(source=snapshot(),{consultStat=false}={}) {
     throw Error('Unexpected stage '+args.stage);
   }};
   const memory={async retrieve(){return{records:[],status:'synthetic_offline'};}};
-  const engine=new SceanEngine({unconfiguredWritingMode:'current',store,model,memory});
+  const engine=new SceanEngine({postBody:false,unconfiguredWritingMode:'current',store,model,memory});
   const run=await engine.createRun({snapshot:source,initialState:{world:{facts:{lampLit:false}},characters:{}}});
   return{engine,store,calls,run};
 }

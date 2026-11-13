@@ -7,7 +7,7 @@ export function formatTurnDuration(ms){
   return h?`${h}:${m}:${s}`:`${m}:${s}`;
 }
 export function turnDurationView(timing,{runId,now=0,receivedAt=now,disconnected=false}={}){
-  if(!timing||timing.runId!==runId||timing.scope!=='host_operation'||!['turn','regenerate'].includes(timing.kind)||!timing.operationId||!timing.requestId)return {text:'',hidden:true};
+  if(!timing||timing.runId!==runId||timing.scope!=='host_operation'||!['turn','regenerate','settlementResume'].includes(timing.kind)||!timing.operationId||!timing.requestId)return {text:'',hidden:true};
   const start=stamp(timing.startedAt),end=stamp(timing.finishedAt),server=stamp(timing.serverNow),running=RUNNING.has(timing.status);
   if(!Number.isFinite(start)||!Number.isFinite(server)||server<start)return {text:'',hidden:true};
   const live=running&&!Number.isFinite(end),elapsed=(live?server+Math.max(0,now-receivedAt):end)-start;

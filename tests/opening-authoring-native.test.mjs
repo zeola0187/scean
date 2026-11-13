@@ -9,7 +9,7 @@ import {nativeHost} from '../sources/card-studio/tests/helpers/portable-host.js'
 import * as studio from '../packages/studio/index.js';
 import {loadSkills,bundledSkillsRoot,readSkill} from '../packages/studio/lib/workspace-setup.js';
 import {SceanHost} from '../plugin/host.mjs';
-import {SceanEngine} from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {Memory} from '../core/memory.mjs';
 import {DurableStore} from '../adapters/store.mjs';
 import {w01Fixture} from '../fixtures/w01-frontends.mjs';
@@ -17,7 +17,7 @@ const skill='scean-opening-authoring';
 async function setup(t,{rich=false}={}){
  const home=await fs.mkdtemp(path.join(tmpdir(),'opening-authoring-native-')),prior=process.env.DSH_HOME;process.env.DSH_HOME=home;
  const store=new DurableStore({root:path.join(home,'runs')});let modelCalls=0;
- const runtime=await new SceanHost({root:path.join(home,'host'),engine:new SceanEngine({unconfiguredWritingMode:'current',store,memory:new Memory(),model:{generate(){modelCalls++;throw Error('MODEL_FORBIDDEN');}}})}).init();
+ const runtime=await new SceanHost({root:path.join(home,'host'),engine:new SceanEngine({postBody:false,unconfiguredWritingMode:'current',store,memory:new Memory(),model:{generate(){modelCalls++;throw Error('MODEL_FORBIDDEN');}}})}).init();
  const h=await nativeHost(home,{name:'opening-authoring-native-fixture',async apply(ctx){ctx.provide('scean',runtime);await ctx.plugin(studio);}});
  const workspace=h.registry.list()[0].path,agent=h.agent('opening-author-session',workspace);agent.session.snapshotEvents=()=>[];
  const bridge=h.ctx.get('cardstudioSceanBridge');

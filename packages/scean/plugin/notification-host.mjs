@@ -20,7 +20,7 @@ export class HostNotifications {
   async watch(request){
     const {runId,requestId,operationId,kind,baseVersion,baseHead}=request;
     for(const id of [runId,requestId,operationId,request.destinationId])identity(id);
-    if(!['turn','regenerate'].includes(kind)||!Number.isSafeInteger(baseVersion)||baseVersion<0||!(baseHead===null||typeof baseHead==='string'))fail('NOTIFICATION_WATCH_INVALID');
+    if(!['turn','regenerate','settlementResume'].includes(kind)||!Number.isSafeInteger(baseVersion)||baseVersion<0||!(baseHead===null||typeof baseHead==='string'))fail('NOTIFICATION_WATCH_INVALID');
     if(baseHead!==null)identity(baseHead);this.host.requireRun(runId);
     // A lost-ACK replay can arrive while the original pipeline owns the Run
     // lock. Its existing watch is readonly and must keep the admitted owner.

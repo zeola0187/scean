@@ -17,6 +17,7 @@ for marker, source, declaration in [
     ('/* MATERIAL_CLIENT */', 'lib/client-materials.js', 'export function createMaterialComponents'),
     ('/* CHAT_PANEL_PREVIEW */', 'lib/chat-panel-preview.js', 'export '),
     ('/* LIBRARY_CLIENT */', 'lib/client-library.js', 'export function createLibraryComponents'),
+    ('/* AUTHORING_NAVIGATION */', 'lib/authoring-navigation.js', 'export class AuthoringNavigation'),
     ('/* WORKSPACE_CLIENT */', 'lib/client-controller.js', 'export class WorkspaceClient'),
     ('/* CARDSTUDIO_REMOTE */', 'lib/bridge-protocol.js', 'export const cardstudioRemote'),
 ]:

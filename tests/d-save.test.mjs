@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdtemp} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
-import {SceanEngine} from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {DurableStore} from '../adapters/store.mjs';
 import {hash} from '../core/contracts.mjs';
 import {encodeRunBundle,validateRunBundle,SAVE_LIMITS} from '../core/save-bundle.mjs';
@@ -21,13 +21,13 @@ async function simple(){const f=await createHistoryFixture();await playHistory(f
 // No real card, model provider, embedding provider, SDK or existing gate is used.
 test('D save preserves legal C v1 unchanged and never invents narrative or invokes a model on restore',async()=>{
   const f=await createHistoryFixture();await playHistory(f,'private','c-origin');const run=await f.store.read(f.run.runId),beforeCalls=f.model.calls.length;
-  const b=encodeRunBundle(run),restored=validateRunBundle(JSON.stringify(b));assert.equal(b.schemaVersion,1);assert(!Object.hasOwn(restored,'narrative'));assert.equal(f.model.calls.length,beforeCalls);
+  const b=encodeRunBundle(run),restored=validateRunBundle(JSON.stringify(b));assert.equal(b.schemaVersion,9);assert(!Object.hasOwn(restored,'narrative'));assert.equal(f.model.calls.length,beforeCalls);
   assert.deepEqual(encodeRunBundle(restored),b);assert.equal(restored.snapshot.hash,run.snapshot.hash);
 });
 
 test('D save v2 adds only validated derived narrative and retains original authority, snapshot hash and limits',async()=>{
   const f=await simple(),run=await f.store.read(f.run.runId),before=copy(run),b=encodeRunBundle(run),restored=validateRunBundle(JSON.stringify(b));
-  assert.equal(b.schemaVersion,2);assert.equal(restored.schemaVersion,1);assert.deepEqual(restored.narrative,run.narrative);assert.deepEqual(run,before);
+  assert.equal(b.schemaVersion,9);assert.equal(restored.schemaVersion,1);assert.deepEqual(restored.narrative,run.narrative);assert.deepEqual(run,before);
   for(const field of ['runId','version','head','snapshot','state','memories','playerHistory','stateProvenance','turns','retired'])assert.deepEqual(restored[field],run[field]);
   assert.deepEqual(SAVE_LIMITS,{bytes:16777216,depth:64,nodes:300000,turns:1000,retired:256,receipts:4096,records:100000});
   assert.equal(selectNarrative(restored).summary.id,run.narrative.currentSummaryId);
@@ -35,8 +35,8 @@ test('D save v2 adds only validated derived narrative and retains original autho
 
 test('D save rejects hidden narrative in v1, incomplete v2, unsupported versions and narrative schema drift',async()=>{
   const f=await simple(),b=encodeRunBundle(await f.store.read(f.run.runId));
-  const hidden=copy(b);hidden.schemaVersion=1;assert.throws(()=>validateRunBundle(hidden),code('SAVE_FIELDS'));
-  const absent=copy(b);delete absent.run.narrative;resign(absent);assert.throws(()=>validateRunBundle(absent),code('SAVE_FORMAT_VERSION'));
+  const hidden=copy(b);hidden.schemaVersion=1;assert.throws(()=>validateRunBundle(hidden),code('SAVE_FORMAT_VERSION'));
+  const absent=copy(b);delete absent.run.narrative;resign(absent);assert.throws(()=>validateRunBundle(absent),code('SAVE_DOMAINS'));
   for(const v of [0,3,'2'])assert.throws(()=>validateRunBundle({...b,schemaVersion:v}),code('SAVE_FORMAT_VERSION'));
   const malformed=copy(b);malformed.run.narrative.schemaVersion=99;resign(malformed);assert.throws(()=>validateRunBundle(malformed));
 });
@@ -88,7 +88,7 @@ test('D save research ship three chapters, rolling summaries, rollback/regen, cl
   const original=await a.store.read(a.run.runId),bundle=encodeRunBundle(original),restored=validateRunBundle(JSON.stringify(bundle));
   assert.equal(restored.narrative.chapters.length,3);assert.equal(restored.narrative.chapters[1].status,'stale');assert.equal(restored.narrative.chapters[2].status,'completed');
   const root=await mkdtemp(join(tmpdir(),'scean-d-save-destination-')),store=new DurableStore({root});await store.create(restored);
-  const restarted=new DurableStore({root}),model=historyModel(),memory=syntheticHistoryMemory(),engine=new SceanEngine({unconfiguredWritingMode:'current',store:restarted,model,memory});
+  const restarted=new DurableStore({root}),model=historyModel(),memory=syntheticHistoryMemory(),engine=new SceanEngine({postBody:false,unconfiguredWritingMode:'current',store:restarted,model,memory});
   assert.deepEqual(await restarted.read(restored.runId),restored);assert.equal(model.calls.length,0);assert.equal((await restarted.listRuns())[0].runId,restored.runId);
   for(const field of ['snapshot','turns','state','memories','playerHistory','stateProvenance','version','head','retired','narrative'])assert.deepEqual(restored[field],original[field]);
   assert.deepEqual(await recoverNarrative(engine,restored.runId),{status:'unchanged'});assert.equal(model.calls.length,0);
@@ -105,7 +105,7 @@ test('D save pending summary restore marks interruption without an automatic mod
   const job=updateSummary(a.engine,request,{enabled:true,model:{async generate(){entered();await wait;return{text:'A late synthetic summary.'};}}});
   await ready;const restored=validateRunBundle(encodeRunBundle(await a.store.read(a.run.runId)));assert.equal(restored.narrative.operations['pending-summary'].status,'pending');
   controller.abort();release();await assert.rejects(job);
-  const root=await mkdtemp(join(tmpdir(),'scean-d-pending-import-')),store=new DurableStore({root});await store.create(restored);const model=historyModel(),engine=new SceanEngine({unconfiguredWritingMode:'current',store:new DurableStore({root}),model,memory:syntheticHistoryMemory()});
+  const root=await mkdtemp(join(tmpdir(),'scean-d-pending-import-')),store=new DurableStore({root});await store.create(restored);const model=historyModel(),engine=new SceanEngine({postBody:false,unconfiguredWritingMode:'current',store:new DurableStore({root}),model,memory:syntheticHistoryMemory()});
   assert.equal((await recoverNarrative(engine,restored.runId)).status,'recovered');assert.equal(model.calls.length,0);
   const retried=await updateSummary(engine,{...request,signal:undefined},{enabled:true,model});assert.equal(retried.status,'failed');assert.equal(model.calls.length,0);
   const current=await engine.store.read(restored.runId);for(const field of ['turns','state','memories','playerHistory','snapshot'])assert.deepEqual(current[field],restored[field]);validateRunBundle(encodeRunBundle(current));

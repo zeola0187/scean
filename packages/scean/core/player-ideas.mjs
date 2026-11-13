@@ -62,6 +62,7 @@ export async function generatePlayerIdeas(engine,{runId,expectedHead,expectedVer
   if(expectedHead!==null&&(typeof expectedHead!=='string'||expectedHead.length>160)||!Number.isSafeInteger(expectedVersion)||expectedVersion<0)fail('IDEAS_CONTEXT_REQUIRED','請先讀取目前故事，再取得想法。');
   const run=await engine.store.read(runId);checkIdentity(run,{runId,expectedHead,expectedVersion});
   const context={runId,requestId,...(run.modelSelection?{modelSelection:boundedSelection(run.modelSelection)}:{}),...(run.stageModelSelections?.ideas?{stageModelSelections:{ideas:boundedSelection(run.stageModelSelections.ideas)}}:{})};
+  if(engine.model.captureRoutes)context.routePin=await engine.model.captureRoutes({run,requestId,kind:'ideas',signal});
   const description=engine.model.describe?await abortable(signal,()=>engine.model.describe({stage:'ideas',context,signal})):null;
   const capacity=description?.capabilities??description??{};
   const input=playerIdeasInput(run,{contextWindow:capacity.contextWindow,outputReserve:capacity.outputLimit});

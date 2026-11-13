@@ -1,4 +1,6 @@
 import {createSceanDiagnosis,diagnosisGuidance} from './lib/scean-diagnosis.js';
+import {readFileSync} from 'node:fs';
+const STUDIO_VERSION=JSON.parse(readFileSync(new URL('./package.json',import.meta.url),'utf8')).version;
 import { createSceanControl, resolveSceanCardContext,resolveSceanFrontendSource,resolveSceanSourceSession,resolveSceanPlaybackStatus } from './lib/scean-integration.js';
 import { createSceanAuditControl } from './lib/scean-audit-control.js';
 import {createWorkReview} from './lib/work-review.js';
@@ -18,7 +20,7 @@ export const inject = ['agents','tools','skills','commands','typert','workspaceR
 export async function apply(ctx,config = {}) {
   const {root,skillsRoot}=await prepareWorkspace(config,ctx.workspaceRegistry);
   const skills=await loadSkills(skillsRoot,{includeAuthoring:true,tolerantMethods:true});
-  const loader=new WorkspaceLoader({root,skills,readMethodSkill:row=>readSkill(skillsRoot,row),agentLookup:id=>ctx.agents.get(id),activateAddon:async(r)=>{
+  const loader=new WorkspaceLoader({root,skills,onLifecycle:event=>ctx.logger.info('Card Studio lifecycle %s',JSON.stringify(event)),readMethodSkill:row=>readSkill(skillsRoot,row),agentLookup:id=>ctx.agents.get(id),activateAddon:async(r)=>{
     const addon={name:'cardstudio-scean-session-'+r.generation,inject:['tools','skills','systemPrompt'],apply(addonCtx){
       addonCtx.systemPrompt.context({name:'cardstudio-diagnosis',order:9006,text:()=>r.closing?'':diagnosisGuidance(r)});
       addonCtx.systemPrompt.context({name:'cardstudio-selection',order:9000,text:()=>r.selected&&!r.closing
@@ -83,7 +85,7 @@ export async function apply(ctx,config = {}) {
   let clientCapabilityRequestAt,hostState='starting',clientRegistry={available:false},archiveRecycle={state:'unavailable'},statusQueue=Promise.resolve();
   const writeStatus=state=>{
     hostState=state;
-    statusQueue=statusQueue.catch(()=>{}).then(async()=>atomicReplace(await contained(root,'.cardstudio-scean/runtime-status.json'),Buffer.from(JSON.stringify({plugin:'@local/dsh-card-studio-scean-test',version:'1.5.0',build:'scean-public-1.5.0',host:hostState,skillCount:skills.length,storedSkillCount:skills.length,toolCount:toolSpecs.length,workspace:loader.canonical,time:new Date().toISOString(),clientRegistry,archiveRecycle,...(clientCapabilityRequestAt?{clientCapabilityRequestAt}:{}),visualVerification:'not-observed'},null,2))));
+    statusQueue=statusQueue.catch(()=>{}).then(async()=>atomicReplace(await contained(root,'.cardstudio-scean/runtime-status.json'),Buffer.from(JSON.stringify({plugin:'@local/dsh-card-studio-scean-test',version:STUDIO_VERSION,build:'scean-local-'+STUDIO_VERSION,host:hostState,skillCount:skills.length,storedSkillCount:skills.length,toolCount:toolSpecs.length,workspace:loader.canonical,time:new Date().toISOString(),clientRegistry,archiveRecycle,...(clientCapabilityRequestAt?{clientCapabilityRequestAt}:{}),visualVerification:'not-observed'},null,2))));
     return statusQueue;
   };
   observeClientRegistry(ctx,new URL('./client.js',import.meta.url),facts=>{

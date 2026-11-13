@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {SelectionEpoch,OperationOwnership,PrivateDiagnosticsSession,generationAvailability,interactiveEnableRequest,shouldSubmit,requestForInput,progressText,committedMessages,valueText} from '../isolated/web/view-model.mjs';
+import {SelectionEpoch,OperationOwnership,PrivateDiagnosticsSession,generationAvailability,interactiveEnableRequest,shouldSubmit,requestForInput,newTurnRequestNeeded,progressText,committedMessages,valueText} from '../isolated/web/view-model.mjs';
 
 test('switching run rejects old turn and old selection responses, including returning to same run',()=>{
   const view=new SelectionEpoch(),a=view.select('a'),b=view.select('b'),a2=view.select('a');
@@ -16,6 +16,17 @@ test('retry keeps request identity; editing requires new identity',()=>{
   const draft={input:'她走進艙室。',requestId:'stable'};
   assert.equal(requestForInput(draft,draft.input,()=>assert.fail()),'stable');
   assert.equal(requestForInput(draft,'她坐下。',()=> 'new'),'new');
+});
+
+test('new submissions after terminal turn failures use current settings; retries and uncertain work keep identity',()=>{
+ const draft={runId:'run-a',requestId:'request-a'},operation={runId:'run-a',kind:'turn',requestId:'request-a',status:'failed'};
+ for(const status of ['failed','cancelled','interrupted'])assert.equal(newTurnRequestNeeded(draft,{...operation,status}),true);
+ for(const status of ['accepted','running','cancel-requested','unknown','committed','completed'])assert.equal(newTurnRequestNeeded(draft,{...operation,status}),false);
+ assert.equal(newTurnRequestNeeded(draft,operation,true),false);
+ assert.equal(newTurnRequestNeeded(draft,{...operation,runId:'other'}),false);
+ assert.equal(newTurnRequestNeeded(draft,{...operation,requestId:'other'}),false);
+ assert.equal(newTurnRequestNeeded(draft,{...operation,kind:'chapter_auto'}),false);
+ assert.equal(newTurnRequestNeeded(draft,{...operation,kind:'settlementResume'}),true);
 });
 test('progress is solely the actual last Host event, not an elapsed-time approximation',()=>{
   assert.equal(progressText({pending:true,events:[]}), '本輪處理中；等待階段紀錄。');

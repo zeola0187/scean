@@ -1,0 +1,28 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { deflateSync } from 'node:zlib';
+import { pngChunk } from '../cardstudio-bundle/lib/codec.js';
+import { validateRaster } from '../cardstudio-bundle/lib/asset-raster.js';
+import { syntheticPng, sixSyntheticRasters } from './helpers/synthetic-assets.js';
+const signature=Buffer.from([137,80,78,71,13,10,26,10]);
+function customPng({width=1,height=1,color=6,depth=8,interlace=0,pixels=Buffer.from([0,10,20,30,255]),extra=[],compressed}={}){const h=Buffer.alloc(13);h.writeUInt32BE(width);h.writeUInt32BE(height,4);h[8]=depth;h[9]=color;h[12]=interlace;return Buffer.concat([signature,pngChunk('IHDR',h),...extra,pngChunk('IDAT',compressed??deflateSync(pixels)),pngChunk('IEND',Buffer.alloc(0))]);}
+test('six synthetic PNG assets fully decode with distinct stable digests',()=>{const rasters=sixSyntheticRasters();const results=rasters.map(r=>validateRaster(r.bytes,{declaredType:'image/png'}));assert.equal(new Set(results.map(r=>r.sha256)).size,6);for(const r of results){assert.equal(r.width,32);assert.equal(r.height,48);assert.equal(r.validation,'decoded');assert.equal(r.mediaType,'image/png');}});
+test('accepts validated Uint8Array without mutation',()=>{const b=syntheticPng(),copy=Buffer.from(b);assert.equal(validateRaster(new Uint8Array(b)).bytes,b.length);assert.deepEqual(b,copy);});
+for(const input of ['https://example.com/a.png','file:///x','C:\\x.png','\\\\server\\x.png',Buffer.from('<svg/>'),Buffer.from('<html>'),Buffer.alloc(0)])test(`rejects nonraster or path input ${String(input)}`,()=>assert.throws(()=>validateRaster(input)));
+test('PNG rejects corrupted CRC and truncation or trailing bytes',()=>{const b=syntheticPng();const corrupted=Buffer.from(b);corrupted[20]^=1;for(const bad of [corrupted,b.subarray(0,-1),Buffer.concat([b,Buffer.from([0])])])assert.throws(()=>validateRaster(bad));});
+for(const [name,opts] of [
+ ['zero width',{width:0}],['oversize width',{width:4097}],['unsupported interlace',{interlace:1}],['unsupported bit depth',{depth:16}],['bad filter',{pixels:Buffer.from([5,1,2,3,4])}],['short decoded pixels',{pixels:Buffer.from([0,1])}],['oversize decoded pixels',{pixels:Buffer.alloc(64)}],['malformed compressed bytes',{compressed:Buffer.from([1,2,3])}],['trailing compressed bytes',{compressed:Buffer.concat([deflateSync(Buffer.from([0,1,2,3,4])),Buffer.from([0])])}],['animated PNG',{extra:[pngChunk('acTL',Buffer.alloc(8))]}],['unknown critical chunk',{extra:[pngChunk('ABCD',Buffer.alloc(0))]}],
+])test(`PNG rejects ${name}`,()=>assert.throws(()=>validateRaster(customPng(opts))));
+test('PNG checks palette bounds after reversing filters',()=>{assert.equal(validateRaster(customPng({color:3,pixels:Buffer.from([0,0]),extra:[pngChunk('PLTE',Buffer.from([1,2,3]))]})).validation,'decoded');assert.throws(()=>validateRaster(customPng({color:3,pixels:Buffer.from([0,1]),extra:[pngChunk('PLTE',Buffer.from([1,2,3]))]})));});
+test('PNG validates all five legal filter modes',()=>{for(let filter=0;filter<5;filter++)assert.equal(validateRaster(customPng({pixels:Buffer.from([filter,1,2,3,4])})).validation,'decoded');});
+test('PNG rejects metadata inflation bombs and duplicate singleton chunks',()=>{
+  const bomb=pngChunk('zTXt',Buffer.concat([Buffer.from('label\0\0'),deflateSync(Buffer.alloc(65537))]));assert.throws(()=>validateRaster(customPng({extra:[bomb]})));
+  const transparency=pngChunk('tRNS',Buffer.from([0,0]));assert.throws(()=>validateRaster(customPng({color:0,pixels:Buffer.from([0,1]),extra:[transparency,transparency]})));
+});
+test('PNG permits bounded compressed text without interpreting it',()=>{const harmless=pngChunk('zTXt',Buffer.concat([Buffer.from('label\0\0'),deflateSync(Buffer.from('synthetic fixture'))]));assert.equal(validateRaster(customPng({extra:[harmless]})).validation,'decoded');});
+test('declared MIME mismatch and maximum byte limit are refused',()=>{assert.throws(()=>validateRaster(syntheticPng(),{declaredType:'image/jpeg'}));assert.throws(()=>validateRaster(Buffer.alloc(16*1024*1024+1)));});
+function segment(marker,data){const size=Buffer.alloc(2);size.writeUInt16BE(data.length+2);return Buffer.concat([Buffer.from([255,marker]),size,data]);}
+function structuralJpeg(){const q=Buffer.concat([Buffer.from([0]),Buffer.alloc(64,1)]),h=Buffer.concat([Buffer.from([0,1]),Buffer.alloc(15),Buffer.from([0])]);return Buffer.concat([Buffer.from([255,216]),segment(0xdb,q),segment(0xc4,h),segment(0xc0,Buffer.from([8,0,1,0,1,1,1,0x11,0])),segment(0xda,Buffer.from([1,1,0,0,63,0])),Buffer.from([0,255,217])]);}
+test('JPEG is explicitly structural, never claims entropy decode',()=>{const b=structuralJpeg(),r=validateRaster(b);assert.equal(r.mediaType,'image/jpeg');assert.equal(r.validation,'structural');assert.equal(r.width,1);for(const bad of [b.subarray(0,-1),Buffer.concat([b,Buffer.from([0])]),Buffer.from([255,216,255,217])])assert.throws(()=>validateRaster(bad));});
+function webp(payload){const chunk=Buffer.alloc(8);chunk.write('VP8L');chunk.writeUInt32LE(payload.length,4);const body=Buffer.concat([Buffer.from('WEBP'),chunk,payload,payload.length&1?Buffer.alloc(1):Buffer.alloc(0)]),head=Buffer.alloc(8);head.write('RIFF');head.writeUInt32LE(body.length,4);return Buffer.concat([head,body]);}
+test('WebP is explicitly structural, bounded and rejects container mismatches',()=>{const b=webp(Buffer.from([0x2f,0,0,0,0,0])),r=validateRaster(b);assert.equal(r.mediaType,'image/webp');assert.equal(r.validation,'structural');assert.equal(r.width,1);const bad=Buffer.from(b);bad.writeUInt32LE(0,4);assert.throws(()=>validateRaster(bad));assert.throws(()=>validateRaster(webp(Buffer.from([0x2f,255,255,255,255,0]))));});

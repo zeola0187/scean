@@ -14,6 +14,7 @@ import {sceanRemote} from './protocol.mjs';
 import {VERSION} from './version.mjs';
 import {auditSavedSnapshot} from '../authoring/compatibility-audit.mjs';
 import {createChapterConfiguration} from './chapter-runtime.mjs';
+import {AgentModelRouting} from './agent-models.mjs';
 
 export const inject=['typert','llm','agentDefaultModel'];
 export async function apply(ctx,config={}){
@@ -25,7 +26,10 @@ export async function apply(ctx,config={}){
   await status('initializing');
   // budgetPath is intentionally ignored: the historical budget ledger is evidence.
   const usageLedger=new UsageLedger(resolve(config.usagePath??join(dataRoot,'usage-a1.jsonl')));
-  const model=createNativeModelPort({llm:ctx.llm,agentDefaultModel:ctx.agentDefaultModel,usageLedger,selection:config.modelSelection,stageSelections:config.stageModelSelections,maxTokens:config.maxTokens,stageMaxTokens:config.stageMaxTokens,timeoutMs:config.timeoutMs,technicalRetries:config.technicalRetries});
+  const store=new DurableStore({root:join(dataRoot,'store')});
+  const modelRouting=new AgentModelRouting({llm:ctx.llm,agentDefaultModel:ctx.agentDefaultModel,store,config,chapterSelection:async()=>{const status=await chapterConfiguration.settings.status({transport:false});return {...status.settings.rerank,revision:status.revision};}});
+  ctx.on('llm/adapters-updated',()=>{modelRouting.epoch++;});
+  const model=createNativeModelPort({llm:ctx.llm,agentDefaultModel:ctx.agentDefaultModel,routing:modelRouting,usageLedger,selection:config.modelSelection,stageSelections:config.stageModelSelections,maxTokens:config.maxTokens,stageMaxTokens:config.stageMaxTokens,timeoutMs:config.timeoutMs,technicalRetries:config.technicalRetries});
   if(config.enableExistingEmbedding===true){
     try{
       const rawEmbed=createOpenRouterEmbedding({usageLedger,caseId:'native-scean-embedding'});
@@ -36,10 +40,9 @@ export async function apply(ctx,config={}){
     }
   }
   const memory=new Memory({embed,embeddingModel:embed?'openrouter/nebius/qwen3-embedding-8b':'disabled'});
-  const store=new DurableStore({root:join(dataRoot,'store')});
-  chapterConfiguration=createChapterConfiguration({ctx,config,dataRoot,usageLedger,legacyNativeModel:model});
+  chapterConfiguration=createChapterConfiguration({ctx,config,dataRoot,usageLedger,legacyNativeModel:model,modelRouting});
   const engine=new SceanEngine({store,model,memory,recentWindow:config.recentWindow??6});
-  host=await new SceanHost({engine,root:join(dataRoot,'host'),summaryEnabled:config.summaryEnabled===true,chapterModelsEnabled:config.chapterModelsEnabled===true,chapterRetrievalEnabled:config.chapterRetrievalEnabled===true,
+  host=await new SceanHost({engine,modelRouting,root:join(dataRoot,'host'),summaryEnabled:config.summaryEnabled===true,chapterModelsEnabled:config.chapterModelsEnabled===true,chapterRetrievalEnabled:config.chapterRetrievalEnabled===true,
     chapterProviderSettings:chapterConfiguration.settings,chapterRuntimeFactory:chapterConfiguration.runtimeFactory,onChapterConfigurationChanged:()=>status('ready'),maxConcurrentOperations:config.maxConcurrentOperations??4}).init();
   // Credentials may become ready after this independently useful RP service.
   // Resolve them dynamically and apply an existing shared revision once ready.
@@ -58,7 +61,7 @@ export async function apply(ctx,config={}){
       const operator=connection?.browserPeer??connection?.operator??(typeof gateway?.operatorPeer==='function'?gateway.operatorPeer():undefined);
       if(!peer||peer!==operator)return {ok:false,error:{code:'TRUSTED_CLIENT_REQUIRED',message:'SCEAN control requires the authenticated operator connection.'}};
       // UI-only read projection. Never serialize provider settings or credentials.
-      if(request.action==='models')return model.describe({signal}).then(info=>({ok:true,value:{mode:'native',source:'DSH authenticated host',selectionSource:info.selectionSource,requested:{provider:info.requested?.provider,model:info.requested?.model},capabilities:{contextWindow:info.capabilities?.contextWindow,outputLimit:info.capabilities?.outputLimit},modelSwitching:false}})).catch(()=>({ok:false,error:{code:'MODEL_DESCRIPTION_UNAVAILABLE',message:'目前無法讀取模型標籤；仍可閱讀已保存故事。'}}));
+      if(request.action==='models')return model.describe({signal}).then(info=>({ok:true,value:{mode:'native',source:'DSH authenticated host',selectionSource:info.selectionSource,requested:{provider:info.requested?.provider,model:info.requested?.model},capabilities:{contextWindow:info.capabilities?.contextWindow,outputLimit:info.capabilities?.outputLimit},modelSwitching:true}})).catch(()=>({ok:false,error:{code:'MODEL_DESCRIPTION_UNAVAILABLE',message:'目前無法讀取模型標籤；仍可閱讀已保存故事。'}}));
       return host.request(request,signal,{principal:peer,allowGlobalSettings:true,allowPrivateDiagnostics:true,allowPrivateSaves:true,requireCardScope:true,
         resolveCardScope:sessionId=>ctx.get('cardstudioSceanBridge')?.resolveSceanScope?.(sessionId),resolvePlaybackStatus:sessionId=>ctx.get('cardstudioSceanBridge')?.resolveSceanPlaybackStatus?.(sessionId),resolveSourceSession:(sessionId,scope)=>ctx.get('cardstudioSceanBridge')?.resolveSourceSession?.(sessionId,scope),resolvePresentationSource:(sessionId,scope)=>ctx.get('cardstudioSceanBridge')?.resolveSceanFrontendSource?.(sessionId,scope)});
     }

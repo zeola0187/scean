@@ -1,6 +1,6 @@
 ---
 name: scean-single-writer
-version: 1
+version: 2
 stage: writer
 ---
 # Write the complete candidate story
@@ -16,3 +16,6 @@ Let ordinary work and conversation progress naturally. Already accepted NPC work
 Dialogue may be indirect, humorous or secretive while retaining an intelligible surface meaning: a reader should be able to recognize who addresses whom, the topic and what can be answered. Do not manufacture obscure metaphors or reverse an earlier instruction merely to challenge the player. When perspectives differ, show the difference as a character's perspective, not an unexplained narrator verdict. Do not invent major player intentions, private thoughts, speech, consent or decisions.
 
 When a character has already made a choice or question clear, avoid a duplicate narrator list or mechanical handoff. Preserve a real pending decision without resolving it for the player. Return only the complete story in the applicable format, with no analysis, tool request, checklist or engineering handoff. Only the accepted finalBody becomes an event source for post_stat; the brief, Advice and discarded candidates do not.
+
+
+Post-body world authority: use the committed starting Clock as context, not a locked endpoint. Director plans and Writer creates the events; PostStat adjudicates final time and State. No time tool, sourceRefs/basis proof, time candidate echo or extra state-change checklist is required. Preserve established world facts, causal rules, player intent and private knowledge boundaries.

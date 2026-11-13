@@ -345,6 +345,7 @@ export class CardService {
     return {items,total:rows.length,scope,offset,limit,selectedId:rows.some(row=>row.name===selected)?selected:null,binding_status};
   }
   async patch(id,expected,patches,signal) {
+    if (!Array.isArray(patches) || patches.some(p => !p || typeof p !== 'object' || Array.isArray(p) || typeof p.path !== 'string')) fail('PATCH_TYPE', 'patches must be an array of patch objects with string paths, not JSON-encoded text. Nothing was written.');
     return this.commit(id,expected,(card,ids)=>{
       if (patches.some(p=>p.op!=='test'&&(p.path==='/data/character_book'||p.path.startsWith('/data/character_book/entries')))) fail('ENTRY_TOOL','Use stable-ID lorebook tools for entry changes.');
       const next = patchValue(card,patches); Object.assign(card,next); ids.splice(0,ids.length,...entryIds(card.data.character_book,ids));

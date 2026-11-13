@@ -1,0 +1,83 @@
+{
+  "status": "RC3_PRERELEASE_ISOLATED_VALIDATION",
+  "at": "2026-11-13T14:46:50.923163+00:00",
+  "version": "1.6.4-local.w29.2d.rc3.1.dsh022.3",
+  "guardVersion": "0.1.0-local.5",
+  "targetDsh": "0.2.2-rc.3",
+  "baselineRevision": "a11d851652531ae1ac38119ea245f2e6f5fcb231",
+  "baselineSourceArchiveSha256": "00c3871ea918fe4b31728f225ec2721c256bc0514cf40965c1ce9109cc119e2b",
+  "candidateRevision": null,
+  "packagedSdk": "14cfd81c9135bf0afb89417543c94f9ecfe09266574452a9b106890c698725ae",
+  "tests": {
+    "full": {
+      "counts": {
+        "tests": 1749,
+        "pass": 1748,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 1
+      },
+      "seconds": 189.47,
+      "logSha256": "9a423c244014bc58206ec4fb6b1264226726e83fc8e459d3aa91a16dcfcb110b",
+      "node": "24.21.0",
+      "network": "non-loopback blocked",
+      "providers": "synthetic only"
+    },
+    "rc3Replay": {
+      "tests": 4,
+      "pass": 4,
+      "fail": 0
+    },
+    "releasePackaging": {
+      "passed": 11,
+      "failed": 0
+    },
+    "installedLifecycle": {
+      "syntheticThemes": [
+        "indicator",
+        "fantasy"
+      ],
+      "frontendStatus": "ready",
+      "revision": 1,
+      "guardActivated": true,
+      "guardOriginalMethodRestored": true,
+      "sceanDisposed": "inactive",
+      "modelCalls": 0
+    },
+    "publicationFocused": {
+      "passed": 55,
+      "failed": 0
+    }
+  },
+  "explicitExclusions": [
+    {
+      "file": "tests/legacy-fixture-tool.test.mjs",
+      "reason": "published archive omits prepare-legacy-playback-fixture.mjs"
+    },
+    {
+      "test": "actual sealed timecal3 reader rejects new v12",
+      "reason": "sealed timecal3 reader not supplied"
+    },
+    {
+      "test": "actual timecal4 reader refuses new schema13",
+      "reason": "timecal4 reader not supplied"
+    }
+  ],
+  "productionWrites": 0,
+  "paidModelCalls": 0,
+  "publicMutations": 0,
+  "userDataIncluded": false,
+  "hostSdkIncluded": false,
+  "guardAutomaticallyInstalled": false,
+  "realDesktopUi": "NOT_TESTED",
+  "liveProvider": "NOT_TESTED",
+  "installation": "Official rc.3 PluginManager: isolated installation PASS; installed bytes match archives; packaged Studio/stage and guard lifecycle PASS. Production Desktop not installed.",
+  "sourcePublication": "See detached release receipt for exact published commit and remote verification.",
+  "notes": [
+    "Guard runtime wrapper/index unchanged; exact rc.3 reviewed fingerprints added.",
+    "No story engine, model prompt, permission policy or data migration changes.",
+    "Initial sandbox-only failures reproduced and resolved using permitted local links/loopback with isolated HOME and outbound network guard.",
+    "Two test receipt paths made fixture-local and export assertion diagnostics improved.",
+    "Final publication source uses a portable offline harness and verified canonical/generated source-offer URLs. Desktop production deployment remains outside this release validation."
+  ]
+}

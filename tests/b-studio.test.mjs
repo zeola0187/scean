@@ -8,7 +8,7 @@ import {createHash} from 'node:crypto';
 import {IsolatedStudioBridge} from '../isolated/studio-bridge.mjs';
 import {pngChunk} from '../vendor/cardstudio-scean/lib/codec.js';
 import {SceanHost} from '../plugin/host.mjs';
-import {SceanEngine} from '../core/engine.mjs';
+import {TemporalFixtureEngine as SceanEngine} from '../fixtures/temporal-fixture-engine.mjs';
 import {DurableStore} from '../adapters/store.mjs';
 import {Memory} from '../core/memory.mjs';
 
@@ -16,7 +16,7 @@ const card=(roster=true)=>({spec:'chara_card_v2',spec_version:'2.0',data:{name:'
 const b64=value=>Buffer.from(typeof value==='object'&&!Buffer.isBuffer(value)?JSON.stringify(value):value).toString('base64');
 async function fixture(t,{absent=false,clock,sourceCard=card()}={}){
   const root=await mkdtemp(join(tmpdir(),'scean-studio-b-'));let calls=0;
-  const host=await new SceanHost({engine:new SceanEngine({unconfiguredWritingMode:'current',store:new DurableStore({root:join(root,'rp')}),model:{generate(){calls++;throw Error('No model allowed in Studio integration');}},memory:new Memory()}),root:join(root,'host')}).init();
+  const host=await new SceanHost({engine:new SceanEngine({postBody:false,unconfiguredWritingMode:'current',store:new DurableStore({root:join(root,'rp')}),model:{generate(){calls++;throw Error('No model allowed in Studio integration');}},memory:new Memory()}),root:join(root,'host')}).init();
   const bridge=await new IsolatedStudioBridge({root:join(root,'studio'),sceanHost:absent?null:host,...clock?{now:()=>clock.value}:{}}).init();
   t.after(async()=>{await bridge.close();host.close();assert.equal(calls,0);});
   const acquired=await bridge.request({action:'studio.acquire',pageId:'studio-test-page-0001'});assert(acquired.ok,JSON.stringify(acquired));
@@ -44,7 +44,7 @@ test('B Studio saves Blueprint/InitialState through original revision/codec and 
  const original=card();original.data.extensions.other={preserve:'yes'};original.data.extensions.scean.future={preserve:true};const f=await fixture(t,{sourceCard:original});
  const saved=await f.request('patch',save(f));assert(saved.ok,JSON.stringify(saved));assert.equal(saved.value.blueprintSaved,true);assert.equal(saved.value.rosterSaved,false);assert.equal(saved.value.scopeRestored,true);
  const read=await f.request('read',{documentId:f.id});assert.equal(read.value.revision,1);assert.deepEqual(read.value.card.data.extensions.other,{preserve:'yes'});assert.deepEqual(read.value.card.data.extensions.scean.future,{preserve:true});assert.deepEqual(read.value.card.data.extensions.scean.stateBlueprint,bp());
- const exported=await f.request('export',{documentId:f.id,expectedRevision:1});assert(exported.ok);const exportedCard=JSON.parse(Buffer.from(exported.value.base64,'base64'));assert.deepEqual(exportedCard.data.extensions.scean.initialState,initial());
+ const exported=await f.request('export',{documentId:f.id,expectedRevision:1});assert(exported.ok,JSON.stringify(exported));const exportedCard=JSON.parse(Buffer.from(exported.value.base64,'base64'));assert.deepEqual(exportedCard.data.extensions.scean.initialState,initial());
 });
 
 test('B Studio rejects missing authorization, stale scope, invalid actor/type/unit/task before scope transition',async t=>{
@@ -74,7 +74,7 @@ test('B Studio Blueprint save works while SCEAN absent and restores scope on inj
  const f=await fixture(t,{absent:true}),operation=f.bridge.operation.bind(f.bridge);let failed=false;
  f.bridge.operation=async(...args)=>{if(args[1]==='patch'&&!failed){failed=true;throw Object.assign(Error('synthetic'),{code:'INJECTED_WRITE_FAILURE'});}return operation(...args);};
  assert.equal((await f.request('patch',save(f))).error.code,'INJECTED_WRITE_FAILURE');assert.equal(f.bridge.loader.records.get(f.bridge.agent.id).scope.mode,'content');assert.equal((await f.request('read',{documentId:f.id})).value.revision,0);
- const renewed=await f.request('renew');const saved=await f.request('patch',save(f,{expectedScopeEpoch:renewed.value.claim.authoring_scope.epoch}));assert(saved.ok,JSON.stringify(saved));assert((await f.request('export',{documentId:f.id,expectedRevision:1})).ok);
+ const renewed=await f.request('renew');const saved=await f.request('patch',save(f,{expectedScopeEpoch:renewed.value.claim.authoring_scope.epoch}));assert(saved.ok,JSON.stringify(saved));const exported=await f.request('export',{documentId:f.id,expectedRevision:1});assert(exported.ok,JSON.stringify(exported));
 });
 
 test('B form payload retains unknown omission, false/zero, source and declared UI labels/units',()=>{
@@ -114,7 +114,7 @@ test('B player state presentation uses public projection, shows latest value del
 test('B imported saved blueprint may omit InitialState: new Run remains unknown; orphan InitialState is rejected',async t=>{
  const unknown=card();unknown.data.extensions.scean.stateBlueprint=bp();const f=await fixture(t,{sourceCard:unknown});
  const handed=await f.request('handoff',{documentId:f.id,expectedRevision:0,presetId:'scean-default'});assert(handed.ok,JSON.stringify(handed));assert.equal(Object.hasOwn(handed.value.snapshot,'initialState'),false);
- const run=await f.host.inspect(handed.value.runId);assert(run.worldView.declared.length>0);assert(run.worldView.declared.every(row=>row.known===false));assert.deepEqual(run.state.world,{});
+ const run=await f.host.inspect(handed.value.runId);assert(run.worldView.declared.length>0);assert(run.worldView.declared.every(row=>row.known===false));assert.equal(run.state.world.time.current.readOnly,true);assert.deepEqual(run.state.world.effects.story_events,{});
  const orphan=card();orphan.data.extensions.scean.initialState=initial();const other=await fixture(t,{sourceCard:orphan});
  const rejected=await other.request('handoff',{documentId:other.id,expectedRevision:0,presetId:'scean-default'});assert.equal(rejected.error.code,'INITIAL_STATE_WITHOUT_BLUEPRINT');
 });
