@@ -54,8 +54,8 @@
     },
     {
       "path": "RELEASE-VERIFICATION.json",
-      "bytes": 4827,
-      "sha256": "3908b9aeaea5de5bd853802c7b8ab94efcd2aa0bccc9130b0560025f55fe2270"
+      "bytes": 5889,
+      "sha256": "28bb5137b277dd6ee2bfd395784e48331a6c6d4113b6159fa14206bc42fe92ba"
     },
     {
       "path": "SOURCE-AVAILABILITY.md",
@@ -694,8 +694,8 @@
     },
     {
       "path": "docs/DSH022-FULL-STAGE-RELEASE.zh-TW.md",
-      "bytes": 2886,
-      "sha256": "756dcbc2a40d9a57f245b0f24d1d5c3e3784a17a83b8860966cd51c3c73b1a33"
+      "bytes": 4821,
+      "sha256": "4c739785ff44f63af40a270b71ee3db615f8e5ff9cf1d99cefbcacaf0dad059c"
     },
     {
       "path": "docs/DSH022-PORT-VERIFICATION.json",
@@ -906,6 +906,11 @@
       "path": "fixtures/gemini-batch2.mjs",
       "bytes": 5118,
       "sha256": "0bc2f8a60d2a544681f42bf8611b044ae14305313aa1a2727022454092c86402"
+    },
+    {
+      "path": "fixtures/nonblocking-lock-interleaving.mjs",
+      "bytes": 2075,
+      "sha256": "d1648bcb79ac40d24f1b491ceef51c2ea2fabf6bc9e6d64e58a0954386266029"
     },
     {
       "path": "fixtures/player-six-http.mjs",
@@ -1890,12 +1895,12 @@
     {
       "path": "packages/studio/client-template.js",
       "bytes": 216593,
-      "sha256": "0fa41f5c8ae6452e25ac4fe3de169524ae8398f5409ca0cf1659779d2524de66"
+      "sha256": "bf83a8637851e75c45152189261f4e580d70f4ddab368762a6a76e78734338df"
     },
     {
       "path": "packages/studio/client.js",
       "bytes": 299691,
-      "sha256": "066cb731ccca85ef7dad0079a167668b4fa3249665dc68dcf58be1a175a66505"
+      "sha256": "e11281fecb07df032771425e644cb3b91bddde891c6ce914b156ea530f44900b"
     },
     {
       "path": "packages/studio/cordis.patch.yml",
@@ -2763,6 +2768,11 @@
       "sha256": "0430c9284c29a90f3739cc8bc960b883140255f7670d2868854231380fb4e5b8"
     },
     {
+      "path": "scripts/check-prepared-source.py",
+      "bytes": 6679,
+      "sha256": "c23e350ab3f8987979ccb97a82095ce58db4874a6b35286cfa8ab62f6f86d0e1"
+    },
+    {
       "path": "scripts/check-release.py",
       "bytes": 2190,
       "sha256": "405a1e8c7556b88d2d18c71a1e60ee1f35b2c4d9322ed94844d34b51a4af897e"
@@ -2990,12 +3000,12 @@
     {
       "path": "sources/card-studio/cardstudio-bundle/client-template.js",
       "bytes": 216593,
-      "sha256": "0fa41f5c8ae6452e25ac4fe3de169524ae8398f5409ca0cf1659779d2524de66"
+      "sha256": "bf83a8637851e75c45152189261f4e580d70f4ddab368762a6a76e78734338df"
     },
     {
       "path": "sources/card-studio/cardstudio-bundle/client.js",
       "bytes": 299691,
-      "sha256": "066cb731ccca85ef7dad0079a167668b4fa3249665dc68dcf58be1a175a66505"
+      "sha256": "e11281fecb07df032771425e644cb3b91bddde891c6ce914b156ea530f44900b"
     },
     {
       "path": "sources/card-studio/cardstudio-bundle/cordis.patch.yml",
@@ -4748,9 +4758,14 @@
       "sha256": "fa0e32523aa4233d3359f8d5b061212d514a362aa268c3482ee6027203d0bc0a"
     },
     {
+      "path": "tests/prepared-source.test.py",
+      "bytes": 5187,
+      "sha256": "bd25b3c00b965adbff46c28de90578dfaf33d6e41b126daa22c9450922ab40d1"
+    },
+    {
       "path": "tests/presentation-host.test.mjs",
-      "bytes": 12586,
-      "sha256": "6230aa429922628a7f319c8b8b63d615c35f1710075afda452d65dace62387b4"
+      "bytes": 14292,
+      "sha256": "1cd5482d06d5c926062224b260657e33c6ac275f74ec2b50a2b758dab85506fe"
     },
     {
       "path": "tests/presentation-panel-ui.test.mjs",

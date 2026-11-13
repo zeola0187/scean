@@ -1,6 +1,6 @@
 {
   "status": "LOCAL_FIXED_VERSION_CANDIDATE_VALIDATED_PUBLICATION_ON_HOLD",
-  "at": "2026-11-13T12:32:30.252991+00:00",
+  "at": "2026-11-13T12:58:37.575847+00:00",
   "version": "1.6.4-local.w29.2d.rc3.1.dsh022.2",
   "guardVersion": "0.1.0-local.4",
   "targetDsh": "0.2.2-rc.1",
@@ -10,20 +10,20 @@
     "exactBytes": 255,
     "expectedMetadataAndSourceLinkDifferences": 12,
     "coreAndHostFilesExact": 5,
-    "clientsOnlySourceLinkChanged": 3
+    "clientsOnlySourceNoticeMetadataChanged": 3
   },
   "tests": {
     "full": {
       "counts": {
-        "tests": 1718,
-        "pass": 1716,
+        "tests": 1719,
+        "pass": 1717,
         "fail": 0,
         "cancelled": 0,
         "skipped": 2
       },
-      "logSha256": "a82d59608fa90d1e8056aea37dfca60c8e9f7961c1aca2a1d1e48d31c2d22d34",
-      "startedAt": "2026-11-13T12:26:06.184768+00:00",
-      "completedAt": "2026-11-13T12:31:02.775917+00:00"
+      "logSha256": "57d800c7139774998c8c8632ebd4670460f2960886fd5496f061f7910b33f8c1",
+      "startedAt": "2026-11-13T12:44:57.256249+00:00",
+      "completedAt": "2026-11-13T12:48:16.708353+00:00"
     },
     "guard": {
       "counts": {
@@ -51,21 +51,31 @@
     },
     "presentation": {
       "counts": {
-        "tests": 12,
-        "pass": 12,
+        "tests": 13,
+        "pass": 13,
         "fail": 0,
         "cancelled": 0,
         "skipped": 0
       },
-      "logSha256": "6777e7cc775ec15c67e2e257b15de2746fa86a13aa2e19fdd682a7699bd7bd3a",
-      "startedAt": "2026-11-13T12:24:49.581478+00:00",
-      "completedAt": "2026-11-13T12:24:51.227476+00:00"
+      "logSha256": "4265f00334529468da4f2f1798675f86bcf03df0fd09087404b201f51e2f5b48",
+      "startedAt": "2026-11-13T12:41:50.896614+00:00",
+      "completedAt": "2026-11-13T12:41:52.635294+00:00"
     }
   },
   "pythonChecks": {
     "releaseSupportPassed": 8,
     "licenseDistributionPassed": 6,
-    "preparedReleasePassed": 3
+    "preparedReleasePassed": 3,
+    "preparedSourcePassed": 7
+  },
+  "presentationRace": {
+    "rootCauseResolved": true,
+    "cause": "A nonblocking bakery lock can return RUN_BUSY to both initial contenders; the previous test wrongly required exactly one initial winner.",
+    "realFilesystemInterleavingsPassed": 20,
+    "explicitRetryPublishesOnce": true,
+    "stalePreviewRejected": true,
+    "canonicalStoryBytesUnchanged": true,
+    "productLockChanged": false
   },
   "freshFrozenLockfileInstall": {
     "passed": true,
@@ -82,7 +92,7 @@
       {
         "package": "@local/dsh-scean-suite",
         "version": "1.6.4-local.w29.2d.rc3.1.dsh022.2",
-        "tgzSha256": "b17bcbb0f16f65c368a9eacf8e0c692d27ae7cb09a0047cedafe41d1e639d4b1"
+        "tgzSha256": "70566ef40382549ee2eb54085297ec6e62d95c7ca5f47f6fb694c002c030fe39"
       },
       {
         "package": "@local/dsh-scean-openrouter-output-default",
@@ -105,6 +115,19 @@
     "guardActiveInEmptyProfile": false,
     "guardPhaseInEmptyProfile": "disposed",
     "guardAutomaticPaidCalls": 0
+  },
+  "sourceNoticeBrowserCheck": {
+    "freshInstalledWebUi": true,
+    "playerVisible": true,
+    "studioVisible": true,
+    "immutableTargetMatchesCandidate": true,
+    "publicDestinationOpened": false
+  },
+  "localSourceProofTool": {
+    "script": "scripts/check-prepared-source.py",
+    "testCasesPassed": 7,
+    "networkOrPublicationPerformed": false,
+    "purpose": "Verify detached asset hashes, source manifest and exact committed tree plus all seven source notice targets; remote checks remain independent."
   },
   "paidApiRequests": 0,
   "credentialsIncluded": false,
@@ -131,13 +154,14 @@
   "remaining": [
     "Main-machine installation and actual paths not inspected",
     "Actual GitHub download unavailable before authorized publication",
-    "Packaged Desktop and browser interaction not performed in this preparation",
-    "No new live provider model-quality test",
-    "Initial high-parallel presentation contention test failed once; isolated 12/12 and final full 1716/1716 passed. Root cause not fully determined; product PresentationHost was not changed."
+    "Actual unmodified packaged Desktop clean-install acceptance requires a separate OS sandbox/VM; fresh Web UI is not equivalent",
+    "No new live provider model-quality test"
   ],
   "resolvedFixtureIssues": [
     "Removed use of a non-public service property in the isolated driver",
     "Provided the required durable usage journal to the native model port",
-    "Aligned visible source offers to the planned immutable tag"
+    "Aligned visible source offers to the planned immutable tag",
+    "Replaced an obsolete Studio version label with the generic SCEAN license label",
+    "Reproduced the zero-winner nonblocking lock interleaving and corrected the test contract without changing product locking"
   ]
 }

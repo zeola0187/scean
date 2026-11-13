@@ -9,6 +9,7 @@ import {w01Fixture} from '../fixtures/w01-frontends.mjs';
 import {materializeInitialState} from '../core/state-blueprint.mjs';
 import {publicRunView} from '../core/inspection.mjs';
 import {hash} from '../core/contracts.mjs';
+import {forceBothBusy} from '../fixtures/nonblocking-lock-interleaving.mjs';
 
 const clone=v=>structuredClone(v);
 async function fixture(t,{none=false,blueprint=true,fault,now}={}){
@@ -86,7 +87,21 @@ test('presentation uses durable operation receipts after restart and rejects con
 test('two presentation contenders cannot overwrite a newer revision and never take the story write path',async t=>{
  const f=await fixture(t),p=await f.preview(),other=new PresentationHost({store:f.store}),q=await other.preview({runId:f.run.runId,frontend:f.candidate,expectedPresentationRevision:0});
  const before=await readFile(f.file),results=await Promise.allSettled([f.service.apply(args(f,p,'device-one')),other.apply(args(f,q,'device-two'))]);
- assert.equal(results.filter(r=>r.status==='fulfilled').length,1,JSON.stringify(results.map(r=>({status:r.status,code:r.reason?.code,message:r.reason?.message}))));assert.equal((await f.service.view({runId:f.run.runId})).presentationRevision,1);assert.deepEqual(await readFile(f.file),before);
+ const winners=results.filter(r=>r.status==='fulfilled');assert(winners.length<=1,'competing writes must never both publish');
+ for(const result of results.filter(r=>r.status==='rejected'))assert(['RUN_BUSY','PRESENTATION_REVISION_CONFLICT'].includes(result.reason?.code),String(result.reason));
+ if(!winners.length){assert(results.every(r=>r.reason?.code==='RUN_BUSY'));assert.equal((await f.service.view({runId:f.run.runId})).presentationRevision,0);assert.deepEqual(await readFile(f.file),before);await f.service.apply(args(f,p,'device-one'));}
+ assert.equal((await f.service.view({runId:f.run.runId})).presentationRevision,1);assert.deepEqual(await readFile(f.file),before);
+});
+
+test('nonblocking presentation locks may both report busy; explicit retry publishes once and stale preview cannot overwrite',async t=>{
+ const f=await fixture(t),p=await f.preview(),other=new PresentationHost({store:f.store}),q=await other.preview({runId:f.run.runId,frontend:f.candidate,expectedPresentationRevision:0});
+ const before=await readFile(f.file),schedule=forceBothBusy([f.service.settings,other.settings]);let results;
+ try{results=await Promise.allSettled([f.service.apply(args(f,p,'device-one')),other.apply(args(f,q,'device-two'))]);}finally{schedule.restore();}
+ assert.equal(results.filter(r=>r.status==='fulfilled').length,0,'controlled legal choosing schedule rejects both without publication');
+ assert(results.every(r=>r.reason?.code==='RUN_BUSY'));assert.equal((await f.service.view({runId:f.run.runId})).presentationRevision,0);assert.deepEqual(await readFile(f.file),before);
+ const retried=await f.service.apply(args(f,p,'device-one'));assert.equal(retried.presentationRevision,1);
+ await assert.rejects(other.apply(args(f,q,'device-two')),{code:'PRESENTATION_REVISION_CONFLICT'});
+ assert.equal((await f.service.view({runId:f.run.runId})).presentationRevision,1);assert.deepEqual(await readFile(f.file),before);
 });
 
 test('presentation publication failure keeps original; lost acknowledgment reads the committed receipt without applying twice',async t=>{
