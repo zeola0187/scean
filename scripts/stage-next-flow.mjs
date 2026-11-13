@@ -36,5 +36,6 @@ export async function openDesktop({label, device = DESKTOP, size = [1440, 900]} 
 export async function openSurface({device = DESKTOP} = {}) {
   const label = process.argv.find(a => a.startsWith('--desktop='))?.slice(10);
   if (label) return {...await openDesktop({label, device}), surface: 'desktop', label};
-  const r = await openDsh({device}); return {...r, out: path.join(repo, 'evidence', 'stage-next-dev'), surface: 'web', label: 'stage-next-dev'};
+  const web = process.argv.find(a => a.startsWith('--web='))?.slice(6) ?? 'stage-next-dev';
+  const r = await openDsh({label: web, device}); return {...r, out: path.join(repo, 'evidence', web), surface: 'web', label: web};
 }

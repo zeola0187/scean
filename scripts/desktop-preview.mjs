@@ -13,6 +13,7 @@
 //   node scripts/desktop-preview.mjs update --label=L [--tgz=file]   reinstall the suite, keep all data
 //   node scripts/desktop-preview.mjs start  --label=L [--cdp=9333]
 //   node scripts/desktop-preview.mjs stop   --label=L
+//   node scripts/desktop-preview.mjs launcher --label=L               write <root>/SCEAN-preview-L.cmd (personal use)
 // --scripted labels must match stage-next-desk-*: model traffic goes to fixtures/stage-next.mjs only.
 import fs from 'node:fs/promises';
 import fss from 'node:fs';
@@ -103,11 +104,30 @@ async function setup(label, {scripted, tgz}) {
     const hostModule = path.join(d.profile, 'node_modules/@local/dsh-scean-suite/packages/scean/plugin/host.mjs');
     patch += `- insert:\n    - id: stage-next-scripted\n      name: ${pathToFileURL(path.join(repo, 'fixtures/stage-next.mjs')).href}\n      config:\n        hostModule: ${slash(hostModule)}\n- id: local-scean-host\n  config:\n    dataRoot: ${slash(data)}\n    usagePath: ${slash(data)}/usage.jsonl\n    modelSelection:\n      provider: next-scripted\n      model: offline\n      reasoningEffort: off\n    enableExistingEmbedding: false\n    summaryEnabled: false\n    chapterModelsEnabled: false\n    technicalRetries: 0\n- id: local-cardstudio-scean-workspace-loader\n  config:\n    workspace: ${slash(workspace)}\n- id: agent-default-model\n  config:\n    provider: next-scripted\n    model: offline\n    reasoningEffort: off\n`;
   }
-  patch += `- id: ui-settings-account\n  name: "@deepseek-ai/dsh-client-ui-settings-account"\n  config:\n    version: 1\n    step: done\n    usage: detailed\n    purpose: null\n    process: standard\n    completion: ${scripted ? 'api-key' : 'skipped'}\n`;
-  await fs.writeFile(path.join(d.profile, 'cordis.patch.yml'), patch);
+  // Scripted instances skip onboarding; a personal preview keeps DSH's own first-run setup (sign-in / model key).
+  if (scripted) patch += `- id: ui-settings-account\n  name: "@deepseek-ai/dsh-client-ui-settings-account"\n  config:\n    version: 1\n    step: done\n    usage: detailed\n    purpose: null\n    process: standard\n    completion: api-key\n`;
+  // DSH requires a YAML array here, even when there are no overrides.
+  await fs.writeFile(path.join(d.profile, 'cordis.patch.yml'), patch || '[]\n');
   await install(d, tgz ?? await latestTgz());
   await fs.writeFile(path.join(d.base, 'preview.json'), JSON.stringify({label, scripted: !!scripted, createdAt: new Date().toISOString(), app: appDir}, null, 2) + '\n');
+  if (!scripted) await launcher(label);
   console.log(JSON.stringify({label, base: d.base, scripted: !!scripted}));
+}
+
+// Double-click launcher for a personal preview: no Node, no repo, same isolation as `start`.
+async function launcher(label) {
+  const d = labelDirs(label), file = path.join(root, `SCEAN-preview-${label}.cmd`);
+  const lines = ['@echo off', 'rem SCEAN Stage v2 preview on an isolated copy of DSH Desktop. Production DSH and ~/.dsh are not used.',
+    `set "DSH_HOME=${d.home}"`, `set "USERPROFILE=${d.user}"`, `set "TEMP=${d.temp}"`, `set "TMP=${d.temp}"`,
+    'set "DSH_TELEMETRY_DISABLED=1"', 'set "DSH_DISABLE_TELEMETRY=1"', 'set "NODE_OPTIONS="', 'set "ELECTRON_RUN_AS_NODE="',
+    `start "" "${exe}" --user-data-dir="${d.userdata}"`, ''];
+  await fs.writeFile(file, lines.join('\r\n')); console.log('launcher', file); return file;
+}
+
+// Running instances are found by their userData folder, which also covers ones started from the .cmd launcher.
+function instanceRunning(d) {
+  const needle = d.userdata.replaceAll("'", "''");
+  try { const out = execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', `@(Get-CimInstance Win32_Process -Filter "Name='DeepSeek Harness.exe'" | Where-Object { $_.CommandLine -like '*${needle}*' }).Count`], {encoding: 'utf8', windowsHide: true}); return Number(out.trim()) > 0; } catch { return false; }
 }
 
 async function cdpBrowser(port) { const v = await (await fetch(`http://127.0.0.1:${port}/json/version`)).json(); return v.webSocketDebuggerUrl; }
@@ -115,7 +135,7 @@ async function running(d) { try { const l = JSON.parse(await fs.readFile(d.launc
 
 async function start(label, {cdp}) {
   const d = labelDirs(label); if (!await exists(d.profile)) throw Error('NOT_SET_UP');
-  if (await running(d)) throw Error('ALREADY_RUNNING');
+  if (await running(d) || instanceRunning(d)) throw Error('ALREADY_RUNNING');
   const meta = JSON.parse(await fs.readFile(path.join(d.base, 'preview.json'), 'utf8'));
   const env = {...process.env, DSH_HOME: d.home, USERPROFILE: d.user, TEMP: d.temp, TMP: d.temp, DSH_TELEMETRY_DISABLED: '1', DSH_DISABLE_TELEMETRY: '1'};
   delete env.NODE_OPTIONS; delete env.ELECTRON_RUN_AS_NODE;
@@ -142,7 +162,8 @@ const [command] = process.argv.slice(2).filter(a => !a.startsWith('--'));
 const label = arg('label');
 if (command === 'pack') await pack();
 else if (command === 'setup') await setup(label, {scripted: process.argv.includes('--scripted'), tgz: arg('tgz')});
-else if (command === 'update') { const d = labelDirs(label); if (await running(d)) throw Error('STOP_FIRST'); await install(d, arg('tgz') ?? await latestTgz()); }
+else if (command === 'update') { const d = labelDirs(label); if (await running(d) || instanceRunning(d)) throw Error('CLOSE_THE_PREVIEW_FIRST'); await install(d, arg('tgz') ?? await latestTgz()); }
+else if (command === 'launcher') await launcher(label);
 else if (command === 'start') await start(label, {cdp: arg('cdp') ? Number(arg('cdp')) : undefined});
 else if (command === 'stop') await stop(label);
 else { console.log('usage: pack | setup | update | start | stop  (see header)'); process.exitCode = 2; }

@@ -36,8 +36,9 @@ export function renderShelf(s, actions) {
 
   const scripts = s.scripts.length ? h('section', {class: 'shelf-section'},
     h('div', {class: 'section-head'}, h('h2', null, latest ? '開一場新的演出' : '開始演出'), h('p', {class: 'meta'}, '每一場演出固定使用保存當下的劇本版本；之後修改作品不會影響已開始的演出。')),
-    h('ul', {class: 'scripts'}, s.scripts.map(sc => h('li', null, h('div', {class: 'script'},
-      h('div', null, h('strong', null, sc.title ?? title), h('p', {class: 'meta'}, `劇本版本 r${sc.revision ?? '—'} · ${s.runs.filter(r => r.scriptId === sc.scriptId).length} 場演出`)),
+    h('ul', {class: 'scripts'}, s.scripts.map((sc, i) => h('li', null, h('div', {class: 'script'},
+      h('div', null, h('strong', null, sc.title ?? title, s.scripts.length > 1 && i === 0 ? h('span', {class: 'tag'}, '最新') : null),
+        h('p', {class: 'meta'}, [`劇本版本 r${sc.revision ?? '—'}`, sc.createdAt ? `保存於 ${ago(sc.createdAt)}` : null, `${s.runs.filter(r => r.scriptId === sc.scriptId).length} 場演出`].filter(Boolean).join(' · '))),
       h('button', {class: latest ? 'ghost' : 'primary', type: 'button', onclick: () => actions.startScript(sc)}, '選開場並開演')))))) :
     h('section', {class: 'empty-state'}, h('strong', null, '還沒有保存的劇本'), h('p', null, '在「創作」裡完成檢查並保存劇本後，就能在這裡開演。'), h('button', {class: latest ? 'ghost' : 'primary', type: 'button', onclick: () => actions.nav('studio')}, '前往創作'));
 
