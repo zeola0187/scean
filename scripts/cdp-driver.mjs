@@ -92,8 +92,12 @@ async function connect(port, {match = t => t.type === 'page', onClose = async ()
     // Real OS window size (Desktop): Electron has no CDP window bounds, so move the top-level window of `pid`.
     async windowSize(width, height, pid) {
       const ps = `Add-Type -Namespace W -Name U -MemberDefinition '[DllImport(\"user32.dll\")] public static extern bool MoveWindow(System.IntPtr h,int x,int y,int w,int ht,bool r); [DllImport(\"user32.dll\")] public static extern bool ShowWindow(System.IntPtr h,int c);'; $h=(Get-Process -Id ${Number(pid)}).MainWindowHandle; [W.U]::ShowWindow($h,9) | Out-Null; [W.U]::MoveWindow($h,40,20,${Number(width)},${Number(height)},$true) | Out-Null`;
-      execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', ps], {windowsHide: true}); await sleep(900);
-      return (await send('Runtime.evaluate', {expression: '({w:innerWidth,h:innerHeight})', returnByValue: true})).result.value; },
+      const size = async () => (await send('Runtime.evaluate', {expression: '({w:innerWidth,h:innerHeight})', returnByValue: true})).result.value;
+      const before = await size(); execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', ps], {windowsHide: true});
+      // The renderer reports the new size a little later; wait until it changes and then holds still.
+      let last = before, stable = 0;
+      for (let i = 0; i < 40 && stable < 3; i++) { await sleep(150); const now = await size(); stable = now.w === last.w && now.h === last.h && (now.w !== before.w || now.h !== before.h) ? stable + 1 : 0; last = now; }
+      return last; },
     async goto(url) { await send('Page.navigate', {url}); await sleep(600); },
     async waitFor(expr, {frame = 'main', timeout = 20000, label = expr} = {}) { const end = Date.now() + timeout; let last; while (Date.now() < end) { try { last = await evaluate(expr, frame); if (last) return last; } catch (e) { last = e.message; } await sleep(200); } throw Error('WAIT_TIMEOUT: ' + label + ' last=' + JSON.stringify(last)?.slice(0, 200)); },
     async click(target, {frame = 'main', timeout = 15000} = {}) {

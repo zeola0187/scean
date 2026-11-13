@@ -286,3 +286,4 @@ legend { font-weight: 700; margin-bottom: 8px; padding: 0; }
   .nav-tabs button { padding: 0 10px; } .brand-name { display: none; }
   .resume { padding: 18px; } .shelf-main { padding-top: 20px; gap: 24px; }
 }
+.status-card .time-issue { color: var(--ink); font-weight: 600; }

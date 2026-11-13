@@ -5,6 +5,10 @@ import {PHASES, phaseIndex} from './s2-turn.mjs';
 import {proseNodes, changeRows, changeSummary, renderChanges, stateGroups, placeOf, valueText, avatar, castIndex, CATEGORY, clockText} from './s2-render.mjs';
 import {renderFrontendDocument} from './frontend-runtime.mjs';
 
+// Post-body settlement reports time problems with these codes; a player time confirmation on a new turn resolves them.
+const TIME_CODES = new Set(['POST_TIME_INVALID', 'NEEDS_TIME_PRECISION', 'TIME_CONFIRMATION_ENDPOINT_REQUIRED', 'TEMPORAL_BODY_CONFLICT']);
+const timeIssue = f => TIME_CODES.has(f?.code);
+
 const nearBottom = () => window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 180;
 
 export function createReader(actions) {
@@ -98,9 +102,10 @@ function renderPending(s, actions) {
     case 'settlement_failed':
       status = h('div', {class: 'status-card tone-warn', role: 'alert'}, h('strong', {class: 'status-title'}, '正文寫好了，世界還沒有更新'),
         h('p', null, '這段正文還不算故事的一部分。「繼續整理世界」會用同一段正文更新狀態與時間，不會重寫。'),
+        timeIssue(op.failure) ? h('p', {class: 'time-issue'}, '這次卡在時間：故事無法確定這一步做到何時。你可以指定時間，故事會用同一個行動重新寫這一段（暫存正文會被取代）。') : null,
         op.savedBody ? h('figure', {class: 'draft-body', 'aria-label': '暫存正文，尚未計入故事'}, h('figcaption', null, '暫存正文 · 尚未計入故事'), h('div', {class: 'prose'}, proseNodes({body: op.savedBody}, s.run, {draft: true}))) : null,
-        h('div', {class: 'row'}, op.failure?.canResume === false ? null : btn('繼續整理世界', () => ops.resume(), 'primary'), op.savedBody ? btn('收起暫存正文', () => ops.hideSaved()) : btn('先讀暫存正文', () => ops.readSaved().catch(e => actions.store.set({notice: friendly(e)}))), btn('放棄這段，修改行動', () => ops.dismiss())),
-        op.failure?.canResume === false ? h('p', {class: 'meta'}, '這段暫存正文已用完整理次數，請修改行動後重新送出。') : null);
+        h('div', {class: 'row'}, timeIssue(op.failure) ? btn('指定時間後重寫', () => actions.sheet('time', 'needs'), op.failure?.canResume === false ? 'primary' : undefined) : null, op.failure?.canResume === false ? null : btn('繼續整理世界', () => ops.resume(), 'primary'), op.savedBody ? btn('收起暫存正文', () => ops.hideSaved()) : btn('先讀暫存正文', () => ops.readSaved().catch(e => actions.store.set({notice: friendly(e)}))), btn('放棄這段，修改行動', () => ops.dismiss())),
+        op.failure?.canResume === false ? h('p', {class: 'meta'}, timeIssue(op.failure) ? '這段暫存正文已用完整理次數；請指定時間後重寫，或修改行動。' : '這段暫存正文已用完整理次數，請修改行動後重新送出。') : null);
       break;
     case 'unknown': status = card('busy', op.checking ? '正在確認是否已保存…' : '還無法確認是否已保存', op.checking ? '連線在送出途中中斷。正在向存檔查詢這一輪的結果；確認前不會顯示正文。' : '暫時查不到結果。原本的操作可能仍在進行。', op.checking ? null : btn('再查一次', () => ops.recheck(), 'primary')); break;
     case 'not_saved': status = card('bad', '確認結果：這一輪沒有保存', '存檔裡沒有這一輪。可以用同一段行動再試一次，不會重複保存。', btn('再試一次', () => ops.retry(), 'primary'), btn('修改行動', () => ops.dismiss())); break;

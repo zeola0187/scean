@@ -76,8 +76,8 @@ const SHEETS = {
     if (v.status === 'not_enabled') return {title: '日曆', body: h('div', {class: 'empty-state'}, h('strong', null, '這部作品沒有啟用日曆'), h('p', null, '作者可以在創作時為作品開啟「世界日常」，讓角色和世界有自己的安排。'))};
     return {title: '日曆', sub: v.clockLabel ? '現在：' + clockText(v.clockLabel) : null, body: [
       h('p', {class: 'fine top'}, '這裡是已公告的公共安排。是否真的發生，仍以故事正文為準。'),
-      h('nav', {class: 'day-strip', 'aria-label': '故事日期'}, (v.days ?? []).map(day => h('button', {type: 'button', class: day.day === v.selectedDay ? 'on' : '', 'aria-pressed': String(day.day === v.selectedDay), onclick: () => actions.sheet('calendar', {windowStart: v.windowStart, day: day.day})}, h('span', null, day.label), day.count ? h('b', null, day.count) : null))),
-      (v.entries ?? []).length ? h('ul', {class: 'events'}, v.entries.map(e => h('li', {class: `event status-${e.status}`}, h('span', {class: 'event-label'}, h('strong', null, e.label), h('small', null, `${e.startLabel} ～ ${e.endLabel}`)), h('span', {class: 'event-status'}, STATUS[e.status] ?? e.status)))) : h('p', {class: 'meta'}, '這一天沒有已公告的安排。'),
+      h('nav', {class: 'day-strip', 'aria-label': '故事日期'}, (v.days ?? []).map(day => h('button', {type: 'button', class: day.day === v.selectedDay ? 'on' : '', 'aria-pressed': String(day.day === v.selectedDay), onclick: () => actions.sheet('calendar', {windowStart: v.windowStart, day: day.day})}, h('span', null, clockText(day.label)), day.count ? h('b', null, day.count) : null))),
+      (v.entries ?? []).length ? h('ul', {class: 'events'}, v.entries.map(e => h('li', {class: `event status-${e.status}`}, h('span', {class: 'event-label'}, h('strong', null, e.label), h('small', null, clockText(`${e.startLabel} ～ ${e.endLabel}`))), h('span', {class: 'event-status'}, STATUS[e.status] ?? e.status)))) : h('p', {class: 'meta'}, '這一天沒有已公告的安排。'),
       h('div', {class: 'row'}, v.previousWindow !== null && v.previousWindow !== undefined ? h('button', {class: 'ghost small', type: 'button', onclick: () => actions.sheet('calendar', {windowStart: v.previousWindow})}, '‹ 較早七日') : null, v.nextWindow !== null && v.nextWindow !== undefined ? h('button', {class: 'ghost small', type: 'button', onclick: () => actions.sheet('calendar', {windowStart: v.nextWindow})}, '較後七日 ›') : null)]};
   },
 
@@ -88,7 +88,7 @@ const SHEETS = {
     const v = d.value, authors = v.authors ?? [], cast = s.run.snapshot?.characters ?? [], idx = castIndex(cast);
     if (v.status === 'not_enabled') return {title: '論壇', body: h('div', {class: 'empty-state'}, h('strong', null, '這部作品沒有啟用論壇'), h('p', null, '作者可以在創作時為作品設定論壇媒介。'))};
     const who = row => { const id = row?.author?.kind === 'character' ? row.author.characterId : row?.authorId; return row?.author?.kind === 'ambient' ? {name: '路人・' + row.author.displayName, i: 7} : {name: authors.find(a => a.id === id)?.name ?? cast.find(a => a.id === id)?.name ?? id, i: idx.get(id) ?? 0, id}; };
-    const by = row => { const w = who(row); return h('p', {class: 'post-by'}, avatar({name: w.name}, w.i), h('span', null, h('strong', null, w.name), h('small', null, row.timeLabel ?? ''))); };
+    const by = row => { const w = who(row); return h('p', {class: 'post-by'}, avatar({name: w.name}, w.i), h('span', null, h('strong', null, w.name), h('small', null, clockText(row.timeLabel ?? '')))); };
     if (thread) return {title: v.parent?.title ?? '文章', sub: v.mediumLabel ?? null, body: [
       h('button', {class: 'link', type: 'button', onclick: () => actions.sheet('forum', {})}, '‹ 所有文章'),
       v.parent ? h('article', {class: 'post'}, by(v.parent), h('p', {class: 'post-text'}, v.parent.text)) : h('p', {class: 'meta'}, '文章目前不可讀。'),
@@ -132,7 +132,7 @@ const SHEETS = {
   time(s, actions, purpose) {
     const tc = s.run?.timeControls; if (!tc) return {title: '時間', body: h('p', {class: 'meta'}, '這部作品沒有故事時間設定。')};
     const periods = Object.entries(tc.definition?.periods ?? {}), base = tc.base ?? {}, day = s.run.storyClock?.position?.latest?.dayOrdinal ?? 1;
-    const op = s.op, needs = purpose === 'needs' && op?.phase === 'needs_time';
+    const op = s.op, needs = purpose === 'needs' && ['needs_time', 'settlement_failed'].includes(op?.phase);
     let mode = 'refine', offset = 0, period = s.run.storyClock?.periodId ?? periods[0]?.[0], confirmed = false;
     const err = h('p', {class: 'error', role: 'alert', hidden: true});
     const form = h('form', {class: 'time-form', onsubmit: e => {

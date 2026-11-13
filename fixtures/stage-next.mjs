@@ -147,11 +147,13 @@ function genreOf(text) { return text.includes('灰燼礦坑') ? 'trpg' : text.in
 function nextTime(def, clock, rule) {
   if (!rule) return {unchanged: true};
   if (rule.elapsedMinutes) return {elapsedMinutes: rule.elapsedMinutes};
-  const day = clock?.position?.latest?.dayOrdinal ?? 1, ids = Object.keys(def?.periods ?? {});
-  if (rule.nextDay) return {dayOrdinal: day + 1, periodId: rule.nextDay};
-  const current = clock?.periodId ?? ids.find(id => def.periods[id].start <= (clock?.position?.latest?.minuteOfDay ?? 0) && (clock?.position?.latest?.minuteOfDay ?? 0) <= def.periods[id].end) ?? ids[0];
-  const i = ids.indexOf(current) + rule.advancePeriods;
-  return i < ids.length ? {dayOrdinal: day, periodId: ids[i]} : {dayOrdinal: day + 1, periodId: ids[i - ids.length]};
+  // A period target must start at or after the latest point of the (possibly uncertain) current clock;
+  // anything earlier is a backwards claim the Host rightly rejects.
+  const latest = clock?.position?.latest ?? {dayOrdinal: 1, minuteOfDay: 0}, ids = Object.keys(def?.periods ?? {});
+  if (rule.nextDay) return {dayOrdinal: latest.dayOrdinal + 1, periodId: rule.nextDay};
+  const later = ids.filter(id => def.periods[id].start >= latest.minuteOfDay);
+  const steps = Math.max(1, rule.advancePeriods ?? 1);
+  return later.length >= steps ? {dayOrdinal: latest.dayOrdinal, periodId: later[steps - 1]} : {dayOrdinal: latest.dayOrdinal + 1, periodId: ids[Math.min(steps - later.length, ids.length) - 1]};
 }
 
 async function wrapHostForAckFault(hostModule, out) {
@@ -211,8 +213,18 @@ export async function apply(ctx, config = {}) {
         stage = 'post_stat'; const fault = await readFault(out, 'post_stat'); if (fault?.fail) throw Error('SCRIPTED_POST_STAT_FAULT');
         const g = GENRES[genre], n = counters[genre] ?? 0, beat = g.beats.find(b => b.body === input.finalBody) ?? g.beats[n % g.beats.length];
         counters[genre] = n + 1;
-        const temporal = input.temporal ?? {};
-        answer = JSON.stringify({time: nextTime(temporal.definition, temporal.clock, beat.time), stateChanges: beat.changes.map(([category, key, value]) => ({scope: 'world', category, key, operation: 'set', value: category === 'tasks' ? {status: value, assignees: ['player'], progress: 50} : value})), memories: []});
+        const temporal = {definition: input.timeDefinition ?? input.temporal?.definition, clock: input.previousClock ?? input.temporal?.clock};
+        let time = nextTime(temporal.definition, temporal.clock, beat.time);
+        if (String(input.playerInput ?? '').includes('需要確認時間')) {
+          // Ambiguous wait: without a player endpoint, claim an earlier period today (a real conflict → NEEDS_TIME_PRECISION);
+          // with the player's confirmed endpoint, settle exactly there.
+          const find = (v, depth = 0) => { if (!v || typeof v !== 'object' || depth > 8) return null; for (const [k, x] of Object.entries(v)) { if (/confirm|override/i.test(k) && x && typeof x === 'object') { const t = x.target ?? x; if (Number.isSafeInteger(t?.dayOrdinal)) return t; } const r = find(x, depth + 1); if (r) return r; } return null; };
+          const target = find(input);
+          await fs.writeFile(path.join(out, 'post-stat-time.json'), JSON.stringify({target, temporalKeys: Object.keys(temporal), inputKeys: Object.keys(input)}, null, 1));
+          const ids = Object.keys(temporal.definition?.periods ?? {});
+          time = target ? {dayOrdinal: target.dayOrdinal, ...(target.periodId ? {periodId: target.periodId} : {})} : {dayOrdinal: temporal.clock?.position?.earliest?.dayOrdinal ?? 1, periodId: ids[0]};
+        }
+        answer = JSON.stringify({time, stateChanges: beat.changes.map(([category, key, value]) => ({scope: 'world', category, key, operation: 'set', value: category === 'tasks' ? {status: value, assignees: ['player'], progress: 50} : value})), memories: []});
       } else if (input?.window && input?.clock && Array.isArray(input.window.unplannedDays)) {
         stage = 'calendar_plan'; const target = input.window.unplannedDays.find(d => d > input.clock.position.latest.dayOrdinal);
         answer = JSON.stringify({schemaVersion: 1, kind: 'calendar_plan', dayStart: input.window.dayStart, dayEnd: input.window.dayEnd, events: target === undefined ? [] : [{key: 'genre-event', label: CALENDAR[genre], scope: 'public_world', start: {dayOrdinal: target, minuteOfDay: 1140}, end: {dayOrdinal: target, minuteOfDay: 1320}, announcement: 'public', requiredForScene: false}]});
