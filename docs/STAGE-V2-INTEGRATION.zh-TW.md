@@ -1,5 +1,7 @@
 # SCEAN 舞台 v2 與 Card Studio 產品整合
 
+> 下一階段（DSH Desktop 整合與預覽版）：[STAGE-V2-DESKTOP.zh-TW.md](STAGE-V2-DESKTOP.zh-TW.md)；預覽版使用說明：[DESKTOP-PREVIEW.zh-TW.md](DESKTOP-PREVIEW.zh-TW.md)。
+
 基準：`v1.6.4-local.w29.2d.rc3.1.dsh022.3`；分支 `proto/stage-a-p0`（獨立 worktree）。目標 DSH：0.2.2-rc.3（已核對 app.asar SHA-256 與 `dsh-compatibility.json` 相符）。
 
 ## 1. 產品結構
@@ -73,12 +75,12 @@
 
 ## 7. 尚未完成或尚未驗證
 
-- **單位字串誤判（Core 問題，未修改）**：Blueprint 的 `unit: "/24"` 會被存檔可攜性檢查當成絕對路徑。相容性稽核通過，但開演時才以 `SAVE_ENVIRONMENT_PATH` 失敗。建議讓稽核提前檢出，或讓 `unit` 不受此檢查。
+- ~~**單位字串誤判**~~：已在 Desktop 階段修正，可攜性規則不再把「/24」等文字當成路徑，相容性稽核也會提前檢出真實路徑。見 [STAGE-V2-DESKTOP.zh-TW.md](STAGE-V2-DESKTOP.zh-TW.md) §4.1。
 - **審閱需由使用者在對話中提出**：DSH SDK 沒有提供插件代送訊息到會話的公開 API，所以「請 AI 審閱」需要使用者在對話中送出（提供一鍵複製）。
-- **作品列表只到目前對話**：Studio 只知道目前對話綁定的工作卡，「作品」頁不能列出所有作品；切換作品靠 DSH 對話列表。
+- **作品列表只到目前對話**：這是刻意的產品決策。每張 Seed 卡使用自己的創作對話，避免不同素材混入同一段 AI 上下文；同一 Seed 的多個劇本版本留在同一個對話中。
 - **進階設定仍在舊版舞台**：模型分派、摘要服務、文風、禁用詞、備份、診斷。v2 的設定頁提供切換入口。
 - **其他未提供的功能**：「我已知的設定」需要 revealedLore，尚未實作，v2 明確顯示「尚無法顯示」。v2 不支援非原生的隔離 HTTP 伺服器。
-- **未驗證的環境**：DSH Desktop（Electron）本體、實體 Android／iOS、真實網路與真實模型。驗收使用同一份原生 client 的官方 DSH Web。Android 上的中文系統字型可能與截圖不同。
+- **未驗證的環境**：DSH Desktop（Electron）本體已在下一階段完成隔離驗收，見 [STAGE-V2-DESKTOP.zh-TW.md](STAGE-V2-DESKTOP.zh-TW.md)。實體 Android／iOS、真實網路與真實模型仍未驗證。
 
 ## 8. 如何執行
 
