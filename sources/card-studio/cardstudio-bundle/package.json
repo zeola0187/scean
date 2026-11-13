@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-card-studio-scean-test",
-  "version": "1.6.4-local.w29.2d.rc3.1",
+  "version": "1.6.4-local.w29.2d.rc3.1.dsh022.1",
   "private": true,
   "type": "module",
   "description": "Isolated Card Studio 1.2.0 integration test copy for SCEAN",
@@ -29,9 +29,9 @@
     "rollback-recycle.js"
   ],
   "peerDependencies": {
-    "@deepseek-ai/dsh-tools": "0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2 || 0.2.1-rc.3",
-    "@deepseek-ai/dsh-typert-protocol": "0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2 || 0.2.1-rc.3",
-    "@deepseek-ai/dsh-home-paths": "0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2 || 0.2.1-rc.3"
+    "@deepseek-ai/dsh-tools": "0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.2-rc.1",
+    "@deepseek-ai/dsh-typert-protocol": "0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.2-rc.1",
+    "@deepseek-ai/dsh-home-paths": "0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.2-rc.1"
   },
   "peerDependenciesMeta": {
     "@deepseek-ai/dsh-tools": {
@@ -59,7 +59,7 @@
     }
   },
   "engines": {
-    "dsh": "0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2 || 0.2.1-rc.3"
+    "dsh": "0.2.0-rc.2 || 0.2.1-rc.1 || 0.2.1-rc.2 || 0.2.1-rc.3 || 0.2.2-rc.1"
   },
   "os": [
     "win32"

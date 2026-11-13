@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "skillVersion": "1.1.0",
-  "runtimeVersion": "1.6.2-local.w29.2d",
-  "studioVersion": "1.6.2-local.w29.2d",
-  "desktopVersion": "0.2.0-rc.2",
-  "claimsScope": "structure/data-path proof; no true-model semantic acceptance",
+  "runtimeVersion": "1.6.4-local.w29.2d.rc3.1.dsh022.1",
+  "studioVersion": "1.6.4-local.w29.2d.rc3.1.dsh022.1",
+  "desktopVersion": "0.2.2-rc.1",
+  "claimsScope": "Structure/data-path proof against official SDK; deployment and live-model evidence has a separate local feature baseline. See docs/DSH022-COMPATIBILITY.md.",
   "capabilities": [
     {
       "id": "snapshot",
@@ -34,7 +34,7 @@
         "path": "core/engine.mjs",
         "line": 259,
         "symbol": "async turn",
-        "sha256": "69653b8e35abf0b38346a6bf59cb81c7845a7a02e04d1cfa1328d91471155b78",
+        "sha256": "a1604dd70a41728e101716346e70a66ab63005d26a5d65f2dd72fb7476eee0bf",
         "priorSha256": "13f418aabc85cd1e6ae9b6ef5920db7e92aafc5cf9d9dd6c5f50ddd9de6cf907",
         "playerNameBaselineSha256": "23686d04b743925c5c94bbb21fd1418984db7cea17ca75580243ee6321ba21e7",
         "beforeDialogueColorsSha256": "f4a83d514153d2d5531f0ec1b9919196a819adffd8dffe729ba0b23d9911228f"
@@ -55,7 +55,7 @@
         "path": "core/engine.mjs",
         "line": 480,
         "symbol": "ownerPacket",
-        "sha256": "69653b8e35abf0b38346a6bf59cb81c7845a7a02e04d1cfa1328d91471155b78",
+        "sha256": "a1604dd70a41728e101716346e70a66ab63005d26a5d65f2dd72fb7476eee0bf",
         "priorSha256": "13f418aabc85cd1e6ae9b6ef5920db7e92aafc5cf9d9dd6c5f50ddd9de6cf907",
         "playerNameBaselineSha256": "23686d04b743925c5c94bbb21fd1418984db7cea17ca75580243ee6321ba21e7",
         "beforeDialogueColorsSha256": "f4a83d514153d2d5531f0ec1b9919196a819adffd8dffe729ba0b23d9911228f"
@@ -136,7 +136,7 @@
         "path": "core/state-blueprint.mjs",
         "line": 47,
         "symbol": "validateBlueprint",
-        "sha256": "97f5c8aef0024fc743154ad0ff1d73009e4d09732360679846c0e7f5a16ef490",
+        "sha256": "7c54ad28f319949d69793a52775e49ea8278b1f644c56cb2e55dc25667e3f5bf",
         "priorSha256": "1686bc3e2c950ce9895b73023088c3ba33bae7ec41d2dbba3533290cfb592e90"
       },
       "tests": [
@@ -155,7 +155,7 @@
         "path": "core/state-blueprint.mjs",
         "line": 112,
         "symbol": "materializeInitialState",
-        "sha256": "97f5c8aef0024fc743154ad0ff1d73009e4d09732360679846c0e7f5a16ef490",
+        "sha256": "7c54ad28f319949d69793a52775e49ea8278b1f644c56cb2e55dc25667e3f5bf",
         "priorSha256": "1686bc3e2c950ce9895b73023088c3ba33bae7ec41d2dbba3533290cfb592e90"
       },
       "tests": [
@@ -193,7 +193,7 @@
         "path": "adapters/store.mjs",
         "line": 83,
         "symbol": "async commit",
-        "sha256": "4482e9084c88fd979105ca5c30ea610d0701e323e46f30581999e49f8e7adb9a",
+        "sha256": "3e8c47bef52ec82072d0b676d2eef2a7641ea9b153f29fc684691163c41434bc",
         "priorSha256": "48b888d37ac8a760f9955037091792cab9674522afba9bb8e19b502c34244e2e",
         "playerNameBaselineSha256": "48b888d37ac8a760f9955037091792cab9674522afba9bb8e19b502c34244e2e",
         "beforeRunRecycleSha256": "3cb9068c8dd4f70142ee147c25b6ecdfe2ca48ef6c4ab8855abb95f044ce4a86"
@@ -234,7 +234,7 @@
         "path": "core/context-budget.mjs",
         "line": 75,
         "symbol": "budgetStage",
-        "sha256": "bc5622e7d4bd9f71f86c2f0942c0db52ff67e1eaff37ffe735c69363c5e52768",
+        "sha256": "8cf025e5189469940fd2a480b557482e4566ce7e0be05fdeabf09e80b3759b67",
         "priorSha256": "dd5f2fc80a390c0cf60696d44dca7cab8a75d4b788306cbc35c3c5756d78fd06",
         "playerNameBaselineSha256": "f8e2ecd322373fbb4c64ed9248b098a6124e8484f1d7e2a64eb023605a7f2434",
         "beforeDialogueColorsSha256": "8af924bfc1dfdfd239d1cf9b853de0b45066b5910b0432fec6643ab7faf7b4db",
@@ -275,7 +275,7 @@
         "path": "core/inspection.mjs",
         "line": 112,
         "symbol": "publicInspection",
-        "sha256": "5048bb81e2af9bd80d7e1d3b09d4751af7a9b20b26fa56ab0b8a8738e3f04a8f",
+        "sha256": "55fa0fc67ca1f9126a09957132e986ef1bdc92b050d6837675dfcc3dead429cb",
         "priorSha256": "e6be0c1210c5f25606b698af4f21641bdfed34a00dfd4928fa5ee53ab6a2d402",
         "playerNameBaselineSha256": "74072c433c818b474e968fca156486cc4c6fb8e409ddf9dde5015614a7fcc219",
         "beforeRunRecycleSha256": "ca7b70d4200db5c6ffd6b90e7f03c1b8a926a7413447c0378fd13a87f7559e0e",
@@ -297,7 +297,7 @@
         "path": "core/regenerate.mjs",
         "line": 5,
         "symbol": "regenerateLast",
-        "sha256": "7a76b24645846961e9810f6a95155ba9cfd99c0cf3b8dbb5e4c575dd5f2dac17",
+        "sha256": "ebd31aefab0fe5a234b408f1f572a36a037eea2f0c56fc38559618428e9f162a",
         "priorSha256": "9d34cfbf02cc39dd7427cd30ebebb45219818ffd6a2099f00b54a69999aa9636",
         "beforeDialogueColorsSha256": "134717dfca1d7aa2c4867d7759f469d537b0ce0b0c79cf2195cf62f7f82413c4"
       },
@@ -317,7 +317,7 @@
         "path": "core/save-bundle.mjs",
         "line": 14,
         "symbol": "export",
-        "sha256": "70c3a8c783fc31eef335d0a34e60fbd1b3d3a99698f530c573c62438f96d5747",
+        "sha256": "17decb7106bbabac42e542610ba222857a46b26127dd6022dc6d930ff740c42b",
         "priorSha256": "844896a425489603e0c4a8ddbffa5e439671fb035d70724baf0fee0ec1b01813",
         "playerNameBaselineSha256": "844896a425489603e0c4a8ddbffa5e439671fb035d70724baf0fee0ec1b01813",
         "beforeDialogueColorsSha256": "b6d6936abf29ce6103bfd3a278a9dfe808b85b8ae2f8ae89f323eab53ecc2e7b",
@@ -359,7 +359,7 @@
         "path": "core/prompt-r3.mjs",
         "line": 3,
         "symbol": "withR3Prompts",
-        "sha256": "18c24ce1c6f5f1d94cca64e68d473caaa1e1da8afa07e88008dfe5ea1f86e4f2",
+        "sha256": "3796709af5969bfd41fc6104ea969c2ecef5c212679ed6b9344a4bdc6b843c4d",
         "priorSha256": "7e2057ad8bf79c3af9d7fd08c253866a6f4b598d5c6aefb91f09e5ed4ca7cfa8",
         "beforeDialogueColorsSha256": "169c63fc6f9cf033d7fe0599dfba0f08fe53cd8afff7d6857b5dcbb13a3964f7"
       },
@@ -419,7 +419,7 @@
         "path": "core/engine.mjs",
         "line": 172,
         "symbol": "no configured numerical dice runner",
-        "sha256": "69653b8e35abf0b38346a6bf59cb81c7845a7a02e04d1cfa1328d91471155b78",
+        "sha256": "a1604dd70a41728e101716346e70a66ab63005d26a5d65f2dd72fb7476eee0bf",
         "priorSha256": "13f418aabc85cd1e6ae9b6ef5920db7e92aafc5cf9d9dd6c5f50ddd9de6cf907",
         "playerNameBaselineSha256": "23686d04b743925c5c94bbb21fd1418984db7cea17ca75580243ee6321ba21e7",
         "beforeDialogueColorsSha256": "f4a83d514153d2d5531f0ec1b9919196a819adffd8dffe729ba0b23d9911228f"
@@ -440,7 +440,7 @@
         "path": "plugin/player-native-bridge.mjs",
         "line": 2,
         "symbol": "export",
-        "sha256": "c1244934c7bcab37b3d866cce32d580e069830f37bbe7a51bf45401b5514d35d",
+        "sha256": "34638e12600b78af55d740c7940e7dd54eed8fd455343896a407849848af09c4",
         "priorSha256": "d3b890dccd81f954368ad04120a6c3510a764522cda132222d7c4bf2a3215f7d",
         "playerNameBaselineSha256": "44ba5afdea62fe9638fc29fe45350d9bee53af16c705555a4ec61d7d05fa458b",
         "beforeRunRecycleSha256": "02d19075c10ae36e73461b5d48ad7ba00c49a2e242f253a0002c7b7882933050"
@@ -525,7 +525,7 @@
         "path": "sources/card-studio/cardstudio-bundle/index.js",
         "line": 56,
         "symbol": "addonCtx.tools.register",
-        "sha256": "ebb8cc642b22e951f856e470440519c57aa0e56bc2e344f50dd970cd0c1a09e0",
+        "sha256": "021c6d638c7a9345dd67021e8cb456bf8319b2d326bf4182bdd70b2f4a8b7571",
         "priorSha256": "5bd327c74759dd237a40d2a7c39aabb9f0e06a2b6c4ea5073792bb568f6bd182",
         "previousCandidateSource": {
           "path": "authoring/.integration/cardstudio/index.js",
@@ -654,7 +654,7 @@
         "path": "core/story-clock.mjs",
         "line": 9,
         "symbol": "storyTimeDefinition",
-        "sha256": "25a716126338fb915c8a0c4472c737629f066ca2aa95634918ed138aab78f423"
+        "sha256": "4d811a04d1e131000ddc276cceba87c2a8c1fedbabc21c5740b2c3d86fab8d08"
       },
       "tests": [
         {
@@ -672,7 +672,7 @@
         "path": "core/world-routine.mjs",
         "line": 14,
         "symbol": "routinePolicy",
-        "sha256": "2a1a362c46762a1cf812299997634ef8d1ad6f2bb435f160774147607c8f2c0b"
+        "sha256": "fc1f42c9847126c9d4c80a149d3f5f02543dc71b7b856c00149dce6baf8ee370"
       },
       "tests": [
         {

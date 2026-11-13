@@ -1,0 +1,147 @@
+{
+  "status": "COMPATIBILITY_PORT_TESTED_NOT_RELEASED_OR_DEPLOYED",
+  "at": "2026-11-13T11:32:11.703950+00:00",
+  "baseCommit": "0d77f8b054f442da3d4c5d608bc8a1450a41fd99",
+  "baseBranch": "fix/studio-tool-recovery-1.6.4",
+  "sourceBranch": "compat/dsh-0.2.2-rc1-20261113",
+  "dsh": "0.2.2-rc.1",
+  "suiteSourceVersion": "1.6.4-local.w29.2d.rc3.1.dsh022.1",
+  "canonicalBuild": {
+    "passed": true,
+    "runtimeFiles": 267,
+    "sdkIncluded": false,
+    "productionWrites": 0
+  },
+  "tests": {
+    "targeted": {
+      "counts": {
+        "tests": 15,
+        "suites": 0,
+        "pass": 15,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "startedAt": "2026-11-13T11:17:37.513106+00:00",
+      "completedAt": "2026-11-13T11:17:42.838232+00:00",
+      "rawLogSha256": "228d1e21944b42766c75011c273525feddfda5556359c745767af6c4f604d063",
+      "credentialEnvironmentCleared": true,
+      "productionHomeUsed": false,
+      "providerNetworking": "blocked or intercepted",
+      "skippedNames": []
+    },
+    "guard": {
+      "counts": {
+        "tests": 26,
+        "suites": 0,
+        "pass": 26,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "startedAt": "2026-11-13T11:18:14.434892+00:00",
+      "completedAt": "2026-11-13T11:18:22.232549+00:00",
+      "rawLogSha256": "be690ee8c3306a0c52733db1c3a0cc09801b1a45837c14208fca88722c89c9b0",
+      "credentialEnvironmentCleared": true,
+      "productionHomeUsed": false,
+      "providerNetworking": "blocked or intercepted",
+      "skippedNames": []
+    },
+    "guard-sealed": {
+      "counts": {
+        "tests": 26,
+        "suites": 0,
+        "pass": 26,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "startedAt": "2026-11-13T11:18:14.433818+00:00",
+      "completedAt": "2026-11-13T11:18:22.277992+00:00",
+      "rawLogSha256": "ea44483d59b78cf8ad6df3d6f52dbed8b97d1755a3ec6fb46a36d5b0bce7bd76",
+      "credentialEnvironmentCleared": true,
+      "productionHomeUsed": false,
+      "providerNetworking": "blocked or intercepted",
+      "skippedNames": []
+    },
+    "history-fixture": {
+      "counts": {
+        "tests": 17,
+        "suites": 0,
+        "pass": 17,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "startedAt": "2026-11-13T11:24:09.346289+00:00",
+      "completedAt": "2026-11-13T11:24:18.906994+00:00",
+      "rawLogSha256": "d67e7e412d5a7194324047ec93578b92e090266cd223dc184cb8ac265a018d39",
+      "credentialEnvironmentCleared": true,
+      "productionHomeUsed": false,
+      "providerNetworking": "blocked or intercepted",
+      "skippedNames": []
+    },
+    "full": {
+      "counts": {
+        "tests": 1693,
+        "suites": 0,
+        "pass": 1691,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 2,
+        "todo": 0
+      },
+      "startedAt": "2026-11-13T11:28:30.069720+00:00",
+      "completedAt": "2026-11-13T11:31:53.206815+00:00",
+      "rawLogSha256": "d3188693096e9eb8d8ccad026cd9d0eed7bb969f10db8bc1ef711eaa2e1a66c7",
+      "credentialEnvironmentCleared": true,
+      "productionHomeUsed": false,
+      "providerNetworking": "blocked or intercepted",
+      "skippedNames": [
+        "precision request is exclusive in the tool schema",
+        "W29D prior sealed reader explicitly rejects v10 rather than losing ambient authors"
+      ]
+    }
+  },
+  "licenseAndSourceMetadataChecks": {
+    "passed": 8,
+    "failed": 0,
+    "licenseBytesRetained": true
+  },
+  "dependencies": {
+    "exactPinnedVersionsVerified": 31,
+    "cachedPinnedDependenciesReused": true,
+    "freshFrozenLockfileInstallPerformed": false
+  },
+  "explicitExclusions": [
+    {
+      "file": "tests/legacy-fixture-tool.test.mjs",
+      "reason": "Required historical fixture preparation script absent from the public baseline"
+    },
+    {
+      "test": "actual sealed timecal3 reader",
+      "reason": "Historical reader source not provided; excluded with test-skip-pattern"
+    },
+    {
+      "test": "actual timecal4 reader",
+      "reason": "Historical reader source not provided; excluded with test-skip-pattern"
+    }
+  ],
+  "resolvedTestIncidents": [
+    "Initial restricted-sandbox run could not use loopback networking or create required fixture links; rerun with the same isolated home and no credentials.",
+    "Historical invalid-history fixture reused a tool-call ID on a repair turn; made IDs unique without changing production validation. File rerun: 17 passed; final complete available suite rerun also required before publication."
+  ],
+  "separateDeployedFeatureBaseline": true,
+  "localDeploymentEvidenceAppliesToThisPublicPort": false,
+  "productionRuntimeImplementationsChanged": false,
+  "productionDataChanged": false,
+  "seekerChangesIncluded": false,
+  "paidApiRequestsDuringPublicationWork": 0,
+  "liveOpenRouterValidated": false,
+  "releaseArtifactPublished": false,
+  "fullDesktopModelTurnForThisPortValidated": false
+}

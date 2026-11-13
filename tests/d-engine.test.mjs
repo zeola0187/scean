@@ -69,7 +69,7 @@ test('D2 legal large original reaches the next Director without a platform token
  await play(f);assert.equal(f.calls.filter(c=>c.stage==='director').length,2);const trace=(await f.store.readAttempts(f.run.runId)).at(-1);assert(trace.tools[0].historyBudget.estimatedTokens>6000);assert.equal(trace.tools[0].historyBudget.tokenQuota,null);
 });
 for(const [name,args,error] of [['search_history',{query:'compass',externalPath:'C:/secret'},'INVALID_HISTORY_TOOL_ARGUMENTS'],['read_history',{commitId:'d-commit-0001',runId:'other-run'},'HISTORY_CROSS_RUN'],['read_history',{commitId:'missing-commit'},'HISTORY_COMMIT_NOT_FOUND'],['read_history',{commitId:'d-commit-0001',radius:2},'HISTORY_READ_RADIUS']])test(`D2 ${name} rejects ${error} safely`,async()=>{
-  const f=await setup({turns:5,strategy:()=>({text:'',toolCalls:[{id:'bad-history',name,arguments:args}]})});const before=await f.store.read(f.run.runId);await assert.rejects(play(f),code(error));assert.deepEqual(await f.store.read(f.run.runId),before);
+  const f=await setup({turns:5,strategy:({input})=>({text:'',toolCalls:[{id:'bad-history-'+input.conversation.length,name,arguments:args}]})});const before=await f.store.read(f.run.runId);await assert.rejects(play(f),code(error));assert.deepEqual(await f.store.read(f.run.runId),before);
 });
 test('D1 a new committed story invalidates pending summary before a late summary result',async()=>{
   const f=await setup({turns:10});let release,started;const pending=new Promise(resolve=>{release=resolve;}),begun=new Promise(resolve=>{started=resolve;});const synthetic={describe:f.model.describe,async generate(){started();await pending;return{text:'LATE_SUMMARY',model:'synthetic-late'};}};

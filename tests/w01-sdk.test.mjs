@@ -15,13 +15,15 @@ test('W01 official rc2 SDK discovers dynamic tool, executes two themes, saves re
  host.ctx.provide('llm',{async resolveModelInfo(){return {};},async *stream(){calls++;throw Error('MODEL_FORBIDDEN');}});
  const runtime=join(home,'synthetic-scean');await host.ctx.plugin(sceanPlugin,{dataRoot:runtime,enableExistingEmbedding:false});
  const originalStart=host.ctx.scean.startFromStudio.bind(host.ctx.scean);host.ctx.scean.startFromStudio=r=>originalStart({...r,playerName:'Synthetic player'});
-  const workspace=host.registry.list()[0].path,agent=host.agent('w01-sdk-session',workspace),bridge=host.ctx.get('cardstudioSceanBridge');
- const request=r=>bridge.request(agent,r,new AbortController().signal);const claim=(await request({action:'acquire',page_id:'w01-sdk-human-page'})).value;
- const tool=host.ctx.tools.get('cardstudio_scean_frontend',agent);assert(tool,'registered official tool');
- const execute=async args=>{const r=await tool.execute(args,{agent,signal:new AbortController().signal});assert(r.ok,JSON.stringify(r));return r.value;};
+ const workspace=host.registry.list()[0].path,bridge=host.ctx.get('cardstudioSceanBridge');
  const results=[];
  try{
   for(const theme of ['indicator','fantasy']){
+   const agent=host.agent('w01-sdk-session-'+theme,workspace);
+ const request=r=>bridge.request(agent,r,new AbortController().signal);const claim=(await request({action:'acquire',page_id:'w01-sdk-human-page-'+theme})).value;
+ const tool=host.ctx.tools.get('cardstudio_scean_frontend',agent);assert(tool,'registered official tool');
+ const execute=async args=>{const r=await tool.execute(args,{agent,signal:new AbortController().signal});assert(r.ok,JSON.stringify(r));return r.value;};
+
    const f=w01Fixture(theme),card=structuredClone(f.card);delete card.data.extensions.scean.frontend;
    await fs.writeFile(join(workspace,'imports',theme+'.json'),JSON.stringify(card));const imported=await request({action:'import',claim,args:{path:'imports/'+theme+'.json',type:'card'}});assert(imported.ok,JSON.stringify(imported));const id=imported.value.id;
    const draft=await execute({action:'dynamic_read',document_id:id});assert.equal(draft.runtimeProfile,'scean-html-bindings-v1');

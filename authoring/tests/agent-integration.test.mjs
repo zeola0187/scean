@@ -7,6 +7,7 @@ import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {Context} from '@deepseek-ai/cordis';
 import Tools from '@deepseek-ai/dsh-tools';
+import * as NativeExecutor from '@deepseek-ai/dsh-tool-executor-native';
 import Skills from '@deepseek-ai/dsh-skill';
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt';
 import Commands from '@deepseek-ai/dsh-commands';
@@ -24,7 +25,7 @@ async function fixture(t){
  await mkdir(join(root,'evidence','studio-sessions'),{recursive:true});const dir=await mkdtemp(join(root,'evidence','studio-sessions','native-'));
  await mkdir(join(dir,'.cardstudio-scean'),{recursive:true});await writeFile(join(dir,'.cardstudio-scean/workspace.json'),JSON.stringify({schemaVersion:1,capability:'card-studio-scean-test',title:'Synthetic native authoring'}));
  await cp(join(root,'.integration/cardstudio/skills'),join(dir,'.cardstudio-scean/skills'),{recursive:true});
- const ctx=new Context(),agents=new Map(),events=[];ctx.provide('workspaceRegistry',{archivedSessionIds:new Set()});await ctx.plugin(Typert);await ctx.plugin(SystemPrompt);await ctx.plugin(Tools,{mode:'native'});await ctx.plugin(Skills);ctx.provide('agents',{get:id=>agents.get(id)});await ctx.plugin(Commands);
+ const ctx=new Context(),agents=new Map(),events=[];ctx.provide('workspaceRegistry',{archivedSessionIds:new Set()});await ctx.plugin(Typert);await ctx.plugin(SystemPrompt);await ctx.plugin(Tools);await ctx.plugin(NativeExecutor);await ctx.plugin(Skills);ctx.provide('agents',{get:id=>agents.get(id)});await ctx.plugin(Commands);
  const make=(id,cwd)=>({id,status:'idle',session:{header:{cwd},snapshotEvents:()=>[],append:(type,data)=>{events.push(type);return events.length;}},cancel(){},async whenIdle(){},prompt(){assert.fail('No actual model invocation authorized');}});
  const a=make('synthetic-native-agent',dir),other=make('synthetic-other',root);for(const x of [a,other]){x.ctx=createScope(ctx,x).ctx;agents.set(x.id,x);}
  const store=new DurableStore({root:join(dir,'scean-store')}),host=await new SceanHost({engine:new SceanEngine({store,model:{generate(){assert.fail('No RP model authorized for Studio handoff');}},memory:new Memory()}),root:join(dir,'scean-host')}).init();
@@ -93,4 +94,20 @@ test('v1 actual discovered binding tool saves reviewed sources, detects drift an
  const next=await f.bridge.sceanControl(f.a,{...request,expected_revision:corrected.value.revision});assert(next.ok,JSON.stringify(next));assert.equal((await f.store.read(next.value.runId)).snapshot.characters[0].description,'SOLO_REVISED: a retired lamp keeper.');assert.deepEqual(await readFile(join(f.store.runDir(runId),'current.json')),old);
  const scope=await f.bridge.setAuthoringScope(f.a,{claim,mode:'content',expected_epoch:claim.authoring_scope.epoch});assert(scope.ok,JSON.stringify(scope));
  const denied=await bind(corrected.value.revision,'SOLO_REVISED: a retired lamp keeper.');assert.equal(denied.error.code,'AUTHORING_SCOPE');
+});
+
+
+test('DSH 0.2.2 native executor dispatches scoped Studio tools and revokes them on release',async t=>{
+ const f=await fixture(t),acquired=await f.invoke({action:'acquire',page_id:'sdk022-native-batch-page'});assert(acquired.ok,JSON.stringify(acquired));
+ const execute=async(name,args,id)=>{
+  const batch=await f.ctx.tools.execute({agent:f.a,signal:new AbortController().signal,calls:[{type:'tool-call',id,name,arguments:JSON.stringify(args)}]});
+  assert.equal(batch.results.length,1);assert.equal(batch.results[0].callId,id);return batch.results[0].result;
+ };
+ const created=await execute('cardstudio_scean_create',{name:'SDK native batch card',description:'Synthetic card only.'},'native-create');
+ assert.equal(created.isError,false,JSON.stringify(created));assert.equal(created.value.ok,true,JSON.stringify(created));
+ const id=created.value.value.id;
+ const read=await execute('card_read',{document_id:id},'native-read');assert.equal(read.isError,false,JSON.stringify(read));assert.equal(read.value.value.card.data.name,'SDK native batch card');
+ const malformed=await execute('card_read',{},'native-invalid');assert.equal(malformed.isError,true,'actual executor validates required tool arguments');
+ await f.invoke({action:'release',claim:acquired.value});
+ const denied=await execute('card_read',{document_id:id},'native-released');assert.equal(denied.isError,true,'released scope cannot dispatch tool');
 });

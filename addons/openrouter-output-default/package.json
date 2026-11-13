@@ -1,0 +1,35 @@
+{
+  "name": "@local/dsh-scean-openrouter-output-default",
+  "version": "0.1.0-local.3",
+  "private": true,
+  "type": "module",
+  "description": "Reviewed isolated 0.2.2-rc.1 OpenRouter output-default guard",
+  "license": "AGPL-3.0-only",
+  "exports": {
+    ".": "./index.mjs"
+  },
+  "engines": {
+    "node": ">=24",
+    "dsh": "0.2.2-rc.1"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh": "0.2.2-rc.1"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh": {
+      "optional": true
+    }
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "files": [
+    "index.mjs",
+    "guard.mjs",
+    "sdk-pin.json",
+    "cordis.patch.yml",
+    "README.md"
+  ]
+}
