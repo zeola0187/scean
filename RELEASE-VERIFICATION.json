@@ -1,83 +1,144 @@
 {
-  "status": "RC3_PRERELEASE_ISOLATED_VALIDATION",
-  "at": "2026-11-13T14:46:50.923163+00:00",
-  "version": "1.6.4-local.w29.2d.rc3.1.dsh022.3",
-  "guardVersion": "0.1.0-local.5",
+  "status": "STAGE_V2_MAIN_REPOSITORY_URL_INSTALL_VERIFIED",
+  "at": "2026-11-14T10:00:00+00:00",
+  "version": "1.7.0-local.stagev2.1.dsh022.3",
+  "guardVersion": "0.1.0-local.5 (unchanged; published with v1.6.4-local.w29.2d.rc3.1.dsh022.3)",
   "targetDsh": "0.2.2-rc.3",
-  "baselineRevision": "a11d851652531ae1ac38119ea245f2e6f5fcb231",
-  "baselineSourceArchiveSha256": "00c3871ea918fe4b31728f225ec2721c256bc0514cf40965c1ce9109cc119e2b",
-  "candidateRevision": null,
-  "packagedSdk": "14cfd81c9135bf0afb89417543c94f9ecfe09266574452a9b106890c698725ae",
+  "testedDesktopAsarSha256": "14cfd81c9135bf0afb89417543c94f9ecfe09266574452a9b106890c698725ae",
+  "baselineMain": "28515190749c05f1d69303e7ff48a05b76e56735",
+  "stageV2Accepted": {
+    "tag": "stage-v2-accepted",
+    "commit": "7f285f8e2d2230561384a2fdc260490ae5c3b533"
+  },
+  "mergeCommit": "0b456c7",
+  "firstInstallVerifiedCommit": "86c0eee2b227e0117eb14efe6bdeb166159ce367",
   "tests": {
     "full": {
       "counts": {
-        "tests": 1749,
-        "pass": 1748,
-        "fail": 0,
-        "cancelled": 0,
+        "tests": 1719,
+        "pass": 1707,
+        "fail": 11,
         "skipped": 1
       },
-      "seconds": 189.47,
-      "logSha256": "9a423c244014bc58206ec4fb6b1264226726e83fc8e459d3aa91a16dcfcb110b",
-      "node": "24.21.0",
-      "network": "non-loopback blocked",
-      "providers": "synthetic only"
+      "newFailuresVsBaseline": 0,
+      "note": "The 11 failures are pre-existing environment failures also present on the pre-merge baseline (missing generated studio/ directory, temp-path junctions, loopback/link permissions). Network: non-loopback blocked. Providers: synthetic only."
     },
-    "rc3Replay": {
-      "tests": 4,
-      "pass": 4,
-      "fail": 0
+    "pythonRelease": {
+      "release-support": "OK",
+      "prepared-source": "OK",
+      "prepared-release": "OK",
+      "public-asset-isolation": "OK",
+      "w29-release": "2 failures, identical on main 2851519 (stale 1.6.3 version and runtime fingerprint pins)"
     },
-    "releasePackaging": {
-      "passed": 11,
-      "failed": 0
-    },
-    "installedLifecycle": {
-      "syntheticThemes": [
-        "indicator",
-        "fantasy"
-      ],
-      "frontendStatus": "ready",
-      "revision": 1,
-      "guardActivated": true,
-      "guardOriginalMethodRestored": true,
-      "sceanDisposed": "inactive",
-      "modelCalls": 0
-    },
-    "publicationFocused": {
-      "passed": 55,
-      "failed": 0
+    "officialTgzDesktop": {
+      "package": "SCEAN-1.7.0-local.stagev2.1.dsh022.3-suite.tgz from scripts/prepare-release.py",
+      "instance": "isolated DSH Desktop 0.2.2-rc.3 copy, scripted provider",
+      "firstRun": "20/20",
+      "acceptancePhases": "17/17 (seed2 stale versions turnops time race world coexist small recap workshop feed notes lease resume phone restart)",
+      "note": "turnops first failed twice from a layout shift under the click; the harness now waits for the work panel and the confirmation row. The rollback itself worked when performed by hand."
     }
   },
-  "explicitExclusions": [
-    {
-      "file": "tests/legacy-fixture-tool.test.mjs",
-      "reason": "published archive omits prepare-legacy-playback-fixture.mjs"
-    },
-    {
-      "test": "actual sealed timecal3 reader rejects new v12",
-      "reason": "sealed timecal3 reader not supplied"
-    },
-    {
-      "test": "actual timecal4 reader refuses new schema13",
-      "reason": "timecal4 reader not supplied"
-    }
+  "repositoryUrlInstall": {
+    "method": "DSH 插件 → 添加插件 → 包名或地址 = https://github.com/zeola0187/scean → 安装 → 立即启用 (driven through the real Desktop UI)",
+    "cleanEnvironment": "new empty DSH_HOME, Electron userData, USERPROFILE and pnpm store; DSH created its own profile; nothing preinstalled",
+    "installSeconds": 9,
+    "lockResolution": "https://codeload.github.com/zeola0187/scean/tar.gz/86c0eee2b227e0117eb14efe6bdeb166159ce367",
+    "installedVersion": "1.7.0-local.stagev2.1.dsh022.3",
+    "contentCheck": "installed package (351 files) byte-identical to the acceptance-tested official TGZ except README.md and packages/scean/README.md; plugin/client.js identical to the pushed commit and contains the Stage v2 UI",
+    "stageV2": "enabled; new conversation in the Card Studio SCEAN Test workspace → 舞臺 shows the Stage v2 shell (作品/創作/舞台); 試玩範例故事 loaded the sample, opening chosen, run started and the reader rendered; after a Desktop restart the plugin stayed enabled and the shelf offered 繼續演出 for the same run",
+    "noModelCredentials": "the clean instance had no provider credentials; no model request could be billed",
+    "upgrade": "instance with 1.6.4-local.w29.2d.rc3.1.dsh022.3 from the same URL: uninstall, then install from the URL → 1.7.0-local.stagev2.1.dsh022.3 at 86c0eee; uninstall changed no data files",
+    "rollback": "uninstall, then install the 1.6.4 .dsh022.3 suite TGZ release URL → 1.6.4-local.w29.2d.rc3.1.dsh022.3"
+  },
+  "notTested": [
+    "real paid model play on the installed package",
+    "physical phones and Safari",
+    "DSH versions other than 0.2.2-rc.3",
+    "installing a new version over an old one without uninstalling (DSH requires uninstall for third-party plugins)"
   ],
-  "productionWrites": 0,
   "paidModelCalls": 0,
-  "publicMutations": 0,
-  "userDataIncluded": false,
-  "hostSdkIncluded": false,
-  "guardAutomaticallyInstalled": false,
-  "realDesktopUi": "NOT_TESTED",
-  "liveProvider": "NOT_TESTED",
-  "installation": "Official rc.3 PluginManager: isolated installation PASS; installed bytes match archives; packaged Studio/stage and guard lifecycle PASS. Production Desktop not installed.",
-  "sourcePublication": "See detached release receipt for exact published commit and remote verification.",
-  "notes": [
-    "Guard runtime wrapper/index unchanged; exact rc.3 reviewed fingerprints added.",
-    "No story engine, model prompt, permission policy or data migration changes.",
-    "Initial sandbox-only failures reproduced and resolved using permitted local links/loopback with isolated HOME and outbound network guard.",
-    "Two test receipt paths made fixture-local and export assertion diagnostics improved.",
-    "Final publication source uses a portable offline harness and verified canonical/generated source-offer URLs. Desktop production deployment remains outside this release validation."
-  ]
+  "productionWrites": 0,
+  "previousRelease": {
+    "status": "RC3_PRERELEASE_ISOLATED_VALIDATION",
+    "at": "2026-11-13T14:46:50.923163+00:00",
+    "version": "1.6.4-local.w29.2d.rc3.1.dsh022.3",
+    "guardVersion": "0.1.0-local.5",
+    "targetDsh": "0.2.2-rc.3",
+    "baselineRevision": "a11d851652531ae1ac38119ea245f2e6f5fcb231",
+    "baselineSourceArchiveSha256": "00c3871ea918fe4b31728f225ec2721c256bc0514cf40965c1ce9109cc119e2b",
+    "candidateRevision": null,
+    "packagedSdk": "14cfd81c9135bf0afb89417543c94f9ecfe09266574452a9b106890c698725ae",
+    "tests": {
+      "full": {
+        "counts": {
+          "tests": 1749,
+          "pass": 1748,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 1
+        },
+        "seconds": 189.47,
+        "logSha256": "9a423c244014bc58206ec4fb6b1264226726e83fc8e459d3aa91a16dcfcb110b",
+        "node": "24.21.0",
+        "network": "non-loopback blocked",
+        "providers": "synthetic only"
+      },
+      "rc3Replay": {
+        "tests": 4,
+        "pass": 4,
+        "fail": 0
+      },
+      "releasePackaging": {
+        "passed": 11,
+        "failed": 0
+      },
+      "installedLifecycle": {
+        "syntheticThemes": [
+          "indicator",
+          "fantasy"
+        ],
+        "frontendStatus": "ready",
+        "revision": 1,
+        "guardActivated": true,
+        "guardOriginalMethodRestored": true,
+        "sceanDisposed": "inactive",
+        "modelCalls": 0
+      },
+      "publicationFocused": {
+        "passed": 55,
+        "failed": 0
+      }
+    },
+    "explicitExclusions": [
+      {
+        "file": "tests/legacy-fixture-tool.test.mjs",
+        "reason": "published archive omits prepare-legacy-playback-fixture.mjs"
+      },
+      {
+        "test": "actual sealed timecal3 reader rejects new v12",
+        "reason": "sealed timecal3 reader not supplied"
+      },
+      {
+        "test": "actual timecal4 reader refuses new schema13",
+        "reason": "timecal4 reader not supplied"
+      }
+    ],
+    "productionWrites": 0,
+    "paidModelCalls": 0,
+    "publicMutations": 0,
+    "userDataIncluded": false,
+    "hostSdkIncluded": false,
+    "guardAutomaticallyInstalled": false,
+    "realDesktopUi": "NOT_TESTED",
+    "liveProvider": "NOT_TESTED",
+    "installation": "Official rc.3 PluginManager: isolated installation PASS; installed bytes match archives; packaged Studio/stage and guard lifecycle PASS. Production Desktop not installed.",
+    "sourcePublication": "See detached release receipt for exact published commit and remote verification.",
+    "notes": [
+      "Guard runtime wrapper/index unchanged; exact rc.3 reviewed fingerprints added.",
+      "No story engine, model prompt, permission policy or data migration changes.",
+      "Initial sandbox-only failures reproduced and resolved using permitted local links/loopback with isolated HOME and outbound network guard.",
+      "Two test receipt paths made fixture-local and export assertion diagnostics improved.",
+      "Final publication source uses a portable offline harness and verified canonical/generated source-offer URLs. Desktop production deployment remains outside this release validation."
+    ]
+  }
 }

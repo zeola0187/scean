@@ -49,13 +49,13 @@
     },
     {
       "path": "README.md",
-      "bytes": 6500,
-      "sha256": "2c1510ba8fd6e9f33eabbf814d56a2e18473d11ea380cf731c1870a7a85e7992"
+      "bytes": 6705,
+      "sha256": "96e9fb753d489274f8e805b8d584365c31d8aaf5ef636ec313082c38344a2db1"
     },
     {
       "path": "RELEASE-VERIFICATION.json",
-      "bytes": 3045,
-      "sha256": "6a866ae50f304242642c1c8ee4d2cc555b8399fe9b7640519db149f87fc577a7"
+      "bytes": 6961,
+      "sha256": "3f4c40022bd5e3adb8a7f4638d830258ffb04a6b09488447c979274fcdcd02e0"
     },
     {
       "path": "SOURCE-AVAILABILITY.md",
@@ -1354,8 +1354,8 @@
     },
     {
       "path": "packages/scean/README.md",
-      "bytes": 6500,
-      "sha256": "2c1510ba8fd6e9f33eabbf814d56a2e18473d11ea380cf731c1870a7a85e7992"
+      "bytes": 6705,
+      "sha256": "96e9fb753d489274f8e805b8d584365c31d8aaf5ef636ec313082c38344a2db1"
     },
     {
       "path": "packages/scean/SOURCE-AVAILABILITY.md",
