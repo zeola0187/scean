@@ -1,5 +1,5 @@
 // Authenticated RPC adapter only. No file access, HTTP proxy, or Studio database access.
-export function createNativeBridge({call,selectPanel,openSession,getSessionId=()=>null,getViewerId=()=>null,notifications,enableNotifications,onOpeningStarted,onDiagnose,onRunRecycled}){
+export function createNativeBridge({call,selectPanel,openSession,getSessionId=()=>null,getViewerId=()=>null,notifications,enableNotifications,onOpeningStarted,onDiagnose,onRunRecycled,onStageUi,getStageUi,ensureStudioLease}){
   const allowed=new Set(['scriptList','scriptGet','scriptStart','scriptStatus','runRecycleList','runLifecycleStatus','runTrash','runRestore','playerBind','capabilities','list','openingPrepare','openingOffer','openingStart','openingCancel','progress','draftSave','draftGet','turn','rollback','regenerate','operationSubmit','operationStatus','exportRun','importRun','cancel','settlementBody','runView','historySearch','historyRead','historyPage','summaryStatus','summaryStart','summaryCancel','chapterStatus','chapterSettings','chapterSummarize','chapterAuto','chapterCancel','chapterClose','inspect','diagnosticsGrant','diagnosticsRead','diagnosticsRevoke','banList','writingMode','writingModeSave','proseStyle','proseStyleSave','agentModels','agentModelsSave','writingStylesImport','playerIdeas','playerWorldbook','playerRecap','playerCollaboration','ownerWorldbook','presentation','presentationSource','presentationPreview','presentationApply','presentationRestore','models']);
   const grants=new Map();let disposed=false,privacyEpoch=0,contextEpoch=0,cardScope=null;
   const denied=code=>Object.assign(new Error(code),{code});
@@ -7,7 +7,7 @@ export function createNativeBridge({call,selectPanel,openSession,getSessionId=()
   const grantKey=r=>`${r.runId}:${r.viewerId}`;
   const scoped=request=>({...request,sessionId:getSessionId(),cardScope});
   const viewer=()=>{const value=getViewerId(getSessionId());return typeof value==='string'&&/^[\w-]{1,160}$/.test(value)?{viewerId:value}:{};};
-  async function context(){const epoch=contextEpoch,sessionId=getSessionId();const value=await call({action:'context',sessionId});if(epoch!==contextEpoch||sessionId!==getSessionId())throw denied('NATIVE_CONTEXT_STALE');cardScope=value.cardScope??null;const status=value.playbackStatus;return {cardScope,...(['available','unselected','source_missing','source_recycled','source_pending','session_archived','unavailable'].includes(status?.status)?{playbackStatus:{status:status.status,...(typeof status.authoringBindingRequired==='boolean'?{authoringBindingRequired:status.authoringBindingRequired}:{})}}:{}),...viewer()};}
+  async function context(){const epoch=contextEpoch,sessionId=getSessionId();if(ensureStudioLease)await Promise.resolve(ensureStudioLease()).catch(()=>{});if(epoch!==contextEpoch||sessionId!==getSessionId())throw denied('NATIVE_CONTEXT_STALE');const value=await call({action:'context',sessionId});if(epoch!==contextEpoch||sessionId!==getSessionId())throw denied('NATIVE_CONTEXT_STALE');cardScope=value.cardScope??null;const status=value.playbackStatus;return {cardScope,...(['available','unselected','source_missing','source_recycled','source_pending','session_archived','unavailable'].includes(status?.status)?{playbackStatus:{status:status.status,...(typeof status.authoringBindingRequired==='boolean'?{authoringBindingRequired:status.authoringBindingRequired}:{})}}:{}),...viewer()};}
   async function request(action,payload={}){
     if(disposed)throw denied('NATIVE_PANEL_CLOSED');
     if(!payload||typeof payload!=='object'||Array.isArray(payload)||Object.hasOwn(payload,'action'))throw denied('NATIVE_REQUEST_INVALID');
@@ -37,6 +37,10 @@ export function createNativeBridge({call,selectPanel,openSession,getSessionId=()
     if(action==='native.notificationConfigure')return notifications?.configure({enabled:payload.enabled,backgroundEnabled:payload.backgroundEnabled,runId:payload.runId});
     if(action==='catalog')return {cards:[],source:'studio-handoff-only'};
     if(action==='native.context')return context();
+    // Device-local presentation choice between the legacy player and Stage v2.
+    // Both read and write the same Host data; this is not an authority switch.
+    // 'workshop' opens the legacy management tools on one Run (advanced workshop); it is never a remembered preference.
+    if(action==='native.stageUi'){const keys=Object.keys(payload);if(!['legacy','next','workshop'].includes(payload.ui)||keys.some(k=>k!=='ui'&&k!=='runId')||(payload.runId!==undefined&&(typeof payload.runId!=='string'||!/^[\w-]{1,160}$/.test(payload.runId)))||typeof onStageUi!=='function')throw denied('NATIVE_STAGE_UI_INVALID');onStageUi(payload.ui,payload.runId??null);return {ui:payload.ui};}
     if(action==='native.navigate'){
       // Product navigation stays within the current Session. Only source-return
       // may resolve a different Session, through the authenticated Host read.
@@ -61,7 +65,7 @@ export function createNativeBridge({call,selectPanel,openSession,getSessionId=()
     if(action==='native.openStudio'){selectPanel('local-cardstudio-scean');return {opened:true};}
     if(action==='native.bootstrap'){
       let models;try{models=await call({action:'models'});}catch{models={mode:'native',source:'DSH authenticated host',status:'unavailable'};}
-      return {mode:'native',dataRootLabel:'SCEAN 插件獨立資料目錄',models,studio:{available:false},native:true,...viewer()};
+      return {mode:'native',dataRootLabel:'SCEAN 插件獨立資料目錄',models,studio:{available:false},native:true,stageMode:getStageUi?.()??null,...viewer()};
     }
     if(['agentModelCatalog','agentModelDefaults','agentModelDefaultsSave','playerDefaults','playerDefaultsSave','chapterProviderSettings','chapterProviderSave','chapterProviderClear'].includes(action)){
       const value=await call({...payload,action});if(disposed)throw denied('NATIVE_PANEL_CLOSED');return value;
@@ -70,7 +74,11 @@ export function createNativeBridge({call,selectPanel,openSession,getSessionId=()
       const keys=['runId','expectedSnapshotHash','expectedLifecycleRevision','view','kind','limit','windowStart','day','eventOffset','threadId','beforeSequence','afterSequence'];
       if(payload.view!=='player'||!['calendar','forum','thread'].includes(payload.kind)||Object.keys(payload).some(k=>!keys.includes(k)))throw denied('NATIVE_ROUTINE_READ_INVALID');
     }
-    if(!allowed.has(action)&&action!=='worldRoutineRead')throw denied('NATIVE_ACTION_DENIED');
+    if(action==='worldFeed'&&Object.keys(payload).some(k=>k!=='runId'))throw denied('NATIVE_FEED_INVALID');
+    if(action==='worldFeedSeen'&&Object.keys(payload).some(k=>!['runId','forumSequence','ids'].includes(k)))throw denied('NATIVE_FEED_INVALID');
+    const noteKeys={playerNotes:['runId'],playerNoteAdd:['runId','commitId','excerpt','memo'],playerNoteDelete:['runId','noteId']}[action];
+    if(noteKeys&&Object.keys(payload).some(k=>!noteKeys.includes(k)))throw denied('NATIVE_NOTE_INVALID');
+    if(!allowed.has(action)&&!noteKeys&&!['worldRoutineRead','worldFeed','worldFeedSeen'].includes(action))throw denied('NATIVE_ACTION_DENIED');
     const request=scoped({...payload,action}),epoch=privacyEpoch,contextToken=contextEpoch;
       if(action==='operationSubmit'){await notifications?.watch(request);if(contextToken!==contextEpoch)throw denied('NATIVE_CONTEXT_STALE');}
       let value;try{value=await call(request);if(action==='operationSubmit')void notifications?.refresh();}catch(error){if(contextToken!==contextEpoch)throw denied('NATIVE_CONTEXT_STALE');throw error;}

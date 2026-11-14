@@ -1,0 +1,290 @@
+{
+ "spec": "chara_card_v3",
+ "spec_version": "3.0",
+ "data": {
+  "name": "放學後的天台",
+  "description": "星川高中的天台已經封閉三年。轉學生在放學後聽見上方傳來鋼琴聲，攝影社的許晴說，她拍到過一扇本該上鎖的門。",
+  "personality": "",
+  "scenario": "現代校園，轉學第一週。",
+  "first_mes": "放學的鐘聲剛停，走廊上只剩拖地的水痕。你抱著還沒填完的社團申請表經過樓梯口，聽見上方傳來斷斷續續的鋼琴聲。天台的門，三年前就封起來了。",
+  "mes_example": "",
+  "creator_notes": "SCEAN 內建範例故事（虛構內容）。可以直接試玩，也可以當成範本修改；修改的是你自己的工作副本。",
+  "system_prompt": "",
+  "post_history_instructions": "",
+  "alternate_greetings": [
+   "攝影社暗房的紅燈下，許晴把一張剛顯影的照片推到你面前。畫面裡，天台的門開著一道縫。「這是昨天放學後拍的，」她壓低聲音，「你要不要一起去看看？」"
+  ],
+  "tags": [
+   "SCEAN 範例",
+   "campus"
+  ],
+  "creator": "SCEAN 範例",
+  "character_version": "1",
+  "character_book": {
+   "name": "放學後的天台設定",
+   "extensions": {},
+   "entries": [
+    {
+     "id": 1,
+     "keys": [
+      "天台"
+     ],
+     "comment": "天台封閉",
+     "content": "三年前一場意外後，天台改為禁止進入，鑰匙由學生會登記保管。",
+     "enabled": true,
+     "insertion_order": 0,
+     "constant": true,
+     "extensions": {}
+    },
+    {
+     "id": 2,
+     "keys": [
+      "音樂教室",
+      "鋼琴"
+     ],
+     "comment": "舊音樂教室",
+     "content": "頂樓的舊音樂教室已停用，裡面仍放著一台走音的直立鋼琴。",
+     "enabled": true,
+     "insertion_order": 1,
+     "constant": false,
+     "extensions": {}
+    }
+   ]
+  },
+  "extensions": {
+   "scean": {
+    "presentationTheme": "campus",
+    "characters": [
+     {
+      "id": "qing",
+      "name": "許晴",
+      "description": "攝影社二年級生，總是掛著底片相機，對學校傳聞的興趣比對考試大。",
+      "publicDescription": "攝影社二年級生，總是掛著底片相機，對學校傳聞的興趣比對考試大。"
+     },
+     {
+      "id": "mu",
+      "name": "周牧",
+      "description": "學生會副會長，守規矩、記時間，負責天台鑰匙的保管登記。",
+      "publicDescription": "學生會副會長，守規矩、記時間，負責天台鑰匙的保管登記。"
+     },
+     {
+      "id": "ye",
+      "name": "葉老師",
+      "description": "導師兼音樂科老師，溫和但很少談自己的事。",
+      "publicDescription": "導師兼音樂科老師，溫和但很少談自己的事。"
+     }
+    ],
+    "stateBlueprint": {
+     "schemaVersion": 1,
+     "id": "campus-rooftop-state",
+     "version": 1,
+     "extensionPolicy": "allow",
+     "variables": [
+      {
+       "scope": "world",
+       "category": "locations",
+       "key": "player_location",
+       "displayName": "目前地點",
+       "type": "string",
+       "visibility": "public"
+      },
+      {
+       "scope": "world",
+       "category": "tasks",
+       "key": "piano_mystery",
+       "displayName": "鋼琴聲之謎",
+       "type": "json",
+       "visibility": "public"
+      },
+      {
+       "scope": "world",
+       "category": "tasks",
+       "key": "club_form",
+       "displayName": "社團申請",
+       "type": "json",
+       "visibility": "public"
+      },
+      {
+       "scope": "world",
+       "category": "equipment",
+       "key": "photo_evidence",
+       "displayName": "證據照片",
+       "type": "number",
+       "visibility": "public",
+       "min": 0,
+       "max": 20,
+       "unit": "張"
+      }
+     ]
+    },
+    "initialState": {
+     "schemaVersion": 1,
+     "blueprintId": "campus-rooftop-state",
+     "blueprintVersion": 1,
+     "values": [
+      {
+       "scope": "world",
+       "category": "locations",
+       "key": "player_location",
+       "value": "三樓樓梯口",
+       "source": {
+        "id": "synthetic-author",
+        "version": 1
+       }
+      },
+      {
+       "scope": "world",
+       "category": "tasks",
+       "key": "piano_mystery",
+       "value": {
+        "status": "剛聽見琴聲",
+        "assignees": [
+         "player"
+        ],
+        "progress": 0
+       },
+       "source": {
+        "id": "synthetic-author",
+        "version": 1
+       }
+      },
+      {
+       "scope": "world",
+       "category": "tasks",
+       "key": "club_form",
+       "value": {
+        "status": "週四前要交",
+        "assignees": [
+         "player"
+        ],
+        "progress": 0
+       },
+       "source": {
+        "id": "synthetic-author",
+        "version": 1
+       }
+      },
+      {
+       "scope": "world",
+       "category": "equipment",
+       "key": "photo_evidence",
+       "value": 0,
+       "source": {
+        "id": "synthetic-author",
+        "version": 1
+       }
+      }
+     ]
+    },
+    "frontend": {
+     "schemaVersion": 1,
+     "id": "campus-rooftop-panel",
+     "runtime": {
+      "profile": "scean-html-bindings-v1",
+      "apiMajor": 1
+     },
+     "html": "<section class=\"card\"><h2>學生手帳</h2><p>地點 <b data-scean-text=\"player_location\"></b></p><p>證據照片 <b data-scean-text=\"photo_evidence\"></b> 張</p></section>",
+     "css": ".card{padding:18px;background:#f7fbff;color:#173a7a;border:2px dashed #9db7e8;border-radius:14px}h2{font-size:20px;margin:0 0 8px}",
+     "bindings": [
+      {
+       "alias": "player_location",
+       "target": {
+        "scope": "world",
+        "category": "locations",
+        "key": "player_location"
+       },
+       "type": "string"
+      },
+      {
+       "alias": "photo_evidence",
+       "target": {
+        "scope": "world",
+        "category": "equipment",
+        "key": "photo_evidence"
+       },
+       "type": "number"
+      }
+     ],
+     "conditions": {},
+     "capabilities": {
+      "network": "none",
+      "worldActions": [],
+      "derivedDisplays": []
+     },
+     "hash": "fa59624e7882ae93803eff4db361086b816e6e548f70388ae099733f642305f4"
+    },
+    "storyTimeDefinition": {
+     "schemaVersion": 1,
+     "calendar": {
+      "id": "hoshikawa",
+      "version": 1,
+      "kind": "fixed-month",
+      "monthLengths": [
+       31,
+       28,
+       31,
+       30,
+       31,
+       30,
+       31,
+       31,
+       30,
+       31,
+       30,
+       31
+      ],
+      "anchor": {
+       "year": 2026,
+       "month": 4,
+       "day": 15
+      },
+      "weekLength": 7
+     },
+     "hoursPerDay": 24,
+     "minutesPerHour": 60,
+     "periods": {
+      "morning": {
+       "start": 420,
+       "end": 719,
+       "label": "上午"
+      },
+      "noon": {
+       "start": 720,
+       "end": 779,
+       "label": "午休"
+      },
+      "afternoon": {
+       "start": 780,
+       "end": 959,
+       "label": "下午"
+      },
+      "after_school": {
+       "start": 960,
+       "end": 1139,
+       "label": "放學後"
+      },
+      "night": {
+       "start": 1140,
+       "end": 1439,
+       "label": "夜晚"
+      }
+     },
+     "initial": {
+      "dayOrdinal": 1,
+      "precision": "period",
+      "periodId": "after_school"
+     }
+    },
+    "worldRoutineDefinition": {
+     "schemaVersion": 1,
+     "calendar": true,
+     "forum": true,
+     "medium": {
+      "id": "night-board",
+      "label": "星川夜話板"
+     }
+    }
+   }
+  }
+ }
+}

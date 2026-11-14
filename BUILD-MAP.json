@@ -515,6 +515,10 @@
       "source": "sources/card-studio/cardstudio-bundle/lib/card-service.js"
     },
     {
+      "path": "packages/studio/lib/samples/scean-sample-campus.json",
+      "source": "sources/card-studio/cardstudio-bundle/lib/samples/scean-sample-campus.json"
+    },
+    {
       "path": "packages/studio/lib/character-method.js",
       "source": "sources/card-studio/cardstudio-bundle/lib/character-method.js"
     },
@@ -987,6 +991,10 @@
       "source": "core/story-clock.mjs"
     },
     {
+      "path": "packages/scean/core/turn-changes.mjs",
+      "source": "core/turn-changes.mjs"
+    },
+    {
       "path": "packages/scean/core/state-operations.mjs",
       "source": "core/state-operations.mjs"
     },
@@ -1017,6 +1025,14 @@
     {
       "source": "plugin/world-routine-reader.mjs",
       "path": "packages/scean/plugin/world-routine-reader.mjs"
+    },
+    {
+      "source": "plugin/world-feed.mjs",
+      "path": "packages/scean/plugin/world-feed.mjs"
+    },
+    {
+      "source": "plugin/player-notes.mjs",
+      "path": "packages/scean/plugin/player-notes.mjs"
     },
     {
       "source": "isolated/web/world-routine-ui.mjs",

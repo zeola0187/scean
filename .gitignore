@@ -30,3 +30,6 @@ authoring/.integration/
 # Isolated SDK compatibility and guard test state
 .test-home/
 .test-addon/
+
+# CDP driver failure screenshots
+click-failure.png

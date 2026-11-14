@@ -5,6 +5,7 @@ import {validateCharacterSources} from '../core/character-sources.mjs';
 import {validateBlueprint, materializeInitialState, validateBlueprintStateChanges, publicBlueprintState} from '../core/state-blueprint.mjs';
 import {normalizeStudioHandoffSnapshot} from '../plugin/studio-handoff.mjs';
 import {validateFrontend} from '../core/frontend.mjs';
+import {snapshotPortabilityIssue} from '../core/save-bundle.mjs';
 
 export const AUDIT_VERSION = '0.1.0';
 const own = (v,k) => Object.hasOwn(v??{},k);
@@ -49,6 +50,9 @@ export function auditSavedSnapshot(input) {
   const add=(itemID,status,objectID,program,observed,reason=null,reproduce='Repeat the same saved document ID/revision/hash through the Studio audit tool.',correction='No automatic edit; preserve author choices.')=>items.push({itemID,status,objectID,layer:'static',program,observed,reason,reproduce,correction});
   const run=(itemID,objectID,program,fn)=>{const r=capture(fn);add(itemID,r.accepted?'PASS':'FAIL',objectID,program,r.accepted?{accepted:true}:{accepted:false,code:r.code},r.code??null,undefined,r.accepted?undefined:'Repair the reported saved contract violation, only with separate author authorization; save a new revision and rerun.');return r;};
   add('D.saved-revision','PASS',saved.id,'Studio CardService.load/read + SHA256 verification',{revision:saved.revision,sha256:saved.sha256,format:saved.format,entryIds});
+  // Same rule the Run save boundary applies at start: catch machine-specific paths here, not at 開演.
+  const portability=snapshotPortabilityIssue(snapshot);
+  add('D.portability',portability?'FAIL':'PASS',portability?.path?`${saved.id}${portability.path}`:saved.id,'core/save-bundle portability boundary',portability?{accepted:false,code:portability.code,path:portability.path}:{accepted:true},portability?.code??null,undefined,portability?`Remove the machine-specific path or external reference at ${portability.path??'(unknown field)'}; ordinary text that starts with "/" is allowed.`:undefined);
   const selection=capture(()=>selectWorldbooks(snapshot,{playerInput:''}));
   if(!selection.accepted)add('A.selector','FAIL',saved.id,'core/worldbook.selectWorldbooks',{code:selection.code},selection.code);
   else {

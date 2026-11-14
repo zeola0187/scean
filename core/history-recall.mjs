@@ -2,6 +2,7 @@ import {SceanError,hash,safeId} from './contracts.mjs';
 import {publicTurnDialogue} from './dialogue-projection.mjs';
 import {bm25,tokenizeForSparseRecall} from './memory.mjs';
 import {headOf,HISTORY_LIMITS} from './history.mjs';
+import {publicTurnChanges} from './turn-changes.mjs';
 
 export const HISTORY_REFERENCE_LABEL='Historical reference — not a current event';
 export const HISTORY_RECALL_LIMITS=Object.freeze({queryChars:512,hits:10,snippetChars:400,positions:32,radius:1,readChars:12000,pageTurns:20,pageBytes:131072,cursorChars:1024});
@@ -52,11 +53,15 @@ export function searchHistory(run,options={}){
   if(!['literal','bm25'].includes(mode))fail('HISTORY_SEARCH_MODE_INVALID');
   if(options.caseSensitive!==undefined&&typeof options.caseSensitive!=='boolean')fail('HISTORY_QUERY_INVALID');
   const limit=integer(options.limit,5,1,HISTORY_RECALL_LIMITS.hits,'HISTORY_SEARCH_LIMIT'),sensitive=options.caseSensitive??false;
+  // Player reading of long stories: page through hits and optionally list the newest first.
+  // Defaults (offset 0, oldest first) keep the model tool's behaviour unchanged.
+  const offset=integer(options.offset,0,0,1000000,'HISTORY_SEARCH_LIMIT'),order=options.order??'oldest';
+  if(!['oldest','newest'].includes(order))fail('HISTORY_SEARCH_MODE_INVALID');
   let candidates;
   if(mode==='bm25'){
     const chunks=turns.map((t,index)=>({id:t.commitId,text:`${t.input}\n${t.body}`,keywords:[],characterIds:[],locationIds:[],itemIds:[],storyBeatIds:[],endPosition:index}));
     candidates=bm25({query,characters:[],locations:[],items:[],storyBeats:[]},chunks).filter(r=>r.score>0).map(r=>({turn:turns[r.chunk.endPosition],score:r.score}));
-  }else candidates=turns.map(turn=>({turn,score:1}));
+  }else candidates=(order==='newest'?[...turns].reverse():turns).map(turn=>({turn,score:1}));
   const terms=mode==='literal'?[query]:[...new Set(tokenizeForSparseRecall(query))].filter(Boolean),hits=[];
   for(const {turn:t,score} of candidates){
     const hitPositions=['input','body'].flatMap(field=>positions(t[field],terms,sensitive).map(p=>({field,...p}))).slice(0,HISTORY_RECALL_LIMITS.positions);
@@ -64,7 +69,8 @@ export function searchHistory(run,options={}){
     const field=hitPositions[0]?.field??'body',first=hitPositions.find(p=>p.field===field)?.start??0,start=Math.max(0,first-100),snippet=t[field].slice(start,start+HISTORY_RECALL_LIMITS.snippetChars);
     hits.push({runId:run.runId,turn:t.turn,commitId:t.commitId,active:true,locator:historyLocator(run.runId,t.commitId),snippet,snippetField:field,snippetStart:start,hitPositions,score});
   }
-  return {...base('history_search',run),mode,hits:hits.slice(0,limit),hasMore:hits.length>limit};
+  const page=hits.slice(offset,offset+limit),more=hits.length>offset+limit;
+  return {...base('history_search',run),mode,hits:page,hasMore:more,...(options.offset!==undefined||options.order!==undefined?{total:hits.length,nextOffset:more?offset+limit:null}:{})};
 }
 export function readHistory(run,options={}){
   const turns=active(run,options.runId),radius=integer(options.radius,0,0,HISTORY_RECALL_LIMITS.radius,'HISTORY_READ_RADIUS'),maxChars=integer(options.maxChars,HISTORY_RECALL_LIMITS.readChars,1,HISTORY_RECALL_LIMITS.readChars,'HISTORY_READ_LIMIT');
@@ -100,7 +106,7 @@ export function pageHistory(run,options={}){
   if(options.anchorCommitId!==undefined){const index=locate(run,turns,options.anchorCommitId);if(forward)start=index;else end=index+1;}
   if(forward)end=Math.min(turns.length,start+limit);else start=Math.max(0,end-limit);
   let presentation=options.presentation===true;
-  const projected=new Map(),project=t=>{const key=t.commitId+':'+presentation;if(!projected.has(key))projected.set(key,publicTurn(run,t,presentation));return projected.get(key);};
+  const withChanges=options.changes===true,projected=new Map(),project=t=>{const key=t.commitId+':'+presentation;if(!projected.has(key)){const row=publicTurn(run,t,presentation);if(withChanges){const changes=publicTurnChanges(run,t);if(changes)row.changes=changes;}projected.set(key,row);}return projected.get(key);};
   const response=()=>({...base('history_page',run),status:end>start?'page':turns.length?'end':'empty',turns:turns.slice(start,end).map(project),hasMore:start>0&&start<turns.length,beforeCursor:start>0&&start<turns.length?encodeCursor(run,digest,turns[start].commitId,'beforeCommitId'):null,hasLater:end<turns.length,afterCursor:end<turns.length&&end>0?encodeCursor(run,digest,turns[end-1].commitId,'afterCommitId'):null,anchorCommitId:options.anchorCommitId??null,totalActive:turns.length});
   let result=response();
   // Shrink whole turns first: optional color data must not disappear merely

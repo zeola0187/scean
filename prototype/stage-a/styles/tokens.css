@@ -1,0 +1,80 @@
+/* Layout concept: one reading column is the product; the world lives in a quiet margin (desktop)
+   or in pull-up sheets (phone). Each work can re-skin the same layout through a genre token set. */
+:root {
+  /* SCEAN shell (shelf, neutral skin) */
+  --bg: #eceef1; --surface: #ffffff; --raised: #f6f7f9; --ink: #15171c; --muted: #5b616d; --line: #d9dce2;
+  --accent: #2d45b8; --accent-ink: #ffffff; --accent-soft: #e3e7fa;
+  --warn: #9a5b00; --warn-soft: #fff1d6; --bad: #b42318; --bad-soft: #fde8e6; --ok: #1e7a46; --ok-soft: #e2f4e9;
+  --pending: #6a5acd; --pending-soft: #efedfb;
+  --mark: transparent; --rule: transparent;
+  --font-ui: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+  --font-read: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+  --font-display: "Bricolage Grotesque", "Noto Sans TC", system-ui, sans-serif;
+  --font-head: "Noto Sans TC", "PingFang TC", system-ui, sans-serif;
+  --font-num: "Bricolage Grotesque", "Noto Sans TC", system-ui, sans-serif;
+  --read-size: 17px; --read-leading: 1.9; --radius: 10px; --radius-sm: 6px;
+  /* character colours */
+  --c-coral: #c2412d; --c-teal: #0f7a7a; --c-violet: #6b3fb8; --c-amber: #a86100; --c-slate: #4a5566; --c-jade: #1f7a4f; --c-ember: #b3261e;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1115; --surface: #171a20; --raised: #1d2128; --ink: #e8eaef; --muted: #9aa1ad; --line: #2a2f38;
+  --accent: #93a4ff; --accent-ink: #0f1115; --accent-soft: #232a4a;
+  --warn: #f0b45a; --warn-soft: #3a2c12; --bad: #ff8a7a; --bad-soft: #3d1c19; --ok: #6fd49b; --ok-soft: #14301f;
+  --pending: #b3a8ff; --pending-soft: #25213d;
+  --c-coral: #ff8f7a; --c-teal: #5cc9c9; --c-violet: #b99bff; --c-amber: #f5b347; --c-slate: #a9b4c4; --c-jade: #6fd39c; --c-ember: #ff7f70;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0f1115; --surface: #171a20; --raised: #1d2128; --ink: #e8eaef; --muted: #9aa1ad; --line: #2a2f38;
+  --accent: #93a4ff; --accent-ink: #0f1115; --accent-soft: #232a4a;
+  --warn: #f0b45a; --warn-soft: #3a2c12; --bad: #ff8a7a; --bad-soft: #3d1c19; --ok: #6fd49b; --ok-soft: #14301f;
+  --pending: #b3a8ff; --pending-soft: #25213d;
+  --c-coral: #ff8f7a; --c-teal: #5cc9c9; --c-violet: #b99bff; --c-amber: #f5b347; --c-slate: #a9b4c4; --c-jade: #6fd39c; --c-ember: #ff7f70;
+  color-scheme: dark;
+}
+
+/* ── Modern campus: ballpoint blue on squared notebook paper, highlighter marks ── */
+:root[data-genre="campus"] {
+  --bg: #f4f7fb; --surface: #ffffff; --raised: #eef3fa; --ink: #18202e; --muted: #56627a; --line: #d6deea;
+  --accent: #1f5fd6; --accent-ink: #ffffff; --accent-soft: #e2ecfc; --mark: #fff09a; --rule: #e3ebf6;
+  --font-display: "LXGW WenKai TC", "Noto Sans TC", serif; --font-head: "LXGW WenKai TC", "Noto Sans TC", serif;
+  --radius: 14px;
+}
+@media (prefers-color-scheme: dark) { :root[data-genre="campus"]:not([data-theme="light"]) {
+  --bg: #0e141e; --surface: #152031; --raised: #1a2840; --ink: #e5ecf6; --muted: #93a3bb; --line: #26364f;
+  --accent: #7fb0ff; --accent-ink: #0e141e; --accent-soft: #1d3157; --mark: #5c5420; --rule: #18263a; } }
+:root[data-genre="campus"][data-theme="dark"] {
+  --bg: #0e141e; --surface: #152031; --raised: #1a2840; --ink: #e5ecf6; --muted: #93a3bb; --line: #26364f;
+  --accent: #7fb0ff; --accent-ink: #0e141e; --accent-soft: #1d3157; --mark: #5c5420; --rule: #18263a;
+}
+
+/* ── Road trip: overcast asphalt, sodium-lamp amber, condensed signage numerals ── */
+:root[data-genre="road"] {
+  --bg: #e9ecee; --surface: #fbfbfa; --raised: #f1f2f1; --ink: #1c2227; --muted: #5a646c; --line: #d2d7db;
+  --accent: #c76a08; --accent-ink: #ffffff; --accent-soft: #fbe8d2; --mark: #1f7a8c; --rule: transparent;
+  --font-num: "Barlow Condensed", "Noto Sans TC", sans-serif; --font-head: "Noto Sans TC", sans-serif;
+  --font-display: "Barlow Condensed", "Noto Sans TC", sans-serif; --radius: 4px; --radius-sm: 3px;
+}
+@media (prefers-color-scheme: dark) { :root[data-genre="road"]:not([data-theme="light"]) {
+  --bg: #121519; --surface: #1a1e23; --raised: #20252b; --ink: #ecebe6; --muted: #9ba3aa; --line: #2c3238;
+  --accent: #ffb547; --accent-ink: #121519; --accent-soft: #3a2a12; --mark: #4fb3c4; } }
+:root[data-genre="road"][data-theme="dark"] {
+  --bg: #121519; --surface: #1a1e23; --raised: #20252b; --ink: #ecebe6; --muted: #9ba3aa; --line: #2c3238;
+  --accent: #ffb547; --accent-ink: #121519; --accent-soft: #3a2a12; --mark: #4fb3c4;
+}
+
+/* ── TRPG: slate stone, brass trim, ember red; serif reading ── */
+:root[data-genre="trpg"] {
+  --bg: #e4e2dc; --surface: #f6f4ef; --raised: #ece9e1; --ink: #221e1a; --muted: #645b52; --line: #cfc9bd;
+  --accent: #9c2f27; --accent-ink: #ffffff; --accent-soft: #f2dcd8; --mark: #9a6f1c; --rule: transparent;
+  --font-read: "Noto Serif TC", "PMingLiU", serif; --font-head: "Noto Serif TC", serif;
+  --font-display: "Cinzel", "Noto Serif TC", serif; --font-num: "Cinzel", "Noto Serif TC", serif; --radius: 3px; --radius-sm: 2px;
+}
+@media (prefers-color-scheme: dark) { :root[data-genre="trpg"]:not([data-theme="light"]) {
+  --bg: #131217; --surface: #1c1a21; --raised: #24212a; --ink: #ebe4d6; --muted: #a59b8c; --line: #34303a;
+  --accent: #e0614f; --accent-ink: #131217; --accent-soft: #3a1d1a; --mark: #d8a748; } }
+:root[data-genre="trpg"][data-theme="dark"] {
+  --bg: #131217; --surface: #1c1a21; --raised: #24212a; --ink: #ebe4d6; --muted: #a59b8c; --line: #34303a;
+  --accent: #e0614f; --accent-ink: #131217; --accent-soft: #3a1d1a; --mark: #d8a748;
+}
+:root[data-size="large"] { --read-size: 20px; }
