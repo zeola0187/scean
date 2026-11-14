@@ -127,9 +127,9 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .who { background: none; border: 0; border-left: 3px solid currentColor; padding: 0 0 0 9px; font: 700 14px/1.6 var(--font-ui); white-space: nowrap; }
 .who:disabled { cursor: default; } .who:not(:disabled):hover { text-decoration: underline; }
 .said { min-width: 0; overflow-wrap: anywhere; }
-.speech { color: var(--ink); }
+.speech { color: inherit; }
 .c0 { color: var(--c0); } .c1 { color: var(--c1); } .c2 { color: var(--c2); } .c3 { color: var(--c3); } .c4 { color: var(--c4); } .c5 { color: var(--c5); } .c6 { color: var(--c6); } .c7 { color: var(--c7); }
-.line .said, .line .said .speech { color: var(--ink); }
+.line .said .speech { font-weight: 500; }
 .you { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; align-items: baseline; font: 15px/1.7 var(--font-ui); padding: 10px 14px; background: var(--raised); border-radius: var(--radius-sm); }
 .you-tag { font-weight: 700; color: var(--accent); font-size: 13px; } .you p { overflow-wrap: anywhere; }
 .you.is-pending { background: var(--pending-soft); border: 1.5px dashed var(--pending); } .you.is-pending .you-tag { color: var(--pending); }

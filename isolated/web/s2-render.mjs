@@ -28,18 +28,31 @@ export function proseNodes(turn, run, {onSpeaker, draft = false} = {}) {
   const pieces = []; let at = 0;
   for (const s of spans) { if (s.start > at) pieces.push({text: body.slice(at, s.start)}); pieces.push({text: body.slice(s.start, s.end), speakerId: s.speakerId}); at = s.end; }
   if (at < body.length) pieces.push({text: body.slice(at)});
+  // Validated spans cover the spoken words only; their quote marks sit in the neighbouring narration.
+  // Move them onto the speech so a split never leaves a stray 「 or 」 behind.
+  pieces.forEach((p, i) => {
+    if (!p.speakerId) return;
+    const prev = pieces[i - 1], next = pieces[i + 1];
+    const open = prev && !prev.speakerId ? /[「『“"]$/.exec(prev.text) : null; if (open) { prev.text = prev.text.slice(0, -1); p.text = open[0] + p.text; }
+    const close = next && !next.speakerId ? /^[」』”"]/.exec(next.text) : null; if (close) { next.text = next.text.slice(1); p.text += close[0]; }
+  });
   const paragraphs = [[]];
   for (const p of pieces) {
     const parts = p.text.split(/\n{2,}|\n/);
     parts.forEach((t, i) => { if (i > 0) paragraphs.push([]); if (t) paragraphs.at(-1).push({...p, text: t}); });
   }
-  return paragraphs.filter(p => p.some(x => x.text.trim())).map(parts => {
-    const speaker = parts.find(x => x.speakerId)?.speakerId, actor = actors.find(a => a.id === speaker);
-    const nodes = parts.map(x => x.speakerId ? h('span', {class: `speech c${idx.get(x.speakerId) ?? 0}`}, x.text) : x.text);
-    if (!speaker || speaker === 'player') return h('p', {class: 'narr'}, nodes);
-    return h('p', {class: `line c${idx.get(speaker) ?? 0}`},
-      h('button', {class: 'who', type: 'button', disabled: draft || !onSpeaker, onclick: () => onSpeaker?.(speaker)}, actor?.name ?? speaker),
-      h('span', {class: 'said'}, nodes));
+  // A paragraph that mixes a quote with narration is shown as separate pieces: each quote becomes a
+  // dialogue line under its speaker, the narration around it stays narration. Text is unchanged.
+  const residue = t => /^[\s，。、：；！？,.:;!?…—-]*$/.test(t);
+  const line = x => h('p', {class: `line c${idx.get(x.speakerId) ?? 0}`},
+    h('button', {class: 'who', type: 'button', disabled: draft || !onSpeaker, onclick: () => onSpeaker?.(x.speakerId)}, actors.find(a => a.id === x.speakerId)?.name ?? x.speakerId),
+    h('span', {class: 'said'}, h('span', {class: `speech c${idx.get(x.speakerId) ?? 0}`}, x.text)));
+  return paragraphs.filter(p => p.some(x => x.text.trim())).flatMap(parts => {
+    if (!parts.some(x => x.speakerId && x.speakerId !== 'player')) return [h('p', {class: 'narr'}, parts.map(x => x.text))];
+    const out = []; let narr = [];
+    const flush = () => { const text = narr.join('').trim(); if (text && !residue(text)) out.push(h('p', {class: 'narr'}, text)); narr = []; };
+    for (const x of parts) { if (x.speakerId && x.speakerId !== 'player') { flush(); out.push(line(x)); } else narr.push(x.text); }
+    flush(); return out;
   });
 }
 
