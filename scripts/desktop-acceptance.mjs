@@ -19,7 +19,8 @@ const F = {frame: STAGE_FRAME}, S = STAGE_FRAME;
 let n = 0; const shot = async name => { const f = path.join(dir, `${String(++n).padStart(2, '0')}-${name}.png`); await b.shot(f); return path.basename(f); };
 const stageText = () => b.evaluate('document.body.innerText', S);
 const settled = `!document.querySelector('.pending-zone')?.children.length`;
-const turnCount = () => b.evaluate(`document.querySelectorAll('.turn:not(.opening)').length`, S);
+// Highest saved section number (#turn-N): correct even when the reader pages the latest 20 sections.
+const turnCount = () => b.evaluate(`Math.max(0, ...[...document.querySelectorAll('.turn[id^="turn-"]')].map(e => Number(e.id.slice(5))))`, S);
 const agentContext = async () => fs.readFile(path.join(out, 'studio-agent-last.json'), 'utf8').catch(() => '');
 const adapterCalls = async () => JSON.parse(await fs.readFile(path.join(out, 'adapter-calls.json'), 'utf8').catch(() => '[]'));
 
@@ -49,7 +50,7 @@ async function startPerformance(index, name) {
 }
 async function send(text, {wait = true} = {}) {
   const before = await turnCount(); await b.click('css:#composer-input', F); await b.type(text); await b.click('送出行動', F);
-  if (wait) await b.waitFor(`${settled} && document.querySelectorAll('.turn:not(.opening)').length>${before}`, {...F, timeout: 90000});
+  if (wait) await b.waitFor(`${settled} && Math.max(0, ...[...document.querySelectorAll('.turn[id^="turn-"]')].map(e => Number(e.id.slice(5))))>${before}`, {...F, timeout: 90000});
 }
 async function backToShelf() { await b.click('css:.back', F).catch(() => b.click('舞台', F)); await b.waitFor(`document.body.innerText.includes('開一場新的演出')`, {...F, timeout: 30000}); await sleep(800); }
 
@@ -108,7 +109,7 @@ const phases = {
     r.regenerate = {sameCount: (await turnCount()) === t0, changed: (await last()) !== p0}; await shot('regen-done');
     await send('我們繞到音樂教室後面看看（將被收回）。');
     await b.click('收回這一步', F); await b.click('css:.confirm-row .danger', F);
-    await b.waitFor(`${settled} && document.querySelectorAll('.turn:not(.opening)').length===${t0}`, {...F, timeout: 60000}); await sleep(800);
+    await b.waitFor(`${settled} && Math.max(0, ...[...document.querySelectorAll('.turn[id^="turn-"]')].map(e => Number(e.id.slice(5))))===${t0}`, {...F, timeout: 60000}); await sleep(800);
     r.rollback = {count: await turnCount(), gone: !(await stageText()).includes('將被收回')}; await shot('rollback-done');
     if (!r.regenerate.sameCount || !r.regenerate.changed || r.rollback.count !== t0 || !r.rollback.gone) throw Error('regenerate/rollback mismatch');
   },
@@ -123,7 +124,7 @@ const phases = {
       await b.click(mode === 'pre-body' ? '確認時間' : '指定時間後重寫', F); await sleep(800); await shot('time-sheet-' + pick);
       const choices = await b.evaluate(`[...document.querySelectorAll('.time-choice strong')].map(e => e.innerText)`, S);
       await b.evaluate(`[...document.querySelectorAll('.time-choice')].at(${pick === 'first' ? 0 : -1}).click()`, S);
-      await b.waitFor(`${settled} && document.querySelectorAll('.turn:not(.opening)').length>${t0}`, {...F, timeout: 90000}); await sleep(1000);
+      await b.waitFor(`${settled} && Math.max(0, ...[...document.querySelectorAll('.turn[id^="turn-"]')].map(e => Number(e.id.slice(5))))>${t0}`, {...F, timeout: 90000}); await sleep(1000);
       const committed = (await turnCount()) === t0 + 1, note = (await stageText()).includes('依你確認的時間'); await shot('time-committed-' + pick);
       r.cases.push({pick, mode, choices, noTurnCommitted, committed, note});
       if (!noTurnCommitted || !committed) throw Error('time confirmation flow failed for ' + pick);
@@ -185,12 +186,12 @@ const phases = {
   },
   async feed(r) {
     await ensureReader(); await sleep(2500);
-    const feed = () => b.evaluate(`document.querySelectorAll('.feed .feed-item').length`, S);
+    const feed = () => b.evaluate(`document.querySelectorAll('.interlude .interlude-item').length`, S);
     r.unreadShown = await feed(); await shot('feed');
     if (r.unreadShown) {
       await b.click('論壇', F).catch(async () => { await b.click('更多', F); await sleep(300); await b.click('論壇', F); }); await sleep(2500); await b.click('關閉', F); await sleep(2500);
       r.afterForumList = await feed();
-      if (r.afterForumList) { await b.click('看過了', F); await sleep(2500); }
+      if (r.afterForumList) { await b.click('都看過了', F); await sleep(2500); }
       r.afterSeen = await feed();
       if (r.afterSeen !== 0 || r.afterForumList > r.unreadShown) throw Error('feed read marking failed');
     } else r.note = 'no unread items in this run (routine produced none since the last view)';
@@ -219,16 +220,23 @@ const phases = {
     await b.click('css:.back', F); await sleep(800); await b.click('作品', F); await sleep(4000);
     await b.click('css:[data-product-screen="stage"]'); await b.waitFor(`document.body.innerText.includes('繼續閱讀')`, {...F, timeout: 40000}); await b.click('繼續閱讀', F);
     await b.waitFor(`!!document.querySelector('#composer-input')`, {...F, timeout: 30000}); r.sawPending = await b.evaluate(`!!document.querySelector('.pending-zone')?.children.length`, S);
-    await b.waitFor(`${settled} && document.querySelectorAll('.turn:not(.opening)').length>${t0}`, {...F, timeout: 90000}); r.committedAfterReturn = true; await shot('resume');
+    await b.waitFor(`${settled} && Math.max(0, ...[...document.querySelectorAll('.turn[id^="turn-"]')].map(e => Number(e.id.slice(5))))>${t0}`, {...F, timeout: 90000}); r.committedAfterReturn = true; await shot('resume');
   },
   async phone(r) {
     await b.viewport({width: 390, height: 844, deviceScaleFactor: 2, mobile: true}); await sleep(1200); await ensureReader();
     r.overflow = await b.evaluate(`document.documentElement.scrollWidth > innerWidth + 1`, S); await shot('phone-reader');
     await b.click('更多', F); await sleep(500); await shot('phone-menu'); r.menu = await b.evaluate(`[...document.querySelectorAll('.menu-row strong')].map(e=>e.innerText)`, S);
+    // Swipe the sheet down by its handle to close it.
+    const g = await b.evaluate(`(() => { const q = document.querySelector('.grabber').getBoundingClientRect(); return {x: q.left + q.width / 2, y: q.top + q.height / 2}; })()`, S);
+    const o = await b.evaluate(`(() => { const q = document.querySelector('iframe[data-scean-native-player]').getBoundingClientRect(); return {x: q.left, y: q.top}; })()`);
+    await b.send('Input.dispatchMouseEvent', {type: 'mousePressed', x: o.x + g.x, y: o.y + g.y, button: 'left', clickCount: 1});
+    for (let dy = 20; dy <= 200; dy += 30) await b.send('Input.dispatchMouseEvent', {type: 'mouseMoved', x: o.x + g.x, y: o.y + g.y + dy, button: 'left', buttons: 1});
+    await b.send('Input.dispatchMouseEvent', {type: 'mouseReleased', x: o.x + g.x, y: o.y + g.y + 200, button: 'left', clickCount: 1}); await sleep(800);
+    r.swipeClosed = !(await b.evaluate(`!!document.querySelector('.sheet')`, S)); await b.click('更多', F); await sleep(500);
     await b.click('日曆', F); await sleep(2000); await shot('phone-calendar'); await b.click('關閉', F); await sleep(300);
     const t0 = await turnCount(); await send('（手機）我回頭看了一眼。'); r.turnOk = (await turnCount()) === t0 + 1; await shot('phone-turn');
     await b.send('Emulation.clearDeviceMetricsOverride'); await b.send('Emulation.setTouchEmulationEnabled', {enabled: false}); await sleep(800);
-    if (r.overflow || !r.turnOk) throw Error('phone layout or turn failed');
+    if (r.overflow || !r.turnOk || !r.swipeClosed) throw Error('phone layout, swipe or turn failed');
   },
   async restart(r) {
     const before = {turns: await turnCount(), text: (await stageText()).slice(-400)};

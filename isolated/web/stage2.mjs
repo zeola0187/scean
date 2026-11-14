@@ -142,6 +142,14 @@ function mount() {
     if (s.flash && s.flash !== lastFlash) { lastFlash = s.flash; live.textContent = '這一段已保存。'; }
   });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && store.get().sheet && !e.isComposing) { e.preventDefault(); actions.closeSheet(); } });
+  // Phone: drag a bottom sheet down by its handle or header to close it.
+  let drag = null;
+  sheetHost.addEventListener('pointerdown', e => { const sheet = e.target.closest?.('.sheet'); if (!sheet || !e.target.closest('.grabber, .sheet-head') || e.target.closest('button') || matchMedia('(min-width: 760px)').matches) return; drag = {sheet, y: e.clientY, dy: 0, id: e.pointerId}; sheet.setPointerCapture?.(e.pointerId); sheet.style.transition = 'none'; });
+  sheetHost.addEventListener('pointermove', e => { if (!drag || e.pointerId !== drag.id) return; drag.dy = Math.max(0, e.clientY - drag.y); drag.sheet.style.transform = `translateY(${drag.dy}px)`; });
+  const endDrag = e => { if (!drag || e.pointerId !== drag.id) return; const {sheet, dy} = drag; drag = null; sheet.style.transition = ''; if (dy > 90) actions.closeSheet(); else sheet.style.transform = ''; };
+  sheetHost.addEventListener('pointerup', endDrag); sheetHost.addEventListener('pointercancel', endDrag);
+  // Phone: when the on-screen keyboard opens, keep the composer in view.
+  globalThis.visualViewport?.addEventListener('resize', () => { const input = document.activeElement; if (input?.id === 'composer-input') requestAnimationFrame(() => input.scrollIntoView({block: 'nearest'})); });
 }
 
 mount();

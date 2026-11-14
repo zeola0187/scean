@@ -141,18 +141,24 @@ function renderPending(s, actions) {
   return [input, status];
 }
 
+// World news as an interlude where the story is now (after the newest section). It is a projection of
+// unread worldFeed items only: nothing is written into the story, nothing is invented, and news is never
+// placed between older sections, because which section a post "followed" cannot be known reliably.
+// Announcements are labelled as plans; forum posts as a character's own claim, never as world fact.
 function renderFeed(s, actions, where) {
   const items = s.feed?.items ?? []; if (!items.length) return null;
+  const markAll = () => actions.feedSeen({ids: s.feed.latest?.ids ?? items.map(i => i.id)});
+  if (where === 'feed-margin') return h('section', {class: 'feed feed-margin'}, h('button', {class: 'feed-jump', type: 'button', onclick: () => document.querySelector('.interlude')?.scrollIntoView({behavior: 'smooth', block: 'center'})},
+    h('span', {class: 'feed-dot', 'aria-hidden': 'true'}), `世界有 ${s.feed.unread} 則新消息`, h('span', {'aria-hidden': 'true'}, ' ↓')));
   const open = item => { void actions.feedSeen({ids: [item.id]}); if (item.kind === 'calendar_event') actions.sheet('calendar', {day: item.day}); else actions.sheet('forum', {threadId: item.threadId}); };
-  const line = item => item.kind === 'calendar_event'
-    ? [h('span', {class: 'feed-kind'}, '日曆'), h('span', {class: 'feed-text'}, h('strong', null, item.title), h('small', null, clockText(`${item.startLabel} ～ ${item.endLabel}`)))]
-    : [h('span', {class: 'feed-kind'}, item.kind === 'forum_reply' ? '回覆' : '論壇'), h('span', {class: 'feed-text'}, h('strong', null, item.kind === 'forum_reply' ? `${item.author} 回覆「${item.title}」` : `${item.author}：${item.title}`), h('small', null, item.excerpt))];
-  const shown = items.slice(0, 5);
-  return h('section', {class: `feed ${where}`, 'aria-label': '世界動態'},
-    h('div', {class: 'feed-head'}, h('p', {class: 'eyebrow'}, `世界動態 · ${s.feed.unread} 則新消息`),
-      h('button', {class: 'link', type: 'button', onclick: () => actions.feedSeen({ids: s.feed.latest?.ids ?? items.map(i => i.id)})}, '看過了')),
-    h('ul', {class: 'feed-items'}, shown.map(item => h('li', null, h('button', {class: 'feed-item', type: 'button', onclick: () => open(item)}, line(item))))),
-    items.length > shown.length ? h('p', {class: 'meta'}, `還有 ${items.length - shown.length} 則；打開日曆或論壇也會標為已讀。`) : null);
+  const notices = items.filter(i => i.kind === 'calendar_event'), rumours = items.filter(i => i.kind !== 'calendar_event');
+  const row = (item, body) => h('li', null, h('button', {class: 'interlude-item', type: 'button', onclick: () => open(item)}, body));
+  const group = (label, note, rows) => rows.length ? h('div', {class: 'interlude-group'}, h('p', {class: 'interlude-label'}, label, h('small', null, note)), h('ul', null, rows)) : null;
+  return h('details', {class: `interlude ${where}`, open: true, 'aria-label': '世界動態'},
+    h('summary', null, h('span', {class: 'interlude-title'}, '此刻，世界的另一邊'), h('span', {class: 'interlude-count'}, `${s.feed.unread} 則新消息`)),
+    group('公告', '已公告的安排；是否真的發生，以故事正文為準', notices.slice(0, 4).map(n => row(n, [h('strong', null, n.title), h('small', null, clockText(`${n.startLabel} ～ ${n.endLabel}`))]))),
+    group('傳聞', '論壇上的說法，是角色自己的看法，不代表事實', rumours.slice(0, 5).map(p => row(p, [h('strong', null, p.kind === 'forum_reply' ? `${p.author} 回覆「${p.title}」` : `${p.author}：「${p.title}」`), h('small', null, p.excerpt)]))),
+    h('div', {class: 'interlude-foot'}, items.length > 9 ? h('span', {class: 'meta'}, `還有 ${items.length - 9} 則，打開日曆或論壇查看。`) : h('span'), h('button', {class: 'link', type: 'button', onclick: markAll}, '都看過了')));
 }
 
 // Author panels run in an opaque, script-less sandbox, so their content height cannot be measured.

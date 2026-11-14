@@ -31,7 +31,7 @@ export function renderShelf(s, actions) {
     h('div', {class: 'resume-copy'},
       h('p', {class: 'eyebrow'}, `繼續演出${latest.playerIdentity?.name ? ' · ' + latest.playerIdentity.name : ''}`),
       h('h1', {class: 'resume-title'}, title),
-      h('p', {class: 'resume-where'}, [clockText(latest.storyClockLabel), `${latest.turnCount ?? 0} 段`].filter(Boolean).join(' · ')),
+      h('p', {class: 'resume-where'}, [clockText(latest.storyClockLabel), `${latest.turnCount ?? 0} 段`, s.scripts.length > 1 && latest.snapshot?.revision !== undefined ? `劇本版本 r${latest.snapshot.revision}` : null].filter(Boolean).join(' · ')),
       latest.lastTurn?.body ? h('blockquote', {class: 'resume-line'}, latest.lastTurn.body.split(/\n+/).filter(Boolean).at(-1)) : latest.openingDisplay ? h('blockquote', {class: 'resume-line'}, latest.openingDisplay.slice(0, 120)) : null,
       h('div', {class: 'row'}, h('button', {class: 'primary big', type: 'button', 'data-autofocus': true, onclick: () => actions.open(latest.runId)}, '繼續閱讀'), h('span', {class: 'meta'}, ago(lastRow?.updatedAt))))) : null;
 
@@ -43,10 +43,10 @@ export function renderShelf(s, actions) {
       h('button', {class: latest ? 'ghost' : 'primary', type: 'button', onclick: () => actions.startScript(sc)}, '選開場並開演')))))) :
     h('section', {class: 'empty-state'}, h('strong', null, '還沒有保存的劇本'), h('p', null, '在「創作」裡完成檢查並保存劇本後，就能在這裡開演。'), h('button', {class: latest ? 'ghost' : 'primary', type: 'button', onclick: () => actions.nav('studio')}, '前往創作'));
 
-  const others = s.runs.slice(latest ? 1 : 0);
+  const others = s.runs.slice(latest ? 1 : 0), versionOf = r => s.scripts.length > 1 ? (s.scripts.find(sc => sc.scriptId === r.scriptId)?.revision ?? r.revision ?? null) : null;
   const saves = others.length ? h('section', {class: 'shelf-section'}, h('h2', null, '其他演出'),
     h('ul', {class: 'save-list'}, others.map(r => h('li', null, h('button', {class: 'save-row', type: 'button', onclick: () => actions.open(r.runId)},
-      h('span', {class: 'save-copy'}, h('strong', null, r.playerName ? `${r.playerName} 的故事` : (r.title ?? '演出')), h('span', {class: 'meta'}, `${r.turnCount ?? 0} 段 · ${ago(r.updatedAt)}`)),
+      h('span', {class: 'save-copy'}, h('strong', null, r.playerName ? `${r.playerName} 的故事` : (r.title ?? '演出')), h('span', {class: 'meta'}, [`${r.turnCount ?? 0} 段`, versionOf(r) ? `劇本版本 r${versionOf(r)}` : null, ago(r.updatedAt)].filter(Boolean).join(' · '))),
       h('span', {class: 'meta'}, '繼續 ›')))))) : null;
 
   return h('div', {class: 'shelf'}, head, h('main', {class: 'shelf-main'},
