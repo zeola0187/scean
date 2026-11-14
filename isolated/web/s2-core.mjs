@@ -56,6 +56,7 @@ export function createTransport(native, {onContext} = {}) {
   }
   async function refresh() {
     const before = scope;
+    if (!before) { refreshing ??= raw('native.context', {}, 15000).finally(() => { refreshing = null; }); const context = await refreshing; onContext?.(context); return !!context?.cardScope; }
     refreshing ??= raw('native.context', {}, 15000).finally(() => { refreshing = null; });
     const context = await refreshing; onContext?.(context);
     return sameCard(before, context?.cardScope);
@@ -64,8 +65,12 @@ export function createTransport(native, {onContext} = {}) {
     if (!native) throw Object.assign(new Error('新版舞台只在 DSH 內使用；請從 DSH 的舞台入口開啟。'), {code: 'NATIVE_REQUIRED'});
     try { return await raw(action, payload, timeout, signal); }
     catch (error) {
-      if (error?.code !== 'CARD_CONTEXT_CHANGED' || action === 'native.context' || signal?.aborted) throw error;
-      let same = false; try { same = await refresh(); } catch {}
+      const code = error?.code;
+      if (!['CARD_CONTEXT_CHANGED', 'CARD_CONTEXT_REQUIRED'].includes(code) || action === 'native.context' || signal?.aborted) throw error;
+      // REQUIRED: the Studio record was dropped (e.g. DSH replaced the conversation's agent); reading the
+      // context re-acquires the stage's Studio lease, so one retry is enough when the card is the same.
+      const before = scope; let same = false; try { same = await refresh(); } catch {}
+      if (code === 'CARD_CONTEXT_REQUIRED' && !before && scope) same = true;
       if (!same) throw Object.assign(error, {cardChanged: true});
       return raw(action, payload, timeout, signal);
     }

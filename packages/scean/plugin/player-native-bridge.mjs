@@ -1,5 +1,5 @@
 // Authenticated RPC adapter only. No file access, HTTP proxy, or Studio database access.
-export function createNativeBridge({call,selectPanel,openSession,getSessionId=()=>null,getViewerId=()=>null,notifications,enableNotifications,onOpeningStarted,onDiagnose,onRunRecycled,onStageUi,getStageUi}){
+export function createNativeBridge({call,selectPanel,openSession,getSessionId=()=>null,getViewerId=()=>null,notifications,enableNotifications,onOpeningStarted,onDiagnose,onRunRecycled,onStageUi,getStageUi,ensureStudioLease}){
   const allowed=new Set(['scriptList','scriptGet','scriptStart','scriptStatus','runRecycleList','runLifecycleStatus','runTrash','runRestore','playerBind','capabilities','list','openingPrepare','openingOffer','openingStart','openingCancel','progress','draftSave','draftGet','turn','rollback','regenerate','operationSubmit','operationStatus','exportRun','importRun','cancel','settlementBody','runView','historySearch','historyRead','historyPage','summaryStatus','summaryStart','summaryCancel','chapterStatus','chapterSettings','chapterSummarize','chapterAuto','chapterCancel','chapterClose','inspect','diagnosticsGrant','diagnosticsRead','diagnosticsRevoke','banList','writingMode','writingModeSave','proseStyle','proseStyleSave','agentModels','agentModelsSave','writingStylesImport','playerIdeas','playerWorldbook','playerRecap','playerCollaboration','ownerWorldbook','presentation','presentationSource','presentationPreview','presentationApply','presentationRestore','models']);
   const grants=new Map();let disposed=false,privacyEpoch=0,contextEpoch=0,cardScope=null;
   const denied=code=>Object.assign(new Error(code),{code});
@@ -7,7 +7,7 @@ export function createNativeBridge({call,selectPanel,openSession,getSessionId=()
   const grantKey=r=>`${r.runId}:${r.viewerId}`;
   const scoped=request=>({...request,sessionId:getSessionId(),cardScope});
   const viewer=()=>{const value=getViewerId(getSessionId());return typeof value==='string'&&/^[\w-]{1,160}$/.test(value)?{viewerId:value}:{};};
-  async function context(){const epoch=contextEpoch,sessionId=getSessionId();const value=await call({action:'context',sessionId});if(epoch!==contextEpoch||sessionId!==getSessionId())throw denied('NATIVE_CONTEXT_STALE');cardScope=value.cardScope??null;const status=value.playbackStatus;return {cardScope,...(['available','unselected','source_missing','source_recycled','source_pending','session_archived','unavailable'].includes(status?.status)?{playbackStatus:{status:status.status,...(typeof status.authoringBindingRequired==='boolean'?{authoringBindingRequired:status.authoringBindingRequired}:{})}}:{}),...viewer()};}
+  async function context(){const epoch=contextEpoch,sessionId=getSessionId();await Promise.resolve(ensureStudioLease?.()).catch(()=>{});const value=await call({action:'context',sessionId});if(epoch!==contextEpoch||sessionId!==getSessionId())throw denied('NATIVE_CONTEXT_STALE');cardScope=value.cardScope??null;const status=value.playbackStatus;return {cardScope,...(['available','unselected','source_missing','source_recycled','source_pending','session_archived','unavailable'].includes(status?.status)?{playbackStatus:{status:status.status,...(typeof status.authoringBindingRequired==='boolean'?{authoringBindingRequired:status.authoringBindingRequired}:{})}}:{}),...viewer()};}
   async function request(action,payload={}){
     if(disposed)throw denied('NATIVE_PANEL_CLOSED');
     if(!payload||typeof payload!=='object'||Array.isArray(payload)||Object.hasOwn(payload,'action'))throw denied('NATIVE_REQUEST_INVALID');
@@ -76,7 +76,9 @@ export function createNativeBridge({call,selectPanel,openSession,getSessionId=()
     }
     if(action==='worldFeed'&&Object.keys(payload).some(k=>k!=='runId'))throw denied('NATIVE_FEED_INVALID');
     if(action==='worldFeedSeen'&&Object.keys(payload).some(k=>!['runId','forumSequence','ids'].includes(k)))throw denied('NATIVE_FEED_INVALID');
-    if(!allowed.has(action)&&!['worldRoutineRead','worldFeed','worldFeedSeen'].includes(action))throw denied('NATIVE_ACTION_DENIED');
+    const noteKeys={playerNotes:['runId'],playerNoteAdd:['runId','commitId','excerpt','memo'],playerNoteDelete:['runId','noteId']}[action];
+    if(noteKeys&&Object.keys(payload).some(k=>!noteKeys.includes(k)))throw denied('NATIVE_NOTE_INVALID');
+    if(!allowed.has(action)&&!noteKeys&&!['worldRoutineRead','worldFeed','worldFeedSeen'].includes(action))throw denied('NATIVE_ACTION_DENIED');
     const request=scoped({...payload,action}),epoch=privacyEpoch,contextToken=contextEpoch;
       if(action==='operationSubmit'){await notifications?.watch(request);if(contextToken!==contextEpoch)throw denied('NATIVE_CONTEXT_STALE');}
       let value;try{value=await call(request);if(action==='operationSubmit')void notifications?.refresh();}catch(error){if(contextToken!==contextEpoch)throw denied('NATIVE_CONTEXT_STALE');throw error;}

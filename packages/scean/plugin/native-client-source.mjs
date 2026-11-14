@@ -32,31 +32,34 @@ export function nativeClientFactory(React,sharedHTML,createNativeBridge,createNo
         // Workshop = legacy management tools for one Run; the remembered preference stays legacy/next.
         const switchUi=(next,runId=null)=>{if(next!=='workshop'){try{localStorage.setItem(uiKey,next);}catch{}}if(runId)selected=runId;setUi(next);};
         const close=()=>{const old=session.current;session.current=null;if(old){selections.delete(old.notify);panels.delete(old);old.stopPresentation?.();old.port.onmessage=null;old.port.close();void old.bridge.dispose();}};
-        React.useEffect(()=>close,[]);
+        React.useEffect(()=>close,[]);const leaseTick=React.useRef(null);
         // The stage's card scope comes from Card Studio's per-conversation record, which only lives while some
         // page holds a Studio lease (90 s, renewed). Studio panels hold one only while they are mounted, so a
         // stage left open on its own lost its scope (CARD_CONTEXT_REQUIRED, then CHANGED once Studio reopened).
         // Hold an ordinary page lease while the stage is open and visible, through the same Studio API.
         React.useEffect(()=>{
           let claim=null,leaseSession=null,stopped=false,busy=false;const page='scean-stage-'+globalThis.crypto.randomUUID();
-          const studio=()=>child.remote?.cardstudioScean;
+          // Card Studio mounts its own remote (service 'remote.cardstudioScean'); look it up at use time.
+          const studio=()=>{for(const scope of [child,ctx]){try{const svc=scope.get?.('remote.cardstudioScean');if(svc?.request)return svc;}catch{}}return child.remote?.cardstudioScean;};
+          // Diagnostics only (no ids or claims): lets tests and support see whether the lease is held.
+          const status=window.__SCEAN_STAGE_LEASE__={available:false,held:false,acquires:0,renewals:0,error:null};
           const release=(svc,sid,c)=>{if(svc&&sid&&c)void svc.request(sid,{action:'release',claim:c}).catch(()=>{});};
           const tick=async()=>{
-            if(stopped||busy)return;const svc=studio(),now=currentSession();if(!svc?.request)return;
+            if(stopped||busy)return;const svc=studio(),now=currentSession();status.available=!!svc?.request;status.leaseFor=now?.slice(0,8)??null;status.stageFor=sessionId?.slice(0,8)??null;if(!svc?.request)return;
             if(leaseSession!==now&&claim){release(svc,leaseSession,claim);claim=null;}
             leaseSession=now;if(!now||document.visibilityState==='hidden')return;busy=true;
             try{
-              if(claim){const r=await svc.request(now,{action:'renew',claim});if(!r?.ok||r.value?.active===false)claim=null;}
-              if(!claim&&!stopped){const r=await svc.request(now,{action:'acquire',page_id:page});if(r?.ok&&r.value)claim=r.value;}
-            }catch{claim=null;}finally{busy=false;}
+              if(claim){const r=await svc.request(now,{action:'renew',claim});if(!r?.ok||r.value?.active===false){claim=null;status.error=r?.error?.code??'RENEW_REJECTED';}else status.renewals++;}
+              if(!claim&&!stopped){const r=await svc.request(now,{action:'acquire',page_id:page});if(r?.ok&&r.value){claim=r.value;status.acquires++;status.error=null;}else status.error=r?.error?.code??'ACQUIRE_REJECTED';}
+            }catch(error){claim=null;status.error=error?.code??error?.name??'ERROR';}finally{busy=false;status.held=!!claim;}
           };
-          void tick();const timer=setInterval(tick,20000),visible=()=>{if(document.visibilityState==='visible')void tick();};
+          leaseTick.current=tick;void tick();const timer=setInterval(tick,20000),visible=()=>{if(document.visibilityState==='visible')void tick();};
           document.addEventListener('visibilitychange',visible);
           return()=>{stopped=true;clearInterval(timer);document.removeEventListener('visibilitychange',visible);release(studio(),leaseSession,claim);};
         },[]);
         const connect=()=>{
           close();if(!frame.current?.contentWindow)return;
-          const channel=new MessageChannel(),bridge=createNativeBridge({call,selectPanel:key=>child.layout.selectPanel(key),openSession:id=>child.uiWorkspace.openSession(id),getSessionId:()=>sessionId,getViewerId,notifications,enableNotifications,onRunRecycled:({runId})=>{if(selected===runId)selected=null;},onStageUi:(value,runId)=>switchUi(value,runId),getStageUi:()=>ui,onDiagnose:detail=>window.dispatchEvent(new CustomEvent('scean:diagnose',{detail})),onOpeningStarted:({request,value})=>{if(request.sessionId!==sessionId)return;window.dispatchEvent(new CustomEvent('scean:started',{detail:{schema:1,authoringSessionId:request.sessionId,documentId:request.cardId,generation:request.cardScope?.generation,revision:request.revision,offerId:request.offerId,runId:value.runId,binding:value.binding}}));}});
+          const channel=new MessageChannel(),bridge=createNativeBridge({call,selectPanel:key=>child.layout.selectPanel(key),openSession:id=>child.uiWorkspace.openSession(id),getSessionId:()=>sessionId,getViewerId,notifications,enableNotifications,onRunRecycled:({runId})=>{if(selected===runId)selected=null;},onStageUi:(value,runId)=>switchUi(value,runId),getStageUi:()=>ui,ensureStudioLease:()=>leaseTick.current?.(),onDiagnose:detail=>window.dispatchEvent(new CustomEvent('scean:diagnose',{detail})),onOpeningStarted:({request,value})=>{if(request.sessionId!==sessionId)return;window.dispatchEvent(new CustomEvent('scean:started',{detail:{schema:1,authoringSessionId:request.sessionId,documentId:request.cardId,generation:request.cardScope?.generation,revision:request.revision,offerId:request.offerId,runId:value.runId,binding:value.binding}}));}});
           const current={port:channel.port1,bridge,notify:runId=>{bridge.clearContext();channel.port1.postMessage({kind:'context',runId,...(notificationTarget?.runId===runId?{notificationTarget}:{})});}};session.current=current;panels.add(current);selections.add(current.notify);
           channel.port1.onmessage=async event=>{
             const message=event.data;if(session.current!==current||!message||message.kind!=='request'||typeof message.id!=='string'||message.id.length>100)return;

@@ -1027,6 +1027,10 @@
       "path": "packages/scean/plugin/world-feed.mjs"
     },
     {
+      "source": "plugin/player-notes.mjs",
+      "path": "packages/scean/plugin/player-notes.mjs"
+    },
+    {
       "source": "isolated/web/world-routine-ui.mjs",
       "path": "packages/scean/isolated/web/world-routine-ui.mjs"
     },

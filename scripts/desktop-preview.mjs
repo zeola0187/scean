@@ -57,7 +57,7 @@ async function pack() {
   const dirty = execFileSync('git', ['status', '--porcelain'], {cwd: repo, encoding: 'utf8'}).trim() !== '';
   const manifest = JSON.parse(await fs.readFile(path.join(repo, 'package.json'), 'utf8'));
   // Distinct version: pnpm caches by name@version, and the preview must never be mistaken for the release.
-  const stamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 12);
+  const stamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
   manifest.version = `${manifest.version}.stagev2-${sha}${dirty ? '.dev' + stamp : ''}`;
   const stage = path.join(root, 'packages', '.stage-' + process.pid);
   await fs.rm(stage, {recursive: true, force: true}); await fs.mkdir(stage, {recursive: true});

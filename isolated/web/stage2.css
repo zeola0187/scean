@@ -304,3 +304,9 @@ legend { font-weight: 700; margin-bottom: 8px; padding: 0; }
 .feed-item:hover { background: var(--raised); }
 .feed-kind { font-size: 12px; font-weight: 700; color: var(--accent); white-space: nowrap; }
 .feed-text { display: grid; min-width: 0; } .feed-text strong { font-weight: 600; overflow-wrap: anywhere; } .feed-text small { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* 記下: pin selected story text to 我已知的設定. */
+.pin-note { position: absolute; z-index: 30; padding: 4px 12px; border-radius: 999px; border: 0; background: var(--accent); color: var(--accent-ink); font: 600 13px var(--font-ui); box-shadow: 0 4px 14px rgba(0,0,0,.25); }
+.notes { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.note blockquote { margin: 0; padding: 4px 0 4px 12px; border-left: 3px solid var(--accent); font: var(--read-size)/1.7 var(--font-read); }
+.note.is-stale blockquote { opacity: .6; border-left-color: var(--line); }
+.stale-notes summary { cursor: pointer; color: var(--muted); font-size: 13px; padding: 6px 0; }

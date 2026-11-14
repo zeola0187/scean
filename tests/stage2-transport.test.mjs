@@ -52,3 +52,17 @@ test('concurrent failures share one context refresh', async () => {
   await Promise.all([call('runView', {runId: 'r'}), call('historyPage', {runId: 'r'})]);
   assert.equal(calls.filter(a => a === 'native.context').length, 2);
 });
+
+test('a dropped Studio record (REQUIRED) is retried once after the context re-acquires it', async () => {
+  const calls = []; let lost = true;
+  const native = {async request(action, payload) {
+    calls.push(action);
+    if (action === 'native.context') return {cardScope: scope('g9')};
+    if (lost) { lost = false; throw Object.assign(new Error('no record'), {code: 'CARD_CONTEXT_REQUIRED'}); }
+    return {ok: action};
+  }};
+  const {call} = createTransport(native);
+  await call('native.context');
+  assert.deepEqual(await call('runView', {runId: 'r'}), {ok: 'runView'});
+  assert.deepEqual(calls, ['native.context', 'runView', 'native.context', 'runView']);
+});

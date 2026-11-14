@@ -90,6 +90,12 @@ const actions = {
     await call('worldFeedSeen', {runId, ids: ids.slice(0, 200), ...(forumSequence !== undefined ? {forumSequence} : {})}).catch(() => {});
     await actions.loadFeed();
   },
+  async addNote({commitId, excerpt}) {
+    const runId = store.get().runId; if (!runId) return;
+    try { await call('playerNoteAdd', {runId, commitId, excerpt}); store.set({notice: '已記下。在「設定集 › 我已知的」可以找到。'}); setTimeout(() => { if (store.get().notice?.startsWith('已記下')) store.set({notice: null}); }, 4000); }
+    catch (error) { store.set({notice: friendly(error)}); }
+  },
+  async deleteNote(noteId) { const runId = store.get().runId; await call('playerNoteDelete', {runId, noteId}).catch(error => store.set({notice: friendly(error)})); store.set(s => ({...s, sheetData: null})); },
   async useLegacy() { await call('native.stageUi', {ui: 'legacy'}).catch(error => store.set({notice: friendly(error)})); },
   async workshop() { const runId = store.get().runId; await call('native.stageUi', runId ? {ui: 'workshop', runId} : {ui: 'workshop'}).catch(error => store.set({notice: friendly(error)})); },
   call, ops, store, reload,

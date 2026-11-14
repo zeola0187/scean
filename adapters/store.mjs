@@ -182,7 +182,7 @@ export class DurableStore {
     }
   }
   async withRunLock(runId, fn, { signal, namespace } = {}) {
-    if(namespace!==undefined&&!['prose-style','writing-mode','writing-styles','agent-models','agent-model-defaults','model-route-pins','world-feed'].includes(namespace))throw new SceanError('LOCK_NAMESPACE');
+    if(namespace!==undefined&&!['prose-style','writing-mode','writing-styles','agent-models','agent-model-defaults','model-route-pins','world-feed','player-notes'].includes(namespace))throw new SceanError('LOCK_NAMESPACE');
     const lockKey=namespace?namespace+':'+runId:runId;
     const dir = ['writing-styles','agent-model-defaults'].includes(namespace)?path.join(this.root,'settings-locks',namespace):path.join(this.runDir(runId), namespace?namespace+'-tickets':'writer-tickets'); await mkdir(dir, { recursive: true }); checkAbort(signal);
     const token = randomUUID(); const phaseFile = phase => path.join(dir, `${token}.${phase}.json`);

@@ -41,9 +41,25 @@ export function createReader(actions) {
     if ((stick && (lastLen !== s.turns.length || lastPhase !== (s.op?.phase ?? null))) || (s.op?.savedBody && !lastSaved)) requestAnimationFrame(scrollEnd);
     lastLen = s.turns.length; lastPhase = s.op?.phase ?? null; lastSaved = !!s.op?.savedBody;
   }
+  // 記下: selecting text inside one committed section offers to pin it to 我已知的設定.
+  const pin = h('button', {class: 'pin-note', type: 'button', hidden: true}, '記下'); el.append(pin);
+  let pinned = null;
+  const placePin = () => {
+    const sel = document.getSelection(), text = sel?.toString().trim() ?? '';
+    const box = sel?.rangeCount ? sel.getRangeAt(0).commonAncestorContainer : null, node = box?.nodeType === 1 ? box : box?.parentElement;
+    // Story text of one committed section only; never the player's own input line.
+    const turnEl = node && !node.closest('.you') ? node.closest('.turn[data-commit]') : null;
+    if (!text || text.length > 600 || !turnEl) { pin.hidden = true; pinned = null; return; }
+    const r = sel.getRangeAt(0).getBoundingClientRect(); pinned = {commitId: turnEl.dataset.commit, excerpt: text};
+    pin.hidden = false; pin.style.top = `${window.scrollY + r.top - 40}px`; pin.style.left = `${Math.max(8, window.scrollX + r.left + r.width / 2 - 28)}px`;
+  };
+  let pinTimer = null; const onSelection = () => { clearTimeout(pinTimer); pinTimer = setTimeout(placePin, 180); };
+  document.addEventListener('selectionchange', onSelection);
+  pin.addEventListener('mousedown', e => e.preventDefault());
+  pin.addEventListener('click', () => { if (!pinned) return; const note = pinned; pin.hidden = true; pinned = null; document.getSelection()?.removeAllRanges(); void actions.addNote(note); });
   const scrollEnd = () => window.scrollTo({top: document.documentElement.scrollHeight, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'});
   const ticker = setInterval(() => { const t = pending.querySelector('.elapsed'); if (t) t.textContent = `${Math.max(0, Math.round((Date.now() - Number(t.dataset.start)) / 1000))} 秒`; }, 1000);
-  return {el, update, scrollEnd, dispose() { clearInterval(ticker); composer.dispose(); }};
+  return {el, update, scrollEnd, dispose() { clearInterval(ticker); composer.dispose(); document.removeEventListener('selectionchange', onSelection); }};
 }
 
 function renderBar(s, actions) {
@@ -71,7 +87,7 @@ function renderFlow(s, actions) {
   }
   s.turns.forEach((t, i) => {
     const last = i === s.turns.length - 1, regenerating = last && s.op?.kind === 'regenerate', rows = changeRows(t, run);
-    out.push(h('section', {class: `turn${t.commitId === s.highlight ? ' is-new' : ''}${regenerating ? ' is-replacing' : ''}`, id: `turn-${t.turn}`, 'aria-label': `第 ${t.turn} 段`},
+    out.push(h('section', {class: `turn${t.commitId === s.highlight ? ' is-new' : ''}${regenerating ? ' is-replacing' : ''}`, id: `turn-${t.turn}`, 'data-commit': t.commitId, 'aria-label': `第 ${t.turn} 段`},
       h('div', {class: 'you'}, h('span', {class: 'you-tag'}, '你'), h('p', null, t.input)),
       h('div', {class: 'prose'}, proseNodes(t, run, {onSpeaker})),
       regenerating ? h('p', {class: 'replacing-note'}, '正在重寫這一段；新版本保存前，這段仍是故事的一部分。') : null,

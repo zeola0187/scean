@@ -112,9 +112,17 @@ const SHEETS = {
 
   lore(s, actions, mode = 'known') {
     const tabs = seg('設定集視角', mode, [['known', '我已知的'], ['public', '公開設定'], ['owner', '完整（含劇透）']], v => actions.sheet('lore', v));
-    if (mode === 'known') return {title: '設定集', body: [tabs, h('div', {class: 'empty-state'}, h('strong', null, '還無法顯示「你已知的設定」'),
-      h('p', null, '要知道你在故事裡已經得知哪些設定，存檔需要記錄每段正文觸發過的設定條目；這項功能尚未實作。'),
-      h('p', null, '在那之前不會用其他內容代替，以免把作者的設定或劇透當成你已經知道的事。'))]};
+    if (mode === 'known') {
+      const d = useData(s, actions, ['notes', s.run?.version], () => actions.call('playerNotes', {runId: s.runId}));
+      if (!d) return {title: '設定集', body: [tabs, wait()]}; if (d.error) return {title: '設定集', body: [tabs, failed(d)]};
+      const notes = d.value.notes ?? [], live = notes.filter(n => !n.stale), stale = notes.filter(n => n.stale);
+      const row = n => h('li', {class: `note${n.stale ? ' is-stale' : ''}`}, h('blockquote', null, n.excerpt), h('p', {class: 'meta'}, n.stale ? '這段已被收回或重寫' : `第 ${n.turn} 段`, ' · ', h('button', {class: 'link', type: 'button', onclick: () => actions.deleteNote(n.id)}, '刪除')));
+      return {title: '設定集', body: [tabs,
+        h('p', {class: 'fine top'}, '這裡只放你自己記下的內容：在故事裡選取文字，按「記下」。不會自動把作者的設定或尚未揭露的祕密放進來。'),
+        live.length ? h('ul', {class: 'notes'}, live.map(row)) : h('div', {class: 'empty-state'}, h('strong', null, '還沒有記下任何事'), h('p', null, '讀到想記住的線索、名字或規則時，選取那段文字，按跳出的「記下」。')),
+        stale.length ? h('details', {class: 'stale-notes'}, h('summary', null, `已不在故事中的筆記（${stale.length}）`), h('ul', {class: 'notes'}, stale.map(row))) : null,
+        h('button', {class: 'ghost small', type: 'button', onclick: () => actions.sheet('lore', 'public')}, '看作者公開的設定')]};
+    }
     if (mode === 'owner' && !s.spoilerOk[s.runId]) return {title: '設定集', body: [tabs, h('div', {class: 'empty-state is-warn'}, h('strong', null, '完整設定集包含劇透'),
       h('p', null, '這是本局固定版本的全部設定，包括故事還沒揭露的祕密。閱讀不會改變角色知道的事。'),
       h('button', {class: 'primary', type: 'button', onclick: () => actions.store.set(x => ({...x, spoilerOk: {...x.spoilerOk, [x.runId]: true}}))}, '我了解，顯示完整設定集'))]};
