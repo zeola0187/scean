@@ -18,12 +18,17 @@ export function createReader(actions) {
   const margin = h('aside', {class: 'margin', 'aria-label': '此刻'});
   const el = h('div', {class: 'reader'}, bar, h('div', {class: 'reader-grid'}, h('main', {class: 'flow-col'}, flow, pending, composer.el), margin));
   const keys = {}; const changed = (k, v) => { const j = JSON.stringify(v); if (keys[k] === j) return false; keys[k] = j; return true; };
-  let lastLen = -1, lastPhase = null, lastSaved = false;
+  let lastLen = -1, lastPhase = null, lastSaved = false, workPanel = null;
   function update(s) {
     if (!s.run) { replace(flow, h('p', {class: 'loading'}, '正在打開這場演出…')); composer.update(s); return; }
     const stick = nearBottom();
     if (changed('bar', [s.run.version, s.run.storyClockLabel, s.op?.phase])) replace(bar, renderBar(s, actions));
-    if (changed('flow', [s.run.version, s.turns.length, s.turns[0]?.commitId, s.highlight, s.confirm, !!s.op, s.op?.kind === 'regenerate' && s.op.phase, s.notice, s.history?.hasMore])) replace(flow, renderFlow(s, actions));
+    const flowChanged = changed('flow', [s.run.version, s.turns.length, s.turns[0]?.commitId, s.highlight, s.confirm, !!s.op, s.op?.kind === 'regenerate' && s.op.phase, s.notice, s.history?.hasMore]);
+    if (flowChanged) replace(flow, renderFlow(s, actions));
+    // The author's work panel follows the newest committed section only; earlier sections never show it.
+    const panelChanged = changed('panel', [s.run.cardFrontend?.status ?? null, s.run.cardFrontend?.projection?.canonical ?? null]);
+    if (panelChanged) { workPanel?.remove(); workPanel = renderWorkPanel(s.run); }
+    if ((flowChanged || panelChanged) && workPanel) flow.append(workPanel);
     if (changed('pending', [s.op && {...s.op, stage: null}])) replace(pending, s.op ? renderPending(s, actions) : null);
     if (s.op?.phase === 'running') { const at = phaseIndex(s.op.stage); pending.querySelectorAll('.phases li').forEach((li, i) => { li.className = i < at ? 'done' : i === at ? 'now' : ''; if (i === at) li.setAttribute('aria-current', 'step'); else li.removeAttribute('aria-current'); }); }
     if (changed('margin', [s.run.version, s.run.cardFrontend?.projection?.canonical ?? null])) replace(margin, renderMargin(s, actions));
@@ -115,15 +120,24 @@ function renderPending(s, actions) {
   return [input, status];
 }
 
+// Author panels run in an opaque, script-less sandbox, so their content height cannot be measured.
+// Start at the legacy stage's 460px; the reader can drag it, and the height is kept for this session.
+let panelHeight = 460;
+function renderWorkPanel(run) {
+  if (run.cardFrontend?.status !== 'ready') return null;
+  let frame; try { frame = h('iframe', {class: 'card-panel', title: '作品面板（作者製作，唯讀）', sandbox: '', referrerpolicy: 'no-referrer', srcdoc: renderFrontendDocument(run.cardFrontend.frontend, {...run.cardFrontend.projection, freshness: 'current'})}); } catch { return null; }
+  const box = h('div', {class: 'panel-frame', style: `height:${panelHeight}px`}, frame);
+  if (typeof ResizeObserver === 'function') new ResizeObserver(() => { const hgt = Math.round(box.getBoundingClientRect().height); if (hgt > 120) panelHeight = hgt; }).observe(box);
+  return h('section', {class: 'work-panel', 'aria-label': '作品面板'}, h('p', {class: 'eyebrow'}, '作品面板 · 目前狀態'), box, h('p', {class: 'meta panel-hint'}, '由作者製作，唯讀。可拖曳右下角調整高度。'));
+}
+
 function renderMargin(s, actions) {
   const run = s.run, groups = stateGroups(run), cast = run.snapshot?.characters ?? [], idx = castIndex(cast);
-  const panel = run.cardFrontend?.status === 'ready' ? (() => { try { return h('iframe', {class: 'card-panel', title: '作品面板（作者製作，唯讀）', sandbox: '', referrerpolicy: 'no-referrer', srcdoc: renderFrontendDocument(run.cardFrontend.frontend, {...run.cardFrontend.projection, freshness: 'current'})}); } catch { return null; } })() : null;
   return [
     h('section', {class: 'm-card now'}, h('p', {class: 'eyebrow'}, '此刻'),
       run.storyClockLabel ? h('p', {class: 'm-clock'}, clockText(run.storyClockLabel)) : null,
       ...groups.slice(0, 5).map(([category, rows]) => h('div', {class: 'm-group'}, h('p', {class: 'm-cat'}, CATEGORY[category] ?? category), h('ul', {class: 'm-items'}, rows.slice(0, 6).map(r => h('li', null, h('span', null, r.label), h('strong', null, valueText(r.value, r.unit))))))),
       h('button', {class: 'link', type: 'button', onclick: () => actions.sheet('now')}, '完整狀態與變化紀錄')),
-    panel ? h('section', {class: 'm-card'}, h('p', {class: 'eyebrow'}, '作品面板'), panel) : null,
     cast.length ? h('section', {class: 'm-card'}, h('p', {class: 'eyebrow'}, '角色'), h('ul', {class: 'm-cast'}, cast.map(c => h('li', null, h('button', {class: 'cast-row', type: 'button', onclick: () => actions.sheet('character', c.id)}, avatar(c, idx.get(c.id)), h('span', null, h('strong', null, c.name))))))) : null,
     h('section', {class: 'm-card'}, h('p', {class: 'eyebrow'}, '故事世界'), h('div', {class: 'row'}, h('button', {class: 'ghost small', type: 'button', onclick: () => actions.sheet('calendar')}, '日曆'), h('button', {class: 'ghost small', type: 'button', onclick: () => actions.sheet('forum')}, '論壇'))),
   ];

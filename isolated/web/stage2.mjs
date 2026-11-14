@@ -7,7 +7,8 @@ import {createReader} from './s2-reader.mjs';
 import {renderSheet} from './s2-sheets.mjs';
 
 const native = globalThis.__SCEAN_NATIVE__;
-const {call} = createTransport(native);
+// A silently refreshed card context (same card, new Studio generation) is kept in the store as well.
+const {call} = createTransport(native, {onContext: context => { if (context?.cardScope) store.set({context}); }});
 const store = createStore({
   screen: 'loading', context: null, scripts: [], runs: [], latest: null, runId: null, run: null, turns: [], history: null,
   op: null, draft: '', sheet: null, sheetData: null, confirm: null, notice: null, flash: 0, highlight: null, ideas: null,

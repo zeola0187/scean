@@ -161,6 +161,12 @@ async function wrapHostForAckFault(hostModule, out) {
   const {SceanHost} = await import(pathToFileURL(await fs.realpath(hostModule)).href), original = SceanHost.prototype.request;
   if (original.__stageNextAck) return;
   const wrapped = async function (request, signal, authority) {
+    // One-shot stale Studio generation: answer exactly what the Host answers before doing any work.
+    const stale = path.join(out, 'fault-context.json');
+    if (request?.cardScope && request.action !== 'context' && await fs.stat(stale).catch(() => null)) {
+      await fs.unlink(stale).catch(() => {}); await fs.writeFile(path.join(out, 'fault-context-fired.json'), JSON.stringify({at: new Date().toISOString(), action: request.action}));
+      return {ok: false, error: {code: 'CARD_CONTEXT_CHANGED', message: '目前對話或卡片已變更，請重新整理舞臺。'}};
+    }
     const ack = path.join(out, 'fault-ack.json');
     if (['turn', 'operationSubmit'].includes(request?.action) && await fs.stat(ack).catch(() => null)) {
       await fs.unlink(ack).catch(() => {}); const result = await original.call(this, request, signal, authority);

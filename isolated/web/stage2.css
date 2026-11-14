@@ -34,7 +34,7 @@
 :root[data-size="large"] { --read-size: 20px; }
 
 *, *::before, *::after { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; scrollbar-gutter: stable; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.6 var(--font-ui); min-height: 100vh; }
 body.has-sheet { overflow: hidden; }
 button, input, textarea { font: inherit; color: inherit; }
@@ -102,14 +102,16 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .now-clock { font: 700 14px var(--font-num); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .now-place { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bar-tools { display: flex; gap: 2px; } .bar-tools .ghost, .more { border-color: transparent; padding: 0 10px; } .more { font-size: 20px; }
-.reader-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 720px) minmax(0, 1fr); column-gap: 32px; padding: 0 max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); }
+.reader-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 760px) minmax(0, 1fr); column-gap: 32px; padding: 0 max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); }
 .flow-col { grid-column: 2; min-width: 0; display: flex; flex-direction: column; min-height: calc(100vh - 56px); }
 .margin { display: none; }
 @media (min-width: 1180px) {
-  .reader-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 720px) 300px minmax(0, .4fr); }
-  .margin { display: grid; grid-column: 3; align-content: start; gap: 14px; position: sticky; top: 72px; align-self: start; padding-top: 28px; max-height: calc(100vh - 72px); overflow: auto; }
+  /* Wide screens: the reading column takes the space; the 此刻 column sits flush at the right edge. */
+  .reader-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 900px) minmax(0, .6fr) 300px; column-gap: 24px; padding-right: 12px; }
+  .margin { display: grid; grid-column: 4; align-content: start; gap: 14px; position: sticky; top: 72px; align-self: start; padding: 28px 0 16px; max-height: calc(100vh - 72px); overflow: auto; scrollbar-width: thin; }
   .now-chip { display: none; }
 }
+@media (min-width: 1600px) { .reader-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1040px) minmax(0, .6fr) 320px; } }
 .flow { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; padding: 28px 0 12px; font: var(--read-size)/var(--read-leading) var(--font-read); }
 .earlier { display: flex; justify-content: center; padding-bottom: 12px; }
 .chapter-head { display: grid; gap: 4px; padding: 6px 0 22px; }
@@ -120,7 +122,7 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .turn.is-replacing .prose { opacity: .45; }
 .replacing-note { font: 14px var(--font-ui); color: var(--pending); }
 .prose { display: grid; grid-template-columns: minmax(0, 1fr); gap: .9em; }
-.narr { max-width: 65ch; overflow-wrap: anywhere; }
+.narr { overflow-wrap: anywhere; }
 .line { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 12px; align-items: baseline; }
 .who { background: none; border: 0; border-left: 3px solid currentColor; padding: 0 0 0 9px; font: 700 14px/1.6 var(--font-ui); white-space: nowrap; }
 .who:disabled { cursor: default; } .who:not(:disabled):hover { text-decoration: underline; }
@@ -198,7 +200,10 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .avatar { flex: none; display: grid; place-items: center; border-radius: 50%; background: var(--av, var(--c7)); color: var(--surface) !important; font-weight: 700; }
 .c0 { --av: var(--c0); } .c1 { --av: var(--c1); } .c2 { --av: var(--c2); } .c3 { --av: var(--c3); } .c4 { --av: var(--c4); } .c5 { --av: var(--c5); } .c6 { --av: var(--c6); } .c7 { --av: var(--c7); }
 .avatar-sm { width: 30px; height: 30px; font-size: 14px; } .avatar-md { width: 40px; height: 40px; font-size: 17px; } .avatar-lg { width: 72px; height: 72px; font-size: 30px; }
-.card-panel { width: 100%; height: 220px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--raised); }
+.work-panel { display: grid; gap: 8px; margin: 6px 0 18px; }
+.panel-frame { resize: vertical; overflow: hidden; min-height: 160px; max-height: 1600px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--raised); }
+.card-panel { display: block; width: 100%; height: 100%; border: 0; }
+.panel-hint { font-size: 12px; }
 
 /* sheets */
 .sheet-layer { position: fixed; inset: 0; z-index: 40; }

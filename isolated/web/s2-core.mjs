@@ -37,16 +37,38 @@ export const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 // Every Host read/write goes through the authenticated native bridge. A
 // timeout never means failure: callers must look the operation up again.
-export function createTransport(native) {
-  async function call(action, payload = {}, {timeout = 15000, signal} = {}) {
-    if (!native) throw Object.assign(new Error('新版舞台只在 DSH 內使用；請從 DSH 的舞台入口開啟。'), {code: 'NATIVE_REQUIRED'});
+// The bridge stamps every request with the card context it last read. Card Studio re-creates its
+// per-conversation record (new generation) when its page lease lapses or it remounts, so a long-open
+// stage can hold a stale generation while still showing the same card. The Host then answers
+// CARD_CONTEXT_CHANGED before doing any work. Re-read the context once and retry only when it is
+// still the same card in the same creation conversation; the Host re-checks Run ownership itself.
+const sameCard = (a, b) => !!a && !!b && a.provider === b.provider && a.cardId === b.cardId && a.authoringSessionId === b.authoringSessionId;
+export function createTransport(native, {onContext} = {}) {
+  let scope = null, refreshing = null;
+  async function raw(action, payload, timeout, signal) {
     const controller = new AbortController(), timer = setTimeout(() => controller.abort(), timeout);
     signal?.addEventListener('abort', () => controller.abort(), {once: true});
-    try { return await native.request(action, payload, controller.signal); }
+    try { const value = await native.request(action, payload, controller.signal); if (action === 'native.context') scope = value?.cardScope ?? null; return value; }
     catch (error) {
       if (controller.signal.aborted && !signal?.aborted) throw Object.assign(new Error('連線沒有在時間內回應；原本的操作可能仍在進行。'), {code: 'CONNECTION_UNKNOWN', category: 'transport'});
       throw error;
     } finally { clearTimeout(timer); }
+  }
+  async function refresh() {
+    const before = scope;
+    refreshing ??= raw('native.context', {}, 15000).finally(() => { refreshing = null; });
+    const context = await refreshing; onContext?.(context);
+    return sameCard(before, context?.cardScope);
+  }
+  async function call(action, payload = {}, {timeout = 15000, signal} = {}) {
+    if (!native) throw Object.assign(new Error('新版舞台只在 DSH 內使用；請從 DSH 的舞台入口開啟。'), {code: 'NATIVE_REQUIRED'});
+    try { return await raw(action, payload, timeout, signal); }
+    catch (error) {
+      if (error?.code !== 'CARD_CONTEXT_CHANGED' || action === 'native.context' || signal?.aborted) throw error;
+      let same = false; try { same = await refresh(); } catch {}
+      if (!same) throw Object.assign(error, {cardChanged: true});
+      return raw(action, payload, timeout, signal);
+    }
   }
   return {call, native: !!native};
 }
@@ -54,7 +76,7 @@ export function createTransport(native) {
 // Player-language errors. Codes stay available in diagnostics, not headlines.
 const MESSAGES = {
   CARD_CONTEXT_REQUIRED: '這個對話還沒有選定作品。請先到「創作」選一張工作卡。',
-  CARD_CONTEXT_CHANGED: '這個對話的作品已經變更，請重新整理。',
+  CARD_CONTEXT_CHANGED: '這個對話綁定的作品已經換成另一張卡。請回到舞台書架重新選擇演出。',
   RUN_BUSY: '這一局正在處理上一個行動，請稍候。',
   RUN_NOT_FOUND: '找不到這個存檔，可能已被移到回收區。',
   OPENING_STALE: '開場資訊已經更新，請重新選擇。', OPENING_EXPIRED: '開場選擇已逾時，請重新選擇。',
