@@ -33,6 +33,8 @@ export async function addPlayerNote(store, run, {commitId, excerpt, memo = ''}, 
   if (!squash(turn.body ?? '').includes(squash(text))) fail('NOTE_NOT_IN_STORY');
   return store.withRunLock(run.runId, async () => {
     const record = await readRecord(store, run.runId);
+    // Idempotent: re-importing an exported notes file does not duplicate notes.
+    const existing = record.notes.find(n => n.commitId === commitId && n.excerpt === text); if (existing) return existing;
     if (record.notes.length >= MAX_NOTES) fail('NOTE_LIMIT');
     const note = {id: 'note-' + randomUUID(), commitId, turn: turn.turn, excerpt: text, memo: memo.trim(), createdAt: now()};
     await store.atomic(notesFile(store, run.runId), {schemaVersion: 1, notes: [...record.notes, note]}, {commit: true});

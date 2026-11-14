@@ -7,7 +7,9 @@ import {readFile} from 'node:fs/promises';
 import {SceanError, safeId} from '../core/contracts.mjs';
 import {publicRoutineRead} from './world-routine-reader.mjs';
 
-const MAX_SEEN = 4000, MAX_ITEMS = 30;
+// Marking uses explicit ids: a forum post becomes visible only when story time reaches it, so a sequence
+// high-water mark could pass a post that was never shown. The id record is large enough for long stories.
+const MAX_SEEN = 20000, MAX_ITEMS = 30;
 const fail = code => { throw new SceanError(code); };
 const cursorFile = (store, runId) => path.join(store.runDir(runId), 'feed-cursor.json');
 const empty = () => ({schemaVersion: 1, forumSequence: 0, seenIds: [], updatedAt: null});
@@ -21,7 +23,7 @@ export async function readFeedCursor(store, runId) {
 }
 
 /** Unread public world items for one Run. `latest` is what "mark everything shown as seen" should send. */
-export function worldFeed(run, cursor) {
+export function worldFeed(run, cursor, {read = publicRoutineRead} = {}) {
   const names = new Map((run.snapshot?.characters ?? []).map(a => [a.id, a.name]));
   const base = {runId: run.runId, version: run.version, status: 'not_enabled', items: [], unread: 0, latest: {forumSequence: cursor.forumSequence, ids: []}};
   if (!run.storyClock || !run.worldRoutine) return base;
@@ -29,19 +31,29 @@ export function worldFeed(run, cursor) {
   let maxSequence = cursor.forumSequence;
   const who = a => { const id = a?.author?.kind === 'character' ? a.author.characterId : a?.authorId; return a?.author?.kind === 'ambient' ? `路人・${a.author.displayName}` : names.get(id) ?? id ?? ''; };
   const unseenForum = a => a.sequence > cursor.forumSequence && !seen.has(a.id);
-  const forum = publicRoutineRead(run, {kind: 'forum', limit: 20});
-  if (forum.status === 'available') for (const post of forum.entries) {
+  // Every public thread and every unread reply, page by page. Scanning only the newest threads or the
+  // first reply page would let "看過了" move the cursor past messages that were never listed.
+  const posts = [];
+  for (let before, guard = 0; guard < 200; guard++) {
+    const page = read(run, {kind: 'forum', limit: 20, ...(before !== undefined ? {beforeSequence: before} : {})});
+    if (page.status !== 'available') break;
+    posts.push(...page.entries); if (page.nextCursor === null || page.nextCursor === undefined) break; before = page.nextCursor;
+  }
+  for (const post of posts) {
     maxSequence = Math.max(maxSequence, post.sequence);
     if (unseenForum(post)) { items.push({kind: 'forum_post', id: post.id, sequence: post.sequence, threadId: post.id, title: post.title || '（無標題）', excerpt: String(post.text ?? '').slice(0, 120), author: who(post), timeLabel: post.timeLabel}); ids.push(post.id); }
-    const thread = publicRoutineRead(run, {kind: 'thread', threadId: post.id, afterSequence: cursor.forumSequence, limit: 20});
-    for (const reply of thread.entries ?? []) {
-      maxSequence = Math.max(maxSequence, reply.sequence);
-      if (unseenForum(reply)) { items.push({kind: 'forum_reply', id: reply.id, sequence: reply.sequence, threadId: post.id, title: post.title || '（無標題）', excerpt: String(reply.text ?? '').slice(0, 120), author: who(reply), timeLabel: reply.timeLabel}); ids.push(reply.id); }
+    for (let after = cursor.forumSequence, guard = 0; guard < 500; guard++) {
+      const thread = read(run, {kind: 'thread', threadId: post.id, afterSequence: after, limit: 20});
+      for (const reply of thread.entries ?? []) {
+        maxSequence = Math.max(maxSequence, reply.sequence);
+        if (unseenForum(reply)) { items.push({kind: 'forum_reply', id: reply.id, sequence: reply.sequence, threadId: post.id, title: post.title || '（無標題）', excerpt: String(reply.text ?? '').slice(0, 120), author: who(reply), timeLabel: reply.timeLabel}); ids.push(reply.id); }
+      }
+      if (thread.nextCursor === null || thread.nextCursor === undefined) break; after = thread.nextCursor;
     }
   }
-  const calendar = publicRoutineRead(run, {kind: 'calendar'});
+  const calendar = read(run, {kind: 'calendar'});
   if (calendar.status === 'available') for (const day of calendar.days.filter(d => d.count > 0)) {
-    const view = day.day === calendar.selectedDay ? calendar : publicRoutineRead(run, {kind: 'calendar', windowStart: calendar.windowStart, day: day.day});
+    const view = day.day === calendar.selectedDay ? calendar : read(run, {kind: 'calendar', windowStart: calendar.windowStart, day: day.day});
     // Events authored into the work are part of the script, not news; only routine publications count.
     for (const e of view.entries.filter(e => e.sourceRef?.kind !== 'snapshot_public_event')) if (!seen.has(e.id)) {
       items.push({kind: 'calendar_event', id: e.id, day: day.day, dayLabel: day.label, title: e.label, startLabel: e.startLabel, endLabel: e.endLabel, status: e.status}); ids.push(e.id);
@@ -54,7 +66,7 @@ export function worldFeed(run, cursor) {
 /** Record that the player viewed items. Monotonic: the forum high-water mark never moves back. */
 export async function markFeedSeen(store, runId, {forumSequence, ids = []} = {}, {now = () => new Date().toISOString()} = {}) {
   if (forumSequence !== undefined && (!Number.isSafeInteger(forumSequence) || forumSequence < 0)) fail('FEED_CURSOR_INVALID');
-  if (!Array.isArray(ids) || ids.length > 200) fail('FEED_CURSOR_INVALID');
+  if (!Array.isArray(ids) || ids.length > 2000) fail('FEED_CURSOR_INVALID');
   for (const id of ids) safeId(id);
   return store.withRunLock(runId, async () => {
     const current = await readFeedCursor(store, runId);

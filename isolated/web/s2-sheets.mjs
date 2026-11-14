@@ -2,6 +2,21 @@
 import {h, friendly} from './s2-core.mjs';
 import {stateGroups, changeRows, renderChanges, valueText, avatar, castIndex, CATEGORY, clockText} from './s2-render.mjs';
 
+// Notes travel as their own small file: run backups do not include them (see the note in the tab).
+function exportNotes(s, notes) {
+  const data = {format: 'scean-player-notes', version: 1, runId: s.runId, title: s.run?.snapshot?.card?.name ?? null, exportedAt: new Date().toISOString(),
+    notes: notes.filter(n => !n.stale).map(n => ({commitId: n.commitId, turn: n.turn, excerpt: n.excerpt, memo: n.memo ?? ''}))};
+  const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 1)], {type: 'application/json'})), a = document.createElement('a');
+  a.href = url; a.download = `scean-notes-${String(s.runId).replace(/[^a-zA-Z0-9_-]/g, '_')}.json`; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+async function importNotes(s, actions, file) {
+  let data; try { data = JSON.parse(await file.text()); } catch { actions.store.set({notice: '這不是筆記檔案。'}); return; }
+  if (data?.format !== 'scean-player-notes' || !Array.isArray(data.notes)) { actions.store.set({notice: '這不是 SCEAN 筆記檔案。'}); return; }
+  let added = 0, skipped = 0;
+  for (const n of data.notes.slice(0, 500)) { try { await actions.call('playerNoteAdd', {runId: s.runId, commitId: String(n.commitId), excerpt: String(n.excerpt), memo: String(n.memo ?? '')}); added++; } catch { skipped++; } }
+  actions.store.set(x => ({...x, sheetData: null, notice: skipped ? `匯入 ${added} 則筆記；${skipped} 則在這場演出裡找不到對應段落，沒有匯入。` : `匯入 ${added} 則筆記。`}));
+}
+
 // Viewing the forum or calendar marks exactly the unread feed items that were on screen.
 const shownMarked = new Set();
 function markShown(s, actions, ids) {
@@ -121,7 +136,10 @@ const SHEETS = {
         h('p', {class: 'fine top'}, '這裡只放你自己記下的內容：在故事裡選取文字，按「記下」。不會自動把作者的設定或尚未揭露的祕密放進來。'),
         live.length ? h('ul', {class: 'notes'}, live.map(row)) : h('div', {class: 'empty-state'}, h('strong', null, '還沒有記下任何事'), h('p', null, '讀到想記住的線索、名字或規則時，選取那段文字，按跳出的「記下」。')),
         stale.length ? h('details', {class: 'stale-notes'}, h('summary', null, `已不在故事中的筆記（${stale.length}）`), h('ul', {class: 'notes'}, stale.map(row))) : null,
-        h('button', {class: 'ghost small', type: 'button', onclick: () => actions.sheet('lore', 'public')}, '看作者公開的設定')]};
+        h('div', {class: 'row'}, h('button', {class: 'ghost small', type: 'button', onclick: () => actions.sheet('lore', 'public')}, '看作者公開的設定'),
+          notes.length ? h('button', {class: 'ghost small', type: 'button', onclick: () => exportNotes(s, notes)}, '匯出筆記') : null,
+          h('label', {class: 'ghost small file-pick'}, '匯入筆記', h('input', {type: 'file', accept: '.json,application/json', hidden: true, onchange: e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void importNotes(s, actions, f); }}))),
+        h('p', {class: 'fine'}, '演出備份（進階工坊 › 備份與匯入匯出）不包含筆記與世界動態的已讀紀錄。要保留筆記，請另外「匯出筆記」；重新匯入同一場演出後，再「匯入筆記」就能接回原本的段落。')]};
     }
     if (mode === 'owner' && !s.spoilerOk[s.runId]) return {title: '設定集', body: [tabs, h('div', {class: 'empty-state is-warn'}, h('strong', null, '完整設定集包含劇透'),
       h('p', null, '這是本局固定版本的全部設定，包括故事還沒揭露的祕密。閱讀不會改變角色知道的事。'),

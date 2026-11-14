@@ -150,7 +150,7 @@ function renderFeed(s, actions, where) {
   const shown = items.slice(0, 5);
   return h('section', {class: `feed ${where}`, 'aria-label': '世界動態'},
     h('div', {class: 'feed-head'}, h('p', {class: 'eyebrow'}, `世界動態 · ${s.feed.unread} 則新消息`),
-      h('button', {class: 'link', type: 'button', onclick: () => actions.feedSeen({ids: s.feed.latest?.ids ?? items.map(i => i.id), forumSequence: s.feed.latest?.forumSequence})}, '看過了')),
+      h('button', {class: 'link', type: 'button', onclick: () => actions.feedSeen({ids: s.feed.latest?.ids ?? items.map(i => i.id)})}, '看過了')),
     h('ul', {class: 'feed-items'}, shown.map(item => h('li', null, h('button', {class: 'feed-item', type: 'button', onclick: () => open(item)}, line(item))))),
     items.length > shown.length ? h('p', {class: 'meta'}, `還有 ${items.length - shown.length} 則；打開日曆或論壇也會標為已讀。`) : null);
 }

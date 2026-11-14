@@ -91,7 +91,7 @@ const actions = {
     const runId = store.get().runId; if (!runId || (!ids.length && forumSequence === undefined)) return;
     const unseen = new Set(ids);
     store.set(s => s.feed ? {...s, feed: {...s.feed, items: s.feed.items.filter(i => !unseen.has(i.id) && (forumSequence === undefined || !i.sequence || i.sequence > forumSequence)), unread: Math.max(0, s.feed.unread - ids.length)}} : s);
-    await call('worldFeedSeen', {runId, ids: ids.slice(0, 200), ...(forumSequence !== undefined ? {forumSequence} : {})}).catch(() => {});
+    for (let i = 0; i < Math.max(ids.length, 1); i += 2000) await call('worldFeedSeen', {runId, ids: ids.slice(i, i + 2000), ...(forumSequence !== undefined && i === 0 ? {forumSequence} : {})}).catch(() => {});
     await actions.loadFeed();
   },
   async addNote({commitId, excerpt}) {

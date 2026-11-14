@@ -310,3 +310,4 @@ legend { font-weight: 700; margin-bottom: 8px; padding: 0; }
 .note blockquote { margin: 0; padding: 4px 0 4px 12px; border-left: 3px solid var(--accent); font: var(--read-size)/1.7 var(--font-read); }
 .note.is-stale blockquote { opacity: .6; border-left-color: var(--line); }
 .stale-notes summary { cursor: pointer; color: var(--muted); font-size: 13px; padding: 6px 0; }
+.file-pick { cursor: pointer; display: inline-flex; align-items: center; }
