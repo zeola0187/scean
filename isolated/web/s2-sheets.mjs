@@ -158,7 +158,8 @@ const SHEETS = {
       h('div', {class: 'setting'}, h('span', null, '字級'), seg('字級', s.prefs.size, [['normal', '標準'], ['large', '大字']], v => actions.setPref('size', v))),
       h('p', {class: 'fine'}, '深淺色跟隨 DSH 與系統設定。'),
       h('h3', {class: 'sheet-h'}, '進階'),
-      h('div', {class: 'empty-state'}, h('strong', null, '模型分派、摘要服務、文風、禁用詞、備份與診斷'), h('p', null, '這些進階設定目前仍在舊版舞台；兩種介面讀寫同一份存檔。'), h('button', {class: 'ghost small', type: 'button', onclick: () => actions.useLegacy()}, '切換到舊版舞台'))]};
+      h('div', {class: 'empty-state'}, h('strong', null, '進階工坊'), h('p', null, '模型分派、摘要服務、文風與禁用詞、章節記憶、備份與匯入匯出、診斷與授權。打開後只顯示管理工具，完成後按「回到舞台」。'),
+        h('div', {class: 'row'}, h('button', {class: 'primary small', type: 'button', onclick: () => actions.workshop()}, '打開進階工坊'), h('button', {class: 'ghost small', type: 'button', onclick: () => actions.useLegacy()}, '改用舊版舞台閱讀')))]};
   },
 
   menu(s, actions) {
@@ -172,6 +173,7 @@ const SHEETS = {
       item('論壇', '故事世界裡的貼文', () => actions.sheet('forum')),
       item('設定集', '公開設定與完整版', () => actions.sheet('lore')),
       item('顯示設定', '主題、字級', () => actions.sheet('settings')),
+      item('進階工坊', '模型、文風、摘要、備份、診斷', () => actions.workshop()),
       item('回到創作', '修改這部作品', () => actions.nav('studio')),
       item('所有作品', null, () => actions.nav('home')))};
   },

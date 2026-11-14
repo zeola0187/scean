@@ -934,6 +934,19 @@ for(const event of ['online','focus','pageshow'])window.addEventListener(event,r
 window.addEventListener('beforeunload',event=>{if(state.pending||$('draft-status').textContent.includes('尚未保存')){event.preventDefault();event.returnValue='';}});
 window.addEventListener('pagehide',()=>{void clearPrivateDiagnostics('分頁已離開，詳細診斷內容已清除。');});
 
+// Advanced workshop: the same proven management panels, shown alone for the Run Stage v2 was reading.
+function enterWorkshop(){
+  document.documentElement.dataset.stageMode='workshop';
+  const back=$('stage-ui-next');if(back)back.textContent='← 回到舞台';
+  const pane=$('library-pane');if(!pane||pane.querySelector('.workshop-head'))return;
+  const head=node('header',undefined,'workshop-head');head.append(node('h2','進階工坊'),node('p','這裡的設定作用在目前這場演出或全域，存檔與舞台相同。完成後按「回到舞台」繼續遊玩。'));
+  if(back)head.append(back);
+  // Each entry opens the existing, tested dialog through its own button; no settings logic is duplicated here.
+  const tools=[['global-chapter-open','模型與服務','Agent 模型、摘要與檢索服務（全域）'],['settings-run-info-panel','本局：玩家、文風與面板','玩家身分、完整文風、本局 Agent 模型、狀態面板'],['settings-generation-panel','生成約束','寫作模式、禁用詞與生成限制'],['settings-longform-panel','記憶、摘要與原文管理','章節摘要、回顧、原文檢索'],['settings-backup-panel','備份與匯入匯出','匯出本局、匯入存檔'],['run-recycle-open','回收區','刪除與恢復演出'],['settings-notification-panel','保存通知','背景通知與提示'],['settings-inspector','診斷本場問題','檢查失敗原因與詳細診斷'],['settings-about-panel','來源、授權與連線資訊','版本、授權與資料位置']];
+  const list=node('ul',undefined,'workshop-tools');
+  for(const [id,label,note] of tools){const target=$(id);if(!target)continue;const item=node('li'),button=node('button',undefined,'workshop-tool');button.type='button';button.append(node('strong',label),node('small',note));button.addEventListener('click',()=>target.click());item.append(button);list.append(item);}
+  pane.prepend(head,list);
+}
 async function init(){
   try{
     if(!secureClient){state.generationBlocked=true;throw Object.assign(new Error('此瀏覽器頁面缺少安全上下文與安全 UUID。請使用 localhost 或經授權配置的 HTTPS；Tailscale 傳輸加密不等於 HTTPS。'),{code:'SECURE_CONTEXT_REQUIRED'});}
@@ -941,6 +954,7 @@ async function init(){
     if(native)boot=await native.bootstrap();
     else{const response=await fetch('/api/bootstrap',{credentials:'same-origin'});if(!response.ok)throw new Error('無法讀取隔離環境。');boot=await response.json();}
     adoptNativeViewer(boot.viewerId);state.token=boot.csrfToken;if(!native&&!state.token)throw new Error('缺少本機連線授權。');
+    if(native&&boot.stageMode==='workshop')enterWorkshop();
     state.mode=String(boot.mode??'unknown');updateModels({...boot.models,interactive:boot.models?.interactive??boot.interactive});
     void globalChapterSettings.refresh();void playerIdentity.refreshDefaults();
     $('data-source').textContent=`資料：${boot.dataRootLabel??'隔離資料目錄'}。`;

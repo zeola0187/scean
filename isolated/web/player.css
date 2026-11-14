@@ -242,3 +242,16 @@ body.player-shell .composer-actions{grid-column:2;grid-row:1;width:auto;margin:0
 }
 /* Independent global settings tabs, shared on desktop and mobile. */
 .global-settings-tabs{display:flex;flex-wrap:wrap;gap:.45rem;margin:1rem 0}.global-settings-tabs button[aria-selected="true"]{background:var(--accent,#275f4b);color:white}.agent-models-form fieldset{min-width:0;margin:.75rem 0;padding:.75rem}.agent-models-form select{display:block;width:100%;max-width:100%;white-space:normal}.agent-models-form .hint{overflow-wrap:anywhere}.global-settings-tabs [role="tab"]{flex:1 1 auto}.agent-models-form button{white-space:normal}
+/* Advanced workshop (opened from Stage v2 on one performance): management column only, no story or composer. */
+html[data-stage-mode=workshop],html[data-stage-mode=workshop] body{height:auto!important;overflow:auto!important}
+html[data-stage-mode=workshop] #player,html[data-stage-mode=workshop] #scene-pane,html[data-stage-mode=workshop] .edge-rail,html[data-stage-mode=workshop] .view-tabs{display:none!important}
+html[data-stage-mode=workshop] body.player-shell .layout{display:block!important;max-width:880px;margin:0 auto;padding:0 20px;overflow:visible;border-top:0}
+html[data-stage-mode=workshop] body.player-shell .layout>.library{display:block!important;height:auto!important;max-height:none;overflow:visible;border:0;padding:20px 0 56px}
+html[data-stage-mode=workshop] .workshop-head{display:grid;gap:6px;padding:4px 0 18px;border-bottom:1px solid var(--line);margin-bottom:12px}
+html[data-stage-mode=workshop] .workshop-head h2{margin:0;font-size:24px}html[data-stage-mode=workshop] .workshop-head p{margin:0;opacity:.75;font-size:14px;line-height:1.6}
+html[data-stage-mode=workshop] #stage-ui-next{font-weight:700}
+html[data-stage-mode=workshop] #stage-library,html[data-stage-mode=workshop] #stage-settings,html[data-stage-mode=workshop] #stage-readers,html[data-stage-mode=workshop] #stage-recycle,html[data-stage-mode=workshop] #opening-new,html[data-stage-mode=workshop] #opening-selection,html[data-stage-mode=workshop] #setup,html[data-stage-mode=workshop] #studio-open,html[data-stage-mode=workshop] .pane-back{display:none!important}
+html[data-stage-mode=workshop] .workshop-head #stage-ui-next{justify-self:start;margin-top:6px}
+html[data-stage-mode=workshop] .workshop-tools{list-style:none;margin:0 0 24px;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+html[data-stage-mode=workshop] .workshop-tool{width:100%;display:grid;gap:4px;text-align:left;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:transparent;cursor:pointer}
+html[data-stage-mode=workshop] .workshop-tool:hover{border-color:currentColor}html[data-stage-mode=workshop] .workshop-tool strong{font-size:15px}html[data-stage-mode=workshop] .workshop-tool small{opacity:.7;font-size:12.5px;line-height:1.5}

@@ -53,5 +53,5 @@ export function renderShelf(s, actions) {
     s.notice ? h('p', {class: 'notice', role: 'status'}, s.notice) : null,
     resume ?? h('header', {class: 'work-head'}, h('p', {class: 'eyebrow'}, '舞台'), h('h1', null, title)),
     scripts, saves,
-    h('footer', {class: 'shelf-foot'}, h('button', {class: 'link', type: 'button', onclick: () => actions.useLegacy()}, '使用舊版舞台（完整進階設定）'))));
+    h('footer', {class: 'shelf-foot'}, h('button', {class: 'link', type: 'button', onclick: () => actions.workshop()}, '進階工坊'), h('button', {class: 'link', type: 'button', onclick: () => actions.useLegacy()}, '使用舊版舞台'))));
 }

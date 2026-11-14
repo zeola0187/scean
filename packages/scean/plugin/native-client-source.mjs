@@ -29,12 +29,13 @@ export function nativeClientFactory(React,sharedHTML,createNativeBridge,createNo
       const readUi=()=>{try{const v=localStorage.getItem(uiKey);return v==='legacy'||!documents.next?'legacy':'next';}catch{return documents.next?'next':'legacy';}};
       function Panel(){
         const frame=React.useRef(null),session=React.useRef(null),[ui,setUi]=React.useState(readUi);
-        const switchUi=next=>{try{localStorage.setItem(uiKey,next);}catch{}setUi(next);};
+        // Workshop = legacy management tools for one Run; the remembered preference stays legacy/next.
+        const switchUi=(next,runId=null)=>{if(next!=='workshop'){try{localStorage.setItem(uiKey,next);}catch{}}if(runId)selected=runId;setUi(next);};
         const close=()=>{const old=session.current;session.current=null;if(old){selections.delete(old.notify);panels.delete(old);old.stopPresentation?.();old.port.onmessage=null;old.port.close();void old.bridge.dispose();}};
         React.useEffect(()=>close,[]);
         const connect=()=>{
           close();if(!frame.current?.contentWindow)return;
-          const channel=new MessageChannel(),bridge=createNativeBridge({call,selectPanel:key=>child.layout.selectPanel(key),openSession:id=>child.uiWorkspace.openSession(id),getSessionId:()=>sessionId,getViewerId,notifications,enableNotifications,onRunRecycled:({runId})=>{if(selected===runId)selected=null;},onStageUi:value=>switchUi(value),onDiagnose:detail=>window.dispatchEvent(new CustomEvent('scean:diagnose',{detail})),onOpeningStarted:({request,value})=>{if(request.sessionId!==sessionId)return;window.dispatchEvent(new CustomEvent('scean:started',{detail:{schema:1,authoringSessionId:request.sessionId,documentId:request.cardId,generation:request.cardScope?.generation,revision:request.revision,offerId:request.offerId,runId:value.runId,binding:value.binding}}));}});
+          const channel=new MessageChannel(),bridge=createNativeBridge({call,selectPanel:key=>child.layout.selectPanel(key),openSession:id=>child.uiWorkspace.openSession(id),getSessionId:()=>sessionId,getViewerId,notifications,enableNotifications,onRunRecycled:({runId})=>{if(selected===runId)selected=null;},onStageUi:(value,runId)=>switchUi(value,runId),getStageUi:()=>ui,onDiagnose:detail=>window.dispatchEvent(new CustomEvent('scean:diagnose',{detail})),onOpeningStarted:({request,value})=>{if(request.sessionId!==sessionId)return;window.dispatchEvent(new CustomEvent('scean:started',{detail:{schema:1,authoringSessionId:request.sessionId,documentId:request.cardId,generation:request.cardScope?.generation,revision:request.revision,offerId:request.offerId,runId:value.runId,binding:value.binding}}));}});
           const current={port:channel.port1,bridge,notify:runId=>{bridge.clearContext();channel.port1.postMessage({kind:'context',runId,...(notificationTarget?.runId===runId?{notificationTarget}:{})});}};session.current=current;panels.add(current);selections.add(current.notify);
           channel.port1.onmessage=async event=>{
             const message=event.data;if(session.current!==current||!message||message.kind!=='request'||typeof message.id!=='string'||message.id.length>100)return;

@@ -1,5 +1,5 @@
 // Authenticated RPC adapter only. No file access, HTTP proxy, or Studio database access.
-export function createNativeBridge({call,selectPanel,openSession,getSessionId=()=>null,getViewerId=()=>null,notifications,enableNotifications,onOpeningStarted,onDiagnose,onRunRecycled,onStageUi}){
+export function createNativeBridge({call,selectPanel,openSession,getSessionId=()=>null,getViewerId=()=>null,notifications,enableNotifications,onOpeningStarted,onDiagnose,onRunRecycled,onStageUi,getStageUi}){
   const allowed=new Set(['scriptList','scriptGet','scriptStart','scriptStatus','runRecycleList','runLifecycleStatus','runTrash','runRestore','playerBind','capabilities','list','openingPrepare','openingOffer','openingStart','openingCancel','progress','draftSave','draftGet','turn','rollback','regenerate','operationSubmit','operationStatus','exportRun','importRun','cancel','settlementBody','runView','historySearch','historyRead','historyPage','summaryStatus','summaryStart','summaryCancel','chapterStatus','chapterSettings','chapterSummarize','chapterAuto','chapterCancel','chapterClose','inspect','diagnosticsGrant','diagnosticsRead','diagnosticsRevoke','banList','writingMode','writingModeSave','proseStyle','proseStyleSave','agentModels','agentModelsSave','writingStylesImport','playerIdeas','playerWorldbook','playerRecap','playerCollaboration','ownerWorldbook','presentation','presentationSource','presentationPreview','presentationApply','presentationRestore','models']);
   const grants=new Map();let disposed=false,privacyEpoch=0,contextEpoch=0,cardScope=null;
   const denied=code=>Object.assign(new Error(code),{code});
@@ -39,7 +39,8 @@ export function createNativeBridge({call,selectPanel,openSession,getSessionId=()
     if(action==='native.context')return context();
     // Device-local presentation choice between the legacy player and Stage v2.
     // Both read and write the same Host data; this is not an authority switch.
-    if(action==='native.stageUi'){if(Object.keys(payload).length!==1||!['legacy','next'].includes(payload.ui)||typeof onStageUi!=='function')throw denied('NATIVE_STAGE_UI_INVALID');onStageUi(payload.ui);return {ui:payload.ui};}
+    // 'workshop' opens the legacy management tools on one Run (advanced workshop); it is never a remembered preference.
+    if(action==='native.stageUi'){const keys=Object.keys(payload);if(!['legacy','next','workshop'].includes(payload.ui)||keys.some(k=>k!=='ui'&&k!=='runId')||(payload.runId!==undefined&&(typeof payload.runId!=='string'||!/^[\w-]{1,160}$/.test(payload.runId)))||typeof onStageUi!=='function')throw denied('NATIVE_STAGE_UI_INVALID');onStageUi(payload.ui,payload.runId??null);return {ui:payload.ui};}
     if(action==='native.navigate'){
       // Product navigation stays within the current Session. Only source-return
       // may resolve a different Session, through the authenticated Host read.
@@ -64,7 +65,7 @@ export function createNativeBridge({call,selectPanel,openSession,getSessionId=()
     if(action==='native.openStudio'){selectPanel('local-cardstudio-scean');return {opened:true};}
     if(action==='native.bootstrap'){
       let models;try{models=await call({action:'models'});}catch{models={mode:'native',source:'DSH authenticated host',status:'unavailable'};}
-      return {mode:'native',dataRootLabel:'SCEAN 插件獨立資料目錄',models,studio:{available:false},native:true,...viewer()};
+      return {mode:'native',dataRootLabel:'SCEAN 插件獨立資料目錄',models,studio:{available:false},native:true,stageMode:getStageUi?.()??null,...viewer()};
     }
     if(['agentModelCatalog','agentModelDefaults','agentModelDefaultsSave','playerDefaults','playerDefaultsSave','chapterProviderSettings','chapterProviderSave','chapterProviderClear'].includes(action)){
       const value=await call({...payload,action});if(disposed)throw denied('NATIVE_PANEL_CLOSED');return value;

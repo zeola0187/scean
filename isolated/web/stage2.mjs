@@ -75,6 +75,7 @@ const actions = {
     actions.closeSheet(); if (value.runId) await actions.open(value.runId);
   },
   async useLegacy() { await call('native.stageUi', {ui: 'legacy'}).catch(error => store.set({notice: friendly(error)})); },
+  async workshop() { const runId = store.get().runId; await call('native.stageUi', runId ? {ui: 'workshop', runId} : {ui: 'workshop'}).catch(error => store.set({notice: friendly(error)})); },
   call, ops, store, reload,
 };
 
