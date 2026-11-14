@@ -49,8 +49,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 6094,
-      "sha256": "96aaf271d6d99aeb3624c9391d0c7c071198c02b335c2f21f607950e3a325d3f"
+      "bytes": 6500,
+      "sha256": "2c1510ba8fd6e9f33eabbf814d56a2e18473d11ea380cf731c1870a7a85e7992"
     },
     {
       "path": "RELEASE-VERIFICATION.json",
@@ -1354,8 +1354,8 @@
     },
     {
       "path": "packages/scean/README.md",
-      "bytes": 6094,
-      "sha256": "96aaf271d6d99aeb3624c9391d0c7c071198c02b335c2f21f607950e3a325d3f"
+      "bytes": 6500,
+      "sha256": "2c1510ba8fd6e9f33eabbf814d56a2e18473d11ea380cf731c1870a7a85e7992"
     },
     {
       "path": "packages/scean/SOURCE-AVAILABILITY.md",
@@ -3139,8 +3139,8 @@
     },
     {
       "path": "scripts/desktop-acceptance.mjs",
-      "bytes": 29948,
-      "sha256": "589c46130d7974939af229ab2c272d26a30109438c072b6044c70004a5c2c60f"
+      "bytes": 30193,
+      "sha256": "46b2141cc91623fdfcdc4e50e9d53d7d91a1d0eb88be5d14d8e4a65586d330ad"
     },
     {
       "path": "scripts/desktop-preview.mjs",

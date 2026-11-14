@@ -108,7 +108,8 @@ const phases = {
     await b.waitFor(`${settled} && !document.querySelector('.status-card')`, {...F, timeout: 90000}); await sleep(800);
     r.regenerate = {sameCount: (await turnCount()) === t0, changed: (await last()) !== p0}; await shot('regen-done');
     await send('我們繞到音樂教室後面看看（將被收回）。');
-    await b.click('收回這一步', F); await b.click('css:.confirm-row .danger', F);
+    // The work panel finishes loading under the new section after commit; let the layout settle before clicking.
+    await sleep(1500); await b.click('收回這一步', F); await b.waitFor(`!!document.querySelector('.confirm-row .danger')`, {...F, timeout: 10000}); await sleep(300); await b.click('css:.confirm-row .danger', F);
     await b.waitFor(`${settled} && Math.max(0, ...[...document.querySelectorAll('.turn[id^="turn-"]')].map(e => Number(e.id.slice(5))))===${t0}`, {...F, timeout: 60000}); await sleep(800);
     r.rollback = {count: await turnCount(), gone: !(await stageText()).includes('將被收回')}; await shot('rollback-done');
     if (!r.regenerate.sameCount || !r.regenerate.changed || r.rollback.count !== t0 || !r.rollback.gone) throw Error('regenerate/rollback mismatch');
