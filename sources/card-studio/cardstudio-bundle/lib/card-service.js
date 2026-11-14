@@ -1,4 +1,5 @@
 import { bindCharacterSources } from './character-sources.js';
+export const SAMPLE_IMPORT = 'SCEAN 範例｜放學後的天台.json';
 import { resolveRoster } from './scean-integration.js';
 import { decodeDocument, stBook, rawEntries, validateStandaloneBook, entrySummary, projectDocument } from './document-projection.js';
 import { tavernBookIssues, nextTavernEntryId, mirrorEditedLegacyAliases } from './tavern-compatibility.js';
@@ -135,6 +136,8 @@ export class CardService {
   async init() {
     for (const dir of ['imports','exports','.cardstudio-scean','.cardstudio-scean/documents']) await fs.mkdir(path.join(this.root,dir),{ recursive:true });
     for (const dir of ['imports','exports','.cardstudio-scean','.cardstudio-scean/documents']) await contained(this.root,dir,{existing:true});
+    // Bundled sample story for 試玩範例故事. Written once if missing; never overwrites a file the user changed or added.
+    try { await fs.copyFile(new URL('./samples/scean-sample-campus.json', import.meta.url), path.join(this.root, 'imports', SAMPLE_IMPORT), fs.constants.COPYFILE_EXCL); } catch (error) { if (error.code !== 'EEXIST' && error.code !== 'ENOENT') throw error; }
   }
   async listImports() {
     const base = await contained(this.root,'imports',{existing:true});

@@ -89,9 +89,17 @@ const MESSAGES = {
   MODEL_TIMEOUT: '模型沒有在時間內完成，這一輪沒有保存。', CANCELLED: '已取消，這一輪沒有保存。',
   NEEDS_TIME_PRECISION: '故事需要你確認這一步的時間。',
   IDEAS_STALE: '故事剛剛有更新，請再按一次「想法」。', IDEAS_BUSY: '正在取得想法，請稍候。',
+  // Model setup and provider problems: say what was (not) saved and where to fix it.
+  MODEL_SETUP: '還沒有可用的模型。請在 DSH 的設定裡登入或填入 API key，或到「進階工坊 › 模型與服務」選擇模型。這一輪沒有保存，設定好後按「再試一次」。',
+  QUOTA: '模型帳戶的額度用完了。這一輪沒有保存；補充額度或換一個模型後再試一次。',
+  RATE_LIMIT: '模型服務暫時太忙。這一輪沒有保存，稍等一下再試一次。',
+  MODEL_SERVER: '模型服務沒有正常回應。這一輪沒有保存，可以再試一次。',
+  CONTEXT_WINDOW_EXCEEDED: '這一輪需要的內容超過模型能處理的長度。這一輪沒有保存；可以在「進階工坊」換用上下文更大的模型，或開啟章節摘要。',
 };
+const ALIASES = {AUTH: 'MODEL_SETUP', HTTP_401: 'MODEL_SETUP', HTTP_403: 'MODEL_SETUP', NO_ADAPTER: 'MODEL_SETUP', UNKNOWN_MODEL: 'MODEL_SETUP', INVALID_CONFIG: 'MODEL_SETUP', MODEL_SELECTION_REQUIRED: 'MODEL_SETUP', MODEL_UNSUPPORTED: 'MODEL_SETUP',
+  ACCOUNT_QUOTA: 'QUOTA', HTTP_429: 'RATE_LIMIT', SERVER: 'MODEL_SERVER', TRANSPORT: 'MODEL_SERVER', MODEL_TRANSPORT_ERROR: 'MODEL_SERVER'};
 export function friendly(error) {
   if (!error) return '';
-  const code = error.code ?? error.failure?.code;
+  const raw = error.code ?? error.failure?.code, code = ALIASES[raw] ?? (/^HTTP_5\d\d$/.test(raw ?? '') ? 'MODEL_SERVER' : raw);
   return MESSAGES[code] ?? (typeof error.message === 'string' && /[一-鿿]/.test(error.message) ? error.message : '操作沒有完成。') ;
 }

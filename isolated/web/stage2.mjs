@@ -27,8 +27,12 @@ async function loadShelf() {
   const sorted = [...(Array.isArray(runs) ? runs : [])].sort((a, b) => String(b.updatedAt ?? '').localeCompare(String(a.updatedAt ?? '')));
   let latest = null;
   if (sorted[0]) latest = await call('runView', {runId: sorted[0].runId}).catch(() => null);
-  store.set({runs: sorted, scripts: Array.isArray(scripts) ? scripts : scripts?.scripts ?? [], latest});
+  // A direct start from Studio (試玩 / 直接試玩) leaves an opening offer waiting for the player's choice.
+  const offer = await call('openingOffer').catch(() => null);
+  store.set({runs: sorted, scripts: Array.isArray(scripts) ? scripts : scripts?.scripts ?? [], latest, pendingOffer: offer ?? null});
+  if (offer && offer.offerId !== shownOffer && !store.get().sheet) { shownOffer = offer.offerId; store.set({sheet: {kind: 'opening', arg: offer}, sheetData: null}); }
 }
+let shownOffer = null;
 
 async function reload({highlight = false} = {}) {
   const runId = store.get().runId; if (!runId) return;

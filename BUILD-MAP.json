@@ -515,6 +515,10 @@
       "source": "sources/card-studio/cardstudio-bundle/lib/card-service.js"
     },
     {
+      "path": "packages/studio/lib/samples/scean-sample-campus.json",
+      "source": "sources/card-studio/cardstudio-bundle/lib/samples/scean-sample-campus.json"
+    },
+    {
       "path": "packages/studio/lib/character-method.js",
       "source": "sources/card-studio/cardstudio-bundle/lib/character-method.js"
     },

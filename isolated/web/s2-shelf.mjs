@@ -14,6 +14,7 @@ export function productNav(actions, current) {
 }
 
 export function renderShelf(s, actions) {
+  const offerCard = s.pendingOffer ? h('section', {class: 'resume pending-offer'}, h('p', {class: 'eyebrow'}, '準備好了'), h('h2', null, s.pendingOffer.title ?? s.context?.cardScope?.title ?? '新的演出'), h('p', {class: 'meta'}, '開場還沒選。選好開場與你的名字，就能開始。'), h('div', {class: 'row'}, h('button', {class: 'primary big', type: 'button', onclick: () => actions.sheet('opening', s.pendingOffer)}, '選開場並開始'))) : null;
   const ctx = s.context, scoped = !!ctx?.cardScope;
   const title = s.latest?.snapshot?.card?.name ?? s.scripts[0]?.title ?? '這個作品';
   const head = h('header', {class: 'shelf-bar'}, productNav(actions, 'stage'),
@@ -51,6 +52,7 @@ export function renderShelf(s, actions) {
   return h('div', {class: 'shelf'}, head, h('main', {class: 'shelf-main'},
     status ? h('p', {class: 'notice warn', role: 'status'}, status) : null,
     s.notice ? h('p', {class: 'notice', role: 'status'}, s.notice) : null,
+    offerCard,
     resume ?? h('header', {class: 'work-head'}, h('p', {class: 'eyebrow'}, '舞台'), h('h1', null, title)),
     scripts, saves,
     h('footer', {class: 'shelf-foot'}, h('button', {class: 'link', type: 'button', onclick: () => actions.workshop()}, '進階工坊'), h('button', {class: 'link', type: 'button', onclick: () => actions.useLegacy()}, '使用舊版舞台'))));
