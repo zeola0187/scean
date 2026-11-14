@@ -113,18 +113,21 @@ const phases = {
     if (!r.regenerate.sameCount || !r.regenerate.changed || r.rollback.count !== t0 || !r.rollback.gone) throw Error('regenerate/rollback mismatch');
   },
   async time(r) {
-    const t0 = await turnCount();
-    await b.click('css:#composer-input', F); await b.type('我在天台等到他出現為止（需要確認時間）。'); await b.click('送出行動', F);
-    // Pre-body mode asks before writing; post-body (default) writes, then settlement reports the time conflict.
-    await b.waitFor(`document.body.innerText.includes('這一步需要你確認時間') || document.body.innerText.includes('這次卡在時間')`, {...F, timeout: 90000}); await sleep(600); await shot('needs-time');
-    r.mode = (await stageText()).includes('這次卡在時間') ? 'post-body settlement' : 'pre-body'; r.noTurnCommitted = (await turnCount()) === t0;
-    await b.click(r.mode === 'pre-body' ? '確認時間' : '指定時間後重寫', F); await sleep(600);
-    await b.click('這個行動做到何時為止', F); await b.click('明天', F);
-    await b.click('我確認這個時間只用在這一次送出的行動。', F); await shot('time-sheet');
-    await b.click('用這個時間重新送出', F);
-    await b.waitFor(`${settled} && document.querySelectorAll('.turn:not(.opening)').length>${t0}`, {...F, timeout: 90000}); await sleep(1000);
-    const txt = await stageText(); r.confirmedNote = txt.includes('依你確認的時間'); r.committed = (await turnCount()) === t0 + 1; await shot('time-committed');
-    if (!r.noTurnCommitted || !r.committed) throw Error('time confirmation flow failed');
+    // Two conflicts resolved through 這一步要花多久？ one-click choices: the first (片刻) and the last (到明天…).
+    r.cases = [];
+    for (const [pick, text] of [['first', '我在天台等到他出現為止（需要確認時間）。'], ['last', '我在社辦等雨停（需要確認時間）。']]) {
+      await ensureReader(); const t0 = await turnCount();
+      await b.click('css:#composer-input', F); await b.type(text); await b.click('css:.send', F);
+      await b.waitFor(`document.body.innerText.includes('這一步需要你確認時間') || document.body.innerText.includes('這次卡在時間')`, {...F, timeout: 90000}); await sleep(600);
+      const mode = (await stageText()).includes('這次卡在時間') ? 'post-body settlement' : 'pre-body', noTurnCommitted = (await turnCount()) === t0;
+      await b.click(mode === 'pre-body' ? '確認時間' : '指定時間後重寫', F); await sleep(800); await shot('time-sheet-' + pick);
+      const choices = await b.evaluate(`[...document.querySelectorAll('.time-choice strong')].map(e => e.innerText)`, S);
+      await b.evaluate(`[...document.querySelectorAll('.time-choice')].at(${pick === 'first' ? 0 : -1}).click()`, S);
+      await b.waitFor(`${settled} && document.querySelectorAll('.turn:not(.opening)').length>${t0}`, {...F, timeout: 90000}); await sleep(1000);
+      const committed = (await turnCount()) === t0 + 1, note = (await stageText()).includes('依你確認的時間'); await shot('time-committed-' + pick);
+      r.cases.push({pick, mode, choices, noTurnCommitted, committed, note});
+      if (!noTurnCommitted || !committed) throw Error('time confirmation flow failed for ' + pick);
+    }
   },
   async race(r) {
     // Background world-routine jobs (calendar, forum) commit right after each turn. Send immediately, three times.

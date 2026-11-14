@@ -231,27 +231,54 @@ const SHEETS = {
       h('p', {class: 'fine'}, '摘要是閱讀輔助；原文與已保存狀態才是依據。')]};
   },
 
+  // 這一步要花多久？ Choices come from this work's StoryClock (its periods and minutes per day) and the
+  // current clock, and only legal endpoints are offered (never before the current earliest point).
+  // One click is the explicit confirmation; the Host still validates the same timeConfirmation contract.
   time(s, actions, purpose) {
     const tc = s.run?.timeControls; if (!tc) return {title: '時間', body: h('p', {class: 'meta'}, '這部作品沒有故事時間設定。')};
-    const periods = Object.entries(tc.definition?.periods ?? {}), base = tc.base ?? {}, day = s.run.storyClock?.position?.latest?.dayOrdinal ?? 1;
+    const def = tc.definition ?? {}, perDay = (def.hoursPerDay ?? 24) * (def.minutesPerHour ?? 60);
+    const periods = Object.entries(def.periods ?? {}).sort((a, b) => a[1].start - b[1].start);
+    const now = s.run.storyClock?.position?.earliest ?? {dayOrdinal: 1, minuteOfDay: 0}, today = now.dayOrdinal, nowMin = now.minuteOfDay ?? 0;
     const op = s.op, needs = purpose === 'needs' && ['needs_time', 'settlement_failed'].includes(op?.phase);
-    let mode = 'refine', offset = 0, period = s.run.storyClock?.periodId ?? periods[0]?.[0], confirmed = false;
-    const err = h('p', {class: 'error', role: 'alert', hidden: true});
-    const form = h('form', {class: 'time-form', onsubmit: e => {
-      e.preventDefault(); if (!confirmed) { err.textContent = '請勾選確認。沒有確認不會改變故事時間。'; err.hidden = false; return; }
-      // rc3 timeConfirmation schemaVersion 2, explicit and scoped to ONE input.
-      const value = {schemaVersion: 2, confirmed: true, role: mode === 'refine' ? 'origin' : 'endpoint', mode, target: {dayOrdinal: day + offset, ...(period ? {periodId: period} : {})}, base: structuredClone(base)};
-      const label = `${['今天', '明天', '後天'][offset]} ${periods.find(p => p[0] === period)?.[1]?.label ?? period}${mode === 'refine' ? '開始' : '為止'}`;
+    const hm = m => `${String(Math.floor(m / (def.minutesPerHour ?? 60))).padStart(2, '0')}:${String(m % (def.minutesPerHour ?? 60)).padStart(2, '0')}`;
+    const choose = async (role, target, label) => {
+      // Re-read the base at the moment of confirming: a background commit may have moved the version.
+      let base = tc.base;
+      try { const fresh = await actions.call('runView', {runId: s.runId}); if (fresh?.timeControls?.base) { if (fresh.timeControls.base.clockHash !== tc.base?.clockHash) { actions.store.set({notice: '故事時間剛剛更新了，請重新選一次。', sheetData: null}); return; } base = fresh.timeControls.base; } } catch {}
+      const value = {schemaVersion: 2, confirmed: true, role, mode: role === 'origin' ? 'refine' : 'advance_to', target, base: structuredClone(base)};
       actions.closeSheet(); if (needs) actions.ops.confirmTime(value); else actions.store.set({attachedTime: {value, label}});
-    }},
-      h('fieldset', null, h('legend', null, '要確認的是'),
-        h('label', {class: 'choice'}, h('input', {type: 'radio', name: 'mode', checked: true, onchange: () => { mode = 'refine'; }}), h('span', null, h('strong', null, '這個行動從何時開始'), h('small', null, '故事仍可依行動內容往後推進時間。'))),
-        h('label', {class: 'choice'}, h('input', {type: 'radio', name: 'mode', onchange: () => { mode = 'advance_to'; }}), h('span', null, h('strong', null, '這個行動做到何時為止'), h('small', null, '這一段會在這個時間點結束。')))),
-      h('fieldset', null, h('legend', null, '哪一天'), h('div', {class: 'chips'}, ['今天', '明天', '後天'].map((l, i) => h('label', {class: 'chip'}, h('input', {type: 'radio', name: 'day', checked: i === 0, onchange: () => { offset = i; }}), h('span', null, l))))),
-      periods.length ? h('fieldset', null, h('legend', null, '哪個時段'), h('div', {class: 'chips'}, periods.map(([id, p]) => h('label', {class: 'chip'}, h('input', {type: 'radio', name: 'period', checked: id === period, onchange: () => { period = id; }}), h('span', null, p.label ?? id))))) : null,
-      h('label', {class: 'choice confirm'}, h('input', {type: 'checkbox', onchange: e => { confirmed = e.target.checked; }}), h('span', null, '我確認這個時間只用在這一次送出的行動。')),
-      err, h('button', {class: 'primary wide', type: 'submit'}, needs ? '用這個時間重新送出' : '附加到下一個行動'));
-    return {title: '確認這一步的時間', sub: '目前：' + clockText(s.run.storyClockLabel), body: [needs && op.input ? h('blockquote', {class: 'quoted-input'}, op.input) : h('p', {class: 'fine top'}, '這不是「跳過時間」。它只替你下一次送出的行動補充時間資訊；想讓時間過去，請把等待寫成行動。'), form]};
+    };
+    const quick = [];
+    if (nowMin + 30 < perDay) quick.push({label: '片刻', note: `約半小時，到 ${hm(nowMin + 30)} 左右`, target: {dayOrdinal: today, minuteOfDay: nowMin + 30}});
+    for (const [id, p] of periods) if (p.start > nowMin) quick.push({label: `到${p.label ?? id}`, note: `今天 ${hm(p.start)} 起`, target: {dayOrdinal: today, periodId: id}});
+    quick.push(periods.length ? {label: `到明天${periods[0][1].label ?? ''}`, note: `明天 ${hm(periods[0][1].start)} 起`, target: {dayOrdinal: today + 1, periodId: periods[0][0]}} : {label: '到明天', note: '隔天', target: {dayOrdinal: today + 1}});
+    const verb = needs ? '確認並重新送出' : '附加到下一個行動';
+    const quickList = h('ul', {class: 'time-quick'}, quick.map(q => h('li', null, h('button', {class: 'time-choice', type: 'button', onclick: () => choose('endpoint', q.target, `${q.label}為止`)},
+      h('strong', null, q.label), h('small', null, q.note), h('span', {class: 'time-go'}, verb)))));
+    // 指定時間: start or end, day, and a period or an exact time.
+    let role = 'endpoint', offset = 0, period = periods.find(([, p]) => p.start > nowMin)?.[0] ?? periods[0]?.[0] ?? null, exact = '';
+    const err = h('p', {class: 'error', role: 'alert', hidden: true});
+    const advanced = h('details', {class: 'time-advanced'}, h('summary', null, '指定時間…'),
+      h('form', {class: 'time-form', onsubmit: e => {
+        e.preventDefault();
+        let target = {dayOrdinal: today + offset};
+        if (exact) { const m = /^(\d{1,2}):(\d{2})$/.exec(exact); const v = m ? Number(m[1]) * (def.minutesPerHour ?? 60) + Number(m[2]) : NaN; if (!(v >= 0 && v < perDay)) { err.textContent = '時間格式是 時:分，例如 18:30。'; err.hidden = false; return; } target.minuteOfDay = v; }
+        else if (period) target.periodId = period;
+        if (role === 'endpoint' && target.dayOrdinal === today && (target.minuteOfDay ?? periods.find(p => p[0] === target.periodId)?.[1].start ?? perDay) < nowMin) { err.textContent = '結束時間不能早於現在。'; err.hidden = false; return; }
+        const label = `${['今天', '明天', '後天'][offset]} ${exact || (periods.find(p => p[0] === period)?.[1]?.label ?? '')}${role === 'origin' ? '開始' : '為止'}`;
+        void choose(role, target, label);
+      }},
+        h('fieldset', null, h('legend', null, '要指定的是'), h('div', {class: 'chips'},
+          h('label', {class: 'chip'}, h('input', {type: 'radio', name: 'role', checked: true, onchange: () => { role = 'endpoint'; }}), h('span', null, '做到何時為止')),
+          h('label', {class: 'chip'}, h('input', {type: 'radio', name: 'role', onchange: () => { role = 'origin'; }}), h('span', null, '從何時開始')))),
+        h('fieldset', null, h('legend', null, '哪一天'), h('div', {class: 'chips'}, ['今天', '明天', '後天'].map((l, i) => h('label', {class: 'chip'}, h('input', {type: 'radio', name: 'day', checked: i === 0, onchange: () => { offset = i; }}), h('span', null, l))))),
+        periods.length ? h('fieldset', null, h('legend', null, '哪個時段'), h('div', {class: 'chips'}, periods.map(([id, p]) => h('label', {class: 'chip'}, h('input', {type: 'radio', name: 'period', checked: id === period, onchange: () => { period = id; }}), h('span', null, p.label ?? id))))) : null,
+        h('label', {class: 'time-exact'}, h('span', null, '或精確時間'), h('input', {type: 'text', inputmode: 'numeric', placeholder: '18:30', oninput: e => { exact = e.target.value.trim(); }})),
+        err, h('button', {class: 'primary wide', type: 'submit'}, needs ? '用這個時間重新送出' : '附加到下一個行動')));
+    return {title: needs ? '這一步要花多久？' : '附加時間', sub: '目前：' + clockText(s.run.storyClockLabel), body: [
+      needs && op.input ? h('blockquote', {class: 'quoted-input'}, op.input) : h('p', {class: 'fine top'}, '這不是「跳過時間」。它只替你下一次送出的行動補充時間資訊；想讓時間過去，請把等待寫成行動。'),
+      needs ? h('p', {class: 'fine'}, op.phase === 'settlement_failed' ? '選好後，故事會用同一個行動重新寫這一段，暫存正文會被取代。' : '選好後就會用這個時間重新送出；只套用在這一次。') : null,
+      quickList, advanced]};
   },
 
   settings(s, actions) {

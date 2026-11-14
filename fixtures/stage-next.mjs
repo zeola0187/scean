@@ -237,7 +237,7 @@ export async function apply(ctx, config = {}) {
           await fs.writeFile(path.join(out, 'post-stat-time.json'), JSON.stringify({target, temporalKeys: Object.keys(temporal), inputKeys: Object.keys(input)}, null, 1));
           const ids = Object.keys(temporal.definition?.periods ?? {});
           const today = temporal.clock?.position?.earliest?.dayOrdinal ?? 1; // always strictly before now: a guaranteed conflict
-          time = target ? {dayOrdinal: target.dayOrdinal, ...(target.periodId ? {periodId: target.periodId} : {})} : today > 1 ? {dayOrdinal: today - 1, periodId: ids[0]} : {dayOrdinal: 1, minuteOfDay: 0};
+          time = target ? {dayOrdinal: target.dayOrdinal, ...(target.periodId ? {periodId: target.periodId} : Number.isSafeInteger(target.minuteOfDay) ? {minuteOfDay: target.minuteOfDay} : {})} : today > 1 ? {dayOrdinal: today - 1, periodId: ids[0]} : {dayOrdinal: 1, minuteOfDay: 0};
         }
         answer = JSON.stringify({time, stateChanges: beat.changes.map(([category, key, value]) => ({scope: 'world', category, key, operation: 'set', value: category === 'tasks' ? {status: value, assignees: ['player'], progress: 50} : value})), memories: []});
       } else if (input?.window && input?.clock && Array.isArray(input.window.unplannedDays)) {

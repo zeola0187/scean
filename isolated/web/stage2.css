@@ -322,3 +322,11 @@ mark { background: var(--mark-hit, color-mix(in srgb, var(--accent) 28%, transpa
 .passage { display: grid; gap: .8em; font: var(--read-size)/var(--read-leading) var(--font-read); padding: 8px 0 12px; }
 .passage-nav { position: sticky; bottom: 0; background: var(--surface); padding: 10px 0; border-top: 1px solid var(--line); }
 .unarchived { display: grid; gap: 6px; margin-top: 12px; }
+/* 這一步要花多久？ one-click legal choices */
+.time-quick { list-style: none; margin: 8px 0 12px; padding: 0; display: grid; gap: 8px; }
+.time-choice { width: 100%; display: grid; grid-template-columns: auto 1fr auto; gap: 4px 12px; align-items: baseline; text-align: left; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); }
+.time-choice:hover { border-color: var(--accent); background: var(--raised); }
+.time-choice strong { font-size: 16px; } .time-choice small { color: var(--muted); } .time-go { color: var(--accent); font-size: 13px; font-weight: 600; white-space: nowrap; }
+.time-advanced summary { cursor: pointer; color: var(--muted); padding: 6px 0; }
+.time-exact { display: flex; gap: 8px; align-items: center; margin: 6px 0; } .time-exact input { width: 7em; padding: 6px 8px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); }
+@media (max-width: 520px) { .time-choice { grid-template-columns: 1fr; } }
