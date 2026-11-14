@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-scean-suite",
-  "version": "1.6.4-local.w29.2d.rc3.1.dsh022.3",
+  "version": "1.7.0-local.stagev2.1.dsh022.3",
   "private": true,
   "type": "module",
   "description": "SCEAN: native Card Studio, dynamic fronts, durable stories and 3+8 chapter memory",
@@ -57,10 +57,11 @@
     "url": "https://github.com/zeola0187/scean/issues"
   },
   "sceanRelease": {
-    "baselineTag": "v1.6.4-local.w29.2d.rc3.1",
+    "baselineTag": "v1.6.4-local.w29.2d.rc3.1.dsh022.3",
+    "stageV2AcceptedTag": "stage-v2-accepted",
     "compatibilityBaseCommit": "62bc2bb151ac969956b6a1b064554c564f95dc78",
-    "status": "LOCAL_INSTALLATION_CANDIDATE_NOT_PUBLISHED",
-    "releasePolicy": "Prepared locally only. No merge, push, tag, release or Latest change is authorized in this preparation task."
+    "status": "MAIN_REPOSITORY_URL_INSTALL",
+    "releasePolicy": "main is the repository-URL install source for this version; fixed source tag v1.7.0-local.stagev2.1.dsh022.3. Prerelease: GitHub Latest is not changed."
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.1.0",

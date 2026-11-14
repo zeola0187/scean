@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-card-studio-scean-test",
-  "version": "1.6.4-local.w29.2d.rc3.1.dsh022.3",
+  "version": "1.7.0-local.stagev2.1.dsh022.3",
   "private": true,
   "type": "module",
   "description": "Isolated Card Studio 1.2.0 integration test copy for SCEAN",

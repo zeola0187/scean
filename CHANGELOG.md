@@ -1,3 +1,10 @@
+# 1.7.0-local.stagev2.1.dsh022.3
+
+- 正式整合新版舞台 Stage v2（驗收標籤 `stage-v2-accepted`）：書頁式閱讀、三入口首次使用與範例故事、「這一步要花多久」時間選擇、回顧（章節、搜尋、原文段落）、「與此同時」世界消息、玩家筆記與匯出匯入、進階工坊、手機手勢與例外恢復。
+- 舞台自行持有 Card Studio 租約，修正「作品已經變更」。
+- 存檔沿用 v13；新增附屬資料 `feed-cursor.json`、`player-notes.json`。舊演出不提供遷移。
+- 以 `main` 作為 GitHub 首頁網址安裝來源；目標 DSH 0.2.2-rc.3。詳見 docs/RELEASE-STAGE-V2.zh-TW.md。
+
 # 1.6.4-local.w29.2d.rc3.1 (source candidate)
 
 - Card Studio declares structured tool arguments and rejects malformed patch inputs before writing.

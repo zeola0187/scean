@@ -2,7 +2,7 @@
 
 預覽版是一份獨立的 DSH Desktop 複本，裝好了新版 SCEAN。它和你平常用的 DSH 完全分開：
 
-- 不讀寫 `E:\DSH`，也不讀寫 `C:\Users\USER\.dsh`（正式設定、插件、作品與存檔）。
+- 不讀寫 `E:\DSH`，也不讀寫 `%USERPROFILE%\.dsh`（正式設定、插件、作品與存檔）。
 - 可以和正式 DSH **同時開著**，各自有自己的視窗與資料。
 - 預覽複本移除了自動更新設定，不會自己升級，也不會動到正式安裝。
 
@@ -67,7 +67,7 @@ node scripts/desktop-preview.mjs update --label=user
 
 正式 DSH 目前從 GitHub 發行版安裝 SCEAN。如果之後想直接在正式環境使用新版：
 
-1. 先備份 `C:\Users\USER\.dsh\profiles\desktop\package.json` 與 `pnpm-lock.yaml`。
+1. 先備份 `%USERPROFILE%\.dsh\profiles\desktop\package.json` 與 `pnpm-lock.yaml`。
 2. 在正式 DSH 的插件管理裡，把 `@local/dsh-scean-suite` 換成 `packages\` 裡的預覽 tgz。
 3. **回復**：還原上面兩個檔案，或把套件來源改回原本的發行版網址，然後重新啟動 DSH。
 

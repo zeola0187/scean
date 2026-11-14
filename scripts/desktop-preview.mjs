@@ -10,6 +10,7 @@
 // Commands:
 //   node scripts/desktop-preview.mjs pack                         build a preview tgz from this worktree
 //   node scripts/desktop-preview.mjs setup  --label=L [--scripted] [--tgz=file]
+//   node scripts/desktop-preview.mjs setup  --label=L --clean      empty DSH_HOME: DSH creates its own profile, nothing preinstalled
 //   node scripts/desktop-preview.mjs update --label=L [--tgz=file]   reinstall the suite, keep all data
 //   node scripts/desktop-preview.mjs start  --label=L [--cdp=9333]
 //   node scripts/desktop-preview.mjs stop   --label=L
@@ -88,8 +89,16 @@ async function install(d, tgz) {
   console.log('installed', installed.version);
 }
 
-async function setup(label, {scripted, tgz}) {
+async function setup(label, {scripted, tgz, clean}) {
   const d = labelDirs(label);
+  if (clean) {
+    // A fresh DSH as a new user gets it: used to verify the official third-party plugin install from the repository URL.
+    if (await exists(d.base)) throw Error('LABEL_EXISTS: pick a new label');
+    await ensureApp();
+    for (const dir of [d.home, d.userdata, d.user, d.temp]) await fs.mkdir(dir, {recursive: true});
+    await fs.writeFile(path.join(d.base, 'preview.json'), JSON.stringify({label, scripted: false, clean: true, createdAt: new Date().toISOString(), app: appDir}, null, 2) + '\n');
+    console.log(JSON.stringify({label, base: d.base, clean: true})); return;
+  }
   if (scripted && !/^stage-next-desk-/.test(label)) throw Error('SCRIPTED_LABEL_MUST_START_WITH_stage-next-desk-');
   if (await exists(d.home)) throw Error('LABEL_EXISTS: use update/start, or pick a new label');
   await ensureApp();
@@ -134,7 +143,7 @@ async function cdpBrowser(port) { const v = await (await fetch(`http://127.0.0.1
 async function running(d) { try { const l = JSON.parse(await fs.readFile(d.launch, 'utf8')); process.kill(l.pid, 0); return l; } catch { return null; } }
 
 async function start(label, {cdp}) {
-  const d = labelDirs(label); if (!await exists(d.profile)) throw Error('NOT_SET_UP');
+  const d = labelDirs(label); if (!await exists(path.join(d.base, 'preview.json'))) throw Error('NOT_SET_UP');
   if (await running(d) || instanceRunning(d)) throw Error('ALREADY_RUNNING');
   const meta = JSON.parse(await fs.readFile(path.join(d.base, 'preview.json'), 'utf8'));
   const env = {...process.env, DSH_HOME: d.home, USERPROFILE: d.user, TEMP: d.temp, TMP: d.temp, DSH_TELEMETRY_DISABLED: '1', DSH_DISABLE_TELEMETRY: '1'};
@@ -164,7 +173,7 @@ async function stop(label) {
 const [command] = process.argv.slice(2).filter(a => !a.startsWith('--'));
 const label = arg('label');
 if (command === 'pack') await pack();
-else if (command === 'setup') await setup(label, {scripted: process.argv.includes('--scripted'), tgz: arg('tgz')});
+else if (command === 'setup') await setup(label, {scripted: process.argv.includes('--scripted'), tgz: arg('tgz'), clean: process.argv.includes('--clean')});
 else if (command === 'update') { const d = labelDirs(label); if (await running(d) || instanceRunning(d)) throw Error('CLOSE_THE_PREVIEW_FIRST'); await install(d, arg('tgz') ?? await latestTgz()); }
 else if (command === 'launcher') await launcher(label);
 else if (command === 'start') await start(label, {cdp: arg('cdp') ? Number(arg('cdp')) : undefined});

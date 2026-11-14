@@ -15,7 +15,7 @@ import {hash} from '../core/contracts.mjs';
 import {bindCharacterSources} from '../core/character-sources.mjs';
 
 const SLASH_TEXT = ['/24', '/roll 1d20', '/3 天', '/24/7 營業', '/me waves', '/tmp'];
-const MACHINE_PATHS = ['/home/someone/cards/a.png', '/Users/someone/x', 'C:/Users/someone/x', 'C:\\Users\\someone', '\\\\server\\share\\x', 'file:///etc/passwd', '/../etc/passwd', '/data/../x'];
+const MACHINE_PATHS = ['/home/someone/cards/a.png', '/Volumes/someone/x', 'C:/Profiles/someone/x', 'C:\\Profiles\\someone', '\\\\server\\share\\x', 'file:///etc/passwd', '/../etc/passwd', '/data/../x'];
 
 async function run(t, card) {
   const base = resolve(import.meta.dirname, '../.test-data'); await mkdir(base, {recursive: true});
@@ -40,7 +40,7 @@ test('machine-specific paths are still rejected, with the offending JSON pointer
     assert.equal(issue?.code, 'SAVE_ENVIRONMENT_PATH', p);
     assert.equal(issue.path, '/card/data/extensions/scean/stateBlueprint/variables/0/unit');
   }
-  const r = await run(t, {data: {name: 'Synthetic', description: 'C:/Users/someone/secret.txt'}});
+  const r = await run(t, {data: {name: 'Synthetic', description: 'C:/Data/someone/secret.txt'}});
   assert.throws(() => encodeRunBundle(r), {code: 'SAVE_ENVIRONMENT_PATH'});
 });
 
@@ -49,7 +49,7 @@ test('Studio audit fails a real path before 開演 and passes slash-leading stor
   const card = unit => ({data: {first_mes: 'Synthetic.', extensions: {scean: {characters: [{id: 'a', name: 'A', description: 'Synthetic.'}], stateBlueprint: {schemaVersion: 1, id: 'bp', version: 1, extensionPolicy: 'deny', variables: [{key: 'hp', displayName: 'HP', scope: 'world', category: 'stats', type: 'number', visibility: 'public', unit}]}}}}});
   const ok = auditSavedSnapshot(input(card('/24'))).items.find(i => i.itemID === 'D.portability');
   assert.equal(ok.status, 'PASS');
-  const bad = auditSavedSnapshot(input(card('C:/Users/someone/hp.txt'))).items.find(i => i.itemID === 'D.portability');
+  const bad = auditSavedSnapshot(input(card('C:/Data/someone/hp.txt'))).items.find(i => i.itemID === 'D.portability');
   assert.equal(bad.status, 'FAIL'); assert.equal(bad.observed.code, 'SAVE_ENVIRONMENT_PATH');
   assert.match(bad.observed.path, /stateBlueprint\/variables\/0\/unit$/);
 });

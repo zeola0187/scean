@@ -14,7 +14,7 @@ class Release(unittest.TestCase):
   for n in ['package.json','packages/scean/package.json','packages/studio/package.json']:
    j=json.loads((R/n).read_text(encoding='utf-8'));self.assertEqual(j['version'],'1.6.3-local.w29.2d.rc3.1');self.assertIn('0.2.1-rc.3',j['engines']['dsh']);self.assertEqual(j['homepage'],'https://github.com/zeola0187/scean')
  def test_canonical_build_and_file_set(self):
-  m=json.loads((R/'BUILD-MAP.json').read_text(encoding='utf-8'))['runtime'];self.assertEqual(len(m),267)
+  m=json.loads((R/'BUILD-MAP.json').read_text(encoding='utf-8'))['runtime'];self.assertEqual(len(m),271)
   for row in m:self.assertEqual((R/row['path']).read_bytes(),(R/row['source']).read_bytes(),row['path'])
  def test_export_hashes_and_no_private_domains(self):
   m=json.loads((R/'EXPORT-MANIFEST.json').read_text(encoding='utf-8'));paths=[x['path']for x in m['files']];self.assertEqual(len(paths),len(set(paths)))
