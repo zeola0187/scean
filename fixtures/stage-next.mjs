@@ -156,11 +156,18 @@ function nextTime(def, clock, rule) {
   return later.length >= steps ? {dayOrdinal: latest.dayOrdinal, periodId: later[steps - 1]} : {dayOrdinal: latest.dayOrdinal + 1, periodId: ids[Math.min(steps - later.length, ids.length) - 1]};
 }
 
-async function wrapHostForAckFault(hostModule, out) {
+async function wrapHostForAckFault(hostModule, out, ctx) {
   const {pathToFileURL} = await import('node:url');
   const {SceanHost} = await import(pathToFileURL(await fs.realpath(hostModule)).href), original = SceanHost.prototype.request;
   if (original.__stageNextAck) return;
   const wrapped = async function (request, signal, authority) {
+    // Test diagnostics: what the Studio bridge resolves for this conversation (appended, bounded).
+    if (request?.action === 'context' && await fs.stat(path.join(out, 'debug-context')).catch(() => null)) {
+      const bridge = ctx?.get?.('cardstudioSceanBridge'), row = {at: new Date().toISOString()};
+      try { const v = await bridge?.resolveSceanScope?.(request.sessionId); row.scope = v ? v.generation.slice(0, 8) : null; } catch (e) { row.scopeError = e.code ?? e.message; }
+      try { row.playback = (await bridge?.resolveSceanPlaybackStatus?.(request.sessionId))?.status ?? null; } catch (e) { row.playbackError = e.code ?? e.message; }
+      await fs.appendFile(path.join(out, 'debug-context.jsonl'), JSON.stringify(row) + '\n').catch(() => {});
+    }
     // One-shot stale Studio generation: answer exactly what the Host answers before doing any work.
     const stale = path.join(out, 'fault-context.json');
     if (request?.cardScope && request.action !== 'context' && await fs.stat(stale).catch(() => null)) {
@@ -186,7 +193,7 @@ export async function apply(ctx, config = {}) {
   const out = path.dirname(home), file = path.join(out, 'adapter-calls.json');
   // Desktop: the Host runs in its own process, so the lost-acknowledgement fault is armed here
   // (same module instance the loader uses for the installed suite).
-  if (config.hostModule) await wrapHostForAckFault(config.hostModule, out);
+  if (config.hostModule) await wrapHostForAckFault(config.hostModule, out, ctx);
   let calls = []; try { calls = JSON.parse(await fs.readFile(file, 'utf8')); } catch {}
   const counters = {};
   class Scripted extends LlmAdapter {
@@ -229,7 +236,8 @@ export async function apply(ctx, config = {}) {
           const target = find(input);
           await fs.writeFile(path.join(out, 'post-stat-time.json'), JSON.stringify({target, temporalKeys: Object.keys(temporal), inputKeys: Object.keys(input)}, null, 1));
           const ids = Object.keys(temporal.definition?.periods ?? {});
-          time = target ? {dayOrdinal: target.dayOrdinal, ...(target.periodId ? {periodId: target.periodId} : {})} : {dayOrdinal: temporal.clock?.position?.earliest?.dayOrdinal ?? 1, periodId: ids[0]};
+          const today = temporal.clock?.position?.earliest?.dayOrdinal ?? 1; // always strictly before now: a guaranteed conflict
+          time = target ? {dayOrdinal: target.dayOrdinal, ...(target.periodId ? {periodId: target.periodId} : {})} : today > 1 ? {dayOrdinal: today - 1, periodId: ids[0]} : {dayOrdinal: 1, minuteOfDay: 0};
         }
         answer = JSON.stringify({time, stateChanges: beat.changes.map(([category, key, value]) => ({scope: 'world', category, key, operation: 'set', value: category === 'tasks' ? {status: value, assignees: ['player'], progress: 50} : value})), memories: []});
       } else if (input?.window && input?.clock && Array.isArray(input.window.unplannedDays)) {

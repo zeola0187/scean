@@ -57,7 +57,7 @@ const phases = {
   async seed2(r) {
     await b.click('新会话'); await sleep(1500); await studioHome();
     r.newConversationEmpty = !(await b.evaluate(`document.body.innerText.includes('這個對話的作品')`));
-    await b.click('使用現有角色卡'); await sleep(1500); await b.click('匯入工作卡副本'); await sleep(500);
+    await b.click('使用角色卡開始'); await sleep(1500); await b.click('匯入工作卡副本'); await sleep(500);
     await b.evaluate(`(()=>{const s=[...document.querySelectorAll('select')].find(s=>[...s.options].some(o=>o.value.includes('campus-rooftop')));s.value=[...s.options].find(o=>o.value.includes('campus-rooftop')).value;s.dispatchEvent(new Event('change',{bubbles:true}));return true})()`);
     await b.click('匯入副本'); await b.waitFor(`!!document.querySelector('[data-scean-readiness]')`, {timeout: 40000}); await sleep(1500);
     await chat('這張卡的世界觀你怎麼看？'); await b.waitFor(`document.body.innerText.includes('收到：「這張卡的世界觀')`, {timeout: 60000}); await sleep(800);
@@ -82,6 +82,7 @@ const phases = {
   },
   async versions(r) {
     // v1 = the card as edited above. Publish, play A; edit again; publish v2, play B.
+    if (!await b.evaluate(`!!document.querySelector('[data-scean-home]')`)) await studioHome();
     await b.click('繼續創作'); await rail(); await checkReviewPublish(); r.shelfV1 = await shot('shelf-v1');
     await startPerformance(0, '程以安'); await send('我停下腳步，抬頭往樓梯上方看（A場）。');
     r.openingA = (await b.evaluate(`document.querySelector('.turn.opening')?.innerText ?? ''`, S)).slice(-60);
@@ -89,15 +90,17 @@ const phases = {
     const ctxBefore = await agentContext(); await chat('請把開場改得更有懸疑感'); await b.waitFor(`document.body.innerText.split('作品板上的開場已經更新').length>2`, {timeout: 60000}).catch(() => {}); await sleep(2500);
     r.secondEditApplied = (await agentContext()) !== ctxBefore;
     await checkReviewPublish(); const shelf = await stageText(); r.shelfV2 = await shot('shelf-v2');
-    r.versionsListed = [...shelf.matchAll(/劇本版本 r(\d+) · (\d+) 場演出/g)].map(m => ({revision: Number(m[1]), runs: Number(m[2])}));
+    r.versionsListed = [...shelf.matchAll(/劇本版本 r(\d+)(?: · 保存於 [^·\n]+)? · (\d+) 場演出/g)].map(m => ({revision: Number(m[1]), runs: Number(m[2])}));
     await startPerformance(0, '林若'); const openingB = await b.evaluate(`document.querySelector('.turn.opening')?.innerText ?? ''`, S);
     await send('我推開天台的門（B場）。'); await backToShelf();
     r.openingsDiffer = openingB.slice(-60) !== r.openingA; r.continueRows = (await stageText()).match(/繼續/g)?.length ?? 0; await shot('shelf-two-runs');
     if (r.versionsListed.length < 2 || !r.openingsDiffer) throw Error('script versions not separated');
   },
   async turnops(r) {
-    await b.evaluate(`[...document.querySelectorAll('button')].find(x=>x.innerText.trim().startsWith('繼續'))?.click()`, S);
-    await b.waitFor(`!!document.querySelector('#composer-input')`, {...F, timeout: 30000}); await sleep(1000);
+    await ensureReader(); await sleep(1000);
+    // Leftovers from an interrupted run: an open confirmation row or a typed draft.
+    if (await b.evaluate(`!!document.querySelector('.confirm-row')`, S)) { await b.evaluate(`[...document.querySelectorAll('.confirm-row button')].find(x => x.innerText.trim() === '取消')?.click()`, S); await sleep(500); }
+    await b.evaluate(`(() => { const i = document.querySelector('#composer-input'); if (i && i.value) { i.value = ''; i.dispatchEvent(new Event('input', {bubbles: true})); } })()`, S);
     const last = () => b.evaluate(`[...document.querySelectorAll('.turn:not(.opening) .prose')].at(-1)?.innerText.slice(0,40)`, S);
     const t0 = await turnCount(), p0 = await last();
     await b.click('重寫這段', F); await b.click('重寫', F); await sleep(1000); r.regenRunning = await shot('regen-running');
@@ -145,7 +148,7 @@ const phases = {
   },
   async coexist(r) {
     const unique = '我回頭看了一眼走廊（' + Date.now().toString(36) + '）。'; await send(unique);
-    await b.click('更多', F); await sleep(400); await b.click('顯示設定', F); await sleep(400); await b.click('切換到舊版舞台', F);
+    await b.click('更多', F); await sleep(400); await b.click('顯示設定', F); await sleep(400); await b.click('改用舊版舞台閱讀', F);
     await b.waitFor(`document.querySelector('iframe[data-scean-native-player]')?.dataset.sceanStageUi==='legacy'`, {timeout: 20000}); await sleep(4000);
     r.legacyShowsTurn = (await stageText()).includes(unique); await shot('legacy');
     await b.click('css:#stage-ui-next', F); await b.waitFor(`document.querySelector('iframe[data-scean-native-player]')?.dataset.sceanStageUi==='next'`, {timeout: 20000}); await sleep(2500);
@@ -165,6 +168,65 @@ const phases = {
     await b.click('css:[data-product-screen="stage"]').catch(() => {}); await b.waitFor(`document.body.innerText.includes('繼續閱讀')`, {...F, timeout: 40000}); await b.click('繼續閱讀', F); await b.waitFor(`!!document.querySelector('#composer-input')`, {...F, timeout: 30000});
     if (r.size.w > 1000 || r.horizontalOverflow || r.studioOverflow) throw Error('small window layout problem');
   },
+  async workshop(r) {
+    await ensureReader(); await b.click('更多', F); await sleep(400); await b.click('進階工坊', F);
+    await b.waitFor(`document.querySelector('iframe[data-scean-native-player]')?.dataset.sceanStageUi==='workshop'`, {timeout: 20000}); await sleep(5000); await shot('workshop');
+    const labels = await b.evaluate(`[...document.querySelectorAll('.workshop-tool strong')].map(e=>e.innerText)`, S); r.tools = {};
+    for (const label of labels) {
+      await b.evaluate(`[...document.querySelectorAll('.workshop-tool')].find(x=>x.querySelector('strong').innerText===${JSON.stringify(label)}).click()`, S); await sleep(1000);
+      r.tools[label] = await b.evaluate(`[...document.querySelectorAll('dialog[open]')].map(d=>d.id).join(',')`, S);
+      await b.evaluate(`for (const d of document.querySelectorAll('dialog[open]')) d.close()`, S); await sleep(200);
+    }
+    await b.click('css:#stage-ui-next', F); await b.waitFor(`document.querySelector('iframe[data-scean-native-player]')?.dataset.sceanStageUi==='next'`, {timeout: 20000}); await sleep(2500);
+    if (Object.values(r.tools).some(v => !v) || labels.length < 9) throw Error('workshop tool did not open its dialog');
+  },
+  async feed(r) {
+    await ensureReader(); await sleep(2500);
+    const feed = () => b.evaluate(`document.querySelectorAll('.feed .feed-item').length`, S);
+    r.unreadShown = await feed(); await shot('feed');
+    if (r.unreadShown) {
+      await b.click('論壇', F).catch(async () => { await b.click('更多', F); await sleep(300); await b.click('論壇', F); }); await sleep(2500); await b.click('關閉', F); await sleep(2500);
+      r.afterForumList = await feed();
+      if (r.afterForumList) { await b.click('看過了', F); await sleep(2500); }
+      r.afterSeen = await feed();
+      if (r.afterSeen !== 0 || r.afterForumList > r.unreadShown) throw Error('feed read marking failed');
+    } else r.note = 'no unread items in this run (routine produced none since the last view)';
+  },
+  async notes(r) {
+    await ensureReader();
+    const target = await b.evaluate(`(() => { const p = [...document.querySelectorAll('.turn[data-commit] .prose .narr')].at(-1); p.scrollIntoView({block: 'center'}); const q = p.getBoundingClientRect(); return {x: q.left + 20, y: q.top + q.height / 2, text: p.innerText.trim()}; })()`, S);
+    const off = await b.evaluate(`(() => { const q = document.querySelector('iframe[data-scean-native-player]').getBoundingClientRect(); return {x: q.left, y: q.top}; })()`);
+    for (const type of ['mousePressed', 'mouseReleased']) await b.send('Input.dispatchMouseEvent', {type, x: off.x + target.x, y: off.y + target.y, button: 'left', clickCount: 3});
+    await sleep(600); r.pin = await b.evaluate(`!document.querySelector('.pin-note').hidden`, S); await b.click('css:.pin-note', F); await sleep(1500);
+    await b.click('設定集', F).catch(async () => { await b.click('更多', F); await sleep(300); await b.click('設定集', F); }); await sleep(2500); await shot('notes');
+    r.known = await b.evaluate(`[...document.querySelectorAll('.note:not(.is-stale) blockquote')].map(q => q.innerText.trim())`, S); await b.click('關閉', F);
+    if (!r.pin || !r.known.includes(target.text)) throw Error('note was not pinned');
+  },
+  async lease(r) {
+    await ensureReader(); r.before = await b.evaluate('JSON.stringify(window.__SCEAN_STAGE_LEASE__)');
+    await sleep(150000); r.after = await b.evaluate('JSON.stringify(window.__SCEAN_STAGE_LEASE__)');
+    r.scope = await b.evaluate(`(async () => { const c = await globalThis.__SCEAN_NATIVE__.request('native.context', {}); return !!c.cardScope; })()`, S);
+    const t0 = await turnCount(); await send('（久置之後）我把窗戶關上。'); r.turnOk = (await turnCount()) === t0 + 1;
+    if (!r.scope || !r.turnOk || !JSON.parse(r.after).held) throw Error('stage lost its card scope while left open');
+  },
+  async resume(r) {
+    await ensureReader(); const t0 = await turnCount();
+    await fs.writeFile(path.join(out, 'fault-writer.json'), JSON.stringify({holdMs: 8000}));
+    await b.click('css:#composer-input', F); await b.type('（中途離開測試）我把門推開一條縫。'); await b.click('css:.send', F); await sleep(1500);
+    await b.click('css:.back', F); await sleep(800); await b.click('作品', F); await sleep(4000);
+    await b.click('css:[data-product-screen="stage"]'); await b.waitFor(`document.body.innerText.includes('繼續閱讀')`, {...F, timeout: 40000}); await b.click('繼續閱讀', F);
+    await b.waitFor(`!!document.querySelector('#composer-input')`, {...F, timeout: 30000}); r.sawPending = await b.evaluate(`!!document.querySelector('.pending-zone')?.children.length`, S);
+    await b.waitFor(`${settled} && document.querySelectorAll('.turn:not(.opening)').length>${t0}`, {...F, timeout: 90000}); r.committedAfterReturn = true; await shot('resume');
+  },
+  async phone(r) {
+    await b.viewport({width: 390, height: 844, deviceScaleFactor: 2, mobile: true}); await sleep(1200); await ensureReader();
+    r.overflow = await b.evaluate(`document.documentElement.scrollWidth > innerWidth + 1`, S); await shot('phone-reader');
+    await b.click('更多', F); await sleep(500); await shot('phone-menu'); r.menu = await b.evaluate(`[...document.querySelectorAll('.menu-row strong')].map(e=>e.innerText)`, S);
+    await b.click('日曆', F); await sleep(2000); await shot('phone-calendar'); await b.click('關閉', F); await sleep(300);
+    const t0 = await turnCount(); await send('（手機）我回頭看了一眼。'); r.turnOk = (await turnCount()) === t0 + 1; await shot('phone-turn');
+    await b.send('Emulation.clearDeviceMetricsOverride'); await b.send('Emulation.setTouchEmulationEnabled', {enabled: false}); await sleep(800);
+    if (r.overflow || !r.turnOk) throw Error('phone layout or turn failed');
+  },
   async restart(r) {
     const before = {turns: await turnCount(), text: (await stageText()).slice(-400)};
     const cdp = JSON.parse(await fs.readFile(path.join(out, 'launch.json'), 'utf8')).cdp;
@@ -182,13 +244,17 @@ const phases = {
 };
 
 async function ensureReader() {
-  const inReader = await b.evaluate(`!!document.querySelector('#composer-input')`, S).catch(() => false); if (inReader) return;
-  await studioHome(); await b.click('css:[data-product-screen="stage"]');
-  await b.waitFor(`document.body.innerText.includes('繼續閱讀')`, {...F, timeout: 40000}); await b.click('繼續閱讀', F);
-  await b.waitFor(`!!document.querySelector('#composer-input')`, {...F, timeout: 30000}); await sleep(1200);
+  if (await b.evaluate(`!!document.querySelector('#composer-input')`, S).catch(() => false)) return;
+  if (!await b.evaluate(`!!document.querySelector('iframe[data-scean-native-player]')`)) {
+    // DSH shows the SCEAN entries on the conversation view; fall back to the Studio nav when a panel is open.
+    try { await b.click('舞臺', {timeout: 6000}); } catch { await b.click('創作入口', {timeout: 6000}).catch(() => {}); await sleep(3000); await b.click('css:[data-product-screen="stage"]', {timeout: 6000}).catch(() => {}); }
+  }
+  await b.waitFor(`document.body.innerText.includes('繼續閱讀') || !!document.querySelector('#composer-input')`, {...F, timeout: 60000});
+  if (!await b.evaluate(`!!document.querySelector('#composer-input')`, S)) { await b.click('繼續閱讀', F); await b.waitFor(`!!document.querySelector('#composer-input')`, {...F, timeout: 30000}); }
+  await sleep(1200);
 }
 const order = Object.keys(phases); let started = !from;
-if (from && ['time', 'race', 'world', 'coexist', 'small', 'restart'].includes(from)) { await sidebarConversation('創作對話'); await ensureReader(); }
+if (from && ['time', 'race', 'world', 'coexist', 'small', 'workshop', 'feed', 'notes', 'lease', 'resume', 'phone', 'restart'].includes(from)) { await sidebarConversation('創作對話'); await ensureReader(); }
 try {
   for (const name of order) {
     if (!started && name === from) started = true; if (!started) continue;

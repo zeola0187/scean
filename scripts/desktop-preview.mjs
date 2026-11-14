@@ -143,6 +143,9 @@ async function start(label, {cdp}) {
   if (cdp) args.push(`--remote-debugging-port=${cdp}`);
   // Scripted test instances: the renderer gets a dead proxy (loopback stays direct); Host model traffic is the scripted adapter.
   if (meta.scripted) args.push('--proxy-server=http://127.0.0.1:9');
+  // Automated runs: keep rendering when the window is covered, otherwise Chromium skips layout and
+  // innerText-based checks read blank pages. Test instances only; the personal launcher never sets these.
+  if (meta.scripted) args.push('--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding');
   const log = fss.openSync(path.join(d.base, 'desktop.log'), 'a');
   const child = spawn(exe, args, {cwd: d.base, env, detached: true, stdio: ['ignore', log, log]}); child.unref();
   const launch = {pid: child.pid, label, cdp: cdp ?? null, startedAt: new Date().toISOString(), scripted: meta.scripted, home: d.home};

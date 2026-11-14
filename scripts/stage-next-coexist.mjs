@@ -21,7 +21,7 @@ try {
   });
   await step('switch-to-legacy', async () => {
     await b.click('更多', {frame: STAGE_FRAME}); await sleep(500); await b.click('顯示設定', {frame: STAGE_FRAME}); await sleep(500);
-    await b.click('切換到舊版舞台', {frame: STAGE_FRAME});
+    await b.click('改用舊版舞台閱讀', {frame: STAGE_FRAME});
     await b.waitFor(`document.querySelector('iframe[data-scean-native-player]')?.dataset.sceanStageUi==='legacy'`, {timeout: 20000}); await sleep(4000);
     const legacyText = await b.evaluate('document.body.innerText', STAGE_FRAME);
     report.legacySeesV2Story = report.v2Before.every(t => legacyText.includes(t.slice(0, 12)));
@@ -39,7 +39,7 @@ try {
     await b.click('css:#composer-input', {frame: STAGE_FRAME}); await b.type(uniqueInput); await b.click('送出行動', {frame: STAGE_FRAME});
     await b.waitFor(`!document.querySelector('.pending-zone')?.children.length && document.querySelectorAll('.turn:not(.opening)').length>${before}`, {frame: STAGE_FRAME, timeout: 90000});
     const newest = (await v2Turns()).at(-1); report.newestTurn = newest;
-    await b.click('更多', {frame: STAGE_FRAME}); await sleep(500); await b.click('顯示設定', {frame: STAGE_FRAME}); await sleep(500); await b.click('切換到舊版舞台', {frame: STAGE_FRAME});
+    await b.click('更多', {frame: STAGE_FRAME}); await sleep(500); await b.click('顯示設定', {frame: STAGE_FRAME}); await sleep(500); await b.click('改用舊版舞台閱讀', {frame: STAGE_FRAME});
     await b.waitFor(`document.querySelector('iframe[data-scean-native-player]')?.dataset.sceanStageUi==='legacy'`, {timeout: 20000}); await sleep(4000);
     report.legacySeesNewTurn = (await b.evaluate('document.body.innerText', STAGE_FRAME)).includes(uniqueInput);
     await shot('legacy-after-v2-turn');

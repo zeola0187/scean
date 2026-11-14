@@ -52,7 +52,14 @@ async function connect(port, {match = t => t.type === 'page', onClose = async ()
     const walk = (n, depth, sessionId) => { out.push({id: n.frame.id, url: n.frame.url, name: n.frame.name, depth, sessionId}); for (const c of n.childFrames ?? []) walk(c, depth + 1, sessionId); };
     walk(frameTree, 0);
     // Out-of-process iframes (Electron keeps site isolation on) live in their own attached sessions.
-    for (const [, sid] of frameSessions) { try { const r = await send('Page.getFrameTree', {}, sid); if (!out.some(f => f.id === r.frameTree.frame.id)) walk(r.frameTree, 1, sid); } catch {} }
+    const roots = [];
+    for (const [, sid] of frameSessions) { try { const r = await send('Page.getFrameTree', {}, sid); if (!out.some(f => f.id === r.frameTree.frame.id)) roots.push({tree: r.frameTree, sid}); } catch {} }
+    // Real depth from parent ids, so a sandboxed panel inside the stage is never mistaken for the stage.
+    for (let pass = 0; pass < 4 && roots.length; pass++) for (const root of [...roots]) {
+      const parent = out.find(f => f.id === root.tree.frame.parentId);
+      if (parent) { walk(root.tree, parent.depth + 1, root.sid); roots.splice(roots.indexOf(root), 1); }
+    }
+    for (const root of roots) walk(root.tree, 9, root.sid);
     return out;
   }
   // Frame selection: 'main' or a predicate over frame tree rows (e.g. stage iframe = first about:srcdoc child).
@@ -115,4 +122,4 @@ async function connect(port, {match = t => t.type === 'page', onClose = async ()
   return api;
 }
 // The SCEAN stage iframe: the srcdoc child carrying the shared player.
-export const STAGE_FRAME = f => f.depth >= 1 && f.url === 'about:srcdoc';
+export const STAGE_FRAME = f => f.depth === 1 && f.url === 'about:srcdoc';

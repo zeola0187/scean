@@ -36,21 +36,23 @@ export function nativeClientFactory(React,sharedHTML,createNativeBridge,createNo
         // The stage's card scope comes from Card Studio's per-conversation record, which only lives while some
         // page holds a Studio lease (90 s, renewed). Studio panels hold one only while they are mounted, so a
         // stage left open on its own lost its scope (CARD_CONTEXT_REQUIRED, then CHANGED once Studio reopened).
-        // Hold an ordinary page lease while the stage is open and visible, through the same Studio API.
+        // Hold an ordinary page lease while the stage panel is mounted, through the same Studio API.
         React.useEffect(()=>{
           let claim=null,leaseSession=null,stopped=false,busy=false;const page='scean-stage-'+globalThis.crypto.randomUUID();
           // Card Studio mounts its own remote (service 'remote.cardstudioScean'); look it up at use time.
           const studio=()=>{for(const scope of [child,ctx]){try{const svc=scope.get?.('remote.cardstudioScean');if(svc?.request)return svc;}catch{}}return child.remote?.cardstudioScean;};
           // Diagnostics only (no ids or claims): lets tests and support see whether the lease is held.
           const status=window.__SCEAN_STAGE_LEASE__={available:false,held:false,acquires:0,renewals:0,error:null};
-          const release=(svc,sid,c)=>{if(svc&&sid&&c)void svc.request(sid,{action:'release',claim:c}).catch(()=>{});};
+          // Every Studio call is bounded: one hung request must never stall the keeper for good.
+          const bounded=(svc,sid,request)=>{const controller=new AbortController();let timer;return Promise.race([svc.request(sid,request,controller.signal),new Promise((_,reject)=>{timer=setTimeout(()=>{controller.abort();reject(Object.assign(new Error('Studio lease request timed out'),{code:'LEASE_TIMEOUT'}));},10000);})]).finally(()=>clearTimeout(timer));};
+          const release=(svc,sid,c)=>{if(svc&&sid&&c)void bounded(svc,sid,{action:'release',claim:c}).catch(()=>{});};
           const tick=async()=>{
-            if(stopped||busy)return;const svc=studio(),now=currentSession();status.available=!!svc?.request;status.leaseFor=now?.slice(0,8)??null;status.stageFor=sessionId?.slice(0,8)??null;if(!svc?.request)return;
+            if(stopped||busy)return;const svc=studio(),now=currentSession();status.available=!!svc?.request;status.leaseFor=now?.slice(-12)??null;status.stageFor=sessionId?.slice(-12)??null;if(!svc?.request)return;
             if(leaseSession!==now&&claim){release(svc,leaseSession,claim);claim=null;}
-            leaseSession=now;if(!now||document.visibilityState==='hidden')return;busy=true;
+            leaseSession=now;if(!now)return;busy=true; // Not gated on visibility: a minimised or covered window must keep its scope.
             try{
-              if(claim){const r=await svc.request(now,{action:'renew',claim});if(!r?.ok||r.value?.active===false){claim=null;status.error=r?.error?.code??'RENEW_REJECTED';}else status.renewals++;}
-              if(!claim&&!stopped){const r=await svc.request(now,{action:'acquire',page_id:page});if(r?.ok&&r.value){claim=r.value;status.acquires++;status.error=null;}else status.error=r?.error?.code??'ACQUIRE_REJECTED';}
+              if(claim){const r=await bounded(svc,now,{action:'renew',claim});if(!r?.ok||r.value?.active===false){claim=null;status.error=r?.error?.code??'RENEW_REJECTED';}else status.renewals++;}
+              if(!claim&&!stopped){const r=await bounded(svc,now,{action:'acquire',page_id:page});if(r?.ok&&r.value){claim=r.value;status.acquires++;status.error=null;}else status.error=r?.error?.code??'ACQUIRE_REJECTED';}
             }catch(error){claim=null;status.error=error?.code??error?.name??'ERROR';}finally{busy=false;status.held=!!claim;}
           };
           leaseTick.current=tick;void tick();const timer=setInterval(tick,20000),visible=()=>{if(document.visibilityState==='visible')void tick();};

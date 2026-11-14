@@ -20,10 +20,10 @@ const revision = () => b.evaluate(`Number((/已保存 r(\d+)/.exec(document.body
 try {
   await step('home', async () => {
     await b.click('創作入口'); await b.waitFor(`document.body.innerText.includes('你的作品')`, {timeout: 30000}); await sleep(800); await shot('works-home');
-    if (await b.evaluate(`!!document.querySelector('[data-scean-home-action="new-work"]')`)) { await b.click('css:[data-scean-home-action="new-work"]'); await b.waitFor(`document.body.innerText.includes('使用現有角色卡')`, {timeout: 30000}); await sleep(800); await shot('new-work-home'); }
+    if (await b.evaluate(`!!document.querySelector('[data-scean-home-action="new-work"]')`)) { await b.click('css:[data-scean-home-action="new-work"]'); await b.waitFor(`document.body.innerText.includes('使用角色卡開始')`, {timeout: 30000}); await sleep(800); await shot('new-work-home'); }
   });
   await step('import-card', async () => {
-    await b.click('使用現有角色卡'); await sleep(1500);
+    await b.click('使用角色卡開始'); await sleep(1500);
     await b.click('匯入工作卡副本'); await sleep(500);
     await b.evaluate(`(()=>{const s=[...document.querySelectorAll('select')].find(s=>[...s.options].some(o=>o.value.includes(${JSON.stringify(file)})));s.value=[...s.options].find(o=>o.value.includes(${JSON.stringify(file)})).value;s.dispatchEvent(new Event('change',{bubbles:true}));return true})()`);
     await b.click('匯入副本');

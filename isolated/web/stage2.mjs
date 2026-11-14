@@ -115,6 +115,9 @@ function mount() {
   app.append(screen, sheetHost, live);
   let lastFlash = 0, feedVersion = null;
   setInterval(() => { const s = store.get(); if (s.screen === 'reader' && s.runId && document.visibilityState === 'visible' && !s.op) void actions.loadFeed(); }, 45000);
+  // A shelf shown without a card scope (Studio still starting, or a record being re-created) heals itself.
+  setInterval(() => { const s = store.get(); if (s.screen === 'shelf' && !s.context?.cardScope) void loadShelf().catch(() => {}); }, 4000);
+  document.addEventListener('visibilitychange', () => { const s = store.get(); if (document.visibilityState === 'visible' && s.screen === 'reader' && s.runId) void actions.loadFeed(); });
   store.subscribe(s => {
     const fv = s.screen === 'reader' && s.run ? `${s.runId}:${s.run.version}` : null;
     if (fv && fv !== feedVersion) { feedVersion = fv; void actions.loadFeed(); }
