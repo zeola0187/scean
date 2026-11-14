@@ -155,7 +155,7 @@ function renderFeed(s, actions, where) {
   const row = (item, body) => h('li', null, h('button', {class: 'interlude-item', type: 'button', onclick: () => open(item)}, body));
   const group = (label, note, rows) => rows.length ? h('div', {class: 'interlude-group'}, h('p', {class: 'interlude-label'}, label, h('small', null, note)), h('ul', null, rows)) : null;
   return h('details', {class: `interlude ${where}`, open: true, 'aria-label': '世界動態'},
-    h('summary', null, h('span', {class: 'interlude-title'}, '此刻，世界的另一邊'), h('span', {class: 'interlude-count'}, `${s.feed.unread} 則新消息`)),
+    h('summary', null, h('span', {class: 'interlude-title'}, '與此同時'), h('span', {class: 'interlude-count'}, `${s.feed.unread} 則新消息`)),
     group('公告', '已公告的安排；是否真的發生，以故事正文為準', notices.slice(0, 4).map(n => row(n, [h('strong', null, n.title), h('small', null, clockText(`${n.startLabel} ～ ${n.endLabel}`))]))),
     group('傳聞', '論壇上的說法，是角色自己的看法，不代表事實', rumours.slice(0, 5).map(p => row(p, [h('strong', null, p.kind === 'forum_reply' ? `${p.author} 回覆「${p.title}」` : `${p.author}：「${p.title}」`), h('small', null, p.excerpt)]))),
     h('div', {class: 'interlude-foot'}, items.length > 9 ? h('span', {class: 'meta'}, `還有 ${items.length - 9} 則，打開日曆或論壇查看。`) : h('span'), h('button', {class: 'link', type: 'button', onclick: markAll}, '都看過了')));

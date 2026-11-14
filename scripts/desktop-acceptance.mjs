@@ -172,6 +172,24 @@ const phases = {
     await b.click('css:[data-product-screen="stage"]').catch(() => {}); await b.waitFor(`document.body.innerText.includes('繼續閱讀')`, {...F, timeout: 40000}); await b.click('繼續閱讀', F); await b.waitFor(`!!document.querySelector('#composer-input')`, {...F, timeout: 30000});
     if (r.size.w > 1000 || r.horizontalOverflow || r.studioOverflow) throw Error('small window layout problem');
   },
+  async recap(r) {
+    await ensureReader(); await sleep(800);
+    await b.evaluate(`window.scrollTo(0, Math.floor(document.documentElement.scrollHeight / 2))`, S); await sleep(400);
+    r.yBefore = await b.evaluate(`Math.round(scrollY)`, S);
+    r.query = await b.evaluate(`([...document.querySelectorAll('.turn:not(.opening) .narr')].at(-1)?.innerText.trim() ?? '').slice(2, 5)`, S);
+    await b.evaluate(`[...document.querySelectorAll('.bar-tools button, .menu-row')].find(x => x.innerText.trim().startsWith('回顧'))?.click()`, S); await sleep(1500);
+    if (!await b.evaluate(`!!document.querySelector('.sheet')`, S)) { await b.evaluate(`document.querySelector('.more')?.click()`, S); await sleep(400); await b.evaluate(`[...document.querySelectorAll('.menu-row')].find(x => x.innerText.includes('回顧'))?.click()`, S); await sleep(1500); }
+    await shot('recap-chapters');
+    await b.evaluate(`[...document.querySelectorAll('.sheet button, .sheet [role=radio]')].find(x => x.innerText.trim() === '搜尋原文')?.click()`, S); await sleep(800);
+    await b.click('css:.recap-query', F); await b.type(r.query); await b.key('Enter'); await sleep(2000); await shot('recap-search');
+    r.result = await b.evaluate(`document.querySelector('.sheet-body .meta')?.innerText`, S);
+    await b.evaluate(`document.querySelector('.hit-row')?.click()`, S); await sleep(2000); await shot('recap-passage');
+    r.passage = await b.evaluate(`document.getElementById('sheet-title')?.innerText`, S); r.marks = await b.evaluate(`document.querySelectorAll('.passage mark').length`, S);
+    await b.evaluate(`[...document.querySelectorAll('.passage-nav button')].find(x => x.innerText.includes('上一段'))?.click()`, S); await sleep(1500); r.prev = await b.evaluate(`document.getElementById('sheet-title')?.innerText`, S);
+    await b.evaluate(`[...document.querySelectorAll('.passage-nav button')].find(x => x.innerText.includes('回到目前進度'))?.click()`, S); await sleep(800);
+    r.yAfter = await b.evaluate(`Math.round(scrollY)`, S);
+    if (!r.marks || r.yAfter !== r.yBefore || r.prev === r.passage) throw Error('recap search / passage / return failed');
+  },
   async workshop(r) {
     await ensureReader(); await b.click('更多', F); await sleep(400); await b.click('進階工坊', F);
     await b.waitFor(`document.querySelector('iframe[data-scean-native-player]')?.dataset.sceanStageUi==='workshop'`, {timeout: 20000}); await sleep(5000); await shot('workshop');
@@ -265,7 +283,7 @@ async function ensureReader() {
   await sleep(1200);
 }
 const order = Object.keys(phases); let started = !from;
-if (from && ['time', 'race', 'world', 'coexist', 'small', 'workshop', 'feed', 'notes', 'lease', 'resume', 'phone', 'restart'].includes(from)) { await sidebarConversation('創作對話'); await ensureReader(); }
+if (from && ['time', 'race', 'world', 'coexist', 'small', 'recap', 'workshop', 'feed', 'notes', 'lease', 'resume', 'phone', 'restart'].includes(from)) { await sidebarConversation('創作對話'); await ensureReader(); }
 try {
   for (const name of order) {
     if (!started && name === from) started = true; if (!started) continue;
