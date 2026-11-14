@@ -180,11 +180,17 @@
 - **全套離線回歸**：1,713 tests，1,698 pass，14 fail，1 skip。
   - 13 項是既有的基準環境性失敗。
   - 另 1 項是 `run-recycle` 的並發刪除測試：單獨重跑時 3 次失敗 1 次；在本輪開始前的提交 `31e4cff` 上重跑 6 次也失敗 2 次，屬於既有的時序不穩定測試，不是本輪造成的。
-- **尚待使用者親自驗收**：真實模型下的回顧與搜尋手感、時間選項是否符合直覺、插頁的閱讀節奏、實體手機的拖曳與鍵盤行為。
+- **使用者驗收**：2026-11-14 在個人預覽（`stagev2-6345635`）上親自驗收，通過。
+
+## 封版
+
+- **封版標籤**：`stage-v2-accepted`（annotated tag），指向本文件所在的提交。
+- **範圍**：只在 `proto/stage-a-p0` 分支上加標籤；沒有合併到 `main`，沒有建立 GitHub Release，也沒有發布正式版。
+- **回到封版狀態**：`git checkout stage-v2-accepted`。
 
 ## 交接（最終）
 
-- **全部完成並推送到** `proto/stage-a-p0`。
+- **全部完成、經使用者驗收並封版**，推送到 `proto/stage-a-p0`，標籤 `stage-v2-accepted`。
 - **重跑驗收**：照 `docs/STAGE-V2-DESKTOP.zh-TW.md` §6 建立新的 `stage-next-desk-*` 實例，然後依序執行 `stage-next-firstrun.mjs --desktop=<label> --genre=trpg --faults` 與 `desktop-acceptance.mjs --desktop=<label>`。
 - **如果繼續開發，建議下一步**：
   1. 在真實模型下親自驗收範例故事與工坊。
