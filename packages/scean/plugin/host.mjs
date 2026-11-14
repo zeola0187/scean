@@ -20,6 +20,7 @@ import {AgentDiagnostics} from './agent-diagnostics.mjs';
 import {publicInspection,publicSnapshot,publicTurnResult,publicRunView} from '../core/inspection.mjs';
 import {playerHistoryForView} from '../core/memory-policy.mjs';
 import {encodeRunBundle,validateRunBundle} from '../core/save-bundle.mjs';
+import {worldFeed,markFeedSeen,readFeedCursor} from './world-feed.mjs';
 import {HostJobs,JOB_OWNER} from './job-host.mjs';
 import {HostNotifications} from './notification-host.mjs';
 import {FRONTEND_PROFILE} from '../core/frontend.mjs';
@@ -685,6 +686,9 @@ export class SceanHost {
       switch(request.action){
         case 'settlementBody':value=await this.savedSettlementBody(request);break;
         case 'worldRoutineRead':this.requireRun(request.runId);value=await this.worldRoutine.read(request,authority);break;
+        case 'worldFeed':case 'worldFeedSeen':{this.requireRun(request.runId);if(!authority?.principal||authority.allowGlobalSettings!==true)fail('ROUTINE_READER_DENIED');
+          if(request.action==='worldFeedSeen'){value=await markFeedSeen(this.engine.store,request.runId,{forumSequence:request.forumSequence,ids:request.ids??[]});break;}
+          const run=await this.engine.store.read(request.runId);value=worldFeed(run,await readFeedCursor(this.engine.store,request.runId));break;}
         case 'worldRoutinePulse':case 'worldRoutineRetry':case 'diaryRequest':{if(!authority.principal||authority.allowGlobalSettings!==true||request.action==='diaryRequest'&&authority.allowPrivateDiagnostics!==true)fail('WORLD_ROUTINE_DENIED');this.requireRun(request.runId);value=request.action==='worldRoutinePulse'?await this.worldRoutine.drain({...request,signal}):request.action==='worldRoutineRetry'?await this.worldRoutine.retry(request):await this.worldRoutine.diaryRequest(request);break;}
         case 'scriptList':case 'scriptGet':case 'scriptStart':case 'scriptStatus':value=await this.scriptAction(request,scope,authority,signal);break;
         case 'playerCollaboration':case 'ownerWorldbook':value=await this.playerReaders.read(request,signal,authority,scope);break;

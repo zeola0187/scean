@@ -1,6 +1,6 @@
 // SCEAN Stage v2 — reading-first player ("書頁"). Shared by DSH Desktop and
 // DSH Web through the authenticated native bridge; all authority stays in Host.
-import {h, replace, createStore, createTransport, friendly} from './s2-core.mjs';
+import {h, replace, createStore, createTransport, friendly, sleep} from './s2-core.mjs';
 import {createOperations} from './s2-turn.mjs';
 import {renderShelf} from './s2-shelf.mjs';
 import {createReader} from './s2-reader.mjs';
@@ -12,12 +12,15 @@ const {call} = createTransport(native, {onContext: context => { if (context?.car
 const store = createStore({
   screen: 'loading', context: null, scripts: [], runs: [], latest: null, runId: null, run: null, turns: [], history: null,
   op: null, draft: '', sheet: null, sheetData: null, confirm: null, notice: null, flash: 0, highlight: null, ideas: null,
-  prefs: {theme: 'auto', size: 'normal', dark: false}, spoilerOk: {}, error: null, viewerId: null,
+  prefs: {theme: 'auto', size: 'normal', dark: false}, spoilerOk: {}, error: null, viewerId: null, feed: null,
 });
 let reader = null, view = null, sheetKey = null, selectionEpoch = 0;
 
 async function loadShelf() {
-  const context = await call('native.context').catch(error => ({error}));
+  let context = await call('native.context').catch(error => ({error}));
+  // Right after the stage document is swapped (workshop/legacy round trip) the Studio record can be
+  // momentarily unbound; an available conversation is retried briefly instead of showing an empty shelf.
+  for (let i = 0; i < 4 && !context?.cardScope && context?.playbackStatus?.status === 'available'; i++) { await sleep(1200); context = await call('native.context').catch(error => ({error})); }
   store.set({context});
   if (!context?.cardScope) { store.set({screen: 'shelf', scripts: [], runs: [], latest: null}); return; }
   const [runs, scripts] = await Promise.all([call('list').catch(() => []), call('scriptList').catch(() => [])]);
@@ -41,7 +44,7 @@ const actions = {
   async home() { selectionEpoch++; ops.stop(); store.set({screen: 'shelf', runId: null, run: null, turns: [], op: null, sheet: null, confirm: null, ideas: null}); await loadShelf().catch(error => store.set({error})); },
   async open(runId) {
     selectionEpoch++; ops.stop();
-    store.set({screen: 'reader', runId, run: null, turns: [], op: null, sheet: null, confirm: null, ideas: null, draft: '', notice: null, highlight: null});
+    store.set({screen: 'reader', runId, run: null, turns: [], op: null, sheet: null, confirm: null, ideas: null, draft: '', notice: null, highlight: null, feed: null});
     try {
       await reload();
       const draft = await call('draftGet', {runId}).catch(() => null);
@@ -74,6 +77,19 @@ const actions = {
     const value = await call('openingStart', {offerId: offer.offerId, cardId: offer.cardId, revision: offer.revision, snapshotHash: offer.snapshotHash, openingIndex, playerName}, {timeout: 30000});
     actions.closeSheet(); if (value.runId) await actions.open(value.runId);
   },
+  // World feed: refreshed on open, after any version change and every 45 s while reading.
+  // Fetching never marks anything read; only feedSeen (the player viewed items) does.
+  async loadFeed() {
+    const runId = store.get().runId; if (!runId) return;
+    try { const feed = await call('worldFeed', {runId}); if (store.get().runId === runId) store.set({feed}); } catch { /* the feed is optional */ }
+  },
+  async feedSeen({ids = [], forumSequence} = {}) {
+    const runId = store.get().runId; if (!runId || (!ids.length && forumSequence === undefined)) return;
+    const unseen = new Set(ids);
+    store.set(s => s.feed ? {...s, feed: {...s.feed, items: s.feed.items.filter(i => !unseen.has(i.id) && (forumSequence === undefined || !i.sequence || i.sequence > forumSequence)), unread: Math.max(0, s.feed.unread - ids.length)}} : s);
+    await call('worldFeedSeen', {runId, ids: ids.slice(0, 200), ...(forumSequence !== undefined ? {forumSequence} : {})}).catch(() => {});
+    await actions.loadFeed();
+  },
   async useLegacy() { await call('native.stageUi', {ui: 'legacy'}).catch(error => store.set({notice: friendly(error)})); },
   async workshop() { const runId = store.get().runId; await call('native.stageUi', runId ? {ui: 'workshop', runId} : {ui: 'workshop'}).catch(error => store.set({notice: friendly(error)})); },
   call, ops, store, reload,
@@ -87,8 +103,11 @@ function applyTheme(s) {
 function mount() {
   const app = document.getElementById('app'), screen = h('div', {class: 'screen'}), sheetHost = h('div', {class: 'sheet-host'}), live = h('p', {class: 'sr-only', role: 'status', 'aria-live': 'polite'});
   app.append(screen, sheetHost, live);
-  let lastFlash = 0;
+  let lastFlash = 0, feedVersion = null;
+  setInterval(() => { const s = store.get(); if (s.screen === 'reader' && s.runId && document.visibilityState === 'visible' && !s.op) void actions.loadFeed(); }, 45000);
   store.subscribe(s => {
+    const fv = s.screen === 'reader' && s.run ? `${s.runId}:${s.run.version}` : null;
+    if (fv && fv !== feedVersion) { feedVersion = fv; void actions.loadFeed(); }
     applyTheme(s);
     if (s.screen !== view) { view = s.screen; reader?.dispose(); reader = null; if (view === 'reader') { reader = createReader(actions); replace(screen, reader.el); } }
     if (view === 'shelf') replace(screen, renderShelf(s, actions));

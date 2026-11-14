@@ -33,6 +33,27 @@ export function nativeClientFactory(React,sharedHTML,createNativeBridge,createNo
         const switchUi=(next,runId=null)=>{if(next!=='workshop'){try{localStorage.setItem(uiKey,next);}catch{}}if(runId)selected=runId;setUi(next);};
         const close=()=>{const old=session.current;session.current=null;if(old){selections.delete(old.notify);panels.delete(old);old.stopPresentation?.();old.port.onmessage=null;old.port.close();void old.bridge.dispose();}};
         React.useEffect(()=>close,[]);
+        // The stage's card scope comes from Card Studio's per-conversation record, which only lives while some
+        // page holds a Studio lease (90 s, renewed). Studio panels hold one only while they are mounted, so a
+        // stage left open on its own lost its scope (CARD_CONTEXT_REQUIRED, then CHANGED once Studio reopened).
+        // Hold an ordinary page lease while the stage is open and visible, through the same Studio API.
+        React.useEffect(()=>{
+          let claim=null,leaseSession=null,stopped=false,busy=false;const page='scean-stage-'+globalThis.crypto.randomUUID();
+          const studio=()=>child.remote?.cardstudioScean;
+          const release=(svc,sid,c)=>{if(svc&&sid&&c)void svc.request(sid,{action:'release',claim:c}).catch(()=>{});};
+          const tick=async()=>{
+            if(stopped||busy)return;const svc=studio(),now=currentSession();if(!svc?.request)return;
+            if(leaseSession!==now&&claim){release(svc,leaseSession,claim);claim=null;}
+            leaseSession=now;if(!now||document.visibilityState==='hidden')return;busy=true;
+            try{
+              if(claim){const r=await svc.request(now,{action:'renew',claim});if(!r?.ok||r.value?.active===false)claim=null;}
+              if(!claim&&!stopped){const r=await svc.request(now,{action:'acquire',page_id:page});if(r?.ok&&r.value)claim=r.value;}
+            }catch{claim=null;}finally{busy=false;}
+          };
+          void tick();const timer=setInterval(tick,20000),visible=()=>{if(document.visibilityState==='visible')void tick();};
+          document.addEventListener('visibilitychange',visible);
+          return()=>{stopped=true;clearInterval(timer);document.removeEventListener('visibilitychange',visible);release(studio(),leaseSession,claim);};
+        },[]);
         const connect=()=>{
           close();if(!frame.current?.contentWindow)return;
           const channel=new MessageChannel(),bridge=createNativeBridge({call,selectPanel:key=>child.layout.selectPanel(key),openSession:id=>child.uiWorkspace.openSession(id),getSessionId:()=>sessionId,getViewerId,notifications,enableNotifications,onRunRecycled:({runId})=>{if(selected===runId)selected=null;},onStageUi:(value,runId)=>switchUi(value,runId),getStageUi:()=>ui,onDiagnose:detail=>window.dispatchEvent(new CustomEvent('scean:diagnose',{detail})),onOpeningStarted:({request,value})=>{if(request.sessionId!==sessionId)return;window.dispatchEvent(new CustomEvent('scean:started',{detail:{schema:1,authoringSessionId:request.sessionId,documentId:request.cardId,generation:request.cardScope?.generation,revision:request.revision,offerId:request.offerId,runId:value.runId,binding:value.binding}}));}});

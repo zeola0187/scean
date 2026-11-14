@@ -18,7 +18,7 @@ export function createReader(actions) {
   const margin = h('aside', {class: 'margin', 'aria-label': '此刻'});
   const el = h('div', {class: 'reader'}, bar, h('div', {class: 'reader-grid'}, h('main', {class: 'flow-col'}, flow, pending, composer.el), margin));
   const keys = {}; const changed = (k, v) => { const j = JSON.stringify(v); if (keys[k] === j) return false; keys[k] = j; return true; };
-  let lastLen = -1, lastPhase = null, lastSaved = false, workPanel = null;
+  let lastLen = -1, lastPhase = null, lastSaved = false, workPanel = null, feedFlow = null, feedMargin = null;
   function update(s) {
     if (!s.run) { replace(flow, h('p', {class: 'loading'}, '正在打開這場演出…')); composer.update(s); return; }
     const stick = nearBottom();
@@ -29,9 +29,14 @@ export function createReader(actions) {
     const panelChanged = changed('panel', [s.run.cardFrontend?.status ?? null, s.run.cardFrontend?.projection?.canonical ?? null]);
     if (panelChanged) { workPanel?.remove(); workPanel = renderWorkPanel(s.run); }
     if ((flowChanged || panelChanged) && workPanel) flow.append(workPanel);
+    // World feed: top of the 此刻 column on wide screens, end of the story on narrow ones (CSS picks one).
+    const feedChanged = changed('feed', [s.feed?.status, (s.feed?.items ?? []).map(i => i.id)]);
+    if (feedChanged || flowChanged || panelChanged) { feedFlow?.remove(); feedFlow = renderFeed(s, actions, 'feed-flow'); if (feedFlow) flow.append(feedFlow); }
     if (changed('pending', [s.op && {...s.op, stage: null}])) replace(pending, s.op ? renderPending(s, actions) : null);
     if (s.op?.phase === 'running') { const at = phaseIndex(s.op.stage); pending.querySelectorAll('.phases li').forEach((li, i) => { li.className = i < at ? 'done' : i === at ? 'now' : ''; if (i === at) li.setAttribute('aria-current', 'step'); else li.removeAttribute('aria-current'); }); }
-    if (changed('margin', [s.run.version, s.run.cardFrontend?.projection?.canonical ?? null])) replace(margin, renderMargin(s, actions));
+    const marginChanged = changed('margin', [s.run.version, s.run.cardFrontend?.projection?.canonical ?? null]);
+    if (marginChanged) replace(margin, renderMargin(s, actions));
+    if (feedChanged || marginChanged) { feedMargin?.remove(); feedMargin = renderFeed(s, actions, 'feed-margin'); if (feedMargin) margin.prepend(feedMargin); }
     composer.update(s);
     if ((stick && (lastLen !== s.turns.length || lastPhase !== (s.op?.phase ?? null))) || (s.op?.savedBody && !lastSaved)) requestAnimationFrame(scrollEnd);
     lastLen = s.turns.length; lastPhase = s.op?.phase ?? null; lastSaved = !!s.op?.savedBody;
@@ -118,6 +123,20 @@ function renderPending(s, actions) {
     default: status = card('bad', '這一輪沒有保存', friendly(op.failure) || '操作沒有完成。', op.kind === 'rollback' ? null : btn('再試一次', () => ops.retry(), 'primary'), btn(op.kind === 'turn' ? '修改行動' : '關閉', () => ops.dismiss()));
   }
   return [input, status];
+}
+
+function renderFeed(s, actions, where) {
+  const items = s.feed?.items ?? []; if (!items.length) return null;
+  const open = item => { void actions.feedSeen({ids: [item.id]}); if (item.kind === 'calendar_event') actions.sheet('calendar', {day: item.day}); else actions.sheet('forum', {threadId: item.threadId}); };
+  const line = item => item.kind === 'calendar_event'
+    ? [h('span', {class: 'feed-kind'}, '日曆'), h('span', {class: 'feed-text'}, h('strong', null, item.title), h('small', null, clockText(`${item.startLabel} ～ ${item.endLabel}`)))]
+    : [h('span', {class: 'feed-kind'}, item.kind === 'forum_reply' ? '回覆' : '論壇'), h('span', {class: 'feed-text'}, h('strong', null, item.kind === 'forum_reply' ? `${item.author} 回覆「${item.title}」` : `${item.author}：${item.title}`), h('small', null, item.excerpt))];
+  const shown = items.slice(0, 5);
+  return h('section', {class: `feed ${where}`, 'aria-label': '世界動態'},
+    h('div', {class: 'feed-head'}, h('p', {class: 'eyebrow'}, `世界動態 · ${s.feed.unread} 則新消息`),
+      h('button', {class: 'link', type: 'button', onclick: () => actions.feedSeen({ids: s.feed.latest?.ids ?? items.map(i => i.id), forumSequence: s.feed.latest?.forumSequence})}, '看過了')),
+    h('ul', {class: 'feed-items'}, shown.map(item => h('li', null, h('button', {class: 'feed-item', type: 'button', onclick: () => open(item)}, line(item))))),
+    items.length > shown.length ? h('p', {class: 'meta'}, `還有 ${items.length - shown.length} 則；打開日曆或論壇也會標為已讀。`) : null);
 }
 
 // Author panels run in an opaque, script-less sandbox, so their content height cannot be measured.

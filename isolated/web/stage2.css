@@ -86,7 +86,7 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .save-row { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 12px; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; }
 .save-row:hover, .script:hover { border-color: var(--accent); }
 .save-copy { display: grid; gap: 2px; min-width: 0; }
-.shelf-foot { border-top: 1px solid var(--line); padding-top: 16px; }
+.shelf-foot { border-top: 1px solid var(--line); padding-top: 16px; display: flex; flex-wrap: wrap; gap: 8px 24px; }
 .empty-state { display: grid; gap: 8px; padding: 18px; border-radius: var(--radius); background: var(--raised); border: 1px dashed var(--line); }
 .empty-state.big { padding: 32px; gap: 12px; } .empty-state.big h1 { font: 800 28px/1.25 var(--font-head); }
 .empty-state.is-warn { border-color: var(--warn); background: var(--warn-soft); }
@@ -293,3 +293,14 @@ legend { font-weight: 700; margin-bottom: 8px; padding: 0; }
 }
 .status-card .time-issue { color: var(--ink); font-weight: 600; }
 .script .tag { margin-left: 8px; padding: 1px 7px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--accent-soft, rgba(127,127,127,.18)); color: var(--accent, inherit); vertical-align: 2px; }
+/* World feed: news since the player last looked. Margin card on wide screens, end of story otherwise. */
+.feed { display: grid; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: var(--radius); padding: 12px 14px; font: 14px/1.5 var(--font-ui); }
+.feed-flow { margin: 4px 0 20px; }
+.feed-margin { display: none; }
+@media (min-width: 1180px) { .feed-flow { display: none; } .feed-margin { display: grid; } }
+.feed-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.feed-items { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.feed-item { width: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: baseline; text-align: left; background: none; border: 0; border-radius: var(--radius-sm); padding: 6px; }
+.feed-item:hover { background: var(--raised); }
+.feed-kind { font-size: 12px; font-weight: 700; color: var(--accent); white-space: nowrap; }
+.feed-text { display: grid; min-width: 0; } .feed-text strong { font-weight: 600; overflow-wrap: anywhere; } .feed-text small { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

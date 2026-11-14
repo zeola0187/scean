@@ -1,6 +1,14 @@
 // Read-only and confirmation sheets: right drawer on desktop, bottom sheet on phones.
 import {h, friendly} from './s2-core.mjs';
 import {stateGroups, changeRows, renderChanges, valueText, avatar, castIndex, CATEGORY, clockText} from './s2-render.mjs';
+
+// Viewing the forum or calendar marks exactly the unread feed items that were on screen.
+const shownMarked = new Set();
+function markShown(s, actions, ids) {
+  const unread = new Set((s.feed?.items ?? []).map(i => i.id)), todo = ids.filter(id => unread.has(id) && !shownMarked.has(id));
+  if (!todo.length || typeof actions.feedSeen !== 'function') return;
+  todo.forEach(id => shownMarked.add(id)); queueMicrotask(() => void actions.feedSeen({ids: todo}));
+}
 import {resolveTemplateSegments} from './player-text.mjs';
 
 const loading = new Set();
@@ -72,6 +80,7 @@ const SHEETS = {
   calendar(s, actions, params = {}) {
     const d = useData(s, actions, ['calendar', params], () => actions.call('worldRoutineRead', {runId: s.runId, expectedSnapshotHash: s.run.snapshot?.hash, view: 'player', kind: 'calendar', limit: 12, ...params}));
     if (!d) return {title: '日曆', body: wait()}; if (d.error) return {title: '日曆', body: failed(d, () => actions.sheet('calendar', {...params}))};
+    markShown(s, actions, (d.value?.entries ?? []).map(e => e.id));
     const v = d.value, STATUS = {planned_not_occurred: '預定', active: '進行中', completed: '已結束', pending_resolution: '條件未知', did_not_occur: '未發生'};
     if (v.status === 'not_enabled') return {title: '日曆', body: h('div', {class: 'empty-state'}, h('strong', null, '這部作品沒有啟用日曆'), h('p', null, '作者可以在創作時為作品開啟「世界日常」，讓角色和世界有自己的安排。'))};
     return {title: '日曆', sub: v.clockLabel ? '現在：' + clockText(v.clockLabel) : null, body: [
@@ -86,6 +95,7 @@ const SHEETS = {
     const d = useData(s, actions, ['forum', params], () => actions.call('worldRoutineRead', {runId: s.runId, expectedSnapshotHash: s.run.snapshot?.hash, view: 'player', kind: thread ? 'thread' : 'forum', limit: 12, ...params}));
     if (!d) return {title: '論壇', body: wait()}; if (d.error) return {title: '論壇', body: failed(d, () => actions.sheet('forum', {...params}))};
     const v = d.value, authors = v.authors ?? [], cast = s.run.snapshot?.characters ?? [], idx = castIndex(cast);
+    markShown(s, actions, [v.parent?.id, ...(v.entries ?? []).map(e => e.id)].filter(Boolean));
     if (v.status === 'not_enabled') return {title: '論壇', body: h('div', {class: 'empty-state'}, h('strong', null, '這部作品沒有啟用論壇'), h('p', null, '作者可以在創作時為作品設定論壇媒介。'))};
     const who = row => { const id = row?.author?.kind === 'character' ? row.author.characterId : row?.authorId; return row?.author?.kind === 'ambient' ? {name: '路人・' + row.author.displayName, i: 7} : {name: authors.find(a => a.id === id)?.name ?? cast.find(a => a.id === id)?.name ?? id, i: idx.get(id) ?? 0, id}; };
     const by = row => { const w = who(row); return h('p', {class: 'post-by'}, avatar({name: w.name}, w.i), h('span', null, h('strong', null, w.name), h('small', null, clockText(row.timeLabel ?? '')))); };

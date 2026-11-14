@@ -74,7 +74,9 @@ export function createNativeBridge({call,selectPanel,openSession,getSessionId=()
       const keys=['runId','expectedSnapshotHash','expectedLifecycleRevision','view','kind','limit','windowStart','day','eventOffset','threadId','beforeSequence','afterSequence'];
       if(payload.view!=='player'||!['calendar','forum','thread'].includes(payload.kind)||Object.keys(payload).some(k=>!keys.includes(k)))throw denied('NATIVE_ROUTINE_READ_INVALID');
     }
-    if(!allowed.has(action)&&action!=='worldRoutineRead')throw denied('NATIVE_ACTION_DENIED');
+    if(action==='worldFeed'&&Object.keys(payload).some(k=>k!=='runId'))throw denied('NATIVE_FEED_INVALID');
+    if(action==='worldFeedSeen'&&Object.keys(payload).some(k=>!['runId','forumSequence','ids'].includes(k)))throw denied('NATIVE_FEED_INVALID');
+    if(!allowed.has(action)&&!['worldRoutineRead','worldFeed','worldFeedSeen'].includes(action))throw denied('NATIVE_ACTION_DENIED');
     const request=scoped({...payload,action}),epoch=privacyEpoch,contextToken=contextEpoch;
       if(action==='operationSubmit'){await notifications?.watch(request);if(contextToken!==contextEpoch)throw denied('NATIVE_CONTEXT_STALE');}
       let value;try{value=await call(request);if(action==='operationSubmit')void notifications?.refresh();}catch(error){if(contextToken!==contextEpoch)throw denied('NATIVE_CONTEXT_STALE');throw error;}
