@@ -110,7 +110,7 @@ async function connect(port, {match = t => t.type === 'page', onClose = async ()
     async click(target, {frame = 'main', timeout = 15000} = {}) {
       const end = Date.now() + timeout; let pos;
       while (Date.now() < end) { pos = await center(target, frame).catch(() => null); if (pos && !pos.disabled) break; await sleep(200); }
-      if (!pos || pos.disabled) { try { const r = await send('Page.captureScreenshot', {format: 'png'}); writeFileSync(join(process.cwd(), 'click-failure.png'), Buffer.from(r.data, 'base64')); } catch {} throw Error('CLICK_TARGET_NOT_FOUND: ' + target); }
+      if (!pos || pos.disabled) { try { const r = await send('Page.captureScreenshot', {format: 'png'}); writeFileSync(join(import.meta.dirname, '..', 'evidence', 'click-failure.png'), Buffer.from(r.data, 'base64')); } catch {} throw Error('CLICK_TARGET_NOT_FOUND: ' + target); }
       for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) await send('Input.dispatchMouseEvent', {type, x: pos.x, y: pos.y, button: 'left', clickCount: 1});
       await sleep(250);
     },
