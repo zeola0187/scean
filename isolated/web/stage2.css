@@ -311,3 +311,14 @@ legend { font-weight: 700; margin-bottom: 8px; padding: 0; }
 .note.is-stale blockquote { opacity: .6; border-left-color: var(--line); }
 .stale-notes summary { cursor: pointer; color: var(--muted); font-size: 13px; padding: 6px 0; }
 .file-pick { cursor: pointer; display: inline-flex; align-items: center; }
+/* 回顧: chapters, search and passage view */
+.chapter-row, .hit-row { width: 100%; display: grid; gap: 4px; text-align: left; background: none; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px 14px; }
+.chapter-row:hover, .hit-row:hover { background: var(--raised); }
+.chapters, .hits { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.chapter-summary p { font: var(--read-size)/var(--read-leading) var(--font-read); margin: 0 0 .8em; }
+.recap-search { display: flex; gap: 8px; margin: 4px 0 10px; } .recap-query { flex: 1; min-width: 0; padding: 8px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); }
+.hit-text { margin: 0; color: var(--ink); overflow-wrap: anywhere; }
+mark { background: var(--mark-hit, color-mix(in srgb, var(--accent) 28%, transparent)); color: inherit; border-radius: 3px; padding: 0 1px; }
+.passage { display: grid; gap: .8em; font: var(--read-size)/var(--read-leading) var(--font-read); padding: 8px 0 12px; }
+.passage-nav { position: sticky; bottom: 0; background: var(--surface); padding: 10px 0; border-top: 1px solid var(--line); }
+.unarchived { display: grid; gap: 6px; margin-top: 12px; }

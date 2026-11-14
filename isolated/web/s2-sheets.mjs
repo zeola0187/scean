@@ -2,6 +2,50 @@
 import {h, friendly} from './s2-core.mjs';
 import {stateGroups, changeRows, renderChanges, valueText, avatar, castIndex, CATEGORY, clockText} from './s2-render.mjs';
 
+// Search over saved story text (your inputs and the committed prose). Host-side, newest first, 10 per page.
+function recapSearch(s, actions, arg, tabs, sub) {
+  const q = (arg.q ?? '').trim(), offset = arg.offset ?? 0;
+  const input = h('input', {type: 'search', class: 'recap-query', value: q, placeholder: '人名、地名、一句話…', 'aria-label': '搜尋已保存的原文', 'data-autofocus': true});
+  const go = () => { const v = input.value.trim(); if (v) actions.sheet('recap', {tab: 'search', q: v, offset: 0}); };
+  input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); go(); } });
+  const form = h('div', {class: 'recap-search'}, input, h('button', {class: 'primary small', type: 'button', onclick: go}, '搜尋'));
+  if (!q) return {title: '回顧', sub, body: [tabs, form, h('p', {class: 'fine'}, '只搜尋已保存的正文與你寫下的行動；不會搜尋角色的私密記憶或尚未揭露的設定，也不會呼叫模型。')]};
+  const d = useData(s, actions, ['recap-search', q, offset], () => actions.call('historySearch', {runId: s.runId, query: q, mode: 'literal', limit: 10, offset, order: 'newest'}));
+  if (!d) return {title: '回顧', sub, body: [tabs, form, wait()]}; if (d.error) return {title: '回顧', sub, body: [tabs, form, failed(d)]};
+  const v = d.value, hits = v.hits ?? [];
+  return {title: '回顧', sub, body: [tabs, form,
+    h('p', {class: 'meta'}, v.total ? `找到 ${v.total} 段，從最新的開始` : '沒有找到。'),
+    hits.length ? h('ul', {class: 'hits'}, hits.map(hit => h('li', null, h('button', {class: 'hit-row', type: 'button', onclick: () => actions.sheet('recap', {passage: hit.commitId, q, from: 'search', offset})},
+      h('p', {class: 'eyebrow'}, `第 ${hit.turn} 段${hit.snippetField === 'input' ? '・你的行動' : ''}`), h('p', {class: 'hit-text'}, highlight(hit.snippet, q)))))) : null,
+    h('div', {class: 'row'}, offset > 0 ? h('button', {class: 'ghost small', type: 'button', onclick: () => actions.sheet('recap', {tab: 'search', q, offset: Math.max(0, offset - 10)})}, '‹ 較新的') : null,
+      v.nextOffset !== null && v.nextOffset !== undefined ? h('button', {class: 'ghost small', type: 'button', onclick: () => actions.sheet('recap', {tab: 'search', q, offset: v.nextOffset})}, '較舊的 ›') : null)]};
+}
+
+// One saved section (with its neighbours for navigation), exactly as stored.
+function recapPassage(s, actions, arg, sub) {
+  const d = useData(s, actions, ['recap-passage', arg.passage], () => actions.call('historyRead', {runId: s.runId, commitId: arg.passage, radius: 1}));
+  const back = arg.from === 'search' ? h('button', {class: 'link', type: 'button', onclick: () => actions.sheet('recap', {tab: 'search', q: arg.q, offset: arg.offset ?? 0})}, '‹ 回到搜尋結果')
+    : arg.chapterId ? h('button', {class: 'link', type: 'button', onclick: () => actions.sheet('recap', {chapterId: arg.chapterId})}, '‹ 回到章節')
+    : h('button', {class: 'link', type: 'button', onclick: () => actions.sheet('recap', {tab: 'chapters'})}, '‹ 所有章節');
+  const home = h('button', {class: 'primary small', type: 'button', onclick: () => actions.closeSheet()}, '回到目前進度');
+  if (!d) return {title: '回顧', sub, body: [back, wait()]}; if (d.error) return {title: '回顧', sub, body: [back, failed(d)]};
+  const turns = d.value.turns ?? [], i = turns.findIndex(t => t.commitId === arg.passage), t = turns[i];
+  if (!t) return {title: '回顧', sub, body: [back, h('p', {class: 'meta'}, '這一段已不在故事中（可能被收回或重寫）。'), home]};
+  const step = other => other ? actions.sheet('recap', {...arg, passage: other.commitId}) : null, prev = turns[i - 1], next = turns[i + 1];
+  return {title: `第 ${t.turn} 段`, sub: '已保存的原文', body: [back,
+    h('article', {class: 'passage'}, t.input ? h('div', {class: 'you'}, h('span', {class: 'you-tag'}, '你'), h('p', null, highlight(t.input, arg.q))) : null,
+      ...String(t.body ?? '').split(/\n+/).filter(x => x.trim()).map(par => h('p', {class: 'narr'}, highlight(par, arg.q)))),
+    h('div', {class: 'row passage-nav'}, h('button', {class: 'ghost small', type: 'button', disabled: !prev, onclick: () => step(prev)}, '‹ 上一段'),
+      h('button', {class: 'ghost small', type: 'button', disabled: !next, onclick: () => step(next)}, '下一段 ›'), home)]};
+}
+
+function highlight(text, q) {
+  const value = String(text ?? ''); if (!q) return value;
+  const parts = [], lower = value.toLocaleLowerCase(), needle = q.toLocaleLowerCase(); let at = 0, i;
+  while ((i = lower.indexOf(needle, at)) >= 0) { parts.push(value.slice(at, i), h('mark', null, value.slice(i, i + q.length))); at = i + q.length; }
+  parts.push(value.slice(at)); return parts;
+}
+
 // Notes travel as their own small file: run backups do not include them (see the note in the tab).
 function exportNotes(s, notes) {
   const data = {format: 'scean-player-notes', version: 1, runId: s.runId, title: s.run?.snapshot?.card?.name ?? null, exportedAt: new Date().toISOString(),
@@ -155,13 +199,35 @@ const SHEETS = {
       (v.entries ?? []).length ? h('ul', {class: 'lore'}, v.entries.map(e => h('li', null, h('button', {class: 'lore-row', type: 'button', onclick: () => actions.sheet('lore', {tier, entryId: e.id})}, h('strong', null, e.title || '未命名條目'), e.bookTitle ? h('small', null, e.bookTitle) : null)))) : h('p', {class: 'meta'}, '沒有可以顯示的條目。')]};
   },
 
-  recap(s, actions) {
+  // 回顧: chapters, full summaries, search over saved story text, and a passage view. The passage view
+  // reads one saved section (±1 for context) on demand, so long stories never load all history, and
+  // the main reader keeps its position: 回到目前進度 simply closes this sheet.
+  recap(s, actions, arg = {}) {
+    const tab = arg.passage ? 'passage' : arg.chapterId ? 'chapter' : arg.tab ?? 'chapters';
+    const tabs = seg('回顧', tab === 'passage' || tab === 'chapter' ? (arg.from ?? 'chapters') : tab, [['chapters', '章節'], ['search', '搜尋原文'], ['known', '我已知的']], v => v === 'known' ? actions.sheet('lore', 'known') : actions.sheet('recap', {tab: v}));
+    const sub = `${s.run.turnCount ?? 0} 段已保存的正文`;
+    if (tab === 'passage') return recapPassage(s, actions, arg, sub);
+    if (tab === 'search') return recapSearch(s, actions, arg, tabs, sub);
+    if (tab === 'chapter') {
+      const d = useData(s, actions, ['recap-chapter', arg.chapterId], () => actions.call('playerRecap', {runId: s.runId, expectedSnapshotHash: s.run.snapshot?.hash, chapterId: arg.chapterId}));
+      if (!d) return {title: '回顧', sub, body: wait()}; if (d.error) return {title: '回顧', sub, body: failed(d)};
+      const c = d.value.chapter ?? {}, sum = c.summary ?? null;
+      const list = (label, rows) => Array.isArray(rows) && rows.length ? h('p', {class: 'meta'}, `${label}：${rows.map(r => typeof r === 'string' ? r : r?.name ?? r?.title ?? '').filter(Boolean).join('、')}`) : null;
+      return {title: c.title ?? '章節', sub: `第 ${c.order ?? '—'} 章・第 ${c.startTurn}–${c.endTurn} 段`, body: [
+        h('button', {class: 'link', type: 'button', onclick: () => actions.sheet('recap', {tab: 'chapters'})}, '‹ 所有章節'),
+        sum ? h('div', {class: 'chapter-summary'}, ...String(sum.summary ?? '').split(/\n+/).filter(Boolean).map(t => h('p', null, t))) : h('p', {class: 'meta'}, '這一章還沒有摘要。'),
+        sum ? list('人物', sum.characters) : null, sum ? list('地點', sum.locations) : null, sum ? list('線索與伏筆', sum.plotThreads) : null,
+        c.source?.startCommitId ? h('div', {class: 'row'}, h('button', {class: 'primary small', type: 'button', onclick: () => actions.sheet('recap', {passage: c.source.startCommitId, from: 'chapters', chapterId: arg.chapterId})}, '讀這一章的原文')) : null,
+        h('p', {class: 'fine'}, '摘要是閱讀輔助；原文與已保存狀態才是依據。')]};
+    }
     const d = useData(s, actions, ['recap'], () => actions.call('playerRecap', {runId: s.runId, expectedSnapshotHash: s.run.snapshot?.hash}));
-    if (!d) return {title: '回顧', body: wait()}; if (d.error) return {title: '回顧', body: failed(d)};
-    const chapters = d.value.chapters ?? [];
-    return {title: '回顧', sub: `${s.run.turnCount ?? 0} 段已保存的正文`, body: [
-      chapters.length ? h('ol', {class: 'chapters'}, chapters.map(c => h('li', null, h('p', {class: 'eyebrow'}, `第 ${c.order} 章・第 ${c.startTurn}–${c.endTurn} 段`), h('strong', null, c.title), h('p', null, c.summaryPreview ?? '這一章還沒有摘要。')))) :
-        h('div', {class: 'empty-state'}, h('strong', null, '還沒有整理好的章節'), h('p', null, '故事累積到一定長度、並開啟自動摘要後，章節會自動整理在這裡。')),
+    if (!d) return {title: '回顧', sub, body: [tabs, wait()]}; if (d.error) return {title: '回顧', sub, body: [tabs, failed(d)]};
+    const chapters = d.value.chapters ?? [], open = d.value.unarchived;
+    return {title: '回顧', sub, body: [tabs,
+      chapters.length ? h('ol', {class: 'chapters'}, chapters.map(c => h('li', null, h('button', {class: 'chapter-row', type: 'button', onclick: () => actions.sheet('recap', {chapterId: c.id})},
+        h('p', {class: 'eyebrow'}, `第 ${c.order} 章・第 ${c.startTurn}–${c.endTurn} 段`), h('strong', null, c.title), c.summaryPreview ? h('p', null, c.summaryPreview + (c.summaryTruncated ? '…' : '')) : h('p', {class: 'meta'}, '摘要整理中')))))
+        : h('div', {class: 'empty-state'}, h('strong', null, '還沒有整理好的章節'), h('p', null, '故事累積到一定長度、並開啟自動摘要後，章節會自動整理在這裡。也可以直接「搜尋原文」。')),
+      open ? h('div', {class: 'unarchived'}, h('p', {class: 'eyebrow'}, `${open.title}・第 ${open.startTurn}–${open.endTurn} 段`), h('button', {class: 'ghost small', type: 'button', onclick: () => actions.sheet('recap', {passage: open.source.startCommitId, from: 'chapters'})}, '從這裡開始讀')) : null,
       h('p', {class: 'fine'}, '摘要是閱讀輔助；原文與已保存狀態才是依據。')]};
   },
 

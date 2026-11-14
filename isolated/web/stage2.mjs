@@ -113,7 +113,7 @@ function applyTheme(s) {
 function mount() {
   const app = document.getElementById('app'), screen = h('div', {class: 'screen'}), sheetHost = h('div', {class: 'sheet-host'}), live = h('p', {class: 'sr-only', role: 'status', 'aria-live': 'polite'});
   app.append(screen, sheetHost, live);
-  let lastFlash = 0, feedVersion = null;
+  let lastFlash = 0, feedVersion = null, lastSheetView = null, readingY = null;
   setInterval(() => { const s = store.get(); if (s.screen === 'reader' && s.runId && document.visibilityState === 'visible' && !s.op) void actions.loadFeed(); }, 45000);
   // A shelf shown without a card scope (Studio still starting, or a record being re-created) heals itself.
   setInterval(() => { const s = store.get(); if (s.screen === 'shelf' && !s.context?.cardScope) void loadShelf().catch(() => {}); }, 4000);
@@ -129,9 +129,14 @@ function mount() {
     const key = s.sheet ? JSON.stringify([s.sheet.kind, s.sheet.arg?.offerId ?? s.sheet.arg, s.sheetData?.stamp ?? null, s.run?.version, s.op?.phase, s.prefs, s.spoilerOk]) : null;
     if (key !== sheetKey) {
       const wasOpen = !!sheetHost.firstChild, top = sheetHost.querySelector('.sheet-body')?.scrollTop ?? 0;
+      // Reading position survives any sheet (回顧, 日曆, 設定…): remembered on open, restored on close.
+      if (s.sheet && !wasOpen) readingY = window.scrollY;
+      if (!s.sheet && wasOpen && readingY !== null) { const y = readingY; readingY = null; requestAnimationFrame(() => window.scrollTo(0, y)); }
       sheetKey = key; replace(sheetHost, s.sheet ? renderSheet(s, actions) : null);
       document.body.classList.toggle('has-sheet', !!s.sheet);
-      if (wasOpen && s.sheet) { sheetHost.querySelector('.sheet')?.classList.add('no-anim'); const b = sheetHost.querySelector('.sheet-body'); if (b) b.scrollTop = top; }
+      // Same view refreshing keeps its scroll; moving to another view (e.g. 回顧 › 下一段) starts at the top.
+      const view = s.sheet ? JSON.stringify([s.sheet.kind, s.sheet.arg]) : null, sameView = view === lastSheetView; lastSheetView = view;
+      if (wasOpen && s.sheet) { sheetHost.querySelector('.sheet')?.classList.add('no-anim'); const b = sheetHost.querySelector('.sheet-body'); if (b) b.scrollTop = sameView ? top : 0; }
       if (s.sheet && !wasOpen) requestAnimationFrame(() => sheetHost.querySelector('[data-autofocus], .sheet-close')?.focus({preventScroll: true}));
     }
     if (s.flash && s.flash !== lastFlash) { lastFlash = s.flash; live.textContent = '這一段已保存。'; }
