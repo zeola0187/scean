@@ -26,7 +26,7 @@ export class JobLedger {
     const op=this.queue.catch(()=>{}).then(async()=>{
       const temporary=join(this.root,`operations.${randomUUID()}.tmp`);let handle;
       try{
-        handle=await open(temporary,'wx',0o600);await handle.writeFile(JSON.stringify({schemaVersion:this.records.some(r=>r.kind==='settlementResume')?2:1,records:this.records}),'utf8');await handle.sync();await handle.close();handle=null;
+        handle=await open(temporary,'wx',0o600);await handle.writeFile(JSON.stringify({schemaVersion:this.records.some(r=>['stageResume','settlementResume'].includes(r.kind))?2:1,records:this.records}),'utf8');await handle.sync();await handle.close();handle=null;
         await this.fault?.('beforeRename');
         for(let retry=0;;retry++){try{await rename(temporary,join(this.root,'operations.json'));break;}catch(error){if(retry>=2||!['EPERM','EACCES','EBUSY'].includes(error.code))throw error;await new Promise(resolve=>setTimeout(resolve,10*(retry+1)));}}
         let dir;try{dir=await open(this.root,'r');await dir.sync();}catch(error){if(!['EPERM','EISDIR','EINVAL','EACCES','ENOTSUP','EBADF'].includes(error.code))throw error;}finally{await dir?.close();}

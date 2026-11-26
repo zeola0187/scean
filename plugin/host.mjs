@@ -293,10 +293,10 @@ export class SceanHost {
       // The read succeeded and found no publication. Preserve input for a same-ID retry.
       base.status='failed';base.recovery='confirmed_not_committed';
     }
-    if(attempt?.recovery)base.recovery=attempt.recovery;if(base.lastFailure&&inspected.lastFailure?.bodyAvailable)base.lastFailure={...base.lastFailure,...inspected.lastFailure};
+    if(attempt?.recovery)base.recovery=attempt.recovery;if(base.lastFailure && inspected.lastFailure?.attemptId===base.attemptId && inspected.lastFailure?.requestId===base.requestId && (inspected.lastFailure.bodyAvailable||inspected.lastFailure.stageAvailable))base.lastFailure={...base.lastFailure,...inspected.lastFailure};
     return {...base,canonical,version:canonical.version,head:canonical.head};
   }
-  async turn({runId,input,requestId,signal,operationId,baseVersion,baseHead,viewerId,timeConfirmation,resumeAttemptId,[JOB_OWNER]:job}){
+  async turn({runId,input,requestId,signal,operationId,baseVersion,baseHead,viewerId,timeConfirmation,resumeAttemptId,stageAttemptId,[JOB_OWNER]:job}){
     if(!this.metadata.runs.some(r=>r.runId===runId))fail('RUN_NOT_FOUND','Unknown SCEAN run.');
     if(typeof input!=='string'||!input.trim()||input.length>20000)fail('INPUT','Enter bounded player text.');
     if(typeof requestId!=='string'||!requestId)fail('REQUEST_ID','A stable requestId is required.');
@@ -321,7 +321,7 @@ export class SceanHost {
     const progress={runId,requestId,operationId,attemptId:null,stage:'memory',status:'pending',sequence:0,events:[]};this.progressByRun.set(runId,progress);
     try{
       await this.draftSave({runId,input,requestId,...(viewerId===undefined?{}:{viewerId})},controller);
-      const executeTurn=()=>this.engine.turn({runId,input,requestId,operationId,baseVersion,baseHead,timeConfirmation,resumeAttemptId,chapterContextEnabled:this.writerSummaryArmed.has(runId)?false:undefined,signal:signal?AbortSignal.any([controller.signal,signal]):controller.signal,onProgress:event=>{owner.attemptId=event.attemptId;const owned={...event,operationId};Object.assign(progress,owned);progress.events.push(owned);if(progress.events.length>100)progress.events.shift();}});
+      const executeTurn=()=>this.engine.turn({runId,input,requestId,operationId,baseVersion,baseHead,timeConfirmation,resumeAttemptId,stageAttemptId,chapterContextEnabled:this.writerSummaryArmed.has(runId)?false:undefined,signal:signal?AbortSignal.any([controller.signal,signal]):controller.signal,onProgress:event=>{owner.attemptId=event.attemptId;const owned={...event,operationId};Object.assign(progress,owned);progress.events.push(owned);if(progress.events.length>100)progress.events.shift();}});
       let result;const waits=[10,20,40,80,120,160,200,240,320,400,500,600,800,1000];let observedBackgroundCommit=this.worldRoutine.committing.has(runId);for(let admission=0;;admission++){try{result=await executeTurn();break;}catch(e){observedBackgroundCommit||=this.worldRoutine.committing.has(runId);if(e.code!=='RUN_BUSY'||e.sceanFailure||!observedBackgroundCommit||admission>=waits.length)throw e;await new Promise(r=>setTimeout(r,waits[admission]));}}
       Object.assign(progress,{stage:'commit',status:'committed',commitId:result.commitId});
       const summary=this.metadata.runs.find(row=>row.runId===runId);if(summary)Object.assign(summary,{version:result.version,turnCount:result.turn,updatedAt:new Date(this.now()).toISOString()});
@@ -339,6 +339,12 @@ export class SceanHost {
     this.requireRun(runId);const run=await this.engine.store.read(runId),a=await this.engine.store.readAttempt(runId,safeId(attemptId)),c=a.bodyCheckpoint;
     if(!c||c.schemaVersion!==1||a.runId!==runId||c.pins?.runId!==runId||c.pins.snapshotHash!==run.snapshot.hash||typeof c.body!=='string'||c.body.length>200000||hash(c.body)!==c.bodyHash)fail('SETTLEMENT_SOURCE_STALE','找不到完整的已保存正文。');
     return {runId,attemptId,requestId:a.requestId,status:'saved_not_committed',body:c.body,bodyHash:c.bodyHash};
+  }
+  async resumeStage(request){
+    this.requireRun(request.runId);
+    const source=await this.engine.store.readAttempt(request.runId,request.sourceAttemptId);
+    if(source.requestId!==request.requestId || !source.stageCheckpoint || source.provisional)fail('STAGE_SOURCE_STALE');
+    return this.turn({...request,input:source.input,timeConfirmation:source.timeConfirmation,stageAttemptId:source.attemptId});
   }
   async resumeSettlement(request){
     this.requireRun(request.runId);const saved=await this.engine.store.readAttempt(request.runId,request.sourceAttemptId);
@@ -492,7 +498,7 @@ export class SceanHost {
     const work=new Promise(resolve=>setImmediate(resolve)).then(async()=>{
       // Admission remains reserved through durable job finalization. Let the
       // owning turn finish that bookkeeping before checking background capacity.
-      const finishing=this.jobs.active.get(runId);if(['turn','chapterSettings','regenerate','settlementResume'].includes(finishing?.row.kind))await finishing.promise;
+      const finishing=this.jobs.active.get(runId);if(['turn','chapterSettings','regenerate','settlementResume','stageResume'].includes(finishing?.row.kind))await finishing.promise;
       if(this.closing||this.automaticSummaryFailures.has(runId)||this.mutationBusy(runId))return;
       const run=await this.engine.store.read(runId);
       if(run.narrative?.chapterSettings?.autoEnabled!==true||headOf(run)!==commitId)return;

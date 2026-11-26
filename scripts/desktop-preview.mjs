@@ -5,11 +5,11 @@
 //   <root>/packages/*.tgz       preview suite packages (distinct version, never the release name)
 //   <root>/<label>/home         DSH_HOME (profiles/desktop, sessions, SCEAN data)
 //   <root>/<label>/userdata     Electron userData (own single-instance lock → runs beside production)
-// The production install (E:\DSH) and ~/.dsh are only ever read, never written.
+// The production install and ~/.dsh are only ever read, never written.
 //
 // Commands:
 //   node scripts/desktop-preview.mjs pack                         build a preview tgz from this worktree
-//   node scripts/desktop-preview.mjs setup  --label=L [--scripted] [--tgz=file]
+//   node scripts/desktop-preview.mjs setup  --label=L [--from=<DSH-install>] [--scripted] [--tgz=file]
 //   node scripts/desktop-preview.mjs setup  --label=L --clean      empty DSH_HOME: DSH creates its own profile, nothing preinstalled
 //   node scripts/desktop-preview.mjs update --label=L [--tgz=file]   reinstall the suite, keep all data
 //   node scripts/desktop-preview.mjs start  --label=L [--cdp=9333]
@@ -25,7 +25,7 @@ import {pathToFileURL} from 'node:url';
 const repo = path.resolve(import.meta.dirname, '..');
 const arg = name => process.argv.find(a => a.startsWith(`--${name}=`))?.slice(name.length + 3);
 const root = path.resolve(arg('root') ?? path.join(repo, '..', 'dsh-desktop-preview'));
-const productionApp = path.resolve(arg('from') ?? 'E:/DSH');
+const productionApp = path.resolve(arg('from') ?? process.env.DSH_APP_DIR ?? path.join(process.env.LOCALAPPDATA ?? process.cwd(), 'Programs', 'DeepSeek Harness'));
 const productionHome = path.join(process.env.USERPROFILE ?? '', '.dsh');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const slash = p => p.replaceAll('\\', '/');

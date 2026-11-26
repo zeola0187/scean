@@ -85,7 +85,7 @@
 ## 8. 如何執行
 
 ```bash
-python scripts/prepare-test-sdk.py --asar "E:/DSH/resources/app.asar"
+python scripts/prepare-test-sdk.py --asar "<DSH-install>/resources/app.asar"
 node scripts/dev-build.mjs
 node scripts/stage-next-host.mjs --label=stage-next-dev
 node scripts/stage-next-firstrun.mjs --genre=road --faults

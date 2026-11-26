@@ -6,6 +6,9 @@ import { randomUUID } from 'node:crypto';
 import { safeId, json, clone, checkAbort, SceanError } from '../core/contracts.mjs';
 import {assertRunActive,runLifecycle} from '../core/run-lifecycle.mjs';
 
+const IO_RETRY_MS = [10, 20];
+const WINDOWS_ATOMIC_REPLACE_RETRY_MS = [10, 20, 40, 80, 160, 200];
+
 // One aggregate is the authority for body, state, memories and idempotency receipts.
 // Indexes and attempt audit files are explicitly non-authoritative.
 export class DurableStore {
@@ -13,18 +16,30 @@ export class DurableStore {
     if (typeof options === 'string') options = { root: options };
     if (!options?.root) throw new SceanError('STORE_ROOT_REQUIRED');
     this.root = path.resolve(options.root); this.fault = options.fault; this.held = new Set();
+    this.canonicalFileIo = new Map();
   }
   runDir(runId) { return path.join(this.root, 'runs', safeId(runId)); }
   currentFile(runId) { return path.join(this.runDir(runId),'current.json'); }
   async inject(point, detail) { await this.fault?.(point, detail); }
-  async retrySharingViolation(operation) {
+  async withCanonicalFileIo(file, operation) {
+    if (process.platform !== 'win32' || path.basename(file) !== 'current.json') return operation();
+    // Reader polls from the same host must not keep the canonical file open
+    // while it is being replaced. Queue by file, not by host or unrelated Run.
+    const prior = this.canonicalFileIo.get(file) ?? Promise.resolve();
+    const result = prior.then(operation);
+    const tail = result.then(() => undefined, () => undefined);
+    this.canonicalFileIo.set(file, tail);
+    try { return await result; }
+    finally { if (this.canonicalFileIo.get(file) === tail) this.canonicalFileIo.delete(file); }
+  }
+  async retrySharingViolation(operation, delays = IO_RETRY_MS) {
     // Windows readers/antivirus may briefly hold a delete-denying handle.
     // Never remove the destination as a fallback: that would break atomicity.
     for (let attempt = 0; ; attempt++) {
       try { return await operation(); }
       catch (error) {
-        if (attempt >= 2 || !['EPERM', 'EACCES', 'EBUSY'].includes(error.code)) throw error;
-        await new Promise(resolve => setTimeout(resolve, 10 * (attempt + 1)));
+        if (attempt >= delays.length || !['EPERM', 'EACCES', 'EBUSY'].includes(error.code)) throw error;
+        await new Promise(resolve => setTimeout(resolve, delays[attempt]));
       }
     }
   }
@@ -34,17 +49,24 @@ export class DurableStore {
     catch (error) { if (!['EPERM', 'EISDIR', 'EINVAL', 'EACCES', 'ENOTSUP', 'EBADF'].includes(error.code)) throw error; }
     finally { await handle?.close(); }
   }
-  async atomic(file, data, { signal, commit = false } = {}) {
+  async atomic(file, data, { signal, commit = false, maxBytes } = {}) {
     const dir = path.dirname(file); await mkdir(dir, { recursive: true });
     const temporary = `${file}.${randomUUID()}.tmp`;
     let handle;
     try {
       checkAbort(signal);
       handle = await open(temporary, 'wx');
-      await handle.writeFile(json(data), 'utf8'); await handle.sync(); await handle.close(); handle = null;
+      const encoded=json(data);
+      if(maxBytes && Buffer.byteLength(encoded,'utf8')>maxBytes)throw new SceanError('STAGE_CHECKPOINT_TOO_LARGE');
+      await handle.writeFile(encoded, 'utf8'); await handle.sync(); await handle.close(); handle = null;
       if (commit) await this.inject('beforeRename', { file, data: clone(data) });
       checkAbort(signal);
-      await this.retrySharingViolation(() => { checkAbort(signal); return rename(temporary, file); });
+      // Give a transient Windows sharing violation a bounded chance to clear.
+      // Every attempt still replaces the destination atomically, or leaves it untouched.
+      await this.withCanonicalFileIo(file, () => this.retrySharingViolation(
+        () => { checkAbort(signal); return rename(temporary, file); },
+        process.platform === 'win32' ? WINDOWS_ATOMIC_REPLACE_RETRY_MS : IO_RETRY_MS,
+      ));
       await this.syncDir(dir);
       // Abort after publication cannot erase a committed round.
       if (commit) await this.inject('afterRename', { file, data: clone(data) });
@@ -54,7 +76,8 @@ export class DurableStore {
   }
   async read(runId,{includeTrashed=false}={}) {
     try {
-      const run = JSON.parse(await this.retrySharingViolation(() => readFile(path.join(this.runDir(runId), 'current.json'), 'utf8')));
+      const file = this.currentFile(runId);
+      const run = JSON.parse(await this.withCanonicalFileIo(file, () => this.retrySharingViolation(() => readFile(file, 'utf8'))));
       if (run.runId !== runId || !Number.isSafeInteger(run.version)) throw new SceanError('CORRUPT_RUN');
       runLifecycle(run);return includeTrashed?run:assertRunActive(run);
     } catch (error) { if (error.code === 'ENOENT') throw new SceanError('RUN_NOT_FOUND'); throw error; }
@@ -91,7 +114,37 @@ export class DurableStore {
   }
   async writeAttempt(runId, attempt) {
     safeId(attempt.attemptId);
-    await this.atomic(path.join(this.runDir(runId), 'attempts', `${attempt.attemptId}.json`), attempt);
+    await this.atomic(path.join(this.runDir(runId), 'attempts', `${attempt.attemptId}.json`), attempt, attempt.stageCheckpoint||attempt.bodyCheckpoint?.stageBasis?{maxBytes:16*1024*1024}:{});
+  }
+
+  async stageDispatches(runId,requestId,basis){
+    safeId(runId);safeId(requestId);
+    const file=path.join(this.runDir(runId),'stage-dispatches',requestId+'.json');
+    try{
+      const raw=await this.retrySharingViolation(()=>readFile(file,'utf8'));
+      if(Buffer.byteLength(raw)>32768)throw new SceanError('STAGE_LEDGER_INVALID');
+      const record=JSON.parse(raw);
+      if(record.version!==1||record.basis!==basis||!record.counts||Array.isArray(record.counts)||
+        typeof record.counts!=='object'||Object.keys(record.counts).length>100||
+        Object.entries(record.counts).some(([k,n])=>!/^(director|character|writer|writer_repair|adjudicate)(:\d+){0,3}$/.test(k)||
+          !Number.isInteger(n)||n<1||n>(k==='director'?10:2)))throw new SceanError('STAGE_LEDGER_INVALID');
+      return record.counts;
+    }catch(e){if(e.code==='ENOENT')return {};throw e;}
+  }
+
+  async reserveStageDispatch(runId,requestId,basis,{key,group,limit},expected){
+    if(!this.held.has(runId))throw new SceanError('LOCK_REQUIRED');
+    // A cancelled provider reservation can finish after its parent operation has unwound.
+    // Keep that reservation and the next operation's counter update mutually exclusive.
+    return this.withRunLock(runId,async()=>{
+      const counts=await this.stageDispatches(runId,requestId,basis);
+      if(Object.entries(expected).some(([k,n])=>(counts[k]??0)<n))throw new SceanError('STAGE_LEDGER_INVALID');
+      if((counts[key]??0)>=2||(counts[group]??0)>=limit)throw new SceanError('STAGE_DISPATCH_LIMIT');
+      counts[group]=(counts[group]??0)+1;
+      if(key!==group)counts[key]=(counts[key]??0)+1;
+      await this.atomic(path.join(this.runDir(runId),'stage-dispatches',requestId+'.json'),{version:1,basis,counts});
+      return counts;
+    },{namespace:'stage-dispatches'});
   }
 
   async readSettlementLedger(runId){
@@ -182,7 +235,7 @@ export class DurableStore {
     }
   }
   async withRunLock(runId, fn, { signal, namespace } = {}) {
-    if(namespace!==undefined&&!['prose-style','writing-mode','writing-styles','agent-models','agent-model-defaults','model-route-pins','world-feed','player-notes'].includes(namespace))throw new SceanError('LOCK_NAMESPACE');
+    if(namespace!==undefined&&!['prose-style','writing-mode','writing-styles','agent-models','agent-model-defaults','model-route-pins','world-feed','player-notes','stage-dispatches'].includes(namespace))throw new SceanError('LOCK_NAMESPACE');
     const lockKey=namespace?namespace+':'+runId:runId;
     const dir = ['writing-styles','agent-model-defaults'].includes(namespace)?path.join(this.root,'settings-locks',namespace):path.join(this.runDir(runId), namespace?namespace+'-tickets':'writer-tickets'); await mkdir(dir, { recursive: true }); checkAbort(signal);
     const token = randomUUID(); const phaseFile = phase => path.join(dir, `${token}.${phase}.json`);

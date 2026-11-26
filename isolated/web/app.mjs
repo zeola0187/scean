@@ -238,9 +238,9 @@ function controls(){
   $('cancel').hidden=!state.pending;$('cancel').disabled=!operations.target(view.runId);
   timeConfirmation.update(state.run,busy,state.failure);
   $('retry').hidden=!state.failure||state.failure.code==='NEEDS_TIME_PRECISION'&&!state.failure.bodyAvailable||busy||!state.draft?.input;
-  $('retry').disabled=state.generationBlocked||state.failure?.bodyAvailable&&state.failure.canResume===false;$('retry').textContent=state.failure?.bodyAvailable?'繼續結算（原模型）':'以原模型重試';$('saved-body').hidden=!state.failure?.bodyAvailable;
+  $('retry').disabled=state.generationBlocked||state.failure?.stageAvailable&&!state.failure.canStageResume||state.failure?.bodyAvailable&&state.failure.canResume===false;$('retry').textContent=state.failure?.stageAvailable?'從已保存的步驟繼續':state.failure?.bodyAvailable?'繼續結算（原模型）':'以原模型重試';$('saved-body').hidden=!state.failure?.bodyAvailable;
   $('recheck').hidden=!state.failure||(busy&&!state.operationUnknown);$('recheck').disabled=state.pollBusy;
-  $('provisional').hidden=!state.pending||!!state.localTurn&&!['turn','regenerate','settlementResume'].includes(state.localTurn.kind);
+  $('provisional').hidden=!state.pending||!!state.localTurn&&!['turn','regenerate','settlementResume','stageResume'].includes(state.localTurn.kind);
   $('pending-input').textContent=regenInput??state.draft?.input??'';
   $('save-status').textContent=!hasRun?'尚未開局':busy?'本輪尚未提交':historySync.dirty?'本輪已保存，正在讀取正文':historySync.newAvailable?'已保存 · 有新正文':`已保存 · v${state.run.version}`;
   newBodyOpen.hidden=!hasRun||!storyHead();newBodyOpen.disabled=pageBusy;newBodyOpen.textContent=historySync.dirty?'已保存，讀取正文中':historySync.newAvailable?'有新正文 · 查看':'查看本輪正文';
@@ -670,7 +670,7 @@ async function reconcile(){
 async function sendHostOperation(kind,payload={},base={}){
   const selected=view.capture(),operation={...operations.start(selected.runId,payload.requestId),kind};
   const ownership=operations.capture();state.localTurn=operation;state.pending=true;state.submitting=true;state.operationUnknown=false;state.failure=null;
-  if(['turn','regenerate','settlementResume'].includes(kind))turnDuration.clear();
+  if(['turn','regenerate','settlementResume','stageResume'].includes(kind))turnDuration.clear();
   if(kind==='summaryStart'||kind.startsWith('chapter')){activeNarrativeOperation=operation;narrativeBusy=true;}
   rememberOperation(operation);controls();
   try{
@@ -702,6 +702,7 @@ async function submitTurn(retry=false){
   try{await saveDraft();}catch(error){if(view.current(token)){state.submitting=false;controls();}throw error;}
   if(!view.current(token))return;
   const draft={...state.draft};if(!draft?.input){state.submitting=false;controls();return;}
+  if(retry&&state.failure?.stageAvailable&&state.failure.requestId===draft.requestId){if(state.failure.canStageResume)await sendHostOperation('stageResume',{requestId:draft.requestId,sourceAttemptId:state.failure.resumeAttemptId});return;}
   if(retry&&state.failure?.bodyAvailable&&state.failure.requestId===draft.requestId){submissionReading={...readingIntent,requestId:draft.requestId};setError('turn-error',null);await sendHostOperation('settlementResume',{requestId:draft.requestId,sourceAttemptId:state.failure.resumeAttemptId});return;}
   let confirmedTime;try{confirmedTime=timeConfirmation.read();}catch(error){state.submitting=false;setError('turn-error',error);controls();return;}
   if(state.run?.settlementPolicy!=='post-body-v1'&&state.failure?.code==='NEEDS_TIME_PRECISION'&&!confirmedTime){state.submitting=false;setError('turn-error',Object.assign(new Error('請先使用「補充／確認時間」，明確確認所缺時間。'),{code:'NEEDS_TIME_PRECISION'}));controls();return;}

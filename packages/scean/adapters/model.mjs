@@ -14,18 +14,27 @@ export function safeError(code,message=code){return Object.assign(new Error(mess
 /** Host-only, per-consultation dispatch allowance shared by transport and format
  * recovery. Reservations are conservative and checkpointed before any dispatch.
  * Never serialize this object into a model packet or a public diagnostic. */
-function boundedDispatchBudget({signal,timeoutMs=180000,onReserve=async()=>{},limit=2}={},maximum=2){
+function boundedDispatchBudget({signal,timeoutMs=180000,onReserve=async()=>{},limit=2,suspendable=false}={},maximum=2){
   if(!Number.isSafeInteger(timeoutMs)||timeoutMs<1||timeoutMs>600000)throw safeError('INVALID_CALL_TIMEOUT');
   if(!Number.isInteger(limit)||limit<1||limit>maximum)throw safeError('INVALID_DISPATCH_LIMIT');
   const controller=new AbortController();let used=0,closed=false,route,effective;
   const cancel=()=>controller.abort(signal?.reason?.code==='MODEL_TIMEOUT'?safeError('MODEL_TIMEOUT','Parent planning deadline exceeded.'):safeError('CANCELLED','Consultation cancelled.'));
   signal?.addEventListener('abort',cancel,{once:true});if(signal?.aborted)cancel();
-  const timer=setTimeout(()=>controller.abort(safeError('MODEL_TIMEOUT','Consultation deadline exceeded.')),timeoutMs);
+  let timer, deadline, timeLeft=timeoutMs;
+  const timeout=()=>controller.abort(safeError('MODEL_TIMEOUT','Consultation deadline exceeded.'));
+  const arm=()=>{deadline=performance.now()+timeLeft;timer=setTimeout(timeout,Math.ceil(timeLeft));};
+  arm();
   let rejectAbort;const aborted=new Promise((_,reject)=>{rejectAbort=reject;});aborted.catch(()=>{});
   const onAbort=()=>rejectAbort(controller.signal.reason);controller.signal.addEventListener('abort',onAbort,{once:true});if(controller.signal.aborted)onAbort();
   const check=()=>{if(controller.signal.aborted)throw controller.signal.reason;if(closed)throw safeError('CANCELLED');};
   return {
     signal:controller.signal,limit,get used(){return used;},get remaining(){return closed||controller.signal.aborted?0:limit-used;},check,
+    suspend({fresh=false}={}){
+      check();if(!suspendable||deadline===undefined)throw safeError('INVALID_BUDGET_SUSPEND');
+      timeLeft=deadline-performance.now();if(timeLeft<=0){timeout();check();}
+      clearTimeout(timer);deadline=undefined;
+      let resumed=false;return ()=>{if(resumed)return;resumed=true;if(!closed&&!controller.signal.aborted){if(fresh)timeLeft=timeoutMs;arm();}};
+    },
     async resolveSelection(resolve){check();route??=Promise.resolve().then(resolve);return structuredClone(await route);},
     get effectiveSelection(){return effective?structuredClone(effective):null;},
     pinEffective(value){check();effective??=structuredClone(value);return structuredClone(effective);},
@@ -36,8 +45,8 @@ function boundedDispatchBudget({signal,timeoutMs=180000,onReserve=async()=>{},li
 }
 export const createDispatchBudget=options=>boundedDispatchBudget(options,2);
 // Five Director rounds, at most two physical SDK dispatches per round. One
-// fixed planning deadline also bounds local argument correction and advice.
-export const createDirectorDispatchBudget=options=>boundedDispatchBudget({...options,limit:10},10);
+// A Director round can refresh its clock without resetting dispatch count or pinned route.
+export const createDirectorDispatchBudget=options=>boundedDispatchBudget({...options,limit:10,suspendable:true},10);
 export function safeFailure(error,signal){
   if(signal?.aborted||error?.name==='AbortError')return safeError('CANCELLED','Request was cancelled; this turn was not committed.');
   if(error?.name==='TimeoutError')return safeError('MODEL_TIMEOUT','Model request timed out; this turn was not committed.');

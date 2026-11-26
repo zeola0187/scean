@@ -26,7 +26,7 @@ DSH Desktop 是 Electron 程式。它的 Host 是同一個執行檔以 Node 模�
 
 | 層面 | 做法 |
 |---|---|
-| 程式本體 | 複製 `E:\DSH` 到預覽資料夾並移除 `app-update.yml`，打包版的自動更新因此停用，不可能升級或覆寫正式安裝。 |
+| 程式本體 | 複製 `安裝 DSH 的資料夾` 到預覽資料夾並移除 `app-update.yml`，打包版的自動更新因此停用，不可能升級或覆寫正式安裝。 |
 | DSH 資料 | 環境變數 `DSH_HOME` 指向預覽資料夾（DSH 官方支援的覆寫）；`USERPROFILE`、`TEMP` 也一併改到預覽資料夾。 |
 | Electron 資料 | `--user-data-dir` 使用獨立 userData。單一實例鎖依 userData 判斷，所以可與正式 DSH 同時執行；本階段全程與正式 DSH 並行。 |
 | SCEAN 套件 | 用 Desktop 內建的 pnpm 離線安裝，`--store-dir` 指向每個實例自己的 store。 |
@@ -38,7 +38,7 @@ DSH Desktop 是 Electron 程式。它的 Host 是同一個執行檔以 Node 模�
 **為什麼沒有關閉 site isolation**：上一階段在 Chrome 中關閉了它，CDP 才看得到舞台 iframe。Desktop 驗收保留 Electron 的實際設定，改讓 CDP 驅動程式用 flatten session 連進 out-of-process iframe。這樣測到的是實際的行程模型。
 
 **正式環境檢查**：
-- `E:\DSH` 沒有任何檔案變更。
+- `安裝 DSH 的資料夾` 沒有任何檔案變更。
 - `~/.dsh` 有兩個 Card Studio 狀態檔在 02:04:21 更新。當時沒有任何預覽實例裝了 SCEAN，而之後每個預覽實例都只寫自己的資料夾，所以判斷是你正在執行的正式 DSH 寫入的。
 
 ## 3. 驗收結果（真實 DSH Desktop 0.2.2-rc.3）
@@ -190,7 +190,7 @@ node scripts/desktop-preview.mjs stop --label=stage-next-desk-x
 ```
 
 - 測試實例的標籤必須以 `stage-next-desk-` 開頭，這是 scripted provider 的安全條件。
-- 腳本會拒絕任何位於 `E:\DSH` 或 `~/.dsh` 底下的路徑。
+- 腳本會拒絕任何位於 `安裝 DSH 的資料夾` 或 `~/.dsh` 底下的路徑。
 
 ## 7. 你的實機驗收回饋與處理
 

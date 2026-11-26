@@ -30,11 +30,15 @@ function deadline(parent,timeoutMs){
   controller.signal.addEventListener('abort',notify,{once:true});if(controller.signal.aborted)notify();
   return {signal:controller.signal,run:task=>Promise.race([Promise.resolve().then(()=>{controller.signal.throwIfAborted();return task();}),aborted]),close(){clearTimeout(timer);parent?.removeEventListener('abort',cancel);controller.signal.removeEventListener('abort',notify);}};
 }
-export function createNativeModelPort({llm,agentDefaultModel,routing,budget,usageLedger=budget,generationGate,selection:configuredSelection,stageSelections={},maxTokens,stageMaxTokens,timeoutMs=180000,technicalRetries=0,onTrace=async()=>{}}){
+export function createNativeModelPort({llm,agentDefaultModel,routing,budget,usageLedger=budget,generationGate,selection:configuredSelection,stageSelections={},maxTokens,stageMaxTokens,timeoutMs=180000,stageTimeoutMs={},technicalRetries=0,onTrace=async()=>{}}){
   if(!llm?.stream||!llm?.resolveModelInfo||!usageLedger?.reserve||!usageLedger?.settle)throw new TypeError('DSH LLM capability service and durable usage journal are required.');
   if(generationGate&&(!generationGate.reserve||!generationGate.settle))throw new TypeError('Generation gate must support durable reserve/settle.');
   if(!Number.isInteger(technicalRetries)||technicalRetries<0||technicalRetries>1)throw new TypeError('At most one technical retry is allowed.');
   if(!Number.isSafeInteger(timeoutMs)||timeoutMs<1||timeoutMs>600000)throw new TypeError('Invalid stage timeout.');
+  if (!stageTimeoutMs || typeof stageTimeoutMs!=='object' || Array.isArray(stageTimeoutMs)) throw new TypeError('Invalid stage timeout overrides.');
+  for(const [stage,limit] of Object.entries(stageTimeoutMs))if(!rpStage(stage)||!Number.isSafeInteger(limit)||limit<1||limit>600000)throw new TypeError('Invalid stage timeout override.');
+  const perStage=Object.freeze({...stageTimeoutMs});
+  const stageDeadline=stage=>perStage[stage]??timeoutMs;
   const limit=outputLimits({maxTokens,stageMaxTokens});
   const backgroundSource=stage=>stageMaxTokens?.[stage]!==undefined?'plugin_stage_limit':maxTokens!==undefined?'plugin_limit':'scean_stage_default';
   const preparations=new WeakMap();
@@ -48,7 +52,7 @@ export function createNativeModelPort({llm,agentDefaultModel,routing,budget,usag
     managesDispatchBudget:true,timeoutMs,
     ...(routing?{captureRoutes:args=>routing.captureRoutes(args)}:{}),
     async describe({stage='director',context={},signal,dispatchBudget}={}){
-      const scope=deadline(signal,timeoutMs);
+      const scope=deadline(signal,stageDeadline(stage));
       try{return await scope.run(async()=>{const route=await (dispatchBudget?dispatchBudget.resolveSelection(()=>resolveSelection(stage,context)):resolveSelection(stage,context));const info=await llm.resolveModelInfo(route.requested.provider,route.requested.model,scope.signal);const prepared=routing&&llm.prepareCall?await llm.prepareCall({...dispatchBudget?.effectiveSelection??route.requested,...rpStage(stage)?{}:{maxTokens:limit(stage)}},scope.signal):null;if(prepared)preparations.set(context,{stage,route,prepared,epoch:routing?.epoch});const outputLimit=rpStage(stage)?describedLimit(prepared?.config.maxTokens??info.defaultMaxTokens):limit(stage);return {...route,capabilities:{outputLimit,outputLimitSource:rpStage(stage)?outputLimit===null?'adapter_default_unknown':'dsh_model_default':backgroundSource(stage),outputLimitPhase:'model_description',providerFinalOutputLimit:null,contextWindow:prepared?.context?.contextWindow??info.context?.contextWindow??null,defaultMaxTokens:info.defaultMaxTokens??null,reasoningEfforts:info.reasoning?.efforts?.map(x=>x.id)??[],defaultReasoningEffort:info.reasoning?.defaultEffort??null,toolUpdate:info.toolUpdate??null}};});}
       catch(e){throw normalizeFailure(e,scope.signal);}finally{scope.close();}
     },
@@ -61,11 +65,11 @@ export function createNativeModelPort({llm,agentDefaultModel,routing,budget,usag
       const toolDefinitions=(tools??[]).map(t=>t.function??t).map(t=>({name:t.name,description:t.description??'',parameters:t.parameters??t.inputSchema??{type:'object'}}));
       const requestBytes=Buffer.byteLength(String(system??'')+text+JSON.stringify(toolDefinitions),'utf8')+1024;
       const attempts=[];
-      const selectionScope=deadline(signal,timeoutMs);let selected;
+      const selectionScope=deadline(signal,stageDeadline(stage));let selected;
       const cached=preparations.get(context);preparations.delete(context);let firstPrepared=cached?.stage===stage?cached.prepared:null,retryConfig;
       try{selected=await selectionScope.run(()=>cached?.stage===stage?cached.route:dispatchBudget?dispatchBudget.resolveSelection(()=>resolveSelection(stage,context)):resolveSelection(stage,context));}catch(e){throw normalizeFailure(e,selectionScope.signal);}finally{selectionScope.close();}
       for(let attempt=0;attempt<=retries;attempt++){
-        const scope=deadline(signal,timeoutMs),requestId=randomUUID();
+        const scope=deadline(signal,stageDeadline(stage)),requestId=randomUUID();
         let reservationId,gateId,route,usage=null,actualCostUsd=null,result,failure,finishKind=null;
         let finalizing=false,reservationPending=false,ledgerSettlement,gateSettlement;
         const settlement=()=>({actualCostUsd,usage,status:failure?(failure.code==='CANCELLED'?'cancelled':'failed'):scope.signal.aborted?(scope.signal.reason?.code==='MODEL_TIMEOUT'?'failed':'cancelled'):'completed'});

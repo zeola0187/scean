@@ -125,6 +125,11 @@ function renderPending(s, actions) {
       break;
     }
     case 'needs_time': status = card('ask', '這一步需要你確認時間', '故事無法判斷這個行動從何時開始或做到何時。確認只套用在這一次送出。', btn('確認時間', () => actions.sheet('time', 'needs'), 'primary'), btn('修改行動', () => ops.dismiss())); break;
+    case 'stage_failed': {
+      const name={character:'角色諮詢',director:'導演',writer:'Writer',adjudicate:'裁定',writer_repair:'正文修補'}[op.failure.resumeStage]??'原步驟';
+      status=card('neutral','已保存本輪進度',op.failure.canStageResume?'沿用已完成的回覆與查詢。':'此檢查點無法繼續，請檢查失敗原因與剩餘次數。',
+        op.failure.canStageResume?btn('繼續'+name,()=>ops.resumeStage(),'primary'):null,btn('關閉',()=>ops.dismiss()));break;
+    }
     case 'settlement_failed':
       status = h('div', {class: 'status-card tone-warn', role: 'alert'}, h('strong', {class: 'status-title'}, '正文寫好了，世界還沒有更新'),
         h('p', null, '這段正文還不算故事的一部分。「繼續整理世界」會用同一段正文更新狀態與時間，不會重寫。'),

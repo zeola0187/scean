@@ -18,7 +18,7 @@ export class NotificationLedger {
     for(const row of value.watches){
       if(Object.keys(row).some(key=>!keys.has(key)))fail();
       for(const key of ['id','runId','requestId','operationId','destinationId','sessionId','cardId'])safeId(row[key]);
-      if(ids.has(row.id)||!statuses.has(row.status)||!['turn','regenerate','settlementResume'].includes(row.kind)||row.kind==='settlementResume'&&value.schemaVersion!==2||!/^[a-f0-9]{64}$/.test(row.snapshotHash)||!Number.isSafeInteger(row.baseVersion)||row.baseVersion<0||!Number.isFinite(row.createdAt)||!Number.isFinite(row.expiresAt))fail();
+      if(ids.has(row.id)||!statuses.has(row.status)||!['turn','regenerate','settlementResume','stageResume'].includes(row.kind)||['stageResume','settlementResume'].includes(row.kind)&&value.schemaVersion!==2||!/^[a-f0-9]{64}$/.test(row.snapshotHash)||!Number.isSafeInteger(row.baseVersion)||row.baseVersion<0||!Number.isFinite(row.createdAt)||!Number.isFinite(row.expiresAt))fail();
       if(row.baseHead!==null)safeId(row.baseHead);ids.add(row.id);
       if(row.event){
         if(Object.keys(row.event).some(key=>!['eventId','commitId','attemptId','commitVersion','committedAt'].includes(key)))fail();
@@ -48,7 +48,7 @@ export class NotificationLedger {
   transaction(work){
     const operation=this.queue.catch(()=>{}).then(async()=>{
       if(!this.available||!this.state)fail();const next=clone(this.state),result=await work(next);
-      if(next.watches.some(row=>row.kind==='settlementResume'))next.schemaVersion=2;this.validate(next);if(JSON.stringify(next)===JSON.stringify(this.state))return result;
+      if(next.watches.some(row=>['stageResume','settlementResume'].includes(row.kind)))next.schemaVersion=2;this.validate(next);if(JSON.stringify(next)===JSON.stringify(this.state))return result;
       try{await this.write(next);this.state=next;}
       catch{try{this.state=await this.read();}catch{this.available=false;}fail();}
       return result;

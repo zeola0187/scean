@@ -14,6 +14,7 @@ export const PHASES = [
 export const phaseIndex = stage => Math.max(0, PHASES.findIndex(p => p.stages.includes(stage)));
 const PENDING = new Set(['accepted', 'queued', 'running', 'pending', 'admitted']);
 const DONE = new Set(['committed', 'completed']);
+const BODY_KINDS = new Set(['turn', 'settlementResume','stageResume']);
 
 export function createOperations({store, call, reload, getViewerId = () => null}) {
   let polling = 0;
@@ -24,10 +25,27 @@ export function createOperations({store, call, reload, getViewerId = () => null}
   // canonical head, never the version the page happened to render.
   const base = r => ({baseVersion: r.version, baseHead: r.head ?? r.lastTurn?.commitId ?? null, expectedLifecycleRevision: r.lifecycleRevision ?? 0});
 
+  // Host returns only the exact persisted checkpoint after authorization and hash validation.
+  // A late response may not attach to a different operation, request, run, or panel.
+  async function getSaved(o, attemptId, token, expectedHash) {
+    const r = run(); if (!r || !attemptId || !BODY_KINDS.has(o?.kind) || !o.requestId) return;
+    const ownsPreview = () => token === polling && run()?.runId === r.runId &&
+      op()?.operationId === o.operationId && op()?.requestId === o.requestId;
+    try {
+      const v = await call('settlementBody', {runId: r.runId, attemptId, expectedLifecycleRevision: r.lifecycleRevision ?? 0});
+      if (ownsPreview() && v?.runId === r.runId && v.attemptId === attemptId &&
+          v.requestId === o.requestId && v.status === 'saved_not_committed' &&
+          typeof v.body === 'string' && typeof v.bodyHash === 'string' &&
+          (!expectedHash || v.bodyHash === expectedHash)) {
+        patch({savedBody: v.body, savedBodyHash: v.bodyHash});
+      }
+    } catch { /* No provisional data on a missing, stale or unauthorized read. */ }
+  }
+
   async function submit(kind, payload, {input = payload.input ?? null, timeConfirmation = payload.timeConfirmation ?? null} = {}) {
     const r = run(); if (!r || op()?.phase === 'running') return;
     const operationId = uuid(), my = ++polling, viewerId = getViewerId();
-    store.set(s => ({...s, notice: null, op: {kind, phase: 'running', stage: 'memory', startedAt: Date.now(), operationId, requestId: payload.requestId ?? null, input, timeConfirmation, failure: null, savedBody: null}}));
+    store.set(s => ({...s, notice: null, op: {kind, phase: 'running', stage: 'memory', startedAt: Date.now(), operationId, requestId: payload.requestId ?? null, input, timeConfirmation, failure: null, savedBody: kind === 'settlementResume' ? s.op?.savedBody ?? null : null, savedBodyHash: kind === 'settlementResume' ? s.op?.savedBodyHash ?? null : null}}));
     try {
       const fresh = await call('runView', {runId: r.runId}); store.set(x => x.runId === r.runId ? {...x, run: fresh} : x);
       if (kind === 'turn') await call('draftSave', {runId: r.runId, input, requestId: payload.requestId, ...(viewerId ? {viewerId} : {}), expectedLifecycleRevision: fresh.lifecycleRevision ?? 0});
@@ -42,6 +60,7 @@ export function createOperations({store, call, reload, getViewerId = () => null}
 
   // Poll the Host's operation ledger; a lost response is resolved here too.
   async function watch(token) {
+    let reading = false, readAttempt = null;
     for (let i = 0; token === polling; i++) {
       const o = op(); if (!o) return;
       let receipt, progress;
@@ -51,9 +70,19 @@ export function createOperations({store, call, reload, getViewerId = () => null}
           call('progress', {runId: run().runId}).catch(() => null)]);
       } catch (error) { if (i > 40) return patch({phase: 'unknown', checking: false}); await sleep(1200); continue; }
       if (token !== polling) return;
-      const stage = progress?.operationId === op()?.operationId ? progress.stage : receipt?.stage;
+      const ownedProgress = progress?.operationId === o.operationId && progress?.requestId === o.requestId ? progress : null;
+      const stage = ownedProgress?.stage ?? receipt?.stage;
+      const attemptId = ownedProgress?.attemptId ?? receipt?.attemptId;
       if (receipt?.requestOutcome?.status === 'committed' || DONE.has(receipt?.status)) return settle({status: 'committed'});
-      if (PENDING.has(receipt?.status)) { if (stage && stage !== op()?.stage) patch({stage, phase: 'running', checking: false}); }
+      if (PENDING.has(receipt?.status) || receipt?.status === 'cancel-requested') {
+        if ((stage && stage !== op()?.stage) || op()?.phase !== 'running') patch({stage: stage ?? op()?.stage, phase: 'running', checking: false});
+        if (BODY_KINDS.has(o.kind) && !op()?.savedBody && !reading && attemptId && readAttempt !== attemptId &&
+            (stage === 'post_stat' || stage === 'commit') &&
+            receipt?.operationId === o.operationId && receipt?.requestId === o.requestId) {
+          reading = true; readAttempt = attemptId;
+          void getSaved(o, attemptId, token).finally(() => { reading = false; });
+        }
+      }
       else if (receipt?.status === 'not_recorded' && o.phase === 'unknown') { if (i > 6) return patch({phase: 'not_saved', checking: false}); }
       else if (receipt?.status) return settle(receipt);
       await sleep(i < 20 ? 600 : 1200);
@@ -61,11 +90,24 @@ export function createOperations({store, call, reload, getViewerId = () => null}
   }
 
   async function settle(receipt) {
-    polling++;
-    if (receipt.status === 'committed') { await reload({highlight: true}); store.set(s => ({...s, op: null, flash: Date.now()})); return; }
+    const token = ++polling, o = op();
+    if (receipt.status === 'committed') {
+      await reload({highlight: true});
+      if (token === polling) store.set(s => ({...s, op: null, flash: Date.now()}));
+      return;
+    }
     const f = receipt.failure ?? {};
-    if (receipt.status === 'cancelled') patch({phase: 'cancelled', failure: f});
-    else if (f.bodyAvailable && f.resumeAttemptId) patch({phase: 'settlement_failed', failure: f});
+    if(receipt.status==='unknown'||f.code==='COMMIT_OUTCOME_UNKNOWN'){patch({phase:'unknown',checking:false,failure:f});return;}
+    const savedFailure = BODY_KINDS.has(o?.kind) && f.bodyAvailable && f.resumeAttemptId;
+    if (savedFailure) {
+      patch({phase: 'settlement_failed', failure: f});
+      if (!o.savedBody || (f.bodyHash && o.savedBodyHash !== f.bodyHash)) {
+        patch({savedBody: null, savedBodyHash: null});
+        void getSaved(o, f.resumeAttemptId, token, f.bodyHash);
+      }
+    }
+    else if(f.stageAvailable && f.requestId===o.requestId) patch({phase:'stage_failed',failure:f});
+    else if (receipt.status === 'cancelled') patch({phase: 'cancelled', failure: f});
     else if (f.code === 'NEEDS_TIME_PRECISION') patch({phase: 'needs_time', failure: f});
     else if (receipt.status === 'interrupted') patch({phase: 'failed', failure: {...f, message: 'DSH 在處理途中重新啟動，這一輪沒有保存。'}});
     else patch({phase: 'failed', failure: f});
@@ -77,16 +119,27 @@ export function createOperations({store, call, reload, getViewerId = () => null}
       const input = text.trim(); if (!input) return;
       return submit('turn', {input, requestId: uuid(), ...(timeConfirmation ? {timeConfirmation} : {})}, {input, timeConfirmation});
     },
+    resumeStage() {
+      const o=op(), f=o?.failure;
+      if(o?.phase==='stage_failed' && f?.canStageResume && f.requestId===o.requestId)
+        return submit('stageResume',{requestId:o.requestId,sourceAttemptId:f.resumeAttemptId},{input:o.input});
+    },
     retry() {
-      const o = op(); if (!o) return;
+      const o = op(); if (!o || o.kind === 'settlementResume' || o.phase === 'settlement_failed') return;
       if (o.kind === 'regenerate') return submit('regenerate', {requestId: uuid()}, {input: o.input});
       return submit('turn', {input: o.input, requestId: o.requestId, ...(o.timeConfirmation ? {timeConfirmation: o.timeConfirmation} : {}), ...(o.operationId && ['failed', 'cancelled'].includes(o.phase) ? {retryOf: o.operationId} : {})}, {input: o.input, timeConfirmation: o.timeConfirmation});
     },
     // A new confirmation changes request content, so it needs a new requestId.
     confirmTime(timeConfirmation) { const o = op(); if (o) return submit('turn', {input: o.input, requestId: uuid(), timeConfirmation}, {input: o.input, timeConfirmation}); },
-    resume() { const o = op(); if (o?.failure?.resumeAttemptId) return submit('settlementResume', {requestId: o.failure.requestId ?? o.requestId, sourceAttemptId: o.failure.resumeAttemptId}, {input: o.input}); },
-    async readSaved() { const o = op(); if (!o?.failure?.resumeAttemptId) return; const v = await call('settlementBody', {runId: run().runId, attemptId: o.failure.resumeAttemptId}); patch({savedBody: v.body}); },
-    hideSaved() { patch({savedBody: null}); },
+    resume() {
+      const o = op(), f = o?.failure;
+      if (o?.phase === 'settlement_failed' && f?.canResume !== false && f?.resumeAttemptId &&
+          (!f.requestId || f.requestId === o.requestId)) {
+        return submit('settlementResume', {requestId: o.requestId, sourceAttemptId: f.resumeAttemptId}, {input: o.input});
+      }
+    },
+    readSaved() { const o = op(), f = o?.failure; return getSaved(o, f?.resumeAttemptId, polling, f?.bodyHash); },
+    hideSaved() { patch({savedBody: null, savedBodyHash: null}); },
     async cancel() {
       const o = op(); if (!o || o.phase !== 'running') return; patch({cancelling: true});
       try { const r = await call('cancel', {runId: run().runId, operationId: o.operationId, ...(o.requestId ? {requestId: o.requestId} : {})}); if (!r?.cancelRequested) patch({cancelling: false, cancelRefused: r?.reason ?? 'not_running'}); }
@@ -101,7 +154,12 @@ export function createOperations({store, call, reload, getViewerId = () => null}
     async adopt(runId) {
       try {
         const receipt = await call('operationStatus', {runId});
-        if (PENDING.has(receipt?.status) && ['turn', 'regenerate', 'settlementResume', 'rollback'].includes(receipt.kind)) {
+        if ((store.get().runId ?? run()?.runId) !== runId) return;
+        if(['failed','cancelled','interrupted'].includes(receipt?.status) && (receipt.failure?.stageAvailable||receipt.failure?.bodyAvailable)){
+          store.set(s=>({...s,op:{kind:receipt.kind,operationId:receipt.operationId,requestId:receipt.requestId,input:null,adopted:true}}));
+          return settle(receipt);
+        }
+        if ((PENDING.has(receipt?.status) || receipt?.status === 'cancel-requested') && ['turn', 'regenerate', 'settlementResume', 'stageResume', 'rollback'].includes(receipt.kind)) {
           store.set(s => ({...s, op: {kind: receipt.kind, phase: 'running', stage: receipt.stage ?? 'memory', startedAt: Date.parse(receipt.acceptedAt ?? '') || Date.now(), operationId: receipt.operationId, requestId: receipt.requestId, input: null, adopted: true}}));
           return watch(++polling);
         }

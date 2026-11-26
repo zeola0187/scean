@@ -9,6 +9,21 @@ const strings = value => Array.isArray(value) ? value.filter(v => typeof v === '
 const word = char => char !== undefined && /[\p{L}\p{N}\p{M}_]/u.test(char);
 const regexLike = key => /^\/[\s\S]*\/[a-z]*$/i.test(key);
 const privateContainer = value => object(value) && (value.visibility === 'restricted' || value.visibility === 'private' || value.visibility === 'characters' || Object.hasOwn(value, 'contextScope') || ['private', 'known_event'].includes(value.access?.kind) || value.scope?.kind === 'player_only' || value.role === 'player_history');
+/** Existing public projection plus fail-closed for explicit authorization or
+ * progression metadata the production selector does not evaluate. */
+export function worldbookAccessBlock(value) {
+  if (!object(value)) return null;
+  if (privateContainer(value)) return 'private_scope';
+  const hasGate = row => object(row) && Object.keys(row).some(key =>
+    /^(?:unlock|locked|unlockcondition|unlockwhen|unlockrule|unlockrules|unlockstage|unlockat|stagegate|progression|revealcondition|revealwhen|availablewhen|minstage|minimumstage|requiredstage|requiredphase|condition|conditions|gate|gates|stagedlore)$/i.test(key.replace(/[^a-z]/gi,'')));
+  const unsupportedScope = (value.visibility != null && value.visibility !== 'public') ||
+    (value.access != null && (!object(value.access) || value.access.kind !== 'public')) ||
+    (value.scope != null && (!object(value.scope) || value.scope.kind !== 'public'));
+  if (unsupportedScope) return 'private_scope';
+  if (hasGate(value) || hasGate(value.extensions) || hasGate(value.extensions?.scean)) return 'unsupported_gate';
+  return null;
+}
+
 function project(value) {
   if (privateContainer(value)) return undefined;
   if (Array.isArray(value)) return value.map(project).filter(v => v !== undefined);
@@ -128,7 +143,7 @@ function settings(entry, book, config) {
  * order; diagnostics.selectionOrder is the independent admission priority order.
  * A selected entry is context, never an event or a state update.
  */
-export function selectWorldbooks(snapshot, { playerInput = '', recentDialogue = [], config = {}, playerName } = {}) {
+export function selectWorldbooks(snapshot, { playerInput = '', recentDialogue = [], config = {}, playerName, onLookupEligible } = {}) {
   const requestedWindow = config.scanWindow;
   if (typeof playerInput !== 'string' || !object(config) || requestedWindow && (!['messages', 'player_turns'].includes(requestedWindow.unit) || !Number.isSafeInteger(requestedWindow.count) || requestedWindow.count < 0 || requestedWindow.count > 1000) || config.maxEntries !== undefined && (!Number.isSafeInteger(config.maxEntries) || config.maxEntries < 0 || config.maxEntries > 10000)) throw new SceanError('INVALID_WORLDBOOK_CONFIG');
   const diagnostics = { schemaVersion: 1, status: 'selected', books: [], entries: [], warnings: [], selectionOrder: [], presentationOrder: [], scan: [], stageUse: 'pending' };
@@ -136,9 +151,12 @@ export function selectWorldbooks(snapshot, { playerInput = '', recentDialogue = 
   for (const [bookIndex, candidate] of bookCandidates(snapshot).entries()) {
     const rawBook = unwrap(candidate.raw);
     const sourceId = `worldbook:${bookIndex}`;
-    if (privateContainer(candidate.parent) || privateContainer(candidate.raw) || privateContainer(rawBook) || privateContainer(snapshot.card?.data) && candidate.path === 'card.data.character_book') {
-      diagnostics.books.push({ sourceId, path: candidate.path, status: 'excluded', reason: 'private_scope' });
-      diagnostics.warnings.push(warning('PRIVATE_WORLDBOOK_EXCLUDED', { sourceId })); continue;
+    const bookBlock = [candidate.parent, candidate.raw, rawBook, rawBook?.extensions, rawBook?.extensions?.scean,
+      ...(candidate.path === 'card.data.character_book' ? [snapshot.card?.data] : [])
+    ].map(worldbookAccessBlock).find(Boolean);
+    if (bookBlock) {
+      diagnostics.books.push({ sourceId, path: candidate.path, status: 'excluded', reason: bookBlock });
+      diagnostics.warnings.push(warning(bookBlock === 'private_scope' ? 'PRIVATE_WORLDBOOK_EXCLUDED' : 'WORLDBOOK_GATE_UNSUPPORTED', { sourceId })); continue;
     }
     if (!object(rawBook) || !object(rawBook.entries) && !Array.isArray(rawBook.entries)) {
       diagnostics.books.push({ sourceId, path: candidate.path, status: 'excluded', reason: 'unsupported_book_format' }); continue;
@@ -163,7 +181,8 @@ export function selectWorldbooks(snapshot, { playerInput = '', recentDialogue = 
     const rows = Array.isArray(rawBook.entries) ? rawBook.entries.map((entry, index) => [String(index), entry]) : Object.entries(rawBook.entries);
     for (const [index, [dictionaryKey, rawEntry]] of rows.entries()) {
       const ref = `${sourceId}:entry:${index}`;
-      if (privateContainer(rawEntry) || privateContainer(rawEntry?.extensions)) { diagnostics.entries.push({ ref, sourceId, status: 'excluded', reason: 'private_scope' }); diagnostics.warnings.push(warning('PRIVATE_ENTRY_EXCLUDED', { ref })); continue; }
+      const entryBlock = worldbookAccessBlock(rawEntry) ?? worldbookAccessBlock(rawEntry?.extensions) ?? worldbookAccessBlock(rawEntry?.extensions?.scean);
+      if (entryBlock) { diagnostics.entries.push({ ref, sourceId, status: 'excluded', reason: entryBlock }); diagnostics.warnings.push(warning(entryBlock === 'private_scope' ? 'PRIVATE_ENTRY_EXCLUDED' : 'WORLDBOOK_GATE_UNSUPPORTED', { ref })); continue; }
       const entry = project(rawEntry);
       if (!object(entry) || typeof entry.content !== 'string') { diagnostics.entries.push({ ref, sourceId, status: 'excluded', reason: 'invalid_entry' }); continue; }
       const entryId = String(entry.id ?? entry.uid ?? dictionaryKey);
@@ -181,7 +200,12 @@ export function selectWorldbooks(snapshot, { playerInput = '', recentDialogue = 
       const rawPrimary=strings(entry.keys??entry.key),rawSecondary=strings(entry.secondary_keys??entry.keysecondary);
       const primary=rawPrimary.map(key=>resolvePlayerText(key,playerName)),secondary=rawSecondary.map(key=>resolvePlayerText(key,playerName));
       if (options.regex || [...rawPrimary,...rawSecondary].some(regexLike)) { state.reason = 'unsupported_regex'; diagnostics.warnings.push(warning('REGEX_UNSUPPORTED', { ref })); continue; }
+      const unresolvedTemplate = onLookupEligible && /<%|<script\b|\{\{|@@/i.test(projectTemplateText(entry.content,playerName));
       if (/<%|<script\b|\{\{|@@/i.test(entry.content)) diagnostics.warnings.push(warning('EXECUTABLE_SYNTAX_LITERAL_ONLY', { ref }));
+      if (onLookupEligible && !unresolvedTemplate) onLookupEligible({
+        ref, title: resolvePlayerText([entry.name,entry.comment].find(v=>typeof v==='string'&&v.trim())??'', playerName),
+        keys: [...primary,...secondary], content: projectTemplateText(entry.content, playerName)
+      });
       if (entry.constant === true) state.reason = 'constant';
       else {
         const hits = keys => keys.filter(key => material.some(row => literal(row.text, key, options))).map(key => ({ key, sources: material.filter(row => literal(row.text, key, options)).map(row => row.source) }));

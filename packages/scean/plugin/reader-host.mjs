@@ -8,7 +8,7 @@ export const OPERATOR_READ_ACTIONS=new Set(['playerCollaboration','ownerWorldboo
 export function requireReaderAuthority(action,authority){
  if(!authority.principal||authority.allowGlobalSettings!==true||action==='ownerWorldbook'&&authority.allowPrivateDiagnostics!==true)fail('PLAYER_READER_DENIED');
 }
-const generation=row=>['turn','regenerate','settlementResume'].includes(row?.kind);
+const generation=row=>['turn','regenerate','settlementResume','stageResume'].includes(row?.kind);
 const stamp=v=>typeof v==='string'&&Number.isFinite(Date.parse(v))?v:null;
 function metadata(row){return {operationId:row.operationId,attemptId:row.attemptId??null,kind:row.kind,status:row.status??'not_recorded',acceptedAt:stamp(row.acceptedAt),finishedAt:stamp(row.finishedAt)};}
 /** UI-only bounded read adapter. No recovery, audit append, grant, or model call. */

@@ -1,3 +1,4 @@
+import {stageFailure} from '../core/turn-resume.mjs';
 import {JobLedger,JOB_PENDING} from './job-ledger.mjs';
 import {headOf} from '../core/history.mjs';
 import {safeId,hash} from '../core/contracts.mjs';
@@ -8,7 +9,8 @@ import {validateChapterSettings} from '../core/chapter-summary.mjs';
 export const JOB_OWNER=Symbol('host-admitted-operation');
 const fail=code=>{throw Object.assign(new Error(code),{code});};
 const copy=value=>JSON.parse(JSON.stringify(value));
-const KINDS=new Set(['settlementResume','turn','regenerate','rollback','summaryStart','chapterSummarize','chapterAuto','chapterClose','chapterSettings']);
+const resumeKind=kind=>kind==='stageResume'||kind==='settlementResume';
+const KINDS=new Set(['stageResume','settlementResume','turn','regenerate','rollback','summaryStart','chapterSummarize','chapterAuto','chapterClose','chapterSettings']);
 function normalize(request){
   const {kind,runId,operationId}=request;if(!KINDS.has(kind))fail('OPERATION_KIND');safeId(runId);safeId(operationId);
   const baseVersion=request.baseVersion??request.expectedVersion,baseHead=Object.hasOwn(request,'baseHead')?request.baseHead:request.expectedHead;
@@ -16,8 +18,10 @@ function normalize(request){
   if(baseHead!==null)safeId(baseHead);
   if(request.expectedVersion!==undefined&&request.expectedVersion!==baseVersion||request.expectedHead!==undefined&&request.expectedHead!==baseHead)fail('HISTORY_EXPECTATION_REQUIRED');
   const input={runId,operationId,expectedVersion:baseVersion,expectedHead:baseHead};let requestId=null,semantic={kind,runId,baseVersion,baseHead};
-  if(['turn','regenerate','settlementResume'].includes(kind)){requestId=safeId(request.requestId);input.requestId=requestId;semantic.requestId=requestId;}
-  if(kind==='settlementResume'){input.sourceAttemptId=safeId(request.sourceAttemptId);semantic.sourceAttemptId=input.sourceAttemptId;input.baseVersion=baseVersion;input.baseHead=baseHead;}
+  if(['turn','regenerate','settlementResume','stageResume'].includes(kind)){requestId=safeId(request.requestId);input.requestId=requestId;semantic.requestId=requestId;}
+  if(kind==='stageResume' && request.viewerId!==undefined)input.viewerId=safeId(request.viewerId);
+  if(kind==='stageResume' && (Object.hasOwn(request,'input')||Object.hasOwn(request,'timeConfirmation')))fail('OPERATION_ID_CONFLICT');
+  if(resumeKind(kind)){input.sourceAttemptId=safeId(request.sourceAttemptId);semantic.sourceAttemptId=input.sourceAttemptId;input.baseVersion=baseVersion;input.baseHead=baseHead;}
   if(kind==='turn'){
     if(typeof request.input!=='string'||!request.input.trim()||request.input.length>20000)fail('INPUT');
     input.input=request.input;input.baseVersion=baseVersion;input.baseHead=baseHead;semantic.input=request.input;
@@ -45,7 +49,7 @@ function normalize(request){
   if(kind==='chapterClose')canonical.title=input.title;
   if(kind==='chapterSettings')canonical.settings=input.settings;
   if(kind==='chapterSummarize')Object.assign(canonical,{chapterId:input.chapterId,detail:input.detail});
-  return {input,row:{runId,operationId,requestId,kind,baseVersion,baseHead,fingerprint:hash(semantic),...(['turn','settlementResume'].includes(kind)?{inputHash:kind==='turn'?hash(input.input):null,...(input.timeConfirmation?{timeConfirmationHash:hash(input.timeConfirmation)}:{})}:{canonicalFingerprint:hash(canonical)})}};
+  return {input,row:{runId,operationId,requestId,kind,baseVersion,baseHead,fingerprint:hash(semantic),...(['turn','settlementResume','stageResume'].includes(kind)?{inputHash:kind==='turn'?hash(input.input):null,...(input.timeConfirmation?{timeConfirmationHash:hash(input.timeConfirmation)}:{})}:{canonicalFingerprint:hash(canonical)})}};
 }
 export class HostJobs {
   constructor(host,options={}){this.host=host;this.ledger=new JobLedger(host.root,options);this.active=new Map();this.admissions=Promise.resolve();}
@@ -57,15 +61,31 @@ export class HostJobs {
       if(!row.finishedAt)row.timingEndMissing=true;
       Object.assign(row,{status:outcome?.status??'interrupted',finishedAt:row.finishedAt??new Date(this.host.now()).toISOString(),recovery:outcome?'canonical_receipt_reconciled':'host_interrupted_no_replay'});
       if(outcome?.binding)Object.assign(row,outcome.binding);
-      if(!outcome)row.failure=safeFailure({code:'HOST_INTERRUPTED_NO_AUTORETRY'},'request');
+      if(!outcome){
+        row.failure=safeFailure({code:'HOST_INTERRUPTED_NO_AUTORETRY'},'request');
+        if(['turn','stageResume','settlementResume'].includes(row.kind)){
+          const attempts=await this.host.engine.store.readAttempts(row.runId);
+          let saved=attempts.findLast(a=>a.operationId===row.operationId && a.requestId===row.requestId);
+          if(!saved && row.kind==='stageResume' && row.sourceAttemptId){
+            saved=attempts.find(a=>a.attemptId===row.sourceAttemptId && a.requestId===row.requestId);
+            row.sourceNotStarted=true;
+          }
+          if(saved){
+            if(!row.sourceNotStarted)row.attemptId=saved.attemptId;
+            const body=saved.bodyCheckpoint;
+            row.failure={...row.failure,requestId:row.requestId,attemptId:saved.attemptId,...stageFailure(saved),
+              ...(body?{bodyAvailable:true,resumeAttemptId:saved.attemptId,bodyHash:body.bodyHash,canResume:!!saved.preparedPost||!!body.completePost||await this.host.engine.store.settlementDispatches(row.runId,body.lineage)<2}:{})};
+          }
+        }
+      }
     }
     await this.ledger.persist();return this;
   }
   turnRequestOutcome(row,run){
-    const receipt=run.receipts?.[row.requestId];if(!receipt)return null;
+    const receipt=run.receipts?.[row.requestId];if(!receipt)return run.turns.some(t=>t.requestId===row.requestId)?{status:'unknown'}:null;
     if(receipt.inputHash!==row.inputHash)fail('IDEMPOTENCY_CONFLICT');
     if(receipt.status==='retired'){
-      const owner=this.ledger.records.findLast(value=>value.runId===row.runId&&value.kind==='turn'&&value.requestId===row.requestId&&value.attemptId===receipt.attemptId&&value.commitId===receipt.commitId);
+      const owner=this.ledger.records.findLast(value=>value.runId===row.runId&&['turn','stageResume','settlementResume'].includes(value.kind)&&value.requestId===row.requestId&&value.attemptId===receipt.attemptId&&value.commitId===receipt.commitId);
       return {status:'retired',operationId:owner?.operationId??null,attemptId:receipt.attemptId??null,commitId:receipt.commitId};
     }
     if(hash(receipt.timeConfirmation??null)!==(row.timeConfirmationHash??hash(null)))fail('IDEMPOTENCY_CONFLICT');
@@ -74,7 +94,7 @@ export class HostJobs {
     return {status:'committed',operationId:result.trace.operationId??null,attemptId:turn.attemptId,commitId:turn.commitId};
   }
   outcome(row,run){
-    if(['turn','settlementResume'].includes(row.kind)){
+    if(['turn','settlementResume','stageResume'].includes(row.kind)){
       const request=this.turnRequestOutcome(row,run);if(!request)return null;
       // requestId survives an explicit retry; operationId and attemptId do not.
       // A later attempt's receipt must never relabel an earlier failed/cancelled
@@ -93,7 +113,7 @@ export class HostJobs {
   }
   generationTiming(row,run){
     // A later background summary must not extend or replace the last turn's clock.
-    const target=['turn','regenerate','settlementResume'].includes(row?.kind)?row:this.ledger.records.findLast(r=>r.runId===run.runId&&['turn','regenerate','settlementResume'].includes(r.kind));
+    const target=['turn','regenerate','settlementResume','stageResume'].includes(row?.kind)?row:this.ledger.records.findLast(r=>r.runId===run.runId&&['turn','regenerate','settlementResume','stageResume'].includes(r.kind));
     if(!target)return null;
     const outcome=this.outcome(target,run),progress=this.host.progressByRun.get(run.runId);
     const attemptId=outcome?.binding?.attemptId??target.attemptId??(progress?.operationId===target.operationId&&progress?.requestId===target.requestId?progress.attemptId:null);
@@ -103,12 +123,15 @@ export class HostJobs {
   }
   async view(row,run){
     run??=await this.host.engine.store.read(row?.runId);
-    const outcome=row?this.outcome(row,run):null,requestOutcome=['turn','settlementResume'].includes(row?.kind)?this.turnRequestOutcome(row,run):null,owner=this.active.get(run.runId),progress=this.host.progressByRun.get(run.runId);
+    const outcome=row?this.outcome(row,run):null,requestOutcome=['turn','settlementResume','stageResume'].includes(row?.kind)?this.turnRequestOutcome(row,run):null,owner=this.active.get(run.runId),progress=this.host.progressByRun.get(run.runId);
     const ownedProgress=owner?.row===row&&progress?.operationId===row?.operationId&&progress?.requestId===row?.requestId?progress:null;
     const interrupted=row?.recovery==='host_shutdown_no_replay'&&!['committed','completed','retired'].includes(outcome?.status);
-    const status=interrupted?'interrupted':outcome?.status??row?.status??'not_recorded';
+    const observed=requestOutcome?.status==='unknown'?'unknown':interrupted?'interrupted':outcome?.status??row?.status??'not_recorded';
+    // A failure becomes actionable only after the final ledger write releases this run.
+    const finishing = owner && owner.row === row && ['failed','cancelled','interrupted'].includes(observed);
+    const status = finishing ? 'running' : observed;
     return {runId:run.runId,operationId:row?.operationId??null,requestId:row?.requestId??null,kind:row?.kind??null,status,pending:!!row&&JOB_PENDING.has(status),canonical:{version:run.version,head:headOf(run)},
-      ...(row?{acceptedAt:row.acceptedAt,...(row.finishedAt?{finishedAt:row.finishedAt}:{}),...(row.recovery?{recovery:row.recovery}:{}),...(!['committed','completed','retired'].includes(status)&&row.failure?{failure:copy(row.failure)}:{})}:{}),
+      ...(row?{acceptedAt:row.acceptedAt,...(row.finishedAt?{finishedAt:row.finishedAt}:{}),...(row.recovery?{recovery:row.recovery}:{}),...(!finishing&&!['committed','completed','retired'].includes(status)&&row.failure?{failure:copy(row.failure)}:{})}:{}),
       ...(outcome?.result?{result:outcome.result}:{}),...(requestOutcome?{requestOutcome}:{}),...(ownedProgress?{attemptId:ownedProgress.attemptId??null,stage:ownedProgress.stage,sequence:ownedProgress.sequence}:row?.attemptId?{attemptId:row.attemptId}:{}),
       generationTiming:this.generationTiming(row,run),...(row?{}:{pending:this.host.mutationBusy(run.runId)})};
   }
@@ -129,8 +152,19 @@ export class HostJobs {
   async admit(request,signal){
     signal?.throwIfAborted();if(this.host.closing)fail('HOST_CLOSING');
     const {row,input}=normalize(request);this.host.requireRun(row.runId);
-    if(row.kind==='settlementResume'){const a=await this.host.engine.store.readAttempt(row.runId,input.sourceAttemptId);if(a.requestId!==row.requestId||!a.bodyCheckpoint)fail('SETTLEMENT_SOURCE_STALE');row.inputHash=hash(a.input);row.timeConfirmationHash=hash(a.timeConfirmation??null);}
-    const operation=this.ledger.records.find(r=>r.runId===row.runId&&r.operationId===row.operationId),priorRequest=row.kind!=='settlementResume'&&row.requestId?this.ledger.records.findLast(r=>r.runId===row.runId&&r.requestId===row.requestId):null;
+    if(resumeKind(row.kind)){const a=await this.host.engine.store.readAttempt(row.runId,input.sourceAttemptId);if(a.requestId!==row.requestId || (row.kind==='stageResume' ? !a.stageCheckpoint||a.provisional : !a.bodyCheckpoint))fail('SETTLEMENT_SOURCE_STALE');row.inputHash=hash(a.input);row.timeConfirmationHash=hash(a.timeConfirmation??null);}
+    const operation=this.ledger.records.find(r=>r.runId===row.runId&&r.operationId===row.operationId),priorRequest=!resumeKind(row.kind)&&row.requestId?this.ledger.records.findLast(r=>r.runId===row.runId&&r.requestId===row.requestId):null;
+    if(row.kind==='stageResume'){
+      row.sourceAttemptId=input.sourceAttemptId;
+      const same=this.ledger.records.findLast(r=>r.runId===row.runId && r.kind===row.kind &&
+        !r.sourceNotStarted && r.sourceAttemptId===input.sourceAttemptId && r.requestId===row.requestId &&
+        r.baseHead===row.baseHead && r.baseVersion===row.baseVersion);
+      if(!operation && same){
+        const run=await this.host.engine.store.read(row.runId);
+        if((request.expectedLifecycleRevision??0)!==(run.recycle?.revision??0))fail('RUN_LIFECYCLE_CHANGED');
+        return this.view(same,run);
+      }
+    }
     const existing=operation??priorRequest;
     if(existing){
       if(existing.fingerprint!==row.fingerprint)fail(priorRequest?'IDEMPOTENCY_CONFLICT':'OPERATION_ID_CONFLICT');
@@ -143,7 +177,7 @@ export class HostJobs {
     if(this.ledger.records.length>=this.ledger.capacity)fail('HOST_JOB_CAPACITY');
     this.host.assertMutationAvailable(row.runId);
     const run=await this.host.engine.store.withRunLock(row.runId,async()=>{
-      signal?.throwIfAborted();const run=await this.host.engine.store.read(row.runId),outcome=this.outcome(row,run),requestOutcome=['turn','settlementResume'].includes(row.kind)?this.turnRequestOutcome(row,run):null;
+      signal?.throwIfAborted();const run=await this.host.engine.store.read(row.runId),outcome=this.outcome(row,run),requestOutcome=['turn','settlementResume','stageResume'].includes(row.kind)?this.turnRequestOutcome(row,run):null;
       // Admission may have waited behind another Run. A delete+restore during
       // that wait must not admit a stale page even when story head is unchanged.
       if((request.expectedLifecycleRevision??0)!==(run.recycle?.revision??0))fail('RUN_LIFECYCLE_CHANGED');
@@ -153,7 +187,7 @@ export class HostJobs {
     },{signal});
     // Admission and reservation precede the first await after checking the maps.
     this.host.assertMutationAvailable(row.runId);signal?.throwIfAborted();
-    const requestOutcome=['turn','settlementResume'].includes(row.kind)?this.turnRequestOutcome(row,run):null;
+    const requestOutcome=['turn','settlementResume','stageResume'].includes(row.kind)?this.turnRequestOutcome(row,run):null;
     if(requestOutcome?.status==='committed'&&requestOutcome.operationId&&requestOutcome.operationId!==row.operationId){
       safeId(requestOutcome.operationId);
       if(this.ledger.records.some(value=>value.runId===row.runId&&value.operationId===requestOutcome.operationId))fail('OPERATION_ID_CONFLICT');
@@ -175,7 +209,8 @@ export class HostJobs {
     try{
       if(controller.signal.aborted)fail('CANCELLED');row.status='running';await this.ledger.persist();
       const request={...input,[JOB_OWNER]:owner},host=this.host;let result;
-      if(row.kind==='settlementResume')result=await host.resumeSettlement({...request,signal:controller.signal});
+      if(row.kind==='stageResume')result=await host.resumeStage({...request,signal:controller.signal});
+      else if(row.kind==='settlementResume')result=await host.resumeSettlement({...request,signal:controller.signal});
       else if(row.kind==='turn')result=await host.turn({...request,signal:controller.signal});
       else if(['rollback','regenerate'].includes(row.kind))result=await host.historyMutation(row.kind,request,controller.signal);
       else if(row.kind==='summaryStart')result=await host.summaryStart(request,controller.signal);
@@ -185,11 +220,15 @@ export class HostJobs {
     }catch(error){
       const shutdown=controller.signal.aborted&&owner.cancelSource==='host_shutdown';
       row.status=controller.signal.aborted?(shutdown?'interrupted':'cancelled'):'failed';row.failure=shutdown?safeFailure({code:'HOST_SHUTDOWN'},row.kind):error.sceanFailure??safeFailure(error,row.kind);
-      if(shutdown)row.recovery='host_shutdown_no_replay';
+      if(shutdown){row.recovery='host_shutdown_no_replay';if(error.sceanFailure)row.failure={...error.sceanFailure,code:'HOST_SHUTDOWN'};}
     }
     finally{
       const progress=this.host.progressByRun.get(row.runId);if(progress?.operationId===row.operationId&&progress?.requestId===row.requestId&&progress.attemptId)row.attemptId=progress.attemptId;
-      try{const outcome=this.outcome(row,await this.host.engine.store.read(row.runId));if(outcome){if(row.recovery!=='host_shutdown_no_replay'||['committed','completed','retired'].includes(outcome.status))row.status=outcome.status;if(outcome.binding)Object.assign(row,outcome.binding);if(['committed','completed','retired'].includes(outcome.status))delete row.failure;}}
+      if(row.kind==='stageResume' && !row.attemptId && ['cancelled','interrupted'].includes(row.status)){
+          const source=await this.host.engine.store.readAttempt(row.runId,input.sourceAttemptId).catch(()=>null);
+          if(source){row.sourceNotStarted=true;row.failure={...row.failure,requestId:row.requestId,...stageFailure(source)};}
+        }
+        try{const outcome=this.outcome(row,await this.host.engine.store.read(row.runId));if(outcome){if(row.recovery!=='host_shutdown_no_replay'||['committed','completed','retired'].includes(outcome.status))row.status=outcome.status;if(outcome.binding)Object.assign(row,outcome.binding);if(['committed','completed','retired'].includes(outcome.status))delete row.failure;}}
       catch{row.status='unknown';row.failure=safeFailure({code:'COMMIT_OUTCOME_UNKNOWN'},row.kind);}
       row.finishedAt=new Date(this.host.now()).toISOString();
       await this.ledger.persist().catch(()=>{row.recovery='ledger_write_pending_canonical_reconciliation';});

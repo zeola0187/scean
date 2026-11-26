@@ -131,6 +131,10 @@
       "path": "packages/scean/core/dialogue.mjs"
     },
     {
+      "path": "packages/scean/core/director-worldbook.mjs",
+      "source": "core/director-worldbook.mjs"
+    },
+    {
       "path": "packages/scean/core/engine.mjs",
       "source": "core/engine.mjs"
     },
@@ -225,6 +229,10 @@
     {
       "path": "packages/scean/core/state-blueprint.mjs",
       "source": "core/state-blueprint.mjs"
+    },
+    {
+      "path": "packages/scean/core/turn-resume.mjs",
+      "source": "core/turn-resume.mjs"
     },
     {
       "path": "packages/scean/core/worldbook.mjs",

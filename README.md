@@ -1,3 +1,7 @@
+# 1.7.1-local.stagev2.1.dsh022.3 舞台續跑
+
+[續跑方式與相容範圍](docs/RELEASE-STAGE-RESUME.zh-TW.md)
+
 # SCEAN
 
 > **目前版本 `1.7.0-local.stagev2.1.dsh022.3`：已正式整合新版舞台（Stage v2）。可以直接把本頁網址 `https://github.com/zeola0187/scean` 貼進 DSH 安裝。**

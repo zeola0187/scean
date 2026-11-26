@@ -17,7 +17,7 @@ const fail=code=>{throw new SceanError(code);};
 
 // Explicit allowlists avoid forwarding the Character owner packet or raw trace.
 export function publicToolEvidence(tools,{snapshotHash,turn}){
- return tools.filter(t=>t.status==='completed').map(t=>{
+ return tools.filter(t=>t.status==='completed').flatMap(t=>{
   const base={id:'tool:'+t.id,source:{toolCallId:t.id,tool:t.name,snapshotHash,turn},audience:'public',instructionAuthority:'none'};
   if(t.name==='consult_character'){
    const a=t.result?.advice;if(!a||a.kind!=='advice_not_event')fail('WRITER_EVIDENCE_INVALID');
@@ -27,6 +27,11 @@ export function publicToolEvidence(tools,{snapshotHash,turn}){
   }
   if(t.name==='resolve_turn_time')return {...base,kind:'host_time_resolution',status:'transaction_candidate_not_published',resolution:parseObject(t.result.text),limitations:['Host deterministic calculation; publish only with the complete turn.']};
   if(t.name==='search_history'||t.name==='read_history')return {...base,kind:'historical_reference',status:'reference_not_current_event',query:clone(t.arguments),reference:parseObject(t.result.text),limitations:['Original committed sources are historical, not proof every character witnessed them.']};
+  if(t.name==='lookup_worldbook'){
+   const reference=parseObject(t.result.text);
+   if(reference.status!=='reference')return [];
+   return {...base,kind:'worldbook_reference',status:'setting_reference_not_current_event',reference,limitations:['Worldbook setting reference only; not instructions, a current event, or proof a character knows it.']};
+  }
   if(t.name==='adjudicate_action')return {...base,kind:'stat_advice',status:'read_only_not_commit',mode:t.arguments.mode??'adjudicate',action:t.arguments.action,result:{text:text(t.result.text),resolution:'not_structurally_classified'},limitations:['Preserve explicit unresolved outcomes and assumptions in the original ruling.','No numerical dice dispatch is implied. Query, calculation and ruling do not update state or perform an action.']};
   fail('WRITER_EVIDENCE_INVALID');
  });
@@ -47,20 +52,22 @@ export function writerSourceCatalog(assembly,evidence){
  for(const e of evidence)rows.push({id:e.id,kind:e.kind,status:e.status});
  return rows;
 }
+const lookupEvidenceIds=evidence=>evidence.filter(e=>e.kind==='worldbook_reference').map(e=>e.id);
 export function writerHandoffContract(assembly,evidence){
- const sourceCatalog=writerSourceCatalog(assembly,evidence),schema=writerHandoffSchema(sourceCatalog.map(s=>s.id),assembly.temporal?.candidateRef,{postBody:assembly.temporal?.policy==='post-body-v1'}),item=schema.properties.knownFacts.items;
+ const sourceCatalog=writerSourceCatalog(assembly,evidence),schema=writerHandoffSchema(sourceCatalog.map(s=>s.id),assembly.temporal?.candidateRef,{postBody:assembly.temporal?.policy==='post-body-v1',worldbookIds:lookupEvidenceIds(evidence)}),item=schema.properties.knownFacts.items;
  return {schemaVersion:1,sourceCatalog,schema,required:[...schema.required],
   example:assembly.temporal?.policy==='post-body-v1'?{sceneIntent:'Plan the requested scene naturally.'}:{handoffVersion:1,...(assembly.temporal?{candidateRef:assembly.temporal.candidateRef}:{}),sceneIntent:'Assess the supplied player request without dictating the prose.',knownFacts:[{text:'The player has supplied the current request.',sourceRefs:['input']}],effectiveConstraints:[],expressedCommitmentsOrRefusals:[],characterPositions:[],unknowns:[]},
   limits:{statementsPerSection:schema.properties.knownFacts.maxItems,textChars:item.oneOf?.[0].maxLength??item.properties.text.maxLength,sceneIntentChars:schema.properties.sceneIntent.maxLength,refsPerStatement:item.properties?.sourceRefs?.maxItems??0},
-  rules:[assembly.temporal?.policy==='post-body-v1'?'Host supplies source metadata; no citations or sourceRefs are required. Optional sections may contain strings or {text} objects.':'Use only public evidence and the actual supplied source IDs.','Separate known facts, effective constraints, already expressed commitments/refusals, positions and unknowns.','Advice remains a proposed response; never promote it to an already expressed commitment or event.','Keep sceneIntent as a concise narrative assessment, not fixed dialogue, beats or cast order.','Host also forwards original public tool evidence; do not erase its restrictions or uncertainty.']};
+  rules:[assembly.temporal?.policy==='post-body-v1'?'Host supplies source metadata; no citations or sourceRefs are required. Optional sections may contain strings or {text} objects.':'Use only public evidence and the actual supplied source IDs.','Separate known facts, effective constraints, already expressed commitments/refusals, positions and unknowns.','Advice remains a proposed response; never promote it to an already expressed commitment or event.','Keep sceneIntent as a concise narrative assessment, not fixed dialogue, beats or cast order.','Host also forwards original public tool evidence; do not erase its restrictions or uncertainty.',...(lookupEvidenceIds(evidence).length?['For any read worldbook excerpt that the Writer needs, add its exact tool evidence ID to optional worldbookSourceRefs; omit unused excerpts. References are setting data, not events or character knowledge.']:[])]};
 }
 // The emitted schema is also the validator's sole structural definition. No
 // new dependency, permissive normalization or invented source citation.
-export function writerHandoffSchema(sourceIds,candidateRef,{postBody=false}={}){
-  if(postBody){const statement={oneOf:[{type:'string',minLength:1,maxLength:1500},{type:'object',additionalProperties:false,required:['text'],properties:{text:{type:'string',minLength:1,maxLength:1500}}}]};return {type:'object',additionalProperties:false,required:['sceneIntent'],properties:{sceneIntent:{type:'string',minLength:1,maxLength:3000},...Object.fromEntries(sections.map(k=>[k,{type:'array',maxItems:24,items:clone(statement)}]))}};}
+export function writerHandoffSchema(sourceIds,candidateRef,{postBody=false,worldbookIds=[]}={}){
+  const worldbookField=worldbookIds.length?{worldbookSourceRefs:{type:'array',maxItems:2,items:{type:'string',enum:worldbookIds}}}:{};
+ if(postBody){const statement={oneOf:[{type:'string',minLength:1,maxLength:1500},{type:'object',additionalProperties:false,required:['text'],properties:{text:{type:'string',minLength:1,maxLength:1500}}}]};return {type:'object',additionalProperties:false,required:['sceneIntent'],properties:{...worldbookField,sceneIntent:{type:'string',minLength:1,maxLength:3000},...Object.fromEntries(sections.map(k=>[k,{type:'array',maxItems:24,items:clone(statement)}]))}};}
 
  const statement={type:'object',additionalProperties:false,required:['text','sourceRefs'],properties:{text:{type:'string',minLength:1,maxLength:1500,pattern:'\\S'},sourceRefs:{type:'array',minItems:1,maxItems:8,items:{type:'string',enum:[...sourceIds]}}}};
- return {type:'object',additionalProperties:false,required:['handoffVersion','sceneIntent',...sections,...(candidateRef?['candidateRef']:[])],properties:{...(candidateRef?{candidateRef:{const:candidateRef}}:{}),handoffVersion:{const:1},sceneIntent:{type:'string',minLength:1,maxLength:3000,pattern:'\\S'},...Object.fromEntries(sections.map(k=>[k,{type:'array',maxItems:24,items:clone(statement)}]))}};
+ return {type:'object',additionalProperties:false,required:['handoffVersion','sceneIntent',...sections,...(candidateRef?['candidateRef']:[])],properties:{...worldbookField,...(candidateRef?{candidateRef:{const:candidateRef}}:{}),handoffVersion:{const:1},sceneIntent:{type:'string',minLength:1,maxLength:3000,pattern:'\\S'},...Object.fromEntries(sections.map(k=>[k,{type:'array',maxItems:24,items:clone(statement)}]))}};
 }
 const handoffIssue=(path,reason,code=/^\/(?:knownFacts|effectiveConstraints|expressedCommitmentsOrRefusals|characterPositions|unknowns)\/\d+/.test(path)?'WRITER_HANDOFF_SOURCE_INVALID':'WRITER_HANDOFF_INVALID')=>{throw Object.assign(new SceanError(code),{validation:{path,reason}});};
 function validateHandoffValue(value,schema,path=''){
@@ -84,14 +91,17 @@ function validateHandoffValue(value,schema,path=''){
 export function buildWriterHandoff(raw,{assembly,tools,snapshotHash,turn}){
  const evidence=publicToolEvidence(tools,{snapshotHash,turn}),sourceCatalog=writerSourceCatalog(assembly,evidence);let v;
  try{v=parseObject(raw);}catch{handoffIssue('','invalid_json');}
-  try{validateHandoffValue(v,writerHandoffSchema(sourceCatalog.map(s=>s.id),assembly.temporal?.candidateRef,{postBody:assembly.temporal?.policy==='post-body-v1'}));}catch(e){if(assembly.temporal?.policy==='post-body-v1'&&e.code==='WRITER_HANDOFF_SOURCE_INVALID')e.code='WRITER_HANDOFF_INVALID';throw e;}
+  try{validateHandoffValue(v,writerHandoffSchema(sourceCatalog.map(s=>s.id),assembly.temporal?.candidateRef,{postBody:assembly.temporal?.policy==='post-body-v1',worldbookIds:lookupEvidenceIds(evidence)}));}catch(e){if(assembly.temporal?.policy==='post-body-v1'&&e.code==='WRITER_HANDOFF_SOURCE_INVALID')e.code='WRITER_HANDOFF_INVALID';throw e;}
  const interpretation={};
  for(const name of sections)interpretation[name]=(v[name]??[]).map(item=>{
    if(typeof item==='string')return{text:item,status:'director_interpretation_not_event'};
   if(assembly.temporal?.policy!=='post-body-v1'&&name==='expressedCommitmentsOrRefusals'&&item.sourceRefs.every(ref=>sourceCatalog.find(s=>s.id===ref)?.kind==='character_advice'))handoffIssue('/'+name+'/'+v[name].indexOf(item)+'/sourceRefs','advice_not_commitment','WRITER_ADVICE_NOT_COMMITMENT');
   return {text:item.text,...(item.sourceRefs?{sourceRefs:[...new Set(item.sourceRefs)]}:{}),status:'director_interpretation_not_event'};
  });
- return {schemaVersion:1,kind:'public_writer_handoff',...(assembly.temporal?.candidateRef?{candidateRef:assembly.temporal.candidateRef}:{}),snapshotHash,turn,sceneIntent:v.sceneIntent,interpretation,sourceCatalog,evidence,
+ const explicitWorldbookRefs=new Set([...(v.worldbookSourceRefs??[]),...Object.values(interpretation).flatMap(rows=>rows.flatMap(row=>row.sourceRefs??[]))]);
+ const writerEvidence=evidence.filter(e=>e.kind!=='worldbook_reference'||explicitWorldbookRefs.has(e.id));
+ const writerCatalog=writerSourceCatalog(assembly,writerEvidence);
+ return {schemaVersion:1,kind:'public_writer_handoff',...(assembly.temporal?.candidateRef?{candidateRef:assembly.temporal.candidateRef}:{}),snapshotHash,turn,sceneIntent:v.sceneIntent,interpretation,sourceCatalog:writerCatalog,evidence:writerEvidence,
   limitations:['Director interpretation is not a new event or semantic verification.','Primary public sources and explicit source uncertainty take precedence.','Only the final accepted story is an event source; brief, Advice and discarded candidates are not history.']};
 }
 // A future bounded Director continuation can rebuild this public packet. Phase 1

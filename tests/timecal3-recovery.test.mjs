@@ -77,8 +77,20 @@ test('read-only query repair reuses successful Character advice without replay o
 test('permission/cross-run failure is not recoverable',async()=>{
  const f=await fixture({onDirector(){return{text:'',toolCalls:[{id:'denied',name:'search_history',arguments:{runId:'other',query:'synthetic'}}]};}});await assert.rejects(f.turn(),{code:'HISTORY_CROSS_RUN'});assert.equal(f.calls.length,1);assert.deepEqual(await f.store.read(f.run.runId),f.run);
 });
-test('correction does not receive a fresh deadline and cancellation after feedback stops',async()=>{
- const f=await fixture({timeoutMs:1000,onDirector:async(a,n)=>{if(n===1){await pause(300);return{text:'',toolCalls:[tool('bad')]};}await pause(800);return{text:'',toolCalls:[tool('fixed',good)]};}});await assert.rejects(f.turn(),{code:'MODEL_TIMEOUT'});assert.equal(f.calls.filter(c=>c.stage==='director').length,2);assert.deepEqual(await f.store.read(f.run.runId),f.run);
+test('each Director correction has its own deadline and cancellation after feedback stops',async()=>{
+ const f=await fixture({timeoutMs:1000,onDirector:async(a,n)=>{
+   if(n===1){await pause(300);return {text:'',toolCalls:[tool('bad')]};}
+   if(n===2){await pause(800);return {text:'',toolCalls:[tool('fixed',good)]};}
+ }});
+ await f.turn();
+ assert.equal(f.calls.filter(c=>c.stage==='director').length,3);
+ const slow=await fixture({timeoutMs:1000,onDirector:async(a,n)=>{
+   if(n===1)return {text:'',toolCalls:[tool('bad')]};
+   await pause(1300);return {text:'',toolCalls:[tool('fixed',good)]};
+ }});
+ await assert.rejects(slow.turn(),{code:'MODEL_TIMEOUT'});
+ assert.equal(slow.calls.filter(c=>c.stage==='director').length,2);
+ assert.deepEqual(await slow.store.read(slow.run.runId),slow.run);
  const controller=new AbortController(),g=await fixture({onDirector(a,n){if(n===1)return{text:'',toolCalls:[tool('bad')]};controller.abort();return{text:'',toolCalls:[tool('fixed',good)]};}});await assert.rejects(g.turn({signal:controller.signal}),{code:'CANCELLED'});assert.equal(g.calls.length,2);assert.deepEqual(await g.store.read(g.run.runId),g.run);
 });
 test('real confirmation widget clears consent on source changes and is read-only until explicit submit',async()=>{

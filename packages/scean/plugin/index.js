@@ -29,7 +29,7 @@ export async function apply(ctx,config={}){
   const store=new DurableStore({root:join(dataRoot,'store')});
   const modelRouting=new AgentModelRouting({llm:ctx.llm,agentDefaultModel:ctx.agentDefaultModel,store,config,chapterSelection:async()=>{const status=await chapterConfiguration.settings.status({transport:false});return {...status.settings.rerank,revision:status.revision};}});
   ctx.on('llm/adapters-updated',()=>{modelRouting.epoch++;});
-  const model=createNativeModelPort({llm:ctx.llm,agentDefaultModel:ctx.agentDefaultModel,routing:modelRouting,usageLedger,selection:config.modelSelection,stageSelections:config.stageModelSelections,maxTokens:config.maxTokens,stageMaxTokens:config.stageMaxTokens,timeoutMs:config.timeoutMs,technicalRetries:config.technicalRetries});
+  const model=createNativeModelPort({llm:ctx.llm,agentDefaultModel:ctx.agentDefaultModel,routing:modelRouting,usageLedger,selection:config.modelSelection,stageSelections:config.stageModelSelections,maxTokens:config.maxTokens,stageMaxTokens:config.stageMaxTokens,timeoutMs:config.timeoutMs,stageTimeoutMs:{writer:300000},technicalRetries:config.technicalRetries});
   if(config.enableExistingEmbedding===true){
     try{
       const rawEmbed=createOpenRouterEmbedding({usageLedger,caseId:'native-scean-embedding'});
@@ -41,7 +41,7 @@ export async function apply(ctx,config={}){
   }
   const memory=new Memory({embed,embeddingModel:embed?'openrouter/nebius/qwen3-embedding-8b':'disabled'});
   chapterConfiguration=createChapterConfiguration({ctx,config,dataRoot,usageLedger,legacyNativeModel:model,modelRouting});
-  const engine=new SceanEngine({store,model,memory,recentWindow:config.recentWindow??6});
+  const engine=new SceanEngine({store,model,memory,directorWorldbookLookup:config.directorWorldbookLookup===true,recentWindow:config.recentWindow??6});
   host=await new SceanHost({engine,modelRouting,root:join(dataRoot,'host'),summaryEnabled:config.summaryEnabled===true,chapterModelsEnabled:config.chapterModelsEnabled===true,chapterRetrievalEnabled:config.chapterRetrievalEnabled===true,
     chapterProviderSettings:chapterConfiguration.settings,chapterRuntimeFactory:chapterConfiguration.runtimeFactory,onChapterConfigurationChanged:()=>status('ready'),maxConcurrentOperations:config.maxConcurrentOperations??4}).init();
   // Credentials may become ready after this independently useful RP service.
