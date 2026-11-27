@@ -450,7 +450,7 @@ export class SceanHost {
     const work=(async()=>{
       try{
         const workSignal=signal?AbortSignal.any([signal,controller.signal]):controller.signal;
-        const result=await method(this.engine,{...request,signal:workSignal,onProgress:event=>{owner.batching=plain(event.batching);request.onProgress?.(event);}},{enabled:this.chapterModelsEnabled,...(this.writerSummaryArmed.has(request.runId)?{autoPolicy:'legacy-buffer-v1'}:{})});
+        const result=await method(this.engine,{...request,signal:workSignal,onProgress:event=>{owner.batching=plain(event.batching);request.onProgress?.(event);}},{enabled:this.chapterModelsEnabled,summaryTimeoutMs:180000,...(this.writerSummaryArmed.has(request.runId)?{autoPolicy:'legacy-buffer-v1'}:{})});
         if(action==='chapterAuto'&&this.writerSummaryArmed.has(request.runId)){
           if(result.status!=='completed')fail(result.code??'AUTOMATIC_CHAPTER_INCOMPLETE');
           if(result.created)await this.completeAutomaticSummary(request.runId,workSignal);

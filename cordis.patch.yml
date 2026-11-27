@@ -1,7 +1,10 @@
 - insert:
     - id: local-scean-host
       name: ./packages/scean/plugin/index.js
-      config: {}
+      config:
+        stageMaxTokens:
+          chapter_analysis: 16000
+          chapter_summary: 16000
     - id: local-cardstudio-scean-workspace-loader
       name: ./packages/studio/index.js
       config: {}

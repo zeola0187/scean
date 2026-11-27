@@ -1,4 +1,7 @@
 - insert:
     - id: local-scean-host
       name: '@local/dsh-scean'
-      config: {}
+      config:
+        stageMaxTokens:
+          chapter_analysis: 16000
+          chapter_summary: 16000

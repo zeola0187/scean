@@ -1,3 +1,8 @@
+# Unreleased
+
+- Give chapter boundary analysis and chapter summary writing independent 16,000-token output budgets in the shipped Stage profiles. The source-text threshold remains a separate setting.
+- Allow up to 180 seconds per chapter summary generation call; keep the 60-second analysis deadline. Story generation and existing saves are unchanged.
+
 # 1.7.1-local.stagev2.1.dsh022.3 舞台續跑
 
 [續跑方式與相容範圍](docs/RELEASE-STAGE-RESUME.zh-TW.md)
