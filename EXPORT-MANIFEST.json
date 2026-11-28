@@ -5494,8 +5494,8 @@
     },
     {
       "path": "tests/stage-lifecycle.browser.mjs",
-      "bytes": 9497,
-      "sha256": "dac0a2473b8e36a77a8ba785605bb8a4688ac4875580c88d0f114b19d3c17c43"
+      "bytes": 9594,
+      "sha256": "1a07ec7d49e2ae0cd9ca69fe0bf1b3a98835cbf5ba3da75ca27b600b24edd234"
     },
     {
       "path": "tests/stage-reading-edge.browser.mjs",
@@ -5509,8 +5509,8 @@
     },
     {
       "path": "tests/stage-scroll.browser.mjs",
-      "bytes": 8937,
-      "sha256": "698c8fa6ef959f0a8f37df57de8e5ffecb476fc90978e0f766b70700beee49f6"
+      "bytes": 8919,
+      "sha256": "a0afde3e448518e1e8f2ad8e9420ce6be9080c492657a6527a29f69a4c8e072f"
     },
     {
       "path": "tests/stage2-prose.test.mjs",

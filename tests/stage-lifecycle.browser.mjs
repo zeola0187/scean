@@ -13,7 +13,7 @@ import {hash} from '../core/contracts.mjs';
 const {chromium}=await import(process.env.SCEAN_PLAYWRIGHT_MODULE??'playwright');
 const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-proxy-server']});
 const {stageDocuments}=await import('./stage-browser-helpers.mjs');const html=(await stageDocuments()).next;
-const evidence=path.resolve(import.meta.dirname,'../../evidence');
+const evidence=path.resolve(process.env.SCEAN_TEST_OUTPUT??path.join(import.meta.dirname,'../.test-data/stage-browser'));await fs.mkdir(evidence,{recursive:true});
 const results=[];
 try{for(const width of [1100,390]){
  const root=await fs.mkdtemp(path.join(os.tmpdir(),'scean-recycle-ui-')),store=new DurableStore({root:path.join(root,'store')});

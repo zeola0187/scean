@@ -11,7 +11,7 @@ import {resolveSyntheticCreate,createScriptedModel} from '../fixtures/synthetic-
 import {createNativeBridge} from '../plugin/player-native-bridge.mjs';
 import {createNativeModelPort} from '../plugin/native-model.mjs';
 
-const home=os.homedir();
+const evidence=path.resolve(process.env.SCEAN_TEST_OUTPUT??path.join(import.meta.dirname,'../.test-data/stage-browser'));await fs.mkdir(evidence,{recursive:true});
 const {chromium}=await import(process.env.SCEAN_PLAYWRIGHT_MODULE??'playwright');
 const root=await fs.mkdtemp(path.join(os.tmpdir(),'scean-compass-web-')),store=new DurableStore({root:path.join(root,'store')});
 const discovery=resolveSyntheticCreate({cardId:'synthetic-observatory',revisionId:'r1',openingId:'deck'});
@@ -89,7 +89,7 @@ try{
   assert.equal(await doc.locator('.composer-tools > button.tool').count(),4);
   const turnsBefore=(await store.read(runId)).turns.length;await doc.locator('button.latest-body').click();assert.equal((await store.read(runId)).turns.length,turnsBefore);
   assert(Math.abs((await get('.turn.is-new .prose')).targetTop-(await frame.locator('.reader-bar').evaluate(n=>n.getBoundingClientRect().bottom+12)))<3);
-  await page.screenshot({path:new URL('../../evidence/',import.meta.url).pathname.replace(/^\/([A-Za-z]:)/,'$1')+`stage-${width}-${down}.png`});
+  await page.screenshot({path:path.join(evidence,`stage-${width}-${down}.png`)});
   await page.close();
  }
 }finally{release?.();await browser?.close();await new Promise(r=>server.close(r));await host.close();}
