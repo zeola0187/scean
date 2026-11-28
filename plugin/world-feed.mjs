@@ -64,14 +64,16 @@ export function worldFeed(run, cursor, {read = publicRoutineRead} = {}) {
 }
 
 /** Record that the player viewed items. Monotonic: the forum high-water mark never moves back. */
-export async function markFeedSeen(store, runId, {forumSequence, ids = []} = {}, {now = () => new Date().toISOString()} = {}) {
+export async function markFeedSeen(store, runId, {forumSequence, ids = [], expectedLifecycleRevision=0} = {}, {now = () => new Date().toISOString()} = {}) {
   if (forumSequence !== undefined && (!Number.isSafeInteger(forumSequence) || forumSequence < 0)) fail('FEED_CURSOR_INVALID');
   if (!Array.isArray(ids) || ids.length > 2000) fail('FEED_CURSOR_INVALID');
   for (const id of ids) safeId(id);
+  return store.withRunLock(runId,async()=>{const run=await store.read(runId);if((run.recycle?.revision??0)!==expectedLifecycleRevision)fail('RUN_LIFECYCLE_CHANGED');
   return store.withRunLock(runId, async () => {
     const current = await readFeedCursor(store, runId);
     const next = {schemaVersion: 1, forumSequence: Math.max(current.forumSequence, forumSequence ?? 0), seenIds: [...new Set([...current.seenIds, ...ids])].slice(-MAX_SEEN), updatedAt: now()};
     await store.atomic(cursorFile(store, runId), next, {commit: true});
     return {forumSequence: next.forumSequence, seen: next.seenIds.length};
   }, {namespace: 'world-feed'});
+  });
 }

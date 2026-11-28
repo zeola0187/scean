@@ -29,6 +29,8 @@ export async function changeRunLifecycle(store,{runId,action,operationId,expecte
   if(run.version!==expectedVersion)fail('VERSION_CONFLICT');if((run.head??null)!==expectedHead)fail('HISTORY_HEAD_CONFLICT');
   if(life.status!==(action==='trash'?'active':'trashed'))fail('RUN_LIFECYCLE_CHANGED');
   if(life.receipts.length>=1024)fail('RUN_LIFECYCLE_CAPACITY');
+  if(run.worldRoutine?.jobs?.some(row=>row.status==='running'))fail('RUN_BUSY');
+  await store.assertRunActivityIdle?.(runId);
   if((await store.readAttempts(runId)).some(row=>row.status==='pending')||Object.values(run.narrative?.operations??{}).some(row=>row.status==='pending'))fail('RUN_LIFECYCLE_UNRESOLVED');
   if(Object.values(run.receipts??{}).some(row=>row.status!=='retired'&&!run.turns.some(t=>t.commitId===row.commitId)))fail('RUN_LIFECYCLE_UNRESOLVED');
   const at=new Date(now()).toISOString(),revision=life.revision+1;

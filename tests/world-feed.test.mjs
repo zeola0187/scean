@@ -10,7 +10,7 @@ import {markFeedSeen, readFeedCursor, worldFeed} from '../plugin/world-feed.mjs'
 async function store(t) {
   const base = resolve(import.meta.dirname, '../.test-data'); await mkdir(base, {recursive: true});
   const root = await mkdtemp(join(base, 'world-feed-')); t.after(() => rm(root, {recursive: true, force: true}));
-  const s = new DurableStore({root}); await mkdir(s.runDir('run-a'), {recursive: true}); return s;
+  const s = new DurableStore({root}); await mkdir(s.runDir('run-a'), {recursive: true});await s.atomic(s.currentFile('run-a'),{runId:'run-a',version:0});return s;
 }
 
 test('cursor starts empty, moves forward only and accumulates viewed ids', async t => {

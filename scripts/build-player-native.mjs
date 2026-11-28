@@ -1,5 +1,6 @@
 // Deterministic, dependency-free bundler for our bounded ES module syntax only.
 import fs from 'node:fs/promises';
+import {compileStagePlayer} from './stage-documents.mjs';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
@@ -9,6 +10,7 @@ import {createNotificationClient,showNotificationToast} from '../isolated/web/no
 import {nativeFrameBootstrap} from '../plugin/native-frame-source.mjs';
 const root=path.resolve(import.meta.dirname,'..'),web=path.join(root,'isolated/web');
 export async function compileNativePlayer(){
+  if(await fs.access(path.join(web,'stage-next.html')).then(()=>true,()=>false))return compileStagePlayer(root);
   await fs.copyFile(path.join(root,'core/condition-ast.mjs'),path.join(web,'condition-ast.mjs'));
   await fs.copyFile(path.join(root,'core/player-literal.mjs'),path.join(web,'player-text.mjs'));
   await fs.copyFile(path.join(root,'core/dialogue.mjs'),path.join(web,'dialogue.mjs'));

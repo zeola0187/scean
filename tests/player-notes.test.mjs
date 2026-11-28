@@ -11,6 +11,7 @@ async function setup(t) {
   const root = await mkdtemp(join(base, 'player-notes-')); t.after(() => rm(root, {recursive: true, force: true}));
   const store = new DurableStore({root}); await mkdir(store.runDir('run-a'), {recursive: true});
   const run = {runId: 'run-a', turns: [{turn: 1, commitId: 'c1', body: '鑰匙收在學生會的第二個抽屜。\n周牧把它鎖上了。'}, {turn: 2, commitId: 'c2', body: '天台的門三年前就封起來了。'}]};
+  run.version=0;await store.atomic(store.currentFile(run.runId),run);
   return {store, run};
 }
 

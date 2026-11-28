@@ -1,4 +1,9 @@
+import {pinPortrayal,portrayalInstruction} from './character-portrayal.mjs';
+import {legacySceneSystems} from './scene-compat.mjs';
+import {currentScene,makeScene} from './scene-snapshot.mjs';
 import {stageBasis,newStageRecord,recoverStageRecord,stageFailure,stageEvent,stageAllowance} from './turn-resume.mjs';
+import {withInspiration} from './inspiration.mjs';
+import {captureCompass,COMPASS_DIRECTOR_RULE} from './plot-compass.mjs';
 import {postBodySystems,POST_BODY_POLICY,committedTemporalView,postBodyOutputContract,normalizePostBodyProposal,postBodyArgumentRecovery,frozenBodyPins,validateFrozenBody} from './post-body-settlement.mjs';
 import {initializeWorldRoutine,routineContext,routineMetadataRebase} from './world-routine.mjs';
 import {preparePostTemporalCandidate,postBodyEventCatalog,recordActivityCheckpoint,initializeTemporal,prepareTemporalCandidate,candidateView,projectStoryState,validateTemporalPost,temporalCheckpoint,temporalReceipt,validateTemporalRun,TIME_TOOL,validateTimeConfirmation,timeToolArgumentRecovery,validateTimeRecovery,timeSourceCatalog} from './state-operations.mjs';
@@ -15,8 +20,11 @@ import { SceanError, clone, id, safeId, json, hash, checkAbort, text, parseObjec
 import {headOf,assertHistoryCapacity,rollbackLast} from './history.mjs';
 import {regenerateLast} from './regenerate.mjs';
 import {selectNarrative,invalidateNarrative} from './narrative.mjs';
-import {ChapterRecall,chapterContextSources,originalChapterContext,chapterContextReceipt} from './chapter-recall.mjs';
+import {ChapterRecall,chapterContextSources,degradedChapterContext,chapterContextReceipt} from './chapter-recall.mjs';
 import {seedNewRunChapterSettings} from './chapter-summary.mjs';
+import {legalTargets,optimizedSettlement,requestedEvidence,ShadowSettlement} from './settlement-context.mjs';
+import {readModelSettings as readSettlementSettings} from './model-routing.mjs';
+import {join as joinPath} from 'node:path';
 import {searchHistory,readHistory,HISTORY_REFERENCE_LABEL} from './history-recall.mjs';
 import { normalizeBanList, findBans, repairRanges, applyLocalRepairs } from './banlist.mjs';
 import { applyStatProposal } from './stat-contract.mjs';
@@ -59,7 +67,8 @@ export function safeFailure(error, stage = 'request', fallback = 'TURN_FAILED') 
     CHAPTER_RECALL_UNAVAILABLE: '章節檢索未配置；尚未送出 Director。',
     CONTEXT_PACKET_TOO_LARGE: '授權資料封包超過 16MiB 傳輸安全上限；未裁剪內容，本輪未提交。',
     NARRATIVE_COVERAGE_REQUIRED: '未摘要正文超出 50 回合或 200KB 保護上限；本輪未生成。請啟用自動長篇摘要或用手動摘要補齊，再繼續故事。全文仍可從歷史查回。',
-    POST_STATE_FORMAT:'世界結算格式不符；合法正文已保存，本輪尚未提交。可繼續結算已保存正文。',
+    STAT_INDEPENDENT_MODEL_REQUIRED:'請替「狀態 Stat」明確選擇不同於正文 Writer 的模型；正文已保留。',
+ POST_STATE_FORMAT:'世界結算格式不符；合法正文已保存，本輪尚未提交。可繼續結算已保存正文。',
     POST_TIME_INVALID:'世界結算的時間表示不合法或早於已知時間；合法正文已保存，尚未提交。',
     POST_STATE_REPAIR_INTENT_CHANGED:'格式修正改變了原本有效的時間裁定；已停止結算並保存正文，尚未提交。',
     SETTLEMENT_SOURCE_STALE:'已保存正文的故事版本或來源已改變，不能套用舊結算；正文仍可查看，未覆寫目前故事。',
@@ -212,10 +221,10 @@ export function characterIdentities(snapshot) {
 }
 
 export class SceanEngine {
-  constructor({ store, model, memory, chapterRecall, recentWindow = 6, unconfiguredWritingMode = 'single_writer', postBody = true, directorWorldbookLookup = false }) {
+  constructor({ store, model, memory, chapterRecall, recentWindow = 6, unconfiguredWritingMode = 'single_writer', postBody = true, inspiration, directorWorldbookLookup = false }) {
     if (!store || !model?.generate || !memory?.retrieve) throw new SceanError('MISSING_PORT');
     if (!Number.isInteger(recentWindow) || recentWindow < 1 || recentWindow > 50) throw new SceanError('INVALID_RECENT_WINDOW');
-    this.store = store; this.model = model; this.memory = memory; this.recentWindow = recentWindow;
+    this.shadowSettlement=new ShadowSettlement();this.store = store; this.inspiration = inspiration; this.model = model; this.memory = memory; this.recentWindow = recentWindow;
     if(!['single_writer','current'].includes(unconfiguredWritingMode))throw new SceanError('WRITING_MODE_UNKNOWN');
     this.directorWorldbookLookup=typeof directorWorldbookLookup==='function'?directorWorldbookLookup:directorWorldbookLookup===true;this.postBody=postBody===true;this.unconfiguredWritingMode=unconfiguredWritingMode;this.chapterRecall = chapterRecall;
   }
@@ -288,12 +297,14 @@ export class SceanEngine {
     const recalled = await this.memory.retrieve({ query, records: clone(records), runId: run.runId, ...(characterId ? { characterId } : {}), audience, signal });
     return audience === 'owner' ? ownerData(recalled, characterId) : publicData(recalled);
   }
-  async turn({ runId, input, requestId, signal, onProgress, operationId, writingGuidance, baseVersion, baseHead, chapterContextEnabled, timeConfirmation, resumeAttemptId, stageAttemptId }) {
+  async turn({ runId, input, requestId, signal, onProgress, operationId, writingGuidance, baseVersion, baseHead, chapterContextEnabled, timeConfirmation, resumeAttemptId, stageAttemptId, revision }) {
     safeId(runId); safeId(requestId); text(input, 20000); if (operationId !== undefined) safeId(operationId);
     return this.store.withRunLock(runId, async () => {
+      const lockAcquiredAt=Date.now();
       const run = await this.store.read(runId);
       if (!run.receipts[requestId] && run.turns.some(t=>t.requestId===requestId))throw new SceanError('COMMIT_OUTCOME_UNKNOWN');
-      validateTemporalRun(run,{provisionalRestore:this.store.provisionalTemporalRestore}); await this.store.recoverAttempts(runId);
+      validateTemporalRun(run,{provisionalRestore:this.store.provisionalTemporalRestore});
+      const recoveredAttempts = await this.store.recoverAttempts(runId);
       if (run.receipts[requestId]?.status === 'retired') throw new SceanError('REQUEST_RETIRED');
       if (run.receipts[requestId]) {
         if (run.receipts[requestId].inputHash !== hash(input)||hash(run.receipts[requestId].timeConfirmation??null)!==hash(timeConfirmation??null)) throw new SceanError('IDEMPOTENCY_CONFLICT');
@@ -311,7 +322,7 @@ export class SceanEngine {
       assertHistoryCapacity(run,{turn:true});
       validatePlayerIdentity(run.playerIdentity,run);
       const identity=playerContext(run),bindingHash=identity?hash(identity):null;
-      const allPriorAttempts = await this.store.readAttempts(runId);
+      const allPriorAttempts = recoveredAttempts ?? await this.store.readAttempts(runId);
       const priorAttempts=allPriorAttempts.filter(a=>!this.postBody||a.postBodyPolicy===POST_BODY_POLICY);
       const resumeSource=resumeAttemptId?await this.store.readAttempt(runId,safeId(resumeAttemptId)):null;
       if(resumeSource&&(resumeSource.runId!==runId||resumeSource.requestId!==requestId||resumeSource.input!==input||resumeSource.postBodyPolicy!==POST_BODY_POLICY||!resumeSource.bodyCheckpoint))throw new SceanError('SETTLEMENT_SOURCE_STALE');
@@ -334,9 +345,23 @@ export class SceanEngine {
       const priorModes=priorAttempts.filter(a=>a.requestId===requestId).map(a=>a.writingMode?validateWritingModePin(a.writingMode):null);
       const writingMode=priorModes.length?(priorModes[0]??await captureWritingMode({...defaultWritingMode(runId),mode:'current'})):await captureWritingMode(await readRunWritingMode(this.store,run,this.unconfiguredWritingMode));
       if(priorModes.some(p=>p&&hash(p)!==hash(writingMode)||p===null&&writingMode.mode!=='current'))throw new SceanError('WRITING_MODE_REQUEST_CONFLICT');
-      const modeRef=writingModeReference(writingMode),systems=this.postBody?postBodySystems(systemsForWritingMode(SYSTEMS,writingMode)):systemsForWritingMode(SYSTEMS,writingMode),singleWriter=writingMode.mode==='single_writer';
+      const existingSceneSource=resumeSource??stageSource??priorAttempts.find(a=>a.requestId===requestId&&!a.provisional);
+      const sceneEnabled=!existingSceneSource||existingSceneSource.scenePolicy==='scene-v1';
+      const modeRef=writingModeReference(writingMode),newSystems=this.postBody?postBodySystems(systemsForWritingMode(SYSTEMS,writingMode)):systemsForWritingMode(SYSTEMS,writingMode),systems=sceneEnabled?newSystems:legacySceneSystems(newSystems,writingMode.mode,this.postBody),singleWriter=writingMode.mode==='single_writer';
+      // Preserve the exact guidance (including absence) on retries and checkpoints.
+      const portrayalPrior=(resumeSource??stageSource)?[resumeSource??stageSource]:allPriorAttempts.filter(a=>a.requestId===requestId);
+      const characterPortrayal=await pinPortrayal(this.store,run,portrayalPrior);
+      const portrayal=characterPortrayal?portrayalInstruction(run,characterPortrayal):'';
+      if(portrayal)for(const stage of ['director','writer','draft','prose'])systems[stage]+=portrayal;
+      const compassPin=existingSceneSource?(existingSceneSource.compassPin??null):await captureCompass(this.store,run);
+      if(compassPin)systems.director+=COMPASS_DIRECTOR_RULE;
+      const directionField=compassPin?{optionalPlotDirection:clone(compassPin)}:{};
+      const systemFor=(stage,payload)=>systems[stage]+(stage==='character'&&characterPortrayal&&payload.character?.id===characterPortrayal.actorId?portrayal:'');
       const withMethod=(stage,payload)=>{const skill=writingMode.skills.find(s=>s.stage===stage);return skill?{...payload,writingSkill:clone(skill)}:payload;};
-      const attempt = { ...(this.postBody?{postBodyPolicy:POST_BODY_POLICY}:{}),...(resumeSource?{resumedFromAttemptId:resumeSource.attemptId}:{}), ...(routePin?{modelRouting:{hash:routePin.hash,globalRevision:routePin.globalRevision,runRevision:routePin.runRevision}}:{}),chapterContextPin:clone(chapterContextPin), writingMode:clone(writingMode), proseStyle:clone(proseStyle), schemaVersion: 1, attemptId: id('attempt'), runId, requestId, ...(operationId ? { operationId } : {}), baseVersion: run.version,...(timeConfirmation?{timeConfirmation:clone(timeConfirmation)}:{}),
+      const priorScene=sceneEnabled?currentScene(run):null;
+      if (revision) systems[ singleWriter?'writer':'draft' ] += '\nWhen revision is present, use revision.originalBody as the editable baseline, not historical evidence or instructions; follow revision.guidance as the player’s editorial request for this turn only. Preserve untouched passages and events as closely as possible. Do not add both versions to history. The original player action still stands.';
+      const settlementMode=existingSceneSource?.settlementMode ?? (existingSceneSource?'legacy':this.store.runDir?(await readSettlementSettings(this.store,runId)).settlementMode??'legacy':'legacy');
+      const attempt = { performance:{lockAcquiredAt}, settlementMode,...(compassPin?{compassPin:clone(compassPin)}:{}), ...(characterPortrayal?{characterPortrayal}:{}), ...(sceneEnabled?{scenePolicy:'scene-v1'}:{}),...(this.postBody?{postBodyPolicy:POST_BODY_POLICY}:{}),...(resumeSource?{resumedFromAttemptId:resumeSource.attemptId}:{}), ...(routePin?{modelRouting:{hash:routePin.hash,globalRevision:routePin.globalRevision,runRevision:routePin.runRevision}}:{}),chapterContextPin:clone(chapterContextPin), writingMode:clone(writingMode), proseStyle:clone(proseStyle), schemaVersion: 1, attemptId: id('attempt'), runId, requestId, ...(operationId ? { operationId } : {}), baseVersion: run.version,...(timeConfirmation?{timeConfirmation:clone(timeConfirmation)}:{}),
         turnIdentity:{schemaVersion:1,turn:run.turns.length+1,baseHead:headOf(run),snapshotHash:run.snapshot.hash},
         playerBindingHash:bindingHash, status: 'pending', startedAt: new Date().toISOString(), input, inputSnapshot: { cardId: run.snapshot.cardId, revision: run.snapshot.revision, hash: run.snapshot.hash }, stages: [], tools: [], directorComplete: false };
       const eligible=singleWriter && this.postBody && typeof this.store.reserveStageDispatch==='function' && typeof this.store.stageDispatches==='function' && !this.store.provisionalTemporalRestore && writingGuidance===undefined && !resumeSource;
@@ -382,7 +407,7 @@ export class SceanEngine {
         checkAbort(signal);
         const capability = description?.capabilities ?? description ?? {};
         try {
-          const checked = budgetStage(stage, { system: systems[stage], input: payload }, { contextWindow: capability.contextWindow, outputReserve: capability.outputLimit, outputReserveSource:capability.outputLimitSource, outputReservePhase:capability.outputLimitPhase, tools, requireNarrativeCoverage: true, committedRecentIds: run.turns.slice(-50).map(t=>t.commitId) });
+          const checked = budgetStage(stage, { system: systemFor(stage,payload), input: payload }, { contextWindow: capability.contextWindow, outputReserve: capability.outputLimit, outputReserveSource:capability.outputLimitSource, outputReservePhase:capability.outputLimitPhase, tools, requireNarrativeCoverage: true, committedRecentIds: run.turns.map(t=>t.commitId) });
           (attempt.contextPreflights ??= []).push({...checked.diagnostics,...(chapterContextReceipt(payload.assembly??payload.context,'preflight_ready')?{chapterDelivery:chapterContextReceipt(payload.assembly??payload.context,'preflight_ready')}:{})});
         } catch (error) { if (error.diagnostics) (attempt.contextPreflights ??= []).push({...clone(error.diagnostics),...(chapterContextReceipt(payload.assembly??payload.context,error.code==='CONTEXT_PACKET_TOO_LARGE'?'blocked_capacity':'blocked_preflight')?{chapterDelivery:chapterContextReceipt(payload.assembly??payload.context,error.code==='CONTEXT_PACKET_TOO_LARGE'?'blocked_capacity':'blocked_preflight')}:{})}); throw error; }
       };
@@ -393,10 +418,15 @@ export class SceanEngine {
         activeStage = stage;
         checkAbort(signal);
         dispatchBudget?.check();
-        const inputDigest=capture?hash([systems[stage],payload,tools??null]):null;
+        if(sceneEnabled&&this.postBody&&stage==='post_stat'&&routePin){
+          const stat=routePin.routes.post_stat,writer=routePin.routes.writer;
+          if(!stat||!['run_agent','run_stage','global_agent','plugin_stage'].includes(stat.selectionSource)||!writer||stat.requested.model.toLowerCase()===writer.requested.model.toLowerCase())throw new SceanError('STAT_INDEPENDENT_MODEL_REQUIRED');
+        }
+        const inputDigest=capture?hash([systemFor(stage,payload),payload,tools??null]):null;
         if(saved && saved.inputDigest!==inputDigest)throw new SceanError('STAGE_SOURCE_STALE');
         if(saved?.output){
           const original=await stageEvent(this.store,attempt,saved);
+          if(stage==='writer' && original.prompt.input.optionalInspirationReference && attempt.inspirationPin?.batchId)attempt.inspirationDelivered=true;
           const result={text:original.result.text,...(original.result.toolCalls?{toolCalls:clone(original.result.toolCalls)}:{})};
           attempt.stages.push({stage,status:'reused',sourceAttemptId:saved.attempt,sourceStageIndex:saved.index,
             ...(original.access?{access:clone(original.access)}:{}),...(stage==='character'?{prompt:clone(original.prompt)}:{})});
@@ -406,7 +436,7 @@ export class SceanEngine {
           cp.next=stage;
           cp.waiting={key:callKey,group:callGroup,limit:callLimit};
         }
-        const event = { stage, ...(stage === 'character' ? { access: { kind: 'character_private', characterId: payload.character.id } } : {}), status: 'pending', startedAt: new Date().toISOString(), prompt: { system: systems[stage], input: clone(payload) } };
+        const event = { stage, ...(stage === 'character' ? { access: { kind: 'character_private', characterId: payload.character.id } } : {}), status: 'pending', startedAt: new Date().toISOString(), prompt: { system: systemFor(stage,payload), input: clone(payload) } };
         attempt.stages.push(event); await checkpoint(); progress(stage, 'pending');
         try {
           const modelContext = { ...(routePin?{routePin}:{}),runId, attemptId: attempt.attemptId, requestId, ...(operationId ? { operationId } : {}), ...(run.modelSelection ? { modelSelection: clone(run.modelSelection) } : {}), ...(run.stageModelSelections ? { stageModelSelections: clone(run.stageModelSelections) } : {}) };
@@ -414,10 +444,11 @@ export class SceanEngine {
           checkAbort(signal);
           const capability = description?.capabilities ?? description ?? {};
           let budgeted;
-          try { budgeted = budgetStage(stage, event.prompt, { contextWindow: capability.contextWindow, outputReserve: capability.outputLimit, outputReserveSource:capability.outputLimitSource, outputReservePhase:capability.outputLimitPhase, tools, requireNarrativeCoverage: true, committedRecentIds: run.turns.slice(-50).map(t=>t.commitId) }); }
+          try { budgeted = budgetStage(stage, event.prompt, { contextWindow: capability.contextWindow, outputReserve: capability.outputLimit, outputReserveSource:capability.outputLimitSource, outputReservePhase:capability.outputLimitPhase, tools, requireNarrativeCoverage: true, committedRecentIds: run.turns.map(t=>t.commitId) }); }
           catch (error) { if (error.diagnostics) event.contextBudget = clone(error.diagnostics); throw error; }
           event.contextBudget = budgeted.diagnostics;
           event.prompt = clone(budgeted.prompt); payload = budgeted.prompt.input;
+          if((stage==='writer'||stage==='prose')&&payload.optionalInspirationReference&&attempt.inspirationPin?.batchId)attempt.inspirationDelivered=true;
           modelContext.capacityBudget = { contextWindow: budgeted.diagnostics.contextWindow, outputReserve: budgeted.diagnostics.outputReserve, includedEstimate: budgeted.diagnostics.includedEstimate, overheadReserve: budgeted.diagnostics.overheadReserve, toolReserve: budgeted.diagnostics.toolReserve };
           if (attempt.assemblyDiagnostics?.worldbook) {
             const entries = payload.assembly?.sources?.worldbook?.entries ?? payload.context?.sources?.worldbook?.entries ?? payload.worldbook?.entries ?? [];
@@ -448,7 +479,7 @@ export class SceanEngine {
             dispatchBudget=stageAllowance(dispatchBudget??ownedBudget,cp,cp.waiting,(step,prior)=>this.store.reserveStageDispatch(runId,requestId,basis,step,prior),checkpoint);
             await checkpoint();
           }
-          const generate=async()=>{if(dispatchBudget&&!this.model.managesDispatchBudget)await dispatchBudget.take();return this.model.generate({stage,system:systems[stage],input:clone(payload),context:modelContext,...(tools?{tools:clone(tools)}:{}),signal:dispatchBudget?.signal??signal,...(dispatchBudget&&this.model.managesDispatchBudget?{dispatchBudget}:{})});};
+          const generate=async()=>{if(dispatchBudget&&!this.model.managesDispatchBudget)await dispatchBudget.take();return this.model.generate({stage,system:systemFor(stage,payload),input:clone(payload),context:modelContext,...(tools?{tools:clone(tools)}:{}),signal:dispatchBudget?.signal??signal,...(dispatchBudget&&this.model.managesDispatchBudget?{dispatchBudget}:{})});};
           let response;try{response=await abortable(() => dispatchBudget?dispatchBudget.run(generate):generate());}finally{ownedBudget?.close();}
           checkAbort(signal);
           if (!response || typeof response.text !== 'string') throw new SceanError('INVALID_MODEL_RESPONSE');
@@ -460,6 +491,9 @@ export class SceanEngine {
           if (response.toolCalls?.length) publicResult.toolCalls = response.toolCalls.map(tool => ({ id: tool.id, name: tool.name, arguments: tool.arguments }));
           if (response.model) publicResult.model = String(response.model);
           if (response.usage) publicResult.usage = clone(response.usage);
+          if(response.route)event.performance={route:response.route.effective??null,source:response.route.selectionSource??null,timing:response.route.timing??null,usage:response.route.tokenDetails??null};
+          const actual=response.route?.tokenDetails?.fullInput;
+          if(['director','writer'].includes(stage))event.contextBudget.softTarget={min:80000,max:100000,actual:actual??null,aboveReference:actual==null?null:actual>100000,chapterStatus:attempt.assemblyDiagnostics?.chapterRecall?.status??null};
           event.contextBudget.actualUsage = response.usage ? clone(response.usage) : null;
           if (event.worldbookUse) event.worldbookUse.status = 'completed';
           if (event.narrativeUse) {event.narrativeUse.status = 'completed';if(event.narrativeUse.chapterSummaries)event.narrativeUse.deliveryStatus='completed_port_call';}
@@ -495,6 +529,7 @@ export class SceanEngine {
         const checkpointPins={inputHash:hash(input),routeHash:routePin?.hash??null,writingModeHash:hash(writingMode),styleHash:hash(proseStyle)};
         const saveTemporal=async body=>{attempt.temporalCheckpoint=temporalCheckpoint(run,temporal,{...checkpointPins,...(body!==undefined?{body,bodyHash:hash(body)}:{})});await checkpoint();};
         if(!this.postBody)await saveTemporal();
+        attempt.performance.contextStartAt=Date.now();
         const assembled = assembleSources(run.snapshot);
         const recentDialogue = publicData([...clone(run.snapshot.recentDialogue ?? []), ...run.turns.map(t => ({ turn: t.turn, input: t.input, body: t.body }))]);
         const selected = selectWorldbooks(run.snapshot, { playerInput: input, recentDialogue, config: run.snapshot.worldbookSelection ?? {},playerName:run.playerIdentity?.name,...(worldbookLookup&&!resumeSource?{onLookupEligible:entry=>worldbookLookup.add(entry)}:{}) });
@@ -504,13 +539,14 @@ export class SceanEngine {
           const recall=this.chapterRecall??new ChapterRecall();
           const sources=chapterContextSources(run);
           attempt.assemblyDiagnostics={...assembled.diagnostics,worldbook:selected.diagnostics,chapterRecall:{...sources.diagnostics,status:'pending'}};
-          activeStage='chapter_recall';progress(activeStage,'pending');
+          attempt.performance.recallStartAt=Date.now();activeStage='chapter_recall';progress(activeStage,'pending');
           try{chapters=await recall.retrieve({run,query:input,sources,signal,context:{...(routePin?{routePin}:{}),runId,requestId,attemptId:attempt.attemptId,...(run.modelSelection?{modelSelection:clone(run.modelSelection)}:{}),...(run.stageModelSelections?{stageModelSelections:clone(run.stageModelSelections)}:{})}});}
           catch(error){
             if(signal?.aborted||['CANCELLED','CHAPTER_RECALL_STALE'].includes(error.code))throw error;
-            chapters=originalChapterContext(run,{...sources.diagnostics,...error.chapterRecallDiagnostics,failureCode:/^[A-Z0-9_]{1,64}$/.test(error.code??'')?error.code:'CHAPTER_RECALL_FAILED'});
+            chapters=degradedChapterContext(run,sources,{...error.chapterRecallDiagnostics,failureCode:/^[A-Z0-9_]{1,64}$/.test(error.code??'')?error.code:'CHAPTER_RECALL_FAILED'});
           }
-          narrative={summary:null,recentDialogue:chapters.recentDialogue,diagnostics:{...sources.diagnostics,recentCount:chapters.recentDialogue.length,selectedSummaryId:null,unsummarizedOmittedTurns:0,source:chapters.diagnostics.status==='degraded'?'all_committed_originals_after_recall_failure':'active_chapter_archives_and_uncovered_originals'}};
+          attempt.performance.recallEndAt=Date.now();
+          narrative={summary:null,recentDialogue:chapters.recentDialogue,diagnostics:{...sources.diagnostics,recentCount:chapters.recentDialogue.length,selectedSummaryId:null,unsummarizedOmittedTurns:0,source:chapters.diagnostics.fallback??'active_chapter_archives_and_uncovered_originals'}};
           progress(activeStage,'completed');
         }
         const selectedSummary = narrative.summary?.visibility === 'public' && narrative.summary?.perspective === 'public_story' ? narrative.summary : null;
@@ -529,6 +565,7 @@ export class SceanEngine {
         let assembly = {
           playerInput: input,
           ...(writingGuidance?{writingGuidance:text(writingGuidance,10000)}:{}),
+        ...(priorScene?{sceneSnapshot:clone(priorScene)}:{}),
           sources: stageSources,
           chapterSummary: publicData(run.snapshot.chapterSummary ?? ''),
           ...(chapters?{chapterContext:{mode:'chapter_3_plus_8',label:HISTORY_REFERENCE_LABEL,status:chapters.diagnostics.status,recent:clone(chapters.recent),retrieved:clone(chapters.retrieved)}}:{}),
@@ -543,11 +580,11 @@ export class SceanEngine {
           characters: characterIdentities(run.snapshot),
           characterIdentities: characterIdentities(run.snapshot),
         };
-        if(!resumeSource&&!stageSource)await preflight('director', { assembly, conversation: [],...(singleWriter?{handoffContract:writerHandoffContract(assembly,[])}:{}) }, directorTools);
+        if(!resumeSource&&!stageSource)await preflight('director', { assembly, ...directionField, conversation: [],...(singleWriter?{handoffContract:writerHandoffContract(assembly,[])}:{}) }, directorTools);
         activeStage = 'memory'; progress('memory', 'pending');
         if(!resumeSource&&!stageSource)assembly.memory = await abortable(() => this.recall(run, input, undefined, signal)); checkAbort(signal);
         progress('memory', 'completed');
-        if(resumeSource||stageSource)assembly=clone((resumeSource??stageSource).assembly);if(cp)cp.assemblyHash=hash(assembly);attempt.assembly = clone(assembly); await checkpoint();
+        if(resumeSource||stageSource)assembly=clone((resumeSource??stageSource).assembly);if(cp)cp.assemblyHash=hash(assembly);attempt.assembly = clone(assembly);attempt.performance.contextEndAt=Date.now(); await checkpoint();
         const conversation = []; let brief; let toolCount = 0; let historyToolCount = 0; let historyTokenEstimate = 0; let resumeDirectorRound;
         let savedHandoff;
         if(stageSource && cp.handoff){
@@ -563,7 +600,7 @@ export class SceanEngine {
           directorAllowance??=createDirectorDispatchBudget({signal,timeoutMs:this.model.timeoutMs??180000,onReserve:async()=>{attempt.directorDispatches=(attempt.directorDispatches??0)+1;await checkpoint();}});
           resumeDirectorRound?.();resumeDirectorRound=null;
           callKey='director:'+round;callGroup='director';callLimit=10;
-          const director = await call('director', { assembly, conversation: clone(conversation),...(singleWriter?{handoffContract:writerHandoffContract(assembly,evidence)}:{}) }, directorTools,directorAllowance);
+          const director = await call('director', { assembly, ...directionField, conversation: clone(conversation),...(singleWriter?{handoffContract:writerHandoffContract(assembly,evidence)}:{}) }, directorTools,directorAllowance);
           if (!director.toolCalls?.length) {if(unresolvedToolFailure)throw new SceanError('TOOL_RECOVERY_INCOMPLETE');if(temporal?.endpointPending)throw new SceanError('TIME_CONFIRMATION_ENDPOINT_REQUIRED');if(temporal?.settlementPending)throw new SceanError('NEEDS_TIME_PRECISION');directorAllowance?.close();directorAllowance=null; brief = text(director.text); attempt.directorComplete = true; await checkpoint(); break; }
           // Stop the completed round clock while tools run; the next call starts with its own budget.
           resumeDirectorRound=directorAllowance.suspend({fresh:true});
@@ -702,6 +739,15 @@ export class SceanEngine {
         }
         if (!brief&&!resumeSource&&!savedHandoff) throw new SceanError('MISSING_DIRECTOR_BRIEF');
         let body,dialogueOutput=null,dialogueBodyHash=null;
+        const captureInspiration=async()=>{
+          if(cp && Object.hasOwn(cp,'inspiration')){if(cp.inspiration)attempt.inspirationPin=clone(cp.inspiration);return clone(cp.inspiration);}
+          if(!this.inspiration)return null;
+          const pin=await this.inspiration.capture({run,requestId,input,priorAttempts}).catch(()=>null);
+          if(cp)cp.inspiration=clone(pin??null);
+          if(pin){attempt.inspirationPin=clone(pin);await checkpoint();}
+          return pin;
+        };
+        if(resumeSource?.inspirationPin){attempt.inspirationPin=clone(resumeSource.inspirationPin);attempt.inspirationDelivered=resumeSource.inspirationDelivered===true;}
         if(!resumeSource){
         if(singleWriter){
           activeStage='writer_handoff';
@@ -709,14 +755,14 @@ export class SceanEngine {
           attempt.writerHandoff=clone(handoff);
             if(cp && !cp.handoff)cp.handoff={attempt:attempt.attemptId,hash:hash(handoff),toolsHash:hash(attempt.tools)};
             await checkpoint();
-          const writerInput=prepareSingleWriterInput({assembly,handoff,preset:projectPlayerPreset(stripWorldbookContainers(publicSources(run.snapshot.preset)),identity?.name),proseStyle});
+          const writerInput=withInspiration({ ...prepareSingleWriterInput({assembly,handoff,preset:projectPlayerPreset(stripWorldbookContainers(publicSources(run.snapshot.preset)),identity?.name),proseStyle}), ...(revision?{revision:clone(revision)}:{}) },await captureInspiration());
           callKey='writer';callGroup=callKey;callLimit=2;
             if(!cp?.calls.writer?.output)await preflight('writer',writerInput);
           const writerRaw=(await call('writer',writerInput)).text;
           dialogueOutput=decodeWriterDialogue(writerRaw,this.postBody?{postBody:true}:{candidateRef:temporal?.candidateRef});body=text(dialogueOutput.body);dialogueBodyHash=hash(body);
         }else{
-          const draft = text((await call('draft', { context: assembly, directorBrief: brief })).text);
-          body = text((await call('prose', { temporal:clone(assembly.temporal),draft, playerInput: input, preset: projectPlayerPreset(stripWorldbookContainers(publicSources(run.snapshot.preset)),identity?.name), characterIdentities: characterIdentities(run.snapshot), ...(proseStyle.text!==null?{proseStyle:clone(proseStyle)}:{}) })).text);
+          const draft = text((await call('draft', { context: assembly, directorBrief: brief, ...(revision?{revision:clone(revision)}:{}) })).text);
+          body = text((await call('prose', withInspiration({ temporal:clone(assembly.temporal),draft, playerInput: input, preset: projectPlayerPreset(stripWorldbookContainers(publicSources(run.snapshot.preset)),identity?.name), characterIdentities: characterIdentities(run.snapshot), ...(proseStyle.text!==null?{proseStyle:clone(proseStyle)}:{}) },await captureInspiration()))).text);
         }
         body=text(resolvePlayerText(body,identity?.name));
         attempt.banList = { entries: clone(run.banList), passes: [] };
@@ -738,8 +784,9 @@ export class SceanEngine {
         if(!this.postBody)await saveTemporal(body);
         }else{body=resumeSource.bodyCheckpoint.body;dialogueOutput=clone(resumeSource.bodyCheckpoint.dialogueOutput??null);dialogueBodyHash=resumeSource.bodyCheckpoint.dialogueBodyHash??null;}
         const frozenBody=freezeWriterBody(body),bodyPins=frozenBodyPins(run,{input,routeHash:routePin?.hash??null,writingModeHash:writingMode.hash,styleHash:hash(proseStyle)});
-        if(this.postBody){if(resumeSource)validateFrozenBody(run,resumeSource.bodyCheckpoint,bodyPins);const lineage=hash([requestId,hash(body),bodyPins]);if(!this.store.settlementDispatches||!this.store.reserveSettlementDispatch)throw new SceanError('SETTLEMENT_LEDGER_REQUIRED');const used=await this.store.settlementDispatches(runId,lineage);if(used<(resumeSource?.bodyCheckpoint.dispatchesUsed??0))throw new SceanError('SETTLEMENT_LEDGER_INVALID');attempt.bodyCheckpoint={...attempt.bodyCheckpoint,...(basis?{stageBasis:basis}:{}),schemaVersion:1,lineage,body,bodyHash:hash(body),pins:bodyPins,dispatchesUsed:used,dialogueOutput,dialogueBodyHash,status:'body_frozen'};await checkpoint();}
-        let proposal,normalizedPost,preparedPost,appliedPost;
+        attempt.performance.bodyValidatedAt=Date.now();
+         if(this.postBody){if(resumeSource)validateFrozenBody(run,resumeSource.bodyCheckpoint,bodyPins);const lineage=hash([requestId,hash(body),bodyPins]);if(!this.store.settlementDispatches||!this.store.reserveSettlementDispatch)throw new SceanError('SETTLEMENT_LEDGER_REQUIRED');const used=await this.store.settlementDispatches(runId,lineage);if(used<(resumeSource?.bodyCheckpoint.dispatchesUsed??0))throw new SceanError('SETTLEMENT_LEDGER_INVALID');attempt.bodyCheckpoint={...attempt.bodyCheckpoint,...(basis?{stageBasis:basis}:{}),schemaVersion:1,lineage,body,bodyHash:hash(body),pins:bodyPins,dispatchesUsed:used,dialogueOutput,dialogueBodyHash,status:'body_frozen'};await checkpoint();attempt.performance.bodyPersistedAt=Date.now();}
+        let proposal,normalizedPost,preparedPost,appliedPost,shadowWork;
         if(this.postBody){
           const cp=attempt.bodyCheckpoint,remaining=2-cp.dispatchesUsed;
           const oldBody=resumeSource?.bodyCheckpoint;
@@ -754,12 +801,20 @@ export class SceanEngine {
             savedText=event.result.text;
           }
           if(!resumeSource?.preparedPost&&!completePost&&remaining<1)throw new SceanError('SETTLEMENT_DISPATCH_LIMIT');
-          const postInput={finalBody:body,bodyHash:hash(body),playerInput:input,previousState:projectStoryState(run),previousClock:assembly.temporal.clock,timeDefinition:assembly.temporal.definition,worldRules:publicSources(assembly.sources),publicEvents:postBodyEventCatalog(run),recentDialogue:clone(assembly.recentDialogue),...(assembly.rollingSummary?{rollingSummary:clone(assembly.rollingSummary)}:{}),...(assembly.chapterContext?{chapterContext:clone(assembly.chapterContext)}:{}),...(timeConfirmation?{playerOverride:clone(timeConfirmation)}:{}),...(run.snapshot.stateBlueprint?{stateBlueprint:publicBlueprint(run.snapshot.stateBlueprint)}:{}),characters:characterIdentities(run.snapshot),outputContract:postBodyOutputContract(run.snapshot.characters)};
+          const legacyInput={legalTargets:legalTargets(run.snapshot.stateBlueprint),...(priorScene?{previousSceneSnapshot:clone(priorScene)}:{}),finalBody:body,bodyHash:hash(body),playerInput:input,previousState:projectStoryState(run),previousClock:assembly.temporal.clock,timeDefinition:assembly.temporal.definition,worldRules:publicSources(assembly.sources),publicEvents:postBodyEventCatalog(run),recentDialogue:clone(assembly.recentDialogue),...(assembly.rollingSummary?{rollingSummary:clone(assembly.rollingSummary)}:{}),...(assembly.chapterContext?{chapterContext:clone(assembly.chapterContext)}:{}),...(timeConfirmation?{playerOverride:clone(timeConfirmation)}:{}),...(run.snapshot.stateBlueprint?{stateBlueprint:publicBlueprint(run.snapshot.stateBlueprint)}:{}),characters:characterIdentities(run.snapshot),outputContract:postBodyOutputContract(run.snapshot.characters,sceneEnabled)};
+          let postInput=settlementMode==='optimized'?optimizedSettlement(legacyInput,run):legacyInput;
+          if (oldBody?.evidence) postInput={...postInput,historicalEvidence:clone(oldBody.evidence)};
           let correction=clone(oldBody?.repair?.correction??null),lockedTime=clone(oldBody?.repair?.lockedTime??null);
           if(!resumeSource?.preparedPost && remaining>0)postAllowance=createDispatchBudget({signal,timeoutMs:this.model.timeoutMs??180000,limit:remaining,onReserve:async()=>{cp.dispatchesUsed=await this.store.reserveSettlementDispatch(runId,cp.lineage);cp.status='settlement_running';await checkpoint();}});
           for(let pass=correction?1:0;;pass++){
             try{proposal=resumeSource?.preparedPost?clone(resumeSource.preparedPost.proposal):completePost?parseObject(savedText):parseObject((await call('post_stat',{...postInput,...(correction?{correction}:{} )},undefined,postAllowance)).text);
-              if(resumeSource?.preparedPost&&(resumeSource.preparedPost.bodyHash!==hash(body)||resumeSource.preparedPost.proposalHash!==hash(proposal)))throw new SceanError('SETTLEMENT_SOURCE_STALE');
+              if(settlementMode==='optimized' && !resumeSource?.preparedPost && proposal?.evidenceQuery!==undefined) {
+                 if(pass>0||postInput.historicalEvidence||!postAllowance?.remaining)throw new SceanError('POST_EVIDENCE_LIMIT');
+                 const evidence=requestedEvidence(proposal,run);
+                 cp.evidence=evidence;delete cp.completePost;completePost=null;postInput={...postInput,historicalEvidence:evidence};
+                 await checkpoint();continue;
+               }
+               if(resumeSource?.preparedPost&&(resumeSource.preparedPost.bodyHash!==hash(body)||resumeSource.preparedPost.proposalHash!==hash(proposal)))throw new SceanError('SETTLEMENT_SOURCE_STALE');
               if(lockedTime&&json(proposal?.time)!==json(lockedTime))throw new SceanError('POST_STATE_REPAIR_INTENT_CHANGED');
               normalizedPost=normalizePostBodyProposal(proposal);
               temporal=preparePostTemporalCandidate(run,{kind:'post_body',bodyHash:hash(body),time:normalizedPost.time,eventChanges:normalizedPost.eventChanges},{requestId,inputHash:hash(input),input,confirmation:timeConfirmation});
@@ -769,12 +824,27 @@ export class SceanEngine {
               attempt.preparedPost={proposal:clone(proposal),proposalHash:hash(proposal),bodyHash:hash(body),candidateHash:temporal.hash};cp.status='proposal_prepared';await checkpoint();break;
             }catch(error){
               if(error.category!=='persistence'){delete cp.completePost;completePost=null;}
-              const recovery=postBodyArgumentRecovery(error);if(resumeSource?.preparedPost||pass>=1||!recovery||!postAllowance?.remaining)throw error;if(proposal?.time)try{preparePostTemporalCandidate(run,{kind:'post_body',bodyHash:hash(body),time:proposal.time,eventChanges:[]},{requestId,inputHash:hash(input),input,confirmation:timeConfirmation});lockedTime=clone(proposal.time);}catch{}correction={...recovery,...(lockedTime?{preserveTime:clone(lockedTime)}:{}),previousOutput:clone(proposal??null)};cp.repair={correction:clone(correction),lockedTime:clone(lockedTime)};attempt.postStatRecovery={used:1,limit:1,code:error.code};await checkpoint();}
+              const targetCorrection=['BLUEPRINT_EXTENSION_FORBIDDEN','BLUEPRINT_READONLY_WRITE','BLUEPRINT_RESTRICTED_WRITE','BLUEPRINT_VALUE_TYPE','BLUEPRINT_ENUM_VALUE','BLUEPRINT_RANGE_VALUE'].includes(error.code)?{code:error.code,instruction:'Only use the supplied legalTargets. No NPC counterpart field may be invented. Verify all paths and value types; preserve all other valid decisions.'}:null;
+               const recovery=postBodyArgumentRecovery(error)??targetCorrection;if(resumeSource?.preparedPost||pass>=1||!recovery||!postAllowance?.remaining)throw error;if(proposal?.time)try{preparePostTemporalCandidate(run,{kind:'post_body',bodyHash:hash(body),time:proposal.time,eventChanges:[]},{requestId,inputHash:hash(input),input,confirmation:timeConfirmation});lockedTime=clone(proposal.time);}catch{}correction={...recovery,...(lockedTime?{preserveTime:clone(lockedTime)}:{}),previousOutput:clone(proposal??null)};cp.repair={correction:clone(correction),lockedTime:clone(lockedTime)};attempt.postStatRecovery={used:1,limit:1,code:error.code};await checkpoint();}
           }
           postAllowance?.close();postAllowance=null;
+          if(settlementMode==='shadow'){
+            const validate=candidate=>{
+              const parsed=normalizePostBodyProposal(candidate);
+              preparePostTemporalCandidate(run,{kind:'post_body',bodyHash:cp.bodyHash,time:parsed.time,eventChanges:parsed.eventChanges},{requestId,inputHash:hash(input),input,confirmation:timeConfirmation});
+              const applied=applyStatProposal(parsed.stat,run.state,run.snapshot.characters,body,{publicView:true});
+              validateBlueprintStateChanges(run.snapshot.stateBlueprint,parsed.stat.stateChanges,run.snapshot.characters,{source:{id:attempt.attemptId,version:run.version+1},publicView:true});
+              validateBlueprintState(run.snapshot.stateBlueprint,applied.state,run.snapshot.characters);assertNoWritableClock(applied.state,run.snapshot.stateBlueprint);
+              if(sceneEnabled)makeScene(parsed.sceneSnapshot,run.snapshot.characters);
+            };
+            shadowWork=()=>this.shadowSettlement.submit({model:this.model,system:systemFor('post_stat',legacyInput),input:legacyInput,run,routePin,requestId,official:proposal,validate,
+              record:row=>this.store.atomic(joinPath(this.store.root,'shadow-settlement',runId,attempt.attemptId+'.json'),row)});
+          }
         }else proposal = parseObject((await call('post_stat', { temporal:clone(assembly.temporal),...(singleWriter?{bodyHash:frozenBody.bodyHash}:{}),outputContract: postStatOutputContract(run.snapshot.characters,temporal?.candidateRef), ...(run.snapshot.stateBlueprint ? { stateBlueprint: publicBlueprint(run.snapshot.stateBlueprint) } : {}), finalBody: body, previousState: clone(assembly.worldState), characters: characterIdentities(run.snapshot) })).text);
-        assertWriterBodyHash(body,frozenBody.bodyHash);
+        attempt.performance.settlementEndAt=Date.now();
+         assertWriterBodyHash(body,frozenBody.bodyHash);
         const turn = run.turns.length + 1, commitId = id('commit'), bodyHash = hash(body);
+        const sceneSnapshot=sceneEnabled&&this.postBody?makeScene(normalizedPost.sceneSnapshot,run.snapshot.characters):null;
         let dialoguePresentation;try{if(dialogueBodyHash===bodyHash)dialoguePresentation=makeDialoguePresentation({body,entries:dialogueOutput?.entries,runId,snapshotHash:run.snapshot.hash,commitId,bodyHash,actors:publicSnapshot(run.snapshot).characters});}catch{}
         if(singleWriter)attempt.dialoguePresentation=writerDialogueStatus(dialogueOutput,dialoguePresentation,{bodyChanged:dialogueBodyHash!==bodyHash});
         const { state, memories: proposedMemories, stateChanges, playerHistory: proposedPlayerHistory = [] } = (this.postBody?appliedPost:applyStatProposal(validateTemporalPost(proposal,temporal,body,run.snapshot.stateBlueprint), run.state, run.snapshot.characters, body, { publicView: true }));
@@ -788,16 +858,16 @@ export class SceanEngine {
         const activityCheckpoints={...run.worldActivityCheckpoints};
         const activityBefore=recordActivityCheckpoint(activityCheckpoints,temporal.worldActivityBefore),activityAfter=recordActivityCheckpoint(activityCheckpoints,temporal.worldActivityAfter,{compact:!!run.worldRoutine,parentActivity:temporal.worldActivityBefore});
         const next = { ...run, worldActivityCheckpoints:activityCheckpoints,storyClock:clone(temporal.clockAfter),worldActivity:clone(temporal.worldActivityAfter),storyRevision:run.storyRevision+1,head: commitId, version: run.version + 1, state, ...(run.snapshot.stateBlueprint ? { stateProvenance: [...(run.stateProvenance ?? []), ...stateProvenance] } : {}), memories: [...run.memories, ...memories], playerHistory: [...(run.playerHistory ?? []), ...playerHistory], updatedAt: now,
-          turns: [...run.turns, { clockBefore:clone(temporal.clockBefore),clockAfter:clone(temporal.clockAfter),worldActivityBefore:activityBefore,worldActivityAfter:activityAfter,timeResolution:temporalReceipt(temporal),...(timeConfirmation?{timeConfirmation:clone(timeConfirmation)}:{}),turn, requestId, commitId, commitVersion: run.version+1, ...(run.snapshot.stateBlueprint ? {stateProvenanceBefore:clone(run.stateProvenance??[]),stateProvenanceAfter:[...(run.stateProvenance??[]),...stateProvenance]} : {}), input, body, bodyHash, ...(dialoguePresentation?{dialoguePresentation}:{}), stateBefore: clone(run.state), stateAfter: clone(state), memoryIds: memories.map(m => m.id), playerHistoryIds: playerHistory.map(entry => entry.id), attemptId: attempt.attemptId, committedAt: now }],
+          turns: [...run.turns, { clockBefore:clone(temporal.clockBefore),clockAfter:clone(temporal.clockAfter),worldActivityBefore:activityBefore,worldActivityAfter:activityAfter,timeResolution:temporalReceipt(temporal),...(timeConfirmation?{timeConfirmation:clone(timeConfirmation)}:{}),turn, requestId, commitId, ...(attempt.inspirationDelivered&&attempt.inspirationPin?.batchId?{inspirationBatchId:attempt.inspirationPin.batchId}:{}),commitVersion: run.version+1, ...(run.snapshot.stateBlueprint ? {stateProvenanceBefore:clone(run.stateProvenance??[]),stateProvenanceAfter:[...(run.stateProvenance??[]),...stateProvenance]} : {}), input, body, bodyHash, ...(sceneSnapshot?{sceneSnapshot}:{}), ...(dialoguePresentation?{dialoguePresentation}:{}), stateBefore: clone(run.state), stateAfter: clone(state), memoryIds: memories.map(m => m.id), playerHistoryIds: playerHistory.map(entry => entry.id), attemptId: attempt.attemptId, committedAt: now }],
           receipts: { ...run.receipts, [requestId]: { inputHash: hash(input),...(timeConfirmation?{timeConfirmation:clone(timeConfirmation)}:{}), commitId, attemptId: attempt.attemptId, result } } };
         if (next.narrative) { next.narrative = clone(next.narrative); invalidateNarrative(next); }
         validateTemporalRun(next);
         activeStage = 'commit'; progress('commit', 'pending');
         attempt.commit = { status: 'pending', contractVersion: 2, stateChanges, stateProvenance, commitId, expectedVersion: run.version, nextVersion: next.version, bodyHash, stateBefore: clone(run.state), stateAfter: state, memories, playerHistory }; await checkpoint();
         checkAbort(signal);
-        await this.store.commit(runId, run.version, next, { signal });
+        await this.store.commit(runId, run.version, next, { signal });attempt.performance.committedAt=Date.now();
         attempt.status = 'committed'; attempt.commit.status = 'committed'; attempt.finishedAt = now; attempt.commitId = commitId;
-        await checkpoint(); progress('commit', 'committed'); return clone(result);
+        await checkpoint(); progress('commit', 'committed'); shadowWork?.(); return clone(result);
       } catch (error) {
         // A write may have published before the adapter lost its acknowledgement.
         let recovered;

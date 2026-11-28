@@ -54,11 +54,34 @@ export class WorldRoutineHost{
   if(replyAttempts.length>=L.repliesPerDay)return forumBlock??calendarBlock;
   const cut=routineCut(run,day),medium=r.policy.medium;if(!medium)return forumBlock??calendarBlock??{blocked:'BLOCKED_MEDIUM_UNCONFIGURED',day};
   if(medium.availability&&hash(cut.publicState.world[medium.availability.category]?.[medium.availability.key]??null)!==hash(medium.availability.equals))return forumBlock??calendarBlock??{blocked:'BLOCKED_MEDIUM_UNAVAILABLE',day};
-  const replies=active.filter(a=>a.kind==='forum_reply');
-  for(const parent of active.filter(a=>a.kind==='forum_post').sort((a,b)=>Number(a.day===day)-Number(b.day===day)||b.day-a.day||b.sequence-a.sequence)){
-   if(replies.filter(a=>a.parentId===parent.id).length>=L.repliesPerThread)continue;
-   const candidates=r.policy.authorIds.filter(id=>id!==characterAuthorId(parent)&&cut.publicState.characters?.[id]?.public?.facts?.forum_available!==false&&!replyAttempts.some(j=>j.parentId===parent.id&&characterAuthorId(j)===id));
-   if(candidates.length)return this.makeJob(run,{kind:'forum_reply',day,authorId:candidates[0],parentId:parent.id});
+  const repliesByThread=new Map(),attemptsByThread=new Map();
+  for(const a of active)if(a.kind==='forum_reply'&&a.day<=day){
+   if(!repliesByThread.has(a.parentId))repliesByThread.set(a.parentId,[]);
+   repliesByThread.get(a.parentId).push(a);
+  }
+  for(const j of replyAttempts){
+   if(!attemptsByThread.has(j.parentId))attemptsByThread.set(j.parentId,new Set());
+   attemptsByThread.get(j.parentId).add(characterAuthorId(j));
+  }
+  // Give today's new threads their first invitation before spending the
+  // remaining daily allowance on the existing cross-day rotation.
+  const firstInvitation=a=>a.day===day&&!attemptsByThread.has(a.id)&&!repliesByThread.has(a.id);
+  const parents=active.filter(a=>a.kind==='forum_post'&&a.day<=day).sort((a,b)=>Number(firstInvitation(b))-Number(firstInvitation(a))||Number(a.day===day)-Number(b.day===day)||b.day-a.day||b.sequence-a.sequence);
+  for(const parent of parents){
+   const replies=repliesByThread.get(parent.id)??[];
+   if(replies.length>=L.repliesPerThread)continue;
+   const candidates=r.policy.authorIds.filter(id=>id!==characterAuthorId(parent)&&cut.publicState.characters?.[id]?.public?.facts?.forum_available!==false&&!attemptsByThread.get(parent.id)?.has(id));
+   const latestByAuthor=new Map();
+   let latest=0;
+   for(const a of replies){
+    const id=characterAuthorId(a);
+    latestByAuthor.set(id,Math.max(a.sequence,latestByAuthor.get(id)??0));
+    latest=Math.max(latest,a.sequence);
+   }
+   // Prefer a new voice. Invite an existing participant again only if a
+   // newer active reply by someone else gives them something to respond to.
+   const authorId=candidates.find(id=>!latestByAuthor.has(id))??candidates.find(id=>latestByAuthor.get(id)<latest);
+   if(authorId!==undefined)return this.makeJob(run,{kind:'forum_reply',day,authorId,parentId:parent.id});
   }
   return forumBlock??calendarBlock;
  }
@@ -70,7 +93,7 @@ export class WorldRoutineHost{
  }
 
  capacityProof(run){const b=encodeRunBundle(run),nodes=v=>1+(v&&typeof v==='object'?Object.values(v).reduce((n,x)=>n+nodes(x),0):0);return{version:run.version,available:nodes(b)+1024<=SAVE_LIMITS.nodes&&Buffer.byteLength(JSON.stringify(b))+65536<=SAVE_LIMITS.bytes};}
- async claim(runId,signal,proof){const store=this.host.engine.store;return this.shortLock(runId,async()=>{const run=await store.read(runId);assertRunActive(run);const candidate=this.nextJob(run);if(candidate&&!candidate.blocked){proof??=this.capacityProof(run);if(proof.version!==run.version)return{run,job:null,blocked:'SOURCE_CHANGED_BEFORE_BACKGROUND_CLAIM'};if(!proof.available)return{run,job:null,blocked:'SAVE_CAPACITY_HEADROOM'};}if(!candidate||candidate.blocked)return{run,job:null,...candidate?{blocked:candidate.blocked,day:candidate.day}:{}};const next=clone(run),r=next.worldRoutine;let job=r.jobs.find(j=>j.id===candidate.id);const existingJob=!!job;if(!job){job=clone(candidate);r.jobs.push(job);}if(job.attempts>=L.recoveryAttempts)fail('BACKGROUND_RETRY_LIMIT');if(this.host.engine.model.captureRoutes){if((existingJob||job.attempts>0)&&!job.routePin)fail('MODEL_ROUTE_PIN_MISSING');const pin=await this.host.engine.model.captureRoutes({run,requestId:job.id,kind:'world_routine',inputHash:hash(job.basis),signal,lockHeld:true,requiredStage:job.kind,...job.routePin?{expectedHash:job.routePin.hash}:{} });job.routePin={requestId:job.id,hash:pin.hash};}job.attempts++;job.status='running';delete job.error;const input=budgetStage(job.kind,{system:BG_SYSTEM,input:backgroundPacket(next,job)}).prompt.input;job.inputHash=hash({system:BG_SYSTEM,input});r.revision++;const actual=await this.commit(run,next,n=>n.worldRoutine.jobs.some(j=>j.id===job.id&&j.status==='running'&&j.attempts===job.attempts),signal);return{run:actual,job:clone(job),input};},{signal});}
+ async claim(runId,signal,proof){const store=this.host.engine.store;return this.shortLock(runId,async()=>{if(this.host.auxRunning.get(runId)?.kind==='run-lifecycle')fail('RUN_BUSY');const run=await store.read(runId);assertRunActive(run);const candidate=this.nextJob(run);if(candidate&&!candidate.blocked){proof??=this.capacityProof(run);if(proof.version!==run.version)return{run,job:null,blocked:'SOURCE_CHANGED_BEFORE_BACKGROUND_CLAIM'};if(!proof.available)return{run,job:null,blocked:'SAVE_CAPACITY_HEADROOM'};}if(!candidate||candidate.blocked)return{run,job:null,...candidate?{blocked:candidate.blocked,day:candidate.day}:{}};const next=clone(run),r=next.worldRoutine;let job=r.jobs.find(j=>j.id===candidate.id);const existingJob=!!job;if(!job){job=clone(candidate);r.jobs.push(job);}if(job.attempts>=L.recoveryAttempts)fail('BACKGROUND_RETRY_LIMIT');if(this.host.engine.model.captureRoutes){if((existingJob||job.attempts>0)&&!job.routePin)fail('MODEL_ROUTE_PIN_MISSING');const pin=await this.host.engine.model.captureRoutes({run,requestId:job.id,kind:'world_routine',inputHash:hash(job.basis),signal,lockHeld:true,requiredStage:job.kind,...job.routePin?{expectedHash:job.routePin.hash}:{} });job.routePin={requestId:job.id,hash:pin.hash};}job.attempts++;job.status='running';delete job.error;const input=budgetStage(job.kind,{system:BG_SYSTEM,input:backgroundPacket(next,job)}).prompt.input;job.inputHash=hash({system:BG_SYSTEM,input});r.revision++;const actual=await this.commit(run,next,n=>n.worldRoutine.jobs.some(j=>j.id===job.id&&j.status==='running'&&j.attempts===job.attempts),signal);return{run:actual,job:clone(job),input};},{signal});}
  validPublication(run,job){if(!run.worldRoutine||job.basis.epoch!==run.storyEpoch||runLifecycle(run).revision!==job.lifecycleRevision||!routineSourceActive(run,job.basis))return false;const canonical=run.worldRoutine.jobs.find(j=>j.id===job.id);if(!canonical||canonical.status!=='running'||canonical.attempts!==job.attempts)return false;if(isAmbientAuthor(job)&&activeArtifacts(run).some(a=>a.kind==='forum_post'&&a.day===job.day))return false;if(job.kind==='calendar_plan'&&(hash(run.storyClock)!==job.clockHash||(run.head??null)!==job.headPin))return false;const artifacts=activeArtifacts(run);if(job.parentId&&!artifacts.some(a=>a.id===job.parentId&&a.hash===job.basis.parentHash))return false;if(job.kind==='forum_post'&&artifacts.some(a=>a.kind==='forum_post'&&a.day===job.day&&characterAuthorId(a)===characterAuthorId(job)))return false;return true;}
  async mark(runId,job,status,error){return this.shortLock(runId,async()=>{const run=await this.host.engine.store.read(runId),next=clone(run),j=next.worldRoutine?.jobs.find(j=>j.id===job.id);if(!j||j.attempts!==job.attempts||['completed','declined'].includes(j.status))return run;j.status=status;j.error=error;next.worldRoutine.revision++;return this.commit(run,next,n=>n.worldRoutine.jobs.some(j=>j.id===job.id&&j.status===status));});}
  async publish(runId,job,journal,signal){const store=this.host.engine.store;return this.shortLock(runId,async()=>{const run=await store.read(runId),already=run.worldRoutine?.jobs.find(j=>j.id===job.id);if(already?.status==='completed')return{status:'already_committed',resultId:already.resultId};if(already?.routePin&&(job.routePin?.hash!==already.routePin.hash||journal.routePin?.hash!==already.routePin.hash))fail('BACKGROUND_ROUTE_PIN_MISMATCH');if(journal.jobId!==job.id||journal.attempt!==job.attempts||journal.basisHash!==hash(job.basis)||journal.proposalHash!==hash(journal.proposal)||journal.inputHash!==already?.inputHash||journal.inputHash!==hash(journal.prompt))fail('BACKGROUND_JOURNAL_INVALID');if(!this.validPublication(run,job)){const next=clone(run),j=next.worldRoutine.jobs.find(j=>j.id===job.id);if(j&&j.status!=='completed'){j.status='stale';j.error='BACKGROUND_SOURCE_STALE';next.worldRoutine.revision++;await this.commit(run,next,n=>n.worldRoutine.jobs.find(x=>x.id===job.id)?.status==='stale',signal);}return{status:'stale'};}const proposed=validateBackgroundProposal(run,job,journal.proposal),next=clone(run),r=next.worldRoutine,j=r.jobs.find(j=>j.id===job.id);if(proposed.decision==='decline'){j.status='declined';if(r.schemaVersion===2)j.decisionReceipt=makeDeclineReceipt(j,journal.proposal);r.revision++;await this.commit(run,next,n=>n.worldRoutine.jobs.find(x=>x.id===job.id)?.status==='declined',signal);return{status:'declined'};}

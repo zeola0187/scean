@@ -4,9 +4,9 @@ import {routineMetadataRebase} from './world-routine.mjs';
 import path from 'node:path';
 import {clone,hash,safeId,SceanError,checkAbort} from './contracts.mjs';
 
-export const MODEL_ROLES=Object.freeze(['director','character','writer','stat','calendar','forum','summary','ideas']);
-export const MODEL_ROLE_INHERITANCE=Object.freeze({calendar:'stat',forum:'character'});
-export const MODEL_STAGE_ROLES=Object.freeze({calendar_plan:'calendar',forum_post:'forum',forum_reply:'forum',diary:'character',director:'director',character:'character',writer:'writer',writer_repair:'writer',draft:'writer',prose:'writer',prose_repair:'writer',adjudicate:'stat',post_stat:'stat',summary:'summary',chapter_analysis:'summary',chapter_summary:'summary',ideas:'ideas'});
+export const MODEL_ROLES=Object.freeze(['director','character','writer','stat','adjudicator','calendar','forum','summary','ideas']);
+export const MODEL_ROLE_INHERITANCE=Object.freeze({adjudicator:'stat',calendar:'stat',forum:'character'});
+export const MODEL_STAGE_ROLES=Object.freeze({calendar_plan:'calendar',forum_post:'forum',forum_reply:'forum',diary:'character',director:'director',character:'character',writer:'writer',writer_repair:'writer',draft:'writer',prose:'writer',prose_repair:'writer',adjudicate:'adjudicator',post_stat:'stat',summary:'summary',chapter_analysis:'summary',chapter_summary:'summary',ideas:'ideas'});
 export const MODEL_STAGES=Object.freeze([...Object.keys(MODEL_STAGE_ROLES),'chapter_rerank']);
 const fail=code=>{throw new SceanError(code);};
 const object=v=>v&&typeof v==='object'&&!Array.isArray(v)&&[Object.prototype,null].includes(Object.getPrototypeOf(v));
@@ -17,11 +17,12 @@ export function modelPreferences(v){fields(v,MODEL_ROLES);return Object.fromEntr
 export const defaultModelSettings=scope=>({schemaVersion:1,scope,revision:0,roles:modelPreferences({})});
 function settingsFile(store,scope){return scope==='@global'?path.join(store.root,'settings','agent-models.json'):path.join(store.runDir(scope),'agent-models.json');}
 function validateSettings(v,scope){
-  fields(v,['schemaVersion','scope','revision','roles','operationId','fingerprint'],'MODEL_SETTINGS_CORRUPT');
+  fields(v,['schemaVersion','scope','revision','roles','operationId','fingerprint','settlementMode'],'MODEL_SETTINGS_CORRUPT');
+  if(v.settlementMode!==undefined&&!['legacy','optimized','shadow'].includes(v.settlementMode))fail('MODEL_SETTINGS_CORRUPT');
   const normalized=modelPreferences(v.roles),oldRoles=['director','character','writer','stat','summary','ideas'];
   if(v.schemaVersion!==1||v.scope!==scope||!Number.isSafeInteger(v.revision)||v.revision<0||oldRoles.some(k=>!Object.hasOwn(v.roles,k))||hash(v.roles)!==hash(Object.fromEntries(Object.keys(v.roles).map(k=>[k,normalized[k]]))))fail('MODEL_SETTINGS_CORRUPT');
   if(v.revision===0){if(v.operationId!==undefined||v.fingerprint!==undefined||Object.values(v.roles).some(Boolean))fail('MODEL_SETTINGS_CORRUPT');}
-  else{safeId(v.operationId);if(v.fingerprint!==hash({roles:v.roles,expectedRevision:v.revision-1,operationId:v.operationId}))fail('MODEL_SETTINGS_CORRUPT');}
+  else{safeId(v.operationId);if(v.fingerprint!==hash({roles:v.roles,...(v.settlementMode?{settlementMode:v.settlementMode}:{}),expectedRevision:v.revision-1,operationId:v.operationId}))fail('MODEL_SETTINGS_CORRUPT');}
   return {...clone(v),roles:normalized};
 }
 export async function readModelSettings(store,scope){
@@ -29,18 +30,19 @@ export async function readModelSettings(store,scope){
   try{return validateSettings(JSON.parse(await store.retrySharingViolation(()=>readFile(settingsFile(store,scope),'utf8'))),scope);}
   catch(e){if(e.code==='ENOENT')return defaultModelSettings(scope);if(e instanceof SyntaxError)fail('MODEL_SETTINGS_CORRUPT');throw e;}
 }
-export async function saveModelSettings(store,{scope,roles,expectedRevision,operationId,signal},validate){
+export async function saveModelSettings(store,{scope,roles,expectedRevision,operationId,signal,settlementMode},validate){
   if(scope!=='@global')safeId(scope);safeId(operationId);roles=modelPreferences(roles);
   if(!Number.isSafeInteger(expectedRevision)||expectedRevision<0||expectedRevision>=Number.MAX_SAFE_INTEGER)fail('MODEL_SETTINGS_REVISION_REQUIRED');
+  if(settlementMode!==undefined&&!['legacy','optimized','shadow'].includes(settlementMode))fail('INVALID_SETTLEMENT_MODE');
   const requestedRoles=roles,providedRoles=arguments[1].roles;
   return store.withRunLock(scope==='@global'?'global-agent-models':scope,async()=>{
     checkAbort(signal);if(scope!=='@global')await store.read(scope);const current=await readModelSettings(store,scope);
-    roles={...requestedRoles,...Object.fromEntries(['calendar','forum'].filter(k=>!Object.hasOwn(providedRoles,k)).map(k=>[k,current.roles[k]]))};const fingerprint=hash({roles,expectedRevision,operationId});
+    roles={...requestedRoles,...Object.fromEntries(['calendar','forum','adjudicator'].filter(k=>!Object.hasOwn(providedRoles,k)).map(k=>[k,current.roles[k]]))};const policy=settlementMode??current.settlementMode;const modeFields=policy?{settlementMode:policy}:{};const fingerprint=hash({roles,...modeFields,expectedRevision,operationId});
     const legacyFingerprint=!Object.hasOwn(providedRoles,'calendar')&&!Object.hasOwn(providedRoles,'forum')?hash({roles:Object.fromEntries(['director','character','writer','stat','summary','ideas'].map(k=>[k,roles[k]])),expectedRevision,operationId}):null;
     if(current.operationId===operationId){if(current.fingerprint!==fingerprint&&current.fingerprint!==legacyFingerprint)fail('IDEMPOTENCY_CONFLICT');return current;}
     if(current.revision!==expectedRevision)fail('VERSION_CONFLICT');
     for(const selected of Object.values(roles).filter(Boolean))await validate(selected,signal);
-    const next={schemaVersion:1,scope,revision:current.revision+1,roles,operationId,fingerprint};
+    const next={schemaVersion:1,scope,revision:current.revision+1,roles,...modeFields,operationId,fingerprint};
     try{await store.atomic(settingsFile(store,scope),next,{signal,commit:true});return next;}
     catch(e){let actual;try{actual=await readModelSettings(store,scope);}catch{fail('MODEL_SETTINGS_SAVE_UNKNOWN');}if(actual.fingerprint===fingerprint)return actual;throw e;}
   },{signal,namespace:scope==='@global'?'agent-model-defaults':'agent-models'});

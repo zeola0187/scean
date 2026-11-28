@@ -16,6 +16,9 @@ import {auditSavedSnapshot} from '../authoring/compatibility-audit.mjs';
 import {createChapterConfiguration} from './chapter-runtime.mjs';
 import {AgentModelRouting} from './agent-models.mjs';
 
+import {StageInspiration} from '../core/inspiration.mjs';
+import {nativeInspirationProviders,inspirationTopic} from './inspiration-providers.mjs';
+
 export const inject=['typert','llm','agentDefaultModel'];
 export async function apply(ctx,config={}){
   const dataRoot=resolve(config.dataRoot??join(resolveDshHome(),'scean-mvp-0.7.1-milestone-d-final'));
@@ -41,7 +44,9 @@ export async function apply(ctx,config={}){
   }
   const memory=new Memory({embed,embeddingModel:embed?'openrouter/nebius/qwen3-embedding-8b':'disabled'});
   chapterConfiguration=createChapterConfiguration({ctx,config,dataRoot,usageLedger,legacyNativeModel:model,modelRouting});
-  const engine=new SceanEngine({store,model,memory,directorWorldbookLookup:config.directorWorldbookLookup===true,recentWindow:config.recentWindow??6});
+  const ideaModel=createNativeModelPort({llm:ctx.llm,agentDefaultModel:ctx.agentDefaultModel,usageLedger,selection:config.modelSelection,maxTokens:4996,timeoutMs:60000,technicalRetries:0});
+  const inspiration=new StageInspiration({store,provider:nativeInspirationProviders({generate:request=>ideaModel.generate({stage:'inspiration',...request})}),topicForRun:inspirationTopic,timeoutMs:85000});
+  const engine=new SceanEngine({store,model,memory,inspiration,directorWorldbookLookup:({run})=>inspiration.loreEnabled(run.runId),recentWindow:config.recentWindow??6});
   host=await new SceanHost({engine,modelRouting,root:join(dataRoot,'host'),summaryEnabled:config.summaryEnabled===true,chapterModelsEnabled:config.chapterModelsEnabled===true,chapterRetrievalEnabled:config.chapterRetrievalEnabled===true,
     chapterProviderSettings:chapterConfiguration.settings,chapterRuntimeFactory:chapterConfiguration.runtimeFactory,onChapterConfigurationChanged:()=>status('ready'),maxConcurrentOperations:config.maxConcurrentOperations??4}).init();
   // Credentials may become ready after this independently useful RP service.
@@ -80,6 +85,6 @@ export async function apply(ctx,config={}){
   }
   new SceanService();
   ctx.typert.register({package:sceanRemote.package,face:'host',schemas:[],invocations:sceanRemote.descriptors});
-  ctx.effect(()=>async()=>{await host.close();chapterConfiguration.settings.close();await status('inactive');},'scean host cleanup');
+  ctx.effect(()=>async()=>{inspiration.close();await inspiration.idle();await host.close();chapterConfiguration.settings.close();await status('inactive');},'scean host cleanup');
   await status('ready');
 }

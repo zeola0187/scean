@@ -23,6 +23,8 @@ export async function playerNotes(store, run) {
 }
 
 export async function addPlayerNote(store, run, {commitId, excerpt, memo = ''}, {now = () => new Date().toISOString()} = {}) {
+  const expectedLifecycleRevision=run.recycle?.revision??0;
+  return store.withRunLock(run.runId,async()=>{run=await store.read(run.runId);if((run.recycle?.revision??0)!==expectedLifecycleRevision)fail('RUN_LIFECYCLE_CHANGED');
   if (typeof commitId !== 'string' || typeof excerpt !== 'string' || typeof memo !== 'string') fail('NOTE_INVALID');
   const text = excerpt.trim();
   if (!text || text.length > MAX_EXCERPT || memo.length > MAX_MEMO) fail('NOTE_INVALID');
@@ -40,9 +42,11 @@ export async function addPlayerNote(store, run, {commitId, excerpt, memo = ''}, 
     await store.atomic(notesFile(store, run.runId), {schemaVersion: 1, notes: [...record.notes, note]}, {commit: true});
     return note;
   }, {namespace: 'player-notes'});
+  });
 }
 
-export async function deletePlayerNote(store, runId, noteId) {
+export async function deletePlayerNote(store, runId, noteId, {expectedLifecycleRevision=0}={}) {
+  return store.withRunLock(runId,async()=>{const run=await store.read(runId);if((run.recycle?.revision??0)!==expectedLifecycleRevision)fail('RUN_LIFECYCLE_CHANGED');
   if (typeof noteId !== 'string' || !/^note-[0-9a-f-]{36}$/.test(noteId)) fail('NOTE_INVALID');
   return store.withRunLock(runId, async () => {
     const record = await readRecord(store, runId), notes = record.notes.filter(n => n.id !== noteId);
@@ -50,4 +54,5 @@ export async function deletePlayerNote(store, runId, noteId) {
     await store.atomic(notesFile(store, runId), {schemaVersion: 1, notes}, {commit: true});
     return {deleted: true};
   }, {namespace: 'player-notes'});
+  });
 }

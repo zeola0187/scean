@@ -27,13 +27,14 @@ import {HostNotifications} from './notification-host.mjs';
 import {FRONTEND_PROFILE} from '../core/frontend.mjs';
 import {CHAPTER_SETTINGS_ACTIONS} from './chapter-settings.mjs';
 import {generatePlayerIdeas} from '../core/player-ideas.mjs';
+import {compassAction} from '../core/plot-compass.mjs';
 import {playerWorldbook,playerRecap} from '../core/player-readers.mjs';
 import {PlayerReaders,OPERATOR_READ_ACTIONS,requireReaderAuthority} from './reader-host.mjs';
 import {PresentationHost} from './presentation-host.mjs';
 import {changeRunLifecycle,lifecycleView} from '../core/run-lifecycle.mjs';
 import {ScriptStore,scriptSummary} from '../core/script-store.mjs';
 const LIFECYCLE_ACTIONS=new Set(['runRecycleList','runLifecycleStatus','runTrash','runRestore']);
-const RUN_MUTATIONS=new Set(['playerBind','draftSave','turn','rollback','regenerate','operationSubmit','summaryStart','chapterSettings','chapterSummarize','chapterAuto','chapterClose','banList','writingModeSave','proseStyleSave','agentModelsSave','presentationApply','presentationRestore']);
+const RUN_MUTATIONS=new Set(['compassGenerate','compassAdopt','compassClear','compassBlind','playerNoteAdd','playerNoteDelete','worldFeedSeen','worldRoutinePulse','worldRoutineRetry','diaryRequest','inspirationSettingsSave','playerBind','draftSave','turn','rollback','regenerate','operationSubmit','summaryStart','chapterSettings','chapterSummarize','chapterAuto','chapterClose','banList','writingModeSave','proseStyleSave','agentModelsSave','presentationApply','presentationRestore']);
 const PLAYBACK_STATUSES=new Set(['available','unselected','source_missing','source_recycled','source_pending','session_archived','unavailable']);
 
 function fail(code,message){throw Object.assign(new Error(message),{code});}
@@ -60,7 +61,7 @@ export class SceanHost {
     this.routineRunIds=new Set();this.worldRoutine=new WorldRoutineHost(this,{automatic:worldRoutineAutomatic,onTrace:worldRoutineTrace});
     this.summaryEnabled=summaryEnabled===true;this.summaryRunning=new Map();
     this.chapterModelsEnabled=chapterModelsEnabled===true;this.chapterRunning=new Map();this.chapterAutoArmed=new Set();this.closing=false;
-    this.writerSummaryArmed=new Set();this.automaticSummaryFailures=new Map();
+    this.writerSummaryArmed=new Set();this.automaticSummaryFailures=new Map();this.chapterSchedule=new Map();
     this.chapterRetrievalEnabled=chapterModelsEnabled===true;this.chapterContextArmed=new Set();
     this.modelRouting=modelRouting;this.routingSaves=new Set();this.chapterProviderSettings=chapterProviderSettings;this.chapterRuntimeFactory=chapterRuntimeFactory;this.onChapterConfigurationChanged=onChapterConfigurationChanged;this.globalSettingsUpdating=false;this.globalSettingsRevision=null;
     this.engine=engine;this.root=root;this.now=now;this.bindingTtlMs=bindingTtlMs;this.openings=new OpeningSelections(this);this.scripts=new ScriptStore({root});this.scriptSaves=new Set();
@@ -160,7 +161,7 @@ export class SceanHost {
   requireModelAuthority(authority){if(!authority.principal||authority.allowGlobalSettings!==true)fail('MODEL_SETTINGS_DENIED','模型設定只供已驗證的舞臺操作者使用。');}
   async saveAgentModels(request,signal){
     if(this.closing)fail('HOST_CLOSING');
-    const work=this.modelRouting.save({scope:request.scope,roles:request.roles,expectedRevision:request.expectedRevision,operationId:request.operationId,signal});this.routingSaves.add(work);
+    const work=this.modelRouting.save({scope:request.scope,roles:request.roles,settlementMode:request.settlementMode,expectedRevision:request.expectedRevision,operationId:request.operationId,signal});this.routingSaves.add(work);
     try{await work;return await this.modelRouting.status(request.scope);}finally{this.routingSaves.delete(work);}
   }
   async playerDefaultsAction(request,signal,authority){
@@ -217,7 +218,7 @@ export class SceanHost {
     safeId(request.runId);if(request.operationId!==undefined)safeId(request.operationId);
     if(request.action==='runLifecycleStatus')return lifecycleView(await this.engine.store.read(request.runId,{includeTrashed:true}),request.operationId);
     this.assertMutationAvailable(request.runId);
-    if(this.routingSaves.size||this.ideaJobs.has(request.runId)||this.presentationSaves.size||(this.proseStyleSaves?.size??0)||(this.writingModeSaves?.size??0)||this.draftQueues.has(request.runId))fail('RUN_BUSY','請等生成、摘要與保存完成後再操作副本。');
+    if(this.worldRoutine.active.has(request.runId)||this.worldRoutine.committing.has(request.runId)||this.engine.inspiration?.isRunBusy?.(request.runId)||this.routingSaves.size||this.ideaJobs.has(request.runId)||this.presentationSaves.size||(this.proseStyleSaves?.size??0)||(this.writingModeSaves?.size??0)||this.draftQueues.has(request.runId))fail('RUN_BUSY','請等生成、摘要與保存完成後再操作副本。');
     const owner={kind:'run-lifecycle'};this.auxRunning.set(request.runId,owner);
     try{
       const run=await this.engine.store.read(request.runId,{includeTrashed:true});
@@ -330,14 +331,14 @@ export class SceanHost {
       const projected=publicTurnResult(result,result.storyClock?await this.engine.store.read(runId):undefined);
       // Finish projection IO before arming the existing background callback:
       // finally must release the foreground owner before its next microtask.
-      this.scheduleChapterAfterTurn(runId,result.commitId);if(this.routineRunIds.has(runId))this.worldRoutine.schedule(runId);
+      this.engine.inspiration?.schedule(runId,result.commitId);this.scheduleChapterAfterTurn(runId,result.commitId);if(this.routineRunIds.has(runId))this.worldRoutine.schedule(runId);
       return projected;
     }catch(error){const failure=error.sceanFailure??safeFailure(error,progress.stage);Object.assign(progress,{status:failure.code==='COMMIT_OUTCOME_UNKNOWN'?'unknown':failure.category==='cancelled'?'cancelled':'failed',lastFailure:failure});throw error;}
     finally{if(this.activeOperations.get(runId)===owner){this.running.delete(runId);this.activeOperations.delete(runId);}}
   }
   async savedSettlementBody({runId,attemptId}){
     this.requireRun(runId);const run=await this.engine.store.read(runId),a=await this.engine.store.readAttempt(runId,safeId(attemptId)),c=a.bodyCheckpoint;
-    if(!c||c.schemaVersion!==1||a.runId!==runId||c.pins?.runId!==runId||c.pins.snapshotHash!==run.snapshot.hash||typeof c.body!=='string'||c.body.length>200000||hash(c.body)!==c.bodyHash)fail('SETTLEMENT_SOURCE_STALE','找不到完整的已保存正文。');
+    if(run.receipts?.[a.requestId]||a.provisional||c?.pins?.epoch!==run.storyEpoch||c?.pins?.head!==(run.head??null)||!c||c.schemaVersion!==1||a.runId!==runId||c.pins?.runId!==runId||c.pins.snapshotHash!==run.snapshot.hash||typeof c.body!=='string'||c.body.length>200000||hash(c.body)!==c.bodyHash)fail('SETTLEMENT_SOURCE_STALE','找不到完整的已保存正文。');
     return {runId,attemptId,requestId:a.requestId,status:'saved_not_committed',body:c.body,bodyHash:c.bodyHash};
   }
   async resumeStage(request){
@@ -375,7 +376,7 @@ export class SceanHost {
     if(this.ideaJobs.has(request.runId)||this.ideaJobs.size>=this.maxConcurrentOperations)fail('IDEAS_BUSY','正在取得想法，請等候這次結果。');
     const controller=new AbortController(),owner={controller,promise:null};this.ideaJobs.set(request.runId,owner);
     const joined=signal?AbortSignal.any([signal,controller.signal]):controller.signal;
-    try{owner.promise=generatePlayerIdeas(this.engine,{...request,signal:joined});return await owner.promise;}
+    try{owner.promise=request.action==='compassGenerate'?compassAction(this.engine,request,joined):generatePlayerIdeas(this.engine,{...request,signal:joined});return await owner.promise;}
     finally{if(this.ideaJobs.get(request.runId)===owner)this.ideaJobs.delete(request.runId);}
   }
   async historyReadAction(action,request){
@@ -411,7 +412,7 @@ export class SceanHost {
     const attempts=await this.engine.store.readAttempts(run.runId),lastRecall=attempts.at(-1)?.assemblyDiagnostics?.chapterRecall??null;
     const latestJob=this.jobs.ledger.records.findLast(row=>row.runId===run.runId&&['chapterAuto','chapterSummarize'].includes(row.kind)),jobView=latestJob?await this.jobs.view(latestJob,run):null;
     const chapterFailure=jobView&&!jobView.pending&&!['completed','committed'].includes(jobView.status)&&jobView.failure?{operationId:jobView.operationId,chapterId:latestJob.input?.chapterId??null,status:jobView.status,code:jobView.failure.code}:null;
-    return {...chapterSummaryView(run,request.chapterId),chapterFailure,chapterWork:this.chapterRunning.get(run.runId)?.batching??null,enabled:this.chapterModelsEnabled,autoArmed:run.narrative?.chapterSettings?.autoEnabled===true&&!this.automaticSummaryFailures.has(request.runId),writerSummaryEnabled:this.summaryEnabled,writerSummaryArmed:this.writerSummaryArmed.has(request.runId),chapterRetrievalEnabled:this.chapterRetrievalEnabled,chapterContextArmed:run.narrative?.chapterSettings?.autoEnabled===true,integratedContextEnabled:run.narrative?.chapterSettings?.autoEnabled===true,contextAuthority:'saved_run_autoEnabled',chapterPorts:this.engine.chapterRecall?.capabilities()??{embedding:false,rerank:false},contextReadiness:this.chapterContextReadiness(run),lastRecall,automaticFailure:this.automaticSummaryFailures.get(request.runId)??null};
+    return {...chapterSummaryView(run,request.chapterId),chapterFailure,chapterWork:this.chapterRunning.get(run.runId)?.batching??null,enabled:this.chapterModelsEnabled,autoArmed:run.narrative?.chapterSettings?.autoEnabled===true&&!this.automaticSummaryFailures.has(request.runId),writerSummaryEnabled:this.summaryEnabled,writerSummaryArmed:this.writerSummaryArmed.has(request.runId),chapterRetrievalEnabled:this.chapterRetrievalEnabled,chapterContextArmed:run.narrative?.chapterSettings?.autoEnabled===true,integratedContextEnabled:run.narrative?.chapterSettings?.autoEnabled===true,contextAuthority:'saved_run_autoEnabled',chapterPorts:this.engine.chapterRecall?.capabilities()??{embedding:false,rerank:false},contextReadiness:this.chapterContextReadiness(run),lastRecall,scheduleDecision:this.chapterSchedule.get(request.runId)??null,automaticFailure:this.automaticSummaryFailures.get(request.runId)??null};
   }
   async chapterSettings(request,signal){
     const result=await this.auxiliaryMutation(request,async()=>{
@@ -457,7 +458,7 @@ export class SceanHost {
         }
         return result;
       }
-      catch(error){if(action==='chapterAuto')this.disarmAutomatic(request.runId,error);throw error;}
+      catch(error){if(action==='chapterAuto'&&!['RUN_BUSY','HISTORY_HEAD_CONFLICT','VERSION_CONFLICT'].includes(error.code))this.disarmAutomatic(request.runId,error);throw error;}
       finally{if(this.chapterRunning.get(request.runId)===owner)this.chapterRunning.delete(request.runId);await this.refreshRuns().catch(()=>{});}
     })();owner.promise=work;return work;
   }
@@ -492,25 +493,43 @@ export class SceanHost {
     }finally{if(this.summaryRunning.get(runId)===owner)this.summaryRunning.delete(runId);}
   }
   scheduleChapterAfterTurn(runId,commitId){
-    if(!this.chapterModelsEnabled||this.automaticSummaryFailures.has(runId)||this.closing)return;
+    const mark = reason => this.chapterSchedule.set(runId, {reason, at:new Date().toISOString()});
+    if(!this.chapterModelsEnabled||this.closing){mark('service_unavailable');return;}
+    let dispatchedRoute = null;
     // Work starts after the RP controller has released ownership. Its result is
     // independent from the already committed RP response and uses a stable ID.
     const work=new Promise(resolve=>setImmediate(resolve)).then(async()=>{
       // Admission remains reserved through durable job finalization. Let the
       // owning turn finish that bookkeeping before checking background capacity.
       const finishing=this.jobs.active.get(runId);if(['turn','chapterSettings','regenerate','settlementResume','stageResume'].includes(finishing?.row.kind))await finishing.promise;
-      if(this.closing||this.automaticSummaryFailures.has(runId)||this.mutationBusy(runId))return;
+      if(this.closing||this.mutationBusy(runId)){mark('busy');return;}
       const run=await this.engine.store.read(runId);
-      if(run.narrative?.chapterSettings?.autoEnabled!==true||headOf(run)!==commitId)return;
+      if(run.narrative?.chapterSettings?.autoEnabled!==true){mark('disabled');return;}
+      if(headOf(run)!==commitId){mark('head_changed');return;}
+      const failure=this.automaticSummaryFailures.get(runId);
+      if (this.modelRouting?.plan) {
+        const plan=await this.modelRouting.plan(run);
+        dispatchedRoute=hash(['chapter_analysis','chapter_summary'].map(stage=>plan.routes[stage]?.requested??null));
+      }
+      if (failure) {
+        if (!failure.dispatchedRoute || !dispatchedRoute || failure.dispatchedRoute===dispatchedRoute) {mark('held_after_failure');return;}
+        this.automaticSummaryFailures.delete(runId);
+      }
       // One natural-boundary operation after a committed player turn. Never
       // scan/backfill old chapters on create/read/reconnect/settings save.
       // Existing explicit legacy API only. No second grant gates the normal
       // persisted main-switch path, and it never calls rolling summary.
       const catchup=this.writerSummaryArmed.has(runId)?this.automaticSummaryRequest(run):null;
       if(catchup){const result=await this.summaryStart(catchup);if(result.status!=='completed')fail(result.code??'AUTOMATIC_SUMMARY_INCOMPLETE');return;}
-      if(!(this.writerSummaryArmed.has(runId)?legacyChapterEligibility(run):chapterEligibility(run)).eligible)return;
+      if(!(this.writerSummaryArmed.has(runId)?legacyChapterEligibility(run):chapterEligibility(run)).eligible){mark('not_eligible');return;}
+      mark('dispatched');
       await this.chapterStart('chapterAuto',{runId,operationId:`chapter-auto-${hash({commitId,consent:run.narrative.chapterSettings.operationId}).slice(0,40)}`,expectedVersion:run.version,expectedHead:headOf(run)});
-    }).catch(error=>this.disarmAutomatic(runId,error));
+    }).catch(error=>{
+      if(['RUN_BUSY','HISTORY_HEAD_CONFLICT','VERSION_CONFLICT'].includes(error.code)){mark('busy_or_stale');return;}
+      this.disarmAutomatic(runId,error);
+      this.automaticSummaryFailures.get(runId).dispatchedRoute=dispatchedRoute;
+      mark('dispatch_failed');
+    });
     this.chapterBackground??=new Set();this.chapterBackground.add(work);work.finally(()=>this.chapterBackground.delete(work));
   }
   async chapterClose(request,signal){return this.auxiliaryMutation(request,async()=>{const result=await closeChapter(this.engine,{...request,signal});await this.refreshRuns();return result;});}
@@ -655,7 +674,10 @@ export class SceanHost {
       if(['playerDefaults','playerDefaultsSave'].includes(request.action))return {ok:true,value:await this.playerDefaultsAction(request,signal,authority)};
       if(['agentModelCatalog','agentModelDefaults','agentModelDefaultsSave'].includes(request.action)){
         this.requireModelAuthority(authority);if(!this.modelRouting)fail('MODEL_ROUTING_UNAVAILABLE');
-        if(request.action==='agentModelCatalog')return {ok:true,value:await this.modelRouting.catalog()};
+        if(request.action==='agentModelCatalog') {
+          const value=request.selection ? {efforts:await this.modelRouting.efforts(request.selection.provider,request.selection.model,signal)} : await this.modelRouting.catalog();
+          return {ok:true,value};
+        }
         return {ok:true,value:request.action==='agentModelDefaults'?await this.modelRouting.status():await this.saveAgentModels({...request,scope:'@global'},signal)};
       }
       if(CHAPTER_SETTINGS_ACTIONS.has(request.action))return {ok:true,value:await this.chapterProviderAction(request,signal,authority)};
@@ -689,16 +711,28 @@ export class SceanHost {
       if(request.runId&&RUN_MUTATIONS.has(request.action)){
         const revision=scopedRun?.recycle?.revision??this.metadata.runs.find(row=>row.runId===request.runId)?.lifecycleRevision??0;
         if(revision>0&&request.expectedLifecycleRevision!==revision)fail('RUN_LIFECYCLE_CHANGED','副本已恢復，請重新讀取後操作；舊頁面的寫入不會自動重送。');
+        if(this.auxRunning.get(request.runId)?.kind==='run-lifecycle')fail('RUN_BUSY');
       }
       switch(request.action){
+        case 'inspirationSettings':case 'inspirationSettingsSave':{
+          this.requireRun(request.runId);
+          if(!authority.principal||authority.allowGlobalSettings!==true)fail('TRUSTED_CLIENT_REQUIRED');
+          const service=this.engine.inspiration;
+          if(!service)fail('INSPIRATION_UNAVAILABLE');
+          if(request.action==='inspirationSettings'){value=await service.status(request.runId);break;}
+          this.assertMutationAvailable(request.runId);
+          try{value=await service.configure(request.runId,{mode:request.mode,interval:request.interval,expectedRevision:request.expectedRevision,loreEnabled:request.loreEnabled,expectedLookupRevision:request.expectedLookupRevision});}
+          catch(error){fail(/^INSPIRATION_[A-Z_]+$/.test(error.message)?error.message:'INSPIRATION_SETTINGS_FAILED');}
+          break;
+        }
         case 'settlementBody':value=await this.savedSettlementBody(request);break;
         case 'worldRoutineRead':this.requireRun(request.runId);value=await this.worldRoutine.read(request,authority);break;
         case 'playerNotes':case 'playerNoteAdd':case 'playerNoteDelete':{this.requireRun(request.runId);
-          if(request.action==='playerNoteDelete'){value=await deletePlayerNote(this.engine.store,request.runId,request.noteId);break;}
+          if(request.action==='playerNoteDelete'){value=await deletePlayerNote(this.engine.store,request.runId,request.noteId,{expectedLifecycleRevision:request.expectedLifecycleRevision});break;}
           const run=await this.engine.store.read(request.runId);
           value=request.action==='playerNotes'?await playerNotes(this.engine.store,run):await addPlayerNote(this.engine.store,run,{commitId:request.commitId,excerpt:request.excerpt,memo:request.memo??''});break;}
         case 'worldFeed':case 'worldFeedSeen':{this.requireRun(request.runId);if(!authority?.principal||authority.allowGlobalSettings!==true)fail('ROUTINE_READER_DENIED');
-          if(request.action==='worldFeedSeen'){value=await markFeedSeen(this.engine.store,request.runId,{forumSequence:request.forumSequence,ids:request.ids??[]});break;}
+          if(request.action==='worldFeedSeen'){value=await markFeedSeen(this.engine.store,request.runId,{forumSequence:request.forumSequence,ids:request.ids??[],expectedLifecycleRevision:request.expectedLifecycleRevision});break;}
           const run=await this.engine.store.read(request.runId);value=worldFeed(run,await readFeedCursor(this.engine.store,request.runId));break;}
         case 'worldRoutinePulse':case 'worldRoutineRetry':case 'diaryRequest':{if(!authority.principal||authority.allowGlobalSettings!==true||request.action==='diaryRequest'&&authority.allowPrivateDiagnostics!==true)fail('WORLD_ROUTINE_DENIED');this.requireRun(request.runId);value=request.action==='worldRoutinePulse'?await this.worldRoutine.drain({...request,signal}):request.action==='worldRoutineRetry'?await this.worldRoutine.retry(request):await this.worldRoutine.diaryRequest(request);break;}
         case 'scriptList':case 'scriptGet':case 'scriptStart':case 'scriptStatus':value=await this.scriptAction(request,scope,authority,signal);break;
@@ -707,6 +741,10 @@ export class SceanHost {
         case 'agentModels':case 'agentModelsSave':
           this.requireModelAuthority(authority);this.requireRun(request.runId);if(!this.modelRouting)fail('MODEL_ROUTING_UNAVAILABLE');
           value=request.action==='agentModels'?await this.modelRouting.status(request.runId):await this.saveAgentModels({...request,scope:request.runId},signal);break;
+        case 'compassView':case 'compassReveal':case 'compassGenerate':case 'compassAdopt':case 'compassClear':case 'compassBlind':
+          if(!authority.principal||authority.allowGlobalSettings!==true)fail('PLAYER_ACTION_DENIED');
+          this.requireRun(request.runId);
+          value=request.action==='compassGenerate'?await this.playerIdeas(request,signal):await compassAction(this.engine,request,signal);break;
         case 'playerIdeas':
           if(!authority.principal||authority.allowGlobalSettings!==true)fail('PLAYER_ACTION_DENIED','請由已授權的舞臺操作取得想法。');
           value=await this.playerIdeas(request,signal);break;

@@ -1,0 +1,1994 @@
+<!doctype html>
+<html lang="zh-Hant" data-genre="neutral" data-mode="light">
+<head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-pq07/7Ewx3J8athpk04/lX9yhCx4RjOUSaDwnCt521o='; style-src 'unsafe-inline'; img-src data:; frame-src 'self' about:; connect-src 'none'; font-src 'none'; base-uri 'none'; form-action 'none'">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>SCEAN 舞台</title>
+<style>/* SCEAN Stage v2. One reading column; the world sits in a quiet margin (desktop)
+   or pull-up sheets (phone). Works re-skin the same layout through genre tokens.
+   The sandbox CSP forbids web fonts, so every face is a system CJK stack. */
+:root {
+  --bg: #eceef1; --surface: #ffffff; --raised: #f5f6f8; --ink: #15171c; --muted: #5b616d; --line: #d9dce2;
+  --accent: #2d45b8; --accent-ink: #ffffff; --accent-soft: #e3e7fa; --mark: transparent;
+  --warn: #8a5300; --warn-soft: #fff1d6; --bad: #b42318; --bad-soft: #fde8e6; --ok: #1e7a46; --ok-soft: #e2f4e9; --pending: #5b4bc4; --pending-soft: #efedfb;
+  --c0: #c2412d; --c1: #0f7a7a; --c2: #6b3fb8; --c3: #a35d00; --c4: #1f7a4f; --c5: #b3261e; --c6: #2d5fb8; --c7: #4a5566;
+  --font-ui: "Microsoft JhengHei UI", "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", "Noto Sans CJK TC", system-ui, sans-serif;
+  --font-read: var(--font-ui); --font-head: var(--font-ui);
+  --font-num: "Segoe UI", "SF Pro Display", Roboto, var(--font-ui);
+  --read-size: 17px; --read-leading: 1.9; --radius: 10px; --radius-sm: 6px;
+  color-scheme: light;
+}
+:root[data-mode="dark"] {
+  --bg: #0f1115; --surface: #171a20; --raised: #1d2128; --ink: #e8eaef; --muted: #9aa1ad; --line: #2a2f38;
+  --accent: #93a4ff; --accent-ink: #0f1115; --accent-soft: #232a4a;
+  --warn: #f0b45a; --warn-soft: #3a2c12; --bad: #ff8a7a; --bad-soft: #3d1c19; --ok: #6fd49b; --ok-soft: #14301f; --pending: #b3a8ff; --pending-soft: #25213d;
+  --c0: #ff8f7a; --c1: #5cc9c9; --c2: #b99bff; --c3: #f5b347; --c4: #6fd39c; --c5: #ff7f70; --c6: #8db4ff; --c7: #a9b4c4;
+  color-scheme: dark;
+}
+/* Modern campus: ballpoint blue on graph paper, highlighter marks, Kai headings */
+:root[data-genre="campus"] { --bg: #f4f7fb; --surface: #ffffff; --raised: #eef3fa; --ink: #18202e; --muted: #56627a; --line: #d6deea; --accent: #1f5fd6; --accent-soft: #e2ecfc; --mark: #fff09a; --rule: #e3ebf6; --radius: 14px;
+  --font-head: "BiauKai", "DFKai-SB", "Kaiti TC", "STKaiti", "KaiTi", var(--font-ui); }
+:root[data-genre="campus"][data-mode="dark"] { --bg: #0e141e; --surface: #152031; --raised: #1a2840; --ink: #e5ecf6; --muted: #93a3bb; --line: #26364f; --accent: #7fb0ff; --accent-ink: #0e141e; --accent-soft: #1d3157; --mark: #5c5420; --rule: #142034; }
+/* Road trip: overcast asphalt, sodium-lamp amber, condensed numerals */
+:root[data-genre="road"] { --bg: #e9ecee; --surface: #fbfbfa; --raised: #f1f2f1; --ink: #1c2227; --muted: #5a646c; --line: #d2d7db; --accent: #b85f00; --accent-soft: #fbe8d2; --mark: #1f7a8c; --radius: 4px; --radius-sm: 3px;
+  --font-num: "Bahnschrift", "Segoe UI", "Roboto Condensed", var(--font-ui); }
+:root[data-genre="road"][data-mode="dark"] { --bg: #121519; --surface: #1a1e23; --raised: #20252b; --ink: #ecebe6; --muted: #9ba3aa; --line: #2c3238; --accent: #ffb547; --accent-ink: #121519; --accent-soft: #3a2a12; --mark: #4fb3c4; }
+/* Fantasy / TRPG: slate stone, brass trim, ember red, serif reading */
+:root[data-genre="fantasy"] { --bg: #e4e2dc; --surface: #f6f4ef; --raised: #ece9e1; --ink: #221e1a; --muted: #645b52; --line: #cfc9bd; --accent: #9c2f27; --accent-soft: #f2dcd8; --mark: #8a6116; --radius: 3px; --radius-sm: 2px;
+  --font-read: "Noto Serif TC", "Noto Serif CJK TC", "Source Han Serif TC", "PMingLiU", "MingLiU", "Songti TC", serif; --font-head: var(--font-read); --font-num: "Cambria", "Times New Roman", var(--font-read); }
+:root[data-genre="fantasy"][data-mode="dark"] { --bg: #131217; --surface: #1c1a21; --raised: #24212a; --ink: #ebe4d6; --muted: #a59b8c; --line: #34303a; --accent: #e0614f; --accent-ink: #131217; --accent-soft: #3a1d1a; --mark: #d8a748; }
+:root[data-size="large"] { --read-size: 20px; }
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scrollbar-gutter: stable; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.6 var(--font-ui); min-height: 100vh; }
+body.has-sheet { overflow: hidden; }
+button, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: default; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+[hidden] { display: none !important; }
+h1, h2, h3, p { margin: 0; } h1, h2, h3 { text-wrap: balance; }
+ul, ol { margin: 0; padding: 0; list-style: none; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.primary, .ghost, .danger { min-height: 40px; padding: 0 16px; border-radius: var(--radius-sm); border: 1px solid transparent; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.primary { background: var(--accent); color: var(--accent-ink); } .primary:hover { filter: brightness(1.08); } .primary:disabled { opacity: .55; }
+.ghost { background: transparent; border-color: var(--line); color: var(--ink); font-weight: 500; } .ghost:hover { background: var(--raised); }
+.danger { background: var(--bad); color: var(--surface); }
+.small { min-height: 34px; padding: 0 12px; font-size: 14px; } .big { min-height: 48px; padding: 0 28px; font-size: 16px; } .wide { width: 100%; min-height: 48px; font-size: 16px; }
+.link { background: none; border: 0; padding: 0; color: var(--accent); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.meta { color: var(--muted); font-size: 13px; }
+.eyebrow { font-size: 12px; letter-spacing: .08em; color: var(--muted); font-weight: 700; }
+.fine { color: var(--muted); font-size: 13px; margin-top: 16px; } .fine.top { margin-top: 0; }
+.error { color: var(--bad); font-size: 14px; }
+.notice { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; font-size: 14px; color: var(--ok); background: var(--ok-soft); padding: 10px 14px; border-radius: var(--radius-sm); }
+.notice.warn { color: var(--warn); background: var(--warn-soft); }
+.loading { color: var(--muted); padding: 48px 16px; text-align: center; }
+
+/* product navigation shared with Studio */
+.product-nav { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.brand { display: flex; align-items: center; gap: 8px; }
+.brand-mark { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 7px; background: var(--ink); color: var(--surface); font: 800 16px var(--font-num); }
+.brand-name { font: 800 17px var(--font-num); letter-spacing: .04em; }
+.nav-tabs { display: flex; gap: 2px; background: var(--raised); border: 1px solid var(--line); border-radius: 999px; padding: 2px; }
+.nav-tabs button { border: 0; background: none; min-height: 32px; padding: 0 14px; border-radius: 999px; font-size: 14px; font-weight: 600; color: var(--muted); }
+.nav-tabs button.on { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px color-mix(in srgb, var(--ink) 18%, transparent); }
+
+/* shelf */
+.shelf-bar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--surface); border-bottom: 1px solid var(--line); padding: 10px max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px)); }
+.shelf-main { max-width: 860px; margin: 0 auto; display: grid; gap: 32px; padding: 32px max(16px, env(safe-area-inset-right, 0px)) 56px max(16px, env(safe-area-inset-left, 0px)); }
+.shelf-section { display: grid; gap: 12px; } .section-head { display: grid; gap: 4px; }
+.shelf-section h2 { font-size: 18px; }
+.resume { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 24px; }
+.resume-copy { display: grid; gap: 10px; }
+.resume-title, .work-head h1 { font: 800 clamp(26px, 5vw, 36px)/1.2 var(--font-head); }
+.work-head { display: grid; gap: 6px; }
+.resume-where { color: var(--muted); font-variant-numeric: tabular-nums; }
+.resume-line { margin: 4px 0 0; padding-left: 14px; border-left: 3px solid var(--line); font: 17px/1.8 var(--font-read); max-width: 60ch; }
+.scripts { display: grid; gap: 8px; }
+.script { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.save-list { display: grid; gap: 8px; }
+.save-row { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 12px; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; }
+.save-row:hover, .script:hover { border-color: var(--accent); }
+.save-copy { display: grid; gap: 2px; min-width: 0; }
+.shelf-foot { border-top: 1px solid var(--line); padding-top: 16px; display: flex; flex-wrap: wrap; gap: 8px 24px; }
+.empty-state { display: grid; gap: 8px; padding: 18px; border-radius: var(--radius); background: var(--raised); border: 1px dashed var(--line); }
+.empty-state.big { padding: 32px; gap: 12px; } .empty-state.big h1 { font: 800 28px/1.25 var(--font-head); }
+.empty-state.is-warn { border-color: var(--warn); background: var(--warn-soft); }
+.empty-state button { justify-self: start; }
+
+/* reader */
+.reader-bar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 10px; min-height: 56px; background: var(--surface); border-bottom: 1px solid var(--line); padding: 6px max(12px, env(safe-area-inset-right, 0px)) 6px max(12px, env(safe-area-inset-left, 0px)); }
+.back { padding: 0 10px; } .back span:first-child { font-size: 22px; line-height: 1; }
+.bar-title { display: grid; min-width: 0; flex: 1 1 auto; line-height: 1.3; }
+.bar-title strong { font: 700 16px var(--font-head); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar-sub { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.now-chip { display: grid; text-align: left; background: var(--raised); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 4px 12px; line-height: 1.35; max-width: 300px; min-width: 0; }
+.now-clock { font: 700 14px var(--font-num); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.now-place { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar-tools { display: flex; gap: 2px; } .bar-tools .ghost, .more { border-color: transparent; padding: 0 10px; } .more { font-size: 20px; }
+.reader-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 760px) minmax(0, 1fr); column-gap: 32px; padding: 0 max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); }
+.flow-col { grid-column: 2; min-width: 0; display: flex; flex-direction: column; min-height: calc(100vh - 56px); }
+.margin { display: none; }
+@media (min-width: 1180px) {
+  /* Wide screens: the reading column takes the space; the 此刻 column sits flush at the right edge. */
+  .reader-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 900px) minmax(0, .6fr) 300px; column-gap: 24px; padding-right: 12px; }
+  .margin { display: grid; grid-column: 4; align-content: start; gap: 14px; position: sticky; top: 72px; align-self: start; padding: 28px 0 16px; max-height: calc(100vh - 72px); overflow: auto; scrollbar-width: thin; }
+  .now-chip { display: none; }
+}
+@media (min-width: 1600px) { .reader-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1040px) minmax(0, .6fr) 320px; } }
+.flow { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; padding: 28px 0 12px; font: var(--read-size)/var(--read-leading) var(--font-read); }
+.earlier { display: flex; justify-content: center; padding-bottom: 12px; }
+.chapter-head { display: grid; gap: 4px; padding: 6px 0 22px; }
+.chapter-head h1 { font: 800 clamp(26px, 4.5vw, 34px)/1.25 var(--font-head); }
+.turn { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 18px 0; }
+.turn.opening { padding-top: 0; }
+.turn.is-new { animation: arrive .6s ease-out; } @keyframes arrive { from { opacity: .2; transform: translateY(6px); } }
+.turn.is-replacing .prose { opacity: .45; }
+.replacing-note { font: 14px var(--font-ui); color: var(--pending); }
+.prose { display: grid; grid-template-columns: minmax(0, 1fr); gap: .9em; }
+.narr { overflow-wrap: anywhere; }
+.line { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 12px; align-items: baseline; }
+.who { background: none; border: 0; border-left: 3px solid currentColor; padding: 0 0 0 9px; font: 700 14px/1.6 var(--font-ui); white-space: nowrap; }
+.who:disabled { cursor: default; } .who:not(:disabled):hover { text-decoration: underline; }
+.said { min-width: 0; overflow-wrap: anywhere; }
+.speech { color: inherit; }
+.c0 { color: var(--c0); } .c1 { color: var(--c1); } .c2 { color: var(--c2); } .c3 { color: var(--c3); } .c4 { color: var(--c4); } .c5 { color: var(--c5); } .c6 { color: var(--c6); } .c7 { color: var(--c7); }
+.line .said .speech { font-weight: 500; }
+.you { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; align-items: baseline; font: 15px/1.7 var(--font-ui); padding: 10px 14px; background: var(--raised); border-radius: var(--radius-sm); }
+.you-tag { font-weight: 700; color: var(--accent); font-size: 13px; } .you p { overflow-wrap: anywhere; }
+.you.is-pending { background: var(--pending-soft); border: 1.5px dashed var(--pending); } .you.is-pending .you-tag { color: var(--pending); }
+.unsaved { grid-column: 2; font-size: 12px; font-weight: 700; color: var(--pending); }
+.first-hint { color: var(--muted); font: 15px var(--font-ui); padding: 12px 0; }
+.receipt { font: 14px/1.6 var(--font-ui); border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); }
+.receipt summary { display: flex; gap: 12px; align-items: baseline; padding: 8px 12px; cursor: pointer; list-style: none; }
+.receipt summary::-webkit-details-marker { display: none; }
+.receipt summary::after { content: "展開"; margin-left: auto; color: var(--accent); font-size: 12px; font-weight: 600; flex: none; } .receipt[open] summary::after { content: "收合"; }
+.receipt-title { font-weight: 700; flex: none; } .receipt-peek { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; } .receipt[open] .receipt-peek { visibility: hidden; }
+.changes { display: grid; gap: 2px; padding: 0 12px 10px; }
+.change { display: grid; grid-template-columns: 52px minmax(0, auto) minmax(0, 1fr); gap: 10px; align-items: baseline; padding: 3px 0; }
+.change-kind { font-size: 12px; color: var(--muted); font-weight: 700; } .change-label { font-weight: 600; }
+.change-value { font-variant-numeric: tabular-nums; font-family: var(--font-num); overflow-wrap: anywhere; }
+.change.kind-time .change-label { display: none; } .change.kind-time .change-value { grid-column: 2 / -1; }
+.tone-up .change-value { color: var(--ok); } .tone-down .change-value { color: var(--bad); }
+.change-note { grid-column: 2 / -1; font-size: 12px; color: var(--pending); }
+.time-divider { display: flex; align-items: center; gap: 14px; color: var(--muted); font: 600 13px var(--font-num); letter-spacing: .06em; padding: 10px 0; }
+.time-divider::before, .time-divider::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
+.time-divider.is-day { color: var(--ink); font-size: 15px; }
+.turn-tools { display: flex; gap: 18px; font: 13px var(--font-ui); }
+.confirm-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font: 14px var(--font-ui); background: var(--raised); padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--line); }
+.confirm-row p { flex: 1 1 260px; }
+
+/* pending zone: visibly NOT part of the story yet */
+.pending-zone { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; padding-bottom: 12px; }
+.pending-zone:empty { display: none; }
+.status-card { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 14px 16px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface); }
+.status-title { font-size: 16px; } .status-card p { color: var(--muted); max-width: 60ch; }
+.status-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.tone-ask { border-color: var(--accent); background: var(--accent-soft); } .tone-warn { border-color: var(--warn); background: var(--warn-soft); }
+.tone-bad { border-color: var(--bad); background: var(--bad-soft); } .tone-busy { border-style: dashed; border-color: var(--pending); }
+.phases { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.phases li { font-size: 13px; color: var(--muted); padding-top: 8px; border-top: 3px solid var(--line); font-weight: 600; }
+.phases li.done { border-color: var(--pending); color: var(--ink); } .phases li.now { border-color: var(--pending); color: var(--pending); animation: pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .55; } }
+.draft-body { scroll-margin-top: 68px; margin: 4px 0; padding: 14px 16px; border-radius: var(--radius-sm); border: 1.5px dashed var(--warn); background: repeating-linear-gradient(135deg, transparent 0 14px, color-mix(in srgb, var(--warn) 9%, transparent) 14px 16px), var(--surface); }
+.draft-body figcaption { font-size: 12px; font-weight: 700; color: var(--warn); margin-bottom: 8px; letter-spacing: .04em; }
+.draft-body .prose { font: var(--read-size)/var(--read-leading) var(--font-read); color: color-mix(in srgb, var(--ink) 80%, var(--surface)); }
+
+/* composer */
+.composer { position: sticky; bottom: 0; z-index: 10; display: grid; gap: 6px; background: var(--bg); padding-top: 8px; padding-bottom: max(12px, env(safe-area-inset-bottom, 0px)); }
+.composer::before { content: ""; position: absolute; left: 0; right: 0; bottom: 100%; height: 20px; background: linear-gradient(transparent, var(--bg)); pointer-events: none; }
+.composer-box { display: flex; align-items: flex-end; gap: 8px; background: var(--surface); border: 1.5px solid var(--line); border-radius: var(--radius); padding: 8px 8px 8px 14px; }
+.composer-box:focus-within { border-color: var(--accent); }
+.composer textarea { flex: 1; min-width: 0; border: 0; outline: 0; resize: none; background: transparent; font-size: 16px; line-height: 1.6; padding: 6px 0; min-height: 38px; }
+.composer textarea:disabled { opacity: .6; }
+.send { flex: none; min-height: 40px; min-width: 44px; padding: 0 14px; border-radius: var(--radius-sm); border: 0; background: var(--accent); color: var(--accent-ink); font-weight: 700; display: inline-flex; gap: 6px; align-items: center; }
+.send:disabled { background: var(--raised); color: var(--muted); }
+.composer-tools { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.tool { min-height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); font-size: 13px; font-weight: 600; }
+.tool[aria-expanded="true"] { border-color: var(--accent); color: var(--accent); } .tool:disabled { opacity: .5; }
+.attached { font-size: 12px; color: var(--pending); display: inline-flex; gap: 6px; align-items: center; }
+.composer-hint { margin-left: auto; color: var(--muted); font-size: 12px; } .composer-blocked { color: var(--muted); font-size: 13px; }
+.tray { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; display: grid; gap: 8px; max-height: 46vh; overflow: auto; }
+.tray-note { color: var(--muted); font-size: 13px; } .ideas { display: grid; gap: 6px; }
+.idea { width: 100%; display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 10px; text-align: left; background: var(--raised); border: 1px solid transparent; border-radius: var(--radius-sm); padding: 8px 10px; font-size: 14px; }
+.idea:hover { border-color: var(--accent); } .idea-cat { color: var(--accent); font-weight: 700; font-size: 12px; padding-top: 2px; }
+
+/* margin */
+.m-card { display: grid; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; font-size: 14px; }
+.m-clock { font: 700 18px/1.3 var(--font-num); }
+.m-group { display: grid; gap: 2px; } .m-cat { font-size: 12px; font-weight: 700; color: var(--muted); }
+.m-items { display: grid; gap: 2px; } .m-items li { display: flex; justify-content: space-between; gap: 10px; } .m-items strong { font-family: var(--font-num); font-variant-numeric: tabular-nums; text-align: right; overflow-wrap: anywhere; }
+.m-cast { display: grid; gap: 2px; }
+.cast-row { width: 100%; display: flex; gap: 10px; align-items: center; text-align: left; background: none; border: 0; padding: 6px; border-radius: var(--radius-sm); }
+.cast-row:hover { background: var(--raised); } .cast-row span { display: grid; line-height: 1.35; } .cast-row small { color: var(--muted); }
+.avatar { flex: none; display: grid; place-items: center; border-radius: 50%; background: var(--av, var(--c7)); color: var(--surface) !important; font-weight: 700; }
+.c0 { --av: var(--c0); } .c1 { --av: var(--c1); } .c2 { --av: var(--c2); } .c3 { --av: var(--c3); } .c4 { --av: var(--c4); } .c5 { --av: var(--c5); } .c6 { --av: var(--c6); } .c7 { --av: var(--c7); }
+.avatar-sm { width: 30px; height: 30px; font-size: 14px; } .avatar-md { width: 40px; height: 40px; font-size: 17px; } .avatar-lg { width: 72px; height: 72px; font-size: 30px; }
+.work-panel { display: grid; gap: 8px; margin: 6px 0 18px; }
+.panel-frame { resize: vertical; overflow: hidden; min-height: 160px; max-height: 1600px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--raised); }
+.card-panel { display: block; width: 100%; height: 100%; border: 0; }
+.panel-hint { font-size: 12px; }
+
+/* sheets */
+.sheet-layer { position: fixed; inset: 0; z-index: 40; }
+.scrim { position: absolute; inset: 0; background: color-mix(in srgb, var(--ink) 36%, transparent); }
+.sheet { position: absolute; top: 0; right: 0; bottom: 0; width: min(460px, 100%); display: flex; flex-direction: column; background: var(--surface); border-left: 1px solid var(--line); box-shadow: -12px 0 32px color-mix(in srgb, var(--ink) 14%, transparent); animation: slide-in .22s ease-out; }
+.sheet.is-wide { width: min(620px, 100%); } .sheet.no-anim { animation: none; }
+@keyframes slide-in { from { transform: translateX(24px); opacity: .4; } } @keyframes rise { from { transform: translateY(40px); opacity: .4; } }
+.grabber { display: none; }
+.sheet-head { display: flex; align-items: flex-start; gap: 12px; padding: 18px 20px 12px; border-bottom: 1px solid var(--line); }
+.sheet-head > div { flex: 1; min-width: 0; } .sheet-head h2 { font: 800 21px/1.3 var(--font-head); } .sheet-sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
+.sheet-body { flex: 1; overflow: auto; overscroll-behavior: contain; padding: 18px 20px 28px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-content: start; }
+.sheet-h { font-size: 13px; letter-spacing: .06em; color: var(--muted); margin-top: 12px; }
+@media (max-width: 759px) {
+  .sheet, .sheet.is-wide { top: auto; left: 0; width: 100%; max-height: 90vh; border-left: 0; border-top: 1px solid var(--line); border-radius: 18px 18px 0 0; }
+  .sheet:not(.no-anim) { animation: rise .24s ease-out; }
+  .grabber { display: block; width: 40px; height: 4px; border-radius: 2px; background: var(--line); margin: 8px auto 0; box-sizing: content-box; padding: 8px 40%; background-clip: content-box; touch-action: none; }
+  .sheet-head { touch-action: none; }
+  .sheet-head { padding: 10px 16px; } .sheet-body { padding: 14px 16px calc(24px + env(safe-area-inset-bottom, 0px)); }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+.start-form, .time-form { display: grid; gap: 14px; }
+.openings, .time-form fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; }
+legend { font-weight: 700; margin-bottom: 8px; padding: 0; }
+.opening-choice { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; padding: 12px; border: 1.5px solid var(--line); border-radius: var(--radius-sm); cursor: pointer; }
+.opening-choice:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.opening-choice > span { display: grid; gap: 4px; } .opening-text { font-size: 14px; color: var(--muted); line-height: 1.7; }
+.opening-preview { margin: 0; padding: 12px 14px; background: var(--raised); border-radius: var(--radius-sm); } .opening-preview figcaption { font-size: 12px; font-weight: 700; color: var(--muted); }
+.opening-preview .opening-text { color: var(--ink); font-family: var(--font-read); font-size: 15px; }
+.field { display: grid; gap: 6px; font-weight: 700; }
+.field input { font-weight: 400; min-height: 44px; padding: 0 12px; border: 1.5px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); }
+.field input:focus { border-color: var(--accent); outline: 0; } .field small { font-weight: 400; color: var(--muted); }
+.segmented { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 2px; background: var(--raised); flex-wrap: wrap; }
+.segmented button { border: 0; background: none; min-height: 34px; padding: 0 12px; border-radius: calc(var(--radius-sm) - 1px); font-size: 14px; }
+.segmented button.on { background: var(--surface); color: var(--accent); font-weight: 700; box-shadow: 0 1px 2px color-mix(in srgb, var(--ink) 15%, transparent); }
+.setting { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 6px 0; }
+.choice { display: flex; gap: 10px; align-items: flex-start; padding: 6px 0; cursor: pointer; } .choice > span { display: grid; gap: 2px; } .choice small { color: var(--muted); } .choice input { margin-top: 5px; }
+.choice.confirm { background: var(--raised); padding: 10px 12px; border-radius: var(--radius-sm); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip input { position: absolute; opacity: 0; pointer-events: none; }
+.chip span { display: inline-flex; align-items: center; min-height: 38px; padding: 0 14px; border: 1.5px solid var(--line); border-radius: 999px; cursor: pointer; }
+.chip input:checked + span { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+.chip input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+.quoted-input { margin: 0; padding: 10px 14px; background: var(--pending-soft); border-left: 3px solid var(--pending); border-radius: var(--radius-sm); }
+.char-hero { display: flex; gap: 16px; align-items: center; padding: 14px; border-radius: var(--radius); background: var(--raised); } .char-hero p { color: var(--ink); }
+.quotes { display: grid; gap: 8px; } .quotes li { display: grid; gap: 2px; } .quotes a { font-size: 12px; color: var(--muted); } .quotes q { quotes: "「" "」"; }
+.world-grid { display: grid; gap: 4px; }
+.history { display: grid; gap: 10px; } .history > li { border: 1px solid var(--line); border-radius: var(--radius-sm); padding-top: 8px; } .history-turn { font-size: 12px; font-weight: 700; color: var(--muted); padding: 0 12px; }
+.day-strip { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
+.day-strip button { flex: none; display: grid; gap: 0; justify-items: center; min-width: 76px; padding: 6px 10px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); font-size: 12px; }
+.day-strip button.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 700; } .day-strip b { font-size: 11px; }
+.events { display: grid; gap: 8px; } .event { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); }
+.event-label { display: grid; } .event-label small { color: var(--muted); } .event-status { flex: none; font-size: 12px; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: var(--raised); }
+.event.status-completed .event-status { color: var(--ok); } .event.status-pending_resolution .event-status { color: var(--warn); background: var(--warn-soft); }
+.posts { display: grid; gap: 8px; } .post-row { width: 100%; display: grid; gap: 6px; text-align: left; background: var(--raised); border: 1px solid transparent; border-radius: var(--radius-sm); padding: 12px; } .post-row:hover { border-color: var(--accent); }
+.post-by { display: flex; gap: 8px; align-items: center; } .post-by span { display: grid; line-height: 1.3; } .post-by small { color: var(--muted); }
+.post { display: grid; gap: 10px; } .post-text { white-space: pre-wrap; } .replies { display: grid; gap: 12px; } .replies li { display: grid; gap: 4px; }
+.spoiler-banner, .public-banner { font-weight: 700; font-size: 13px; padding: 8px 12px; border-radius: var(--radius-sm); }
+.spoiler-banner { color: var(--warn); background: var(--warn-soft); } .public-banner { color: var(--accent); background: var(--accent-soft); }
+.lore { display: grid; gap: 4px; } .lore-row { width: 100%; display: grid; text-align: left; background: none; border: 0; border-bottom: 1px solid var(--line); padding: 10px 2px; } .lore-row small { color: var(--muted); } .lore-text { white-space: pre-wrap; }
+.chapters { display: grid; gap: 12px; } .chapters li { display: grid; gap: 4px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius-sm); }
+.menu { display: grid; } .menu-row { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: left; background: none; border: 0; border-bottom: 1px solid var(--line); padding: 12px 4px; min-height: 56px; }
+.menu-row > span:first-child { display: grid; min-width: 0; } .menu-row small { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* genre accents */
+:root[data-genre="campus"] body { background-image: linear-gradient(var(--rule) 1px, transparent 1px), linear-gradient(90deg, var(--rule) 1px, transparent 1px); background-size: 24px 24px; }
+:root[data-genre="campus"] .flow-col { background: var(--bg); box-shadow: 0 0 0 16px var(--bg); }
+:root[data-genre="campus"] .you-tag { background: linear-gradient(transparent 55%, var(--mark) 55%); color: var(--ink); padding: 0 2px; }
+:root[data-genre="campus"] .who { border-left: 0; padding: 1px 8px; border-radius: 4px 10px 10px 4px; background: color-mix(in srgb, currentColor 13%, transparent); }
+:root[data-genre="road"] .time-divider { color: var(--accent); font-size: 15px; }
+:root[data-genre="road"] .time-divider::before, :root[data-genre="road"] .time-divider::after { border-top: 3px dashed var(--accent); }
+:root[data-genre="road"] .now-chip, :root[data-genre="road"] .m-card.now { border-left: 4px solid var(--mark); }
+:root[data-genre="road"] .m-clock { font-size: 21px; letter-spacing: .02em; }
+:root[data-genre="fantasy"] .chapter-head { text-align: center; justify-items: center; border-bottom: 1px solid var(--line); margin-bottom: 12px; }
+:root[data-genre="fantasy"] .chapter-head .eyebrow { letter-spacing: .3em; color: var(--mark); }
+:root[data-genre="fantasy"] .turn { border-top: 1px solid var(--line); } :root[data-genre="fantasy"] .turn.opening { border-top: 0; }
+:root[data-genre="fantasy"] .receipt { border-color: var(--mark); } :root[data-genre="fantasy"] .m-card { border-top: 2px solid var(--mark); }
+
+@media (max-width: 899px) { .bar-tools { display: none; } }
+@media (max-width: 759px) {
+  .reader-bar { gap: 6px; min-height: 52px; } .back-label { display: none; }
+  .now-chip { max-width: 46vw; padding: 3px 8px; } .bar-title { flex: 1 1 0; } .bar-title strong { font-size: 15px; } .now-clock { font-size: 13px; }
+  .flow { padding-top: 20px; } .flow-col { min-height: calc(100vh - 52px); } .composer-hint { display: none; }
+  .line { grid-template-columns: minmax(0, 1fr); row-gap: 2px; } .who { justify-self: start; }
+  .idea { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .change { grid-template-columns: 44px minmax(0, 1fr); row-gap: 0; } .change-value { grid-column: 2; } .change.kind-time .change-value { grid-column: 2; }
+  .nav-tabs button { padding: 0 10px; } .brand-name { display: none; }
+  .resume { padding: 18px; } .shelf-main { padding-top: 20px; gap: 24px; }
+}
+.status-card .time-issue { color: var(--ink); font-weight: 600; }
+.script .tag { margin-left: 8px; padding: 1px 7px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--accent-soft, rgba(127,127,127,.18)); color: var(--accent, inherit); vertical-align: 2px; }
+/* World feed: news since the player last looked. Margin card on wide screens, end of story otherwise. */
+.feed { display: grid; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: var(--radius); padding: 12px 14px; font: 14px/1.5 var(--font-ui); }
+.feed-flow { margin: 4px 0 20px; }
+.feed-margin { display: none; }
+@media (min-width: 1180px) { .feed-margin { display: grid; } }
+.feed-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.feed-items { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.feed-item { width: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: baseline; text-align: left; background: none; border: 0; border-radius: var(--radius-sm); padding: 6px; }
+.feed-item:hover { background: var(--raised); }
+.feed-kind { font-size: 12px; font-weight: 700; color: var(--accent); white-space: nowrap; }
+.feed-text { display: grid; min-width: 0; } .feed-text strong { font-weight: 600; overflow-wrap: anywhere; } .feed-text small { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* 記下: pin selected story text to 我已知的設定. */
+.pin-note { position: absolute; z-index: 30; padding: 4px 12px; border-radius: 999px; border: 0; background: var(--accent); color: var(--accent-ink); font: 600 13px var(--font-ui); box-shadow: 0 4px 14px rgba(0,0,0,.25); }
+.notes { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.note blockquote { margin: 0; padding: 4px 0 4px 12px; border-left: 3px solid var(--accent); font: var(--read-size)/1.7 var(--font-read); }
+.note.is-stale blockquote { opacity: .6; border-left-color: var(--line); }
+.stale-notes summary { cursor: pointer; color: var(--muted); font-size: 13px; padding: 6px 0; }
+.file-pick { cursor: pointer; display: inline-flex; align-items: center; }
+/* 回顧: chapters, search and passage view */
+.chapter-row, .hit-row { width: 100%; display: grid; gap: 4px; text-align: left; background: none; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px 14px; }
+.chapter-row:hover, .hit-row:hover { background: var(--raised); }
+.chapters, .hits { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.chapter-summary p { font: var(--read-size)/var(--read-leading) var(--font-read); margin: 0 0 .8em; }
+.recap-search { display: flex; gap: 8px; margin: 4px 0 10px; } .recap-query { flex: 1; min-width: 0; padding: 8px 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); }
+.hit-text { margin: 0; color: var(--ink); overflow-wrap: anywhere; }
+mark { background: var(--mark-hit, color-mix(in srgb, var(--accent) 28%, transparent)); color: inherit; border-radius: 3px; padding: 0 1px; }
+.passage { display: grid; gap: .8em; font: var(--read-size)/var(--read-leading) var(--font-read); padding: 8px 0 12px; }
+.passage-nav { position: sticky; bottom: 0; background: var(--surface); padding: 10px 0; border-top: 1px solid var(--line); }
+.unarchived { display: grid; gap: 6px; margin-top: 12px; }
+/* 這一步要花多久？ one-click legal choices */
+.time-quick { list-style: none; margin: 8px 0 12px; padding: 0; display: grid; gap: 8px; }
+.time-choice { width: 100%; display: grid; grid-template-columns: auto 1fr auto; gap: 4px 12px; align-items: baseline; text-align: left; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); }
+.time-choice:hover { border-color: var(--accent); background: var(--raised); }
+.time-choice strong { font-size: 16px; } .time-choice small { color: var(--muted); } .time-go { color: var(--accent); font-size: 13px; font-weight: 600; white-space: nowrap; }
+.time-advanced summary { cursor: pointer; color: var(--muted); padding: 6px 0; }
+.time-exact { display: flex; gap: 8px; align-items: center; margin: 6px 0; } .time-exact input { width: 7em; padding: 6px 8px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); }
+@media (max-width: 520px) { .time-choice { grid-template-columns: 1fr; } }
+/* World news interlude after the newest section (all widths) */
+.interlude { margin: 8px 0 22px; border-top: 1px dashed var(--line); border-bottom: 1px dashed var(--line); padding: 10px 0; font: 14px/1.6 var(--font-ui); }
+.interlude summary { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; cursor: pointer; list-style: none; }
+.interlude summary::-webkit-details-marker { display: none; }
+.interlude-title { font: 600 15px/1.4 var(--font-read); letter-spacing: .04em; } .interlude-count { color: var(--accent); font-size: 12px; font-weight: 700; }
+.interlude-group { margin-top: 10px; } .interlude-group ul { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 2px; }
+.interlude-label { margin: 0; font-size: 12px; font-weight: 700; color: var(--muted); display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; } .interlude-label small { font-weight: 400; }
+.interlude-item { width: 100%; display: grid; gap: 2px; text-align: left; background: none; border: 0; border-left: 2px solid var(--line); padding: 4px 10px; }
+.interlude-item:hover { border-left-color: var(--accent); background: var(--raised); }
+.interlude-item small { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.interlude-foot { display: flex; justify-content: space-between; align-items: baseline; margin-top: 8px; }
+.feed-margin { padding: 8px 12px; } .feed-jump { width: 100%; display: flex; align-items: center; gap: 8px; background: none; border: 0; text-align: left; font-weight: 600; }
+.feed-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; }
+</style>
+
+<style>.flow-col{overflow-anchor:none}.composer-tools .latest-body{white-space:nowrap}.composer-tools{flex-wrap:wrap}.save-manage{display:flex;align-items:center;gap:8px}.save-manage .save-row{flex:1;min-width:0}.recycle-dialog{width:min(560px,calc(100vw - 24px));max-height:85dvh;overflow:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);color:var(--ink);padding:24px}.recycle-dialog::backdrop{background:#0007}.recycle-dialog button{min-height:44px}.recycle-row{padding:12px 0;border-bottom:1px solid var(--line)}</style><style>#plot-compass-panel textarea{display:block;width:100%;box-sizing:border-box;margin:6px 0 10px;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px;resize:vertical}
+#plot-compass-panel .compass-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:8px}
+#plot-compass-panel .compass-row input{flex:1;min-width:120px;max-width:100%;box-sizing:border-box;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px}
+#plot-compass-panel button[aria-pressed="true"]{outline:2px solid var(--accent,currentColor);outline-offset:-2px}
+#plot-compass-panel .compass-route{border:1px solid var(--line);border-radius:9px;margin:8px 0;padding:10px;overflow-wrap:anywhere}
+#plot-compass-panel .compass-route p{margin:5px 0}
+#plot-compass-panel{position:fixed;z-index:30;box-sizing:border-box;overflow:auto;overscroll-behavior:contain;padding:12px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);color:var(--ink);box-shadow:0 8px 27px #0003}
+#plot-compass-panel[hidden]{display:none}
+#plot-compass-panel header{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--surface);position:sticky;top:-12px;z-index:1}
+#plot-compass-panel h2{font-size:17px;margin:0}
+#plot-compass-panel button{font:inherit;min-height:44px;cursor:pointer;padding:4px 10px;border-radius:var(--radius-sm);border:1px solid var(--line);background:var(--raised);color:var(--ink)}
+#plot-compass-panel button:disabled{opacity:.5;cursor:default}
+#plot-compass-panel .hint{font-size:.88rem;color:var(--muted);margin:5px 0}
+#plot-compass-panel textarea,#plot-compass-panel input{font:inherit}
+</style></head>
+<body>
+<div id="app"></div>
+<noscript>舞台需要啟用 JavaScript。</noscript>
+<script>(function nativeFrameBootstrap(){
+  let port,sequence=0,selection=null,presentation=null;const pending=new Map(),handlers=new Set(),presentationHandlers=new Set(),notificationHandlers=new Set();
+  let connected;const ready=new Promise(resolve=>connected=resolve);
+  const connect=event=>{
+    if(event.source!==parent||event.data?.kind!=='scean-native-connect'||!event.ports?.[0]||port)return;
+    port=event.ports[0];window.removeEventListener('message',connect);
+    port.onmessage=event=>{
+      const m=event.data;
+      if(m?.kind==='context'){selection={runId:m.runId??null,notificationTarget:m.notificationTarget??null};for(const handler of handlers)handler(selection);return;}
+      if(m?.kind==='notification-settings'){for(const handler of notificationHandlers)handler(m.value);return;}
+      if(m?.kind==='presentation-environment'){
+        if(typeof m.dark!=='boolean')return;
+        presentation=Object.freeze({dark:m.dark,...(m.preferences?.schemaVersion===1?{preferences:m.preferences}:{})});for(const handler of presentationHandlers)handler(presentation);return;
+      }
+      if(m?.kind!=='response')return;const item=pending.get(m.id);if(!item)return;pending.delete(m.id);item.cleanup();m.ok?item.resolve(m.value):item.reject(Object.assign(new Error(m.error?.message??'Native RPC failed'),m.error));
+    };
+    port.start();connected();
+  };
+  window.addEventListener('message',connect);
+  async function request(action,payload={},signal){
+    if(signal?.aborted)throw new DOMException('Aborted','AbortError');await ready;
+    if(signal?.aborted)throw new DOMException('Aborted','AbortError');
+    return new Promise((resolve,reject)=>{
+      const id=String(++sequence),abort=()=>{pending.delete(id);reject(new DOMException('Aborted','AbortError'));};
+      pending.set(id,{resolve,reject,cleanup:()=>signal?.removeEventListener('abort',abort)});signal?.addEventListener('abort',abort,{once:true});port.postMessage({kind:'request',id,action,payload});
+    });
+  }
+  globalThis.__SCEAN_NATIVE__=Object.freeze({request,bootstrap:()=>request('native.bootstrap'),openStudio:()=>request('native.openStudio'),onSelect(handler){handlers.add(handler);if(selection)handler(selection);return()=>handlers.delete(handler);},onNotificationSettings(handler){notificationHandlers.add(handler);return()=>notificationHandlers.delete(handler);},onPresentation(handler){presentationHandlers.add(handler);if(presentation)handler(presentation);return()=>presentationHandlers.delete(handler);}});
+})();
+const m1=(()=>{
+// Stage v2 foundation: DOM helpers, a tiny store and the native transport.
+// Runs inside the opaque sandboxed iframe: no storage, no network, text only.
+const PROPS = new Set(['value', 'checked', 'disabled', 'hidden', 'tabIndex', 'open', 'selected', 'htmlFor']);
+function h(tag, props, ...kids) {
+  const el = document.createElement(tag);
+  if (props) for (const [k, v] of Object.entries(props)) {
+    if (v == null || v === false) continue;
+    if (k === 'class') el.className = v;
+    else if (k === 'style' && typeof v === 'object') { for (const [p, x] of Object.entries(v)) el.style.setProperty(p, x); }
+    else if (k === 'dataset') Object.assign(el.dataset, v);
+    else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2).toLowerCase(), v);
+    else if (PROPS.has(k)) el[k] = v;
+    else el.setAttribute(k, v === true ? '' : String(v));
+  }
+  appendKids(el, kids);
+  return el;
+}
+function appendKids(el, kids) {
+  for (const k of kids.flat(Infinity)) { if (k == null || k === false || k === true) continue; el.append(k instanceof Node ? k : document.createTextNode(String(k))); }
+  return el;
+}
+function replace(el, ...kids) { el.replaceChildren(); return appendKids(el, kids); }
+
+function createStore(initial) {
+  let state = initial, queued = false; const subs = new Set();
+  const flush = () => { queued = false; for (const fn of subs) fn(state); };
+  return {
+    get: () => state,
+    set(patch) { state = typeof patch === 'function' ? patch(state) : {...state, ...patch}; if (!queued) { queued = true; requestAnimationFrame(flush); } },
+    subscribe(fn) { subs.add(fn); return () => subs.delete(fn); },
+    flushNow: flush,
+  };
+}
+
+const uuid = () => globalThis.crypto.randomUUID();
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// Every Host read/write goes through the authenticated native bridge. A
+// timeout never means failure: callers must look the operation up again.
+// The bridge stamps every request with the card context it last read. Card Studio re-creates its
+// per-conversation record (new generation) when its page lease lapses or it remounts, so a long-open
+// stage can hold a stale generation while still showing the same card. The Host then answers
+// CARD_CONTEXT_CHANGED before doing any work. Re-read the context once and retry only when it is
+// still the same card in the same creation conversation; the Host re-checks Run ownership itself.
+const sameCard = (a, b) => !!a && !!b && a.provider === b.provider && a.cardId === b.cardId && a.authoringSessionId === b.authoringSessionId;
+function createTransport(native, {onContext,getRun=()=>null,getEpoch=()=>0,onRunUnavailable=()=>{}} = {}) {
+  let scope = null, refreshing = null;
+  async function raw(action, payload, timeout, signal) {
+    const controller = new AbortController(), timer = setTimeout(() => controller.abort(), timeout);
+    signal?.addEventListener('abort', () => controller.abort(), {once: true});
+    try { const value = await native.request(action, payload, controller.signal); if (action === 'native.context') scope = value?.cardScope ?? null; return value; }
+    catch (error) {
+      if (controller.signal.aborted && !signal?.aborted) throw Object.assign(new Error('連線沒有在時間內回應；原本的操作可能仍在進行。'), {code: 'CONNECTION_UNKNOWN', category: 'transport'});
+      throw error;
+    } finally { clearTimeout(timer); }
+  }
+  async function refresh() {
+    const before = scope;
+    if (!before) { refreshing ??= raw('native.context', {}, 15000).finally(() => { refreshing = null; }); const context = await refreshing; onContext?.(context); return !!context?.cardScope; }
+    refreshing ??= raw('native.context', {}, 15000).finally(() => { refreshing = null; });
+    const context = await refreshing; onContext?.(context);
+    return sameCard(before, context?.cardScope);
+  }
+  async function call(action, payload = {}, {timeout = 15000, signal} = {}) {
+    if (!native) throw Object.assign(new Error('新版舞台只在 DSH 內使用；請從 DSH 的舞台入口開啟。'), {code: 'NATIVE_REQUIRED'});
+    const epoch=getEpoch(),run=getRun();
+    if(payload.runId&&run?.runId===payload.runId&&['draftSave','compassGenerate','compassAdopt','compassClear','compassBlind','playerNoteAdd','playerNoteDelete','worldFeedSeen'].includes(action))payload={expectedLifecycleRevision:run.lifecycleRevision??0,...payload};
+    try { const value=await raw(action,payload,timeout,signal);if(payload.runId&&epoch!==getEpoch())throw Object.assign(Error('已切換演出，舊回應已忽略。'),{code:'NATIVE_CONTEXT_STALE'});return value; }
+    catch (error) {
+      const code = error?.code;
+      if(payload.runId&&epoch===getEpoch()&&getRun()?.runId===payload.runId&&['RUN_TRASHED','RUN_LIFECYCLE_CHANGED'].includes(code))onRunUnavailable();
+      if (!['CARD_CONTEXT_CHANGED', 'CARD_CONTEXT_REQUIRED'].includes(code) || action === 'native.context' || signal?.aborted) throw error;
+      // REQUIRED: the Studio record was dropped (e.g. DSH replaced the conversation's agent); reading the
+      // context re-acquires the stage's Studio lease, so one retry is enough when the card is the same.
+      const before = scope; let same = false; try { same = await refresh(); } catch {}
+      if (code === 'CARD_CONTEXT_REQUIRED' && !before && scope) same = true;
+      if (!same) throw Object.assign(error, {cardChanged: true});
+      const value=await raw(action,payload,timeout,signal);if(payload.runId&&epoch!==getEpoch())throw Object.assign(Error('已切換演出，舊回應已忽略。'),{code:'NATIVE_CONTEXT_STALE'});return value;
+    }
+  }
+  return {call, native: !!native};
+}
+
+// Player-language errors. Codes stay available in diagnostics, not headlines.
+const MESSAGES = {
+  CARD_CONTEXT_REQUIRED: '這個對話還沒有選定作品。請先到「創作」選一張工作卡。',
+  CARD_CONTEXT_CHANGED: '這個對話綁定的作品已經換成另一張卡。請回到舞台書架重新選擇演出。',
+  RUN_BUSY: '這一局正在處理上一個行動，請稍候。',
+  RUN_NOT_FOUND: '找不到這個存檔，可能已被移到回收區。',
+  OPENING_STALE: '開場資訊已經更新，請重新選擇。', OPENING_EXPIRED: '開場選擇已逾時，請重新選擇。',
+  VERSION_CONFLICT: '故事剛剛更新過，請重新整理後再試。', STALE_HISTORY_TARGET: '最後一段已經變更，請重新確認。',
+  MODEL_TIMEOUT: '模型沒有在時間內完成，這一輪沒有保存。', CANCELLED: '已取消，這一輪沒有保存。',
+  NEEDS_TIME_PRECISION: '故事需要你確認這一步的時間。',
+  IDEAS_STALE: '故事剛剛有更新，請再按一次「想法」。', IDEAS_BUSY: '正在取得想法，請稍候。',
+  // Model setup and provider problems: say what was (not) saved and where to fix it.
+  MODEL_SETUP: '還沒有可用的模型。請在 DSH 的設定裡登入或填入 API key，或到「進階工坊 › 模型與服務」選擇模型。這一輪沒有保存，設定好後按「再試一次」。',
+  QUOTA: '模型帳戶的額度用完了。這一輪沒有保存；補充額度或換一個模型後再試一次。',
+  RATE_LIMIT: '模型服務暫時太忙。這一輪沒有保存，稍等一下再試一次。',
+  MODEL_SERVER: '模型服務沒有正常回應。這一輪沒有保存，可以再試一次。',
+  CONTEXT_WINDOW_EXCEEDED: '這一輪需要的內容超過模型能處理的長度。這一輪沒有保存；可以在「進階工坊」換用上下文更大的模型，或開啟章節摘要。',
+};
+const ALIASES = {AUTH: 'MODEL_SETUP', HTTP_401: 'MODEL_SETUP', HTTP_403: 'MODEL_SETUP', NO_ADAPTER: 'MODEL_SETUP', UNKNOWN_MODEL: 'MODEL_SETUP', INVALID_CONFIG: 'MODEL_SETUP', MODEL_SELECTION_REQUIRED: 'MODEL_SETUP', MODEL_UNSUPPORTED: 'MODEL_SETUP',
+  ACCOUNT_QUOTA: 'QUOTA', HTTP_429: 'RATE_LIMIT', SERVER: 'MODEL_SERVER', TRANSPORT: 'MODEL_SERVER', MODEL_TRANSPORT_ERROR: 'MODEL_SERVER'};
+function friendly(error) {
+  if (!error) return '';
+  const raw = error.code ?? error.failure?.code, code = ALIASES[raw] ?? (/^HTTP_5\d\d$/.test(raw ?? '') ? 'MODEL_SERVER' : raw);
+  return MESSAGES[code] ?? (typeof error.message === 'string' && /[一-鿿]/.test(error.message) ? error.message : '操作沒有完成。') ;
+}
+
+return {h,appendKids,replace,createStore,uuid,sleep,createTransport,friendly};})();
+const m2=(()=>{const {uuid, sleep}=m1;
+
+// Host-owned operations for Stage v2. Same identity rules as the legacy client:
+// - the draft is saved first, every attempt gets a fresh operationId;
+// - "retry" keeps the frozen requestId (+ retryOf) after a terminal failure;
+// - new input or a new time confirmation always gets a new requestId;
+// - only the canonical receipt / run head proves a commit, never a response.
+
+const PHASES = [
+  {id: 'think', label: '構思', stages: ['memory', 'director', 'character', 'adjudicate', 'resolve_turn_time']},
+  {id: 'write', label: '書寫正文', stages: ['writer', 'writer_repair', 'validation', 'draft', 'prose', 'prose_repair', 'banlist']},
+  {id: 'settle', label: '整理世界', stages: ['post_stat']},
+  {id: 'save', label: '保存', stages: ['commit']},
+];
+const phaseIndex = stage => Math.max(0, PHASES.findIndex(p => p.stages.includes(stage)));
+const PENDING = new Set(['accepted', 'queued', 'running', 'pending', 'admitted']);
+const DONE = new Set(['committed', 'completed']);
+const BODY_KINDS = new Set(['turn', 'settlementResume','stageResume']);
+
+function createOperations({store, call, reload, getViewerId = () => null,onRunUnavailable=()=>{}}) {
+  let polling = 0;
+  const op = () => store.get().op;
+  const patch = p => store.set(s => ({...s, op: s.op ? {...s.op, ...p} : null}));
+  const run = () => store.get().run;
+  // Background world routines may commit at any time: submit against the freshest
+  // canonical head, never the version the page happened to render.
+  const base = r => ({baseVersion: r.version, baseHead: r.head ?? r.lastTurn?.commitId ?? null, expectedLifecycleRevision: r.lifecycleRevision ?? 0});
+
+  // Host returns only the exact persisted checkpoint after authorization and hash validation.
+  // A late response may not attach to a different operation, request, run, or panel.
+  async function getSaved(o, attemptId, token, expectedHash) {
+    const r = run(); if (!r || !attemptId || !BODY_KINDS.has(o?.kind) || !o.requestId) return;
+    const viewer = getViewerId();
+    const ownsPreview = () => token === polling && getViewerId() === viewer && run()?.runId === r.runId &&
+      !op()?.cancelling && !op()?.cancelRequested && (op()?.previewAttempt ?? attemptId) === attemptId &&
+      op()?.operationId === o.operationId && op()?.requestId === o.requestId;
+    try {
+      if (!ownsPreview()) return;
+      const v = await call('settlementBody', {runId: r.runId, attemptId, expectedLifecycleRevision: r.lifecycleRevision ?? 0});
+      if (ownsPreview() && v?.runId === r.runId && v.attemptId === attemptId &&
+          v.requestId === o.requestId && v.status === 'saved_not_committed' &&
+          typeof v.body === 'string' && typeof v.bodyHash === 'string' &&
+          (!expectedHash || v.bodyHash === expectedHash)) {
+        const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(v.body));
+        const verified = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('');
+        if (verified === v.bodyHash && ownsPreview()) {
+          patch({savedBody: v.body,savedBodyHash:v.bodyHash});
+          requestAnimationFrame(()=>{if(ownsPreview()&&document.visibilityState==='visible'&&document.querySelector('[data-stat-preview]'))patch({previewReadableAt:op()?.previewReadableAt??Date.now()});});
+        }
+      }
+    } catch (error) { return ownsPreview() && error?.code === 'CONNECTION_UNKNOWN'; }
+  }
+
+  async function submit(kind, payload, {input = payload.input ?? null, timeConfirmation = payload.timeConfirmation ?? null, expectedRewriteHead = null} = {}) {
+    const r = run(); if (!r || op()?.phase === 'running') return;
+    const operationId = uuid(), my = ++polling, viewerId = getViewerId();
+    store.set(s => ({...s, notice: null, op: {kind, phase: 'running', stage: kind === 'settlementResume' ? 'post_stat' : 'memory', startedAt: Date.now(), operationId, requestId: payload.requestId ?? null, input, timeConfirmation, failure: null, savedBody: kind === 'settlementResume' ? s.op?.savedBody ?? null : null, savedBodyHash: kind === 'settlementResume' ? s.op?.savedBodyHash ?? null : null}}));
+    try {
+      const fresh = await call('runView', {runId: r.runId});if((fresh.lifecycleRevision??0)!==(r.lifecycleRevision??0)){onRunUnavailable();return;}if(my!==polling)return;store.set(x => x.runId === r.runId ? {...x, run: fresh} : x);
+      if (kind === 'regenerate' && (store.get().runId !== r.runId || !expectedRewriteHead || fresh.lastTurn?.commitId !== expectedRewriteHead)) throw Object.assign(Error('最後一段已變更，請重新確認要修改的正文。'),{code:'STALE_HISTORY_TARGET'});
+      if (kind === 'turn') await call('draftSave', {runId: r.runId, input, requestId: payload.requestId, ...(viewerId ? {viewerId} : {}), expectedLifecycleRevision: fresh.lifecycleRevision ?? 0});
+      const receipt = await call('operationSubmit', {...payload, kind, runId: r.runId, operationId, ...(viewerId ? {viewerId} : {}), ...base(fresh)});
+      if(my===polling) patch({acceptedAt:receipt?.acceptedAt??null,receiptAt:Date.now()});
+      if (receipt?.operationId && receipt.operationId !== operationId) patch({operationId: receipt.operationId});
+    } catch (error) {
+      if(my!==polling)return;
+      if (error.code === 'CONNECTION_UNKNOWN' || error.name === 'AbortError') { patch({phase: 'unknown', checking: true}); return watch(my); }
+      return settle({status: 'failed', failure: {code: error.code, message: error.message}});
+    }
+    return watch(my);
+  }
+
+  // Poll the Host's operation ledger; a lost response is resolved here too.
+  async function watch(token) {
+    let reading = false, readAttempt = null, retriesLeft = 1;
+    for (let i = 0; token === polling; i++) {
+      const o = op(); if (!o) return;
+      let receipt, progress;
+      try {
+        [receipt, progress] = await Promise.all([
+          call('operationStatus', {runId: run().runId, ...(o.operationId ? {operationId: o.operationId} : {}), ...(o.phase === 'unknown' && o.requestId ? {requestId: o.requestId} : {})}),
+          call('progress', {runId: run().runId}).catch(() => null)]);
+      } catch (error) { if (i > 40) return patch({phase: 'unknown', checking: false}); await sleep(1200); continue; }
+      if (token !== polling) return;
+      const ownedProgress = progress?.operationId === o.operationId && progress?.requestId === o.requestId ? progress : null;
+      const stage = ownedProgress?.stage ?? receipt?.stage;
+      const attemptId = ownedProgress?.attemptId ?? receipt?.attemptId;
+      if (receipt?.requestOutcome?.status === 'committed' || DONE.has(receipt?.status)) return settle({status: 'committed'});
+      if (PENDING.has(receipt?.status) || receipt?.status === 'cancel-requested') {
+        if ((stage && stage !== op()?.stage) || op()?.phase !== 'running') patch({stage: stage ?? op()?.stage, phase: 'running', checking: false});
+        if (receipt.status === 'cancel-requested' && !op()?.cancelRequested) patch({cancelRequested:true});
+        if (attemptId && op()?.previewAttempt !== attemptId) patch({previewAttempt:attemptId, savedBody:null, savedBodyHash:null});
+        if (!op()?.cancelling && !op()?.cancelRequested && BODY_KINDS.has(o.kind) && !op()?.savedBody && !reading && attemptId && readAttempt !== attemptId &&
+            (stage === 'post_stat' || stage === 'commit') &&
+            receipt?.operationId === o.operationId && receipt?.requestId === o.requestId) {
+          reading = true; readAttempt = attemptId;
+          void getSaved(o, attemptId, token).then(retry => {
+            if (retry && retriesLeft && token === polling && op()?.previewAttempt === attemptId) {
+              retriesLeft--; readAttempt = null;
+            }
+          }).finally(() => { reading = false; });
+        }
+      }
+      else if (receipt?.status === 'not_recorded' && o.phase === 'unknown') { if (i > 6) return patch({phase: 'not_saved', checking: false}); }
+      else if (receipt?.status) return settle(receipt);
+      await sleep(i < 20 ? 600 : 1200);
+    }
+  }
+
+  async function settle(receipt) {
+    const token = ++polling, o = op();
+    if (receipt.status === 'committed') {
+      await reload({highlight: true});
+      if (token === polling) {
+        store.set(s => ({...s, op: null, flash: Date.now()}));
+        requestAnimationFrame(()=>{if(token===polling && run()?.runId && !document.querySelector('#composer-input')?.disabled){
+          const last={runId:run().runId,requestId:o.requestId,sentAt:o.startedAt,hostAcceptedAt:o.acceptedAt??null,
+            receiptAt:o.receiptAt??null,previewReadableAt:o.previewReadableAt??null,firstReadableAt:o.previewReadableAt??(document.querySelector('.turn .prose')?Date.now():null),safeInputAt:Date.now()};
+          store.set({lastTurnPerformance:last});
+        }});
+      }
+      return;
+    }
+    const f = receipt.failure ?? {};
+    if(receipt.status==='unknown'||f.code==='COMMIT_OUTCOME_UNKNOWN'){patch({phase:'unknown',checking:false,failure:f});return;}
+    const savedFailure = BODY_KINDS.has(o?.kind) && f.bodyAvailable && f.resumeAttemptId;
+    if (savedFailure) {
+      patch({phase: 'settlement_failed', failure: f});
+      if (!o.savedBody || (f.bodyHash && o.savedBodyHash !== f.bodyHash)) {
+        patch({savedBody: null, savedBodyHash: null});
+        void getSaved(o, f.resumeAttemptId, token, f.bodyHash);
+      }
+    }
+    else if(f.stageAvailable && f.requestId===o.requestId) patch({phase:'stage_failed',failure:f});
+    else if (receipt.status === 'cancelled') patch({phase: 'cancelled', failure: f});
+    else if (f.code === 'NEEDS_TIME_PRECISION') patch({phase: 'needs_time', failure: f});
+    else if (receipt.status === 'interrupted') patch({phase: 'failed', failure: {...f, message: 'DSH 在處理途中重新啟動，這一輪沒有保存。'}});
+    else patch({phase: 'failed', failure: f});
+    await reload({});
+  }
+
+  return {
+    send(text, timeConfirmation) {
+      const input = text.trim(); if (!input) return;
+      return submit('turn', {input, requestId: uuid(), ...(timeConfirmation ? {timeConfirmation} : {})}, {input, timeConfirmation});
+    },
+    resumeStage() {
+      const o=op(), f=o?.failure;
+      if(o?.phase==='stage_failed' && f?.canStageResume && f.requestId===o.requestId)
+        return submit('stageResume',{requestId:o.requestId,sourceAttemptId:f.resumeAttemptId},{input:o.input});
+    },
+    retry() {
+      const o = op(); if (!o || o.kind === 'settlementResume' || o.phase === 'settlement_failed') return;
+      if (o.kind === 'regenerate') return submit('regenerate', {requestId: uuid()}, {input: o.input});
+      return submit('turn', {input: o.input, requestId: o.requestId, ...(o.timeConfirmation ? {timeConfirmation: o.timeConfirmation} : {}), ...(o.operationId && ['failed', 'cancelled'].includes(o.phase) ? {retryOf: o.operationId} : {})}, {input: o.input, timeConfirmation: o.timeConfirmation});
+    },
+    // A new confirmation changes request content, so it needs a new requestId.
+    confirmTime(timeConfirmation) { const o = op(); if (o) return submit('turn', {input: o.input, requestId: uuid(), timeConfirmation}, {input: o.input, timeConfirmation}); },
+    resume() {
+      const o = op(), f = o?.failure;
+      if (o?.phase === 'settlement_failed' && f?.canResume !== false && f?.resumeAttemptId &&
+          (!f.requestId || f.requestId === o.requestId)) {
+        return submit('settlementResume', {requestId: o.requestId, sourceAttemptId: f.resumeAttemptId}, {input: o.input});
+      }
+    },
+    readSaved() { const o = op(), f = o?.failure; return getSaved(o, f?.resumeAttemptId, polling, f?.bodyHash); },
+    async cancel() {
+      const o = op(); if (!o || o.phase !== 'running') return; patch({cancelling: true});
+      try { const r = await call('cancel', {runId: run().runId, operationId: o.operationId, ...(o.requestId ? {requestId: o.requestId} : {})}); if (!r?.cancelRequested) patch({cancelling: false, cancelRefused: r?.reason ?? 'not_running'}); }
+      catch { patch({cancelling: false}); }
+    },
+    recheck() { const o = op(); if (!o) return; patch({phase: 'unknown', checking: true}); return watch(++polling); },
+    regenerate(guidance, target) { const last = store.get().turns.at(-1); if (last) return submit('regenerate', {requestId: uuid(), ...(guidance ? {guidance} : {})}, {input: last.input,expectedRewriteHead:target}); },
+    rollback() { return submit('rollback', {confirmation: 'rollback-last-committed-turn'}, {input: store.get().turns.at(-1)?.input ?? ''}); },
+    // Returns the uncommitted input to the composer; nothing was saved.
+    dismiss() { const o = op(); polling++; store.set(s => ({...s, op: null, draft: o?.input && o.kind === 'turn' ? o.input : s.draft})); },
+    // Reattach to an operation the Host still owns (e.g. after reopening the panel).
+    async adopt(runId) {
+      try {
+        const receipt = await call('operationStatus', {runId});
+        if ((store.get().runId ?? run()?.runId) !== runId) return;
+        if(['failed','cancelled','interrupted'].includes(receipt?.status) && (receipt.failure?.stageAvailable||receipt.failure?.bodyAvailable)){
+          store.set(s=>({...s,op:{kind:receipt.kind,operationId:receipt.operationId,requestId:receipt.requestId,input:null,adopted:true}}));
+          return settle(receipt);
+        }
+        if ((PENDING.has(receipt?.status) || receipt?.status === 'cancel-requested') && ['turn', 'regenerate', 'settlementResume', 'stageResume', 'rollback'].includes(receipt.kind)) {
+          store.set(s => ({...s, op: {kind: receipt.kind, phase: 'running', stage: receipt.stage ?? (receipt.kind === 'settlementResume' ? 'post_stat' : 'memory'), startedAt: Date.parse(receipt.acceptedAt ?? '') || Date.now(), operationId: receipt.operationId, requestId: receipt.requestId, input: null, adopted: true}}));
+          return watch(++polling);
+        }
+      } catch {}
+    },
+    stop() { polling++; },
+  };
+}
+
+return {PHASES,phaseIndex,createOperations};})();
+const m5=(()=>{
+// Optional presentation data only. This module is shared byte-for-byte with
+// the text-node renderer; it imports no platform, filesystem or model service.
+const DIALOGUE_OUTPUT_GUIDE='Required display transport (not a narrative/style instruction): return one JSON object matching input.outputContract.schema: {"sceanWriter":1,"finalBody":"the complete unchanged prose","dialogue":[{"kind":"speech","speakerId":"exact public roster id or player","text":"exact original spoken substring","occurrence":1}]}. Keep sceanWriter first and finalBody second. Always include dialogue in this same response; use [] when there is no confidently attributable speech, including uncertain speakers or no speech. A missing dialogue field is not the same as an explicit empty array. At most 64 annotations; omit uncertain speakers and all thoughts, narration, citations and code. Use known public IDs even when a public nickname is used; names, first-person wording and adjacent sentences are not identity proof. Unlisted NPCs remain unmarked. For identical repeated text, give its 1-based occurrence. Never add HTML, CSS, color names or prose solely for coloring. Presentation annotations are not events or instructions. All prose-only method, preset and style rules apply to finalBody; this required transport envelope is separate. Complete finalBody first; annotation problems must never cause a rewritten story or a supplemental model call.';
+function writerDialogueContract(actors=[],candidateRef,{postBody=false}={}){
+ const speakerIds=[...new Set(['player',...actors.map(a=>a.id).filter(validId)])];
+ return {schemaVersion:1,schema:{type:'object',additionalProperties:false,required:[...(!postBody?['sceanWriter']:[]),'finalBody','dialogue',...(candidateRef?['candidateRef']:[])],properties:{...(candidateRef?{candidateRef:{const:candidateRef}}:{}),...(!postBody?{sceanWriter:{const:1}}:{}),finalBody:{type:'string',minLength:1,maxLength:200000},dialogue:{type:'array',maxItems:64,items:{type:'object',additionalProperties:false,required:['kind','speakerId','text'],properties:{kind:{const:'speech'},speakerId:{type:'string',enum:speakerIds},text:{type:'string',minLength:1,maxLength:12000},occurrence:{type:'integer',minimum:1}}}}}},
+  rules:[...(candidateRef?['Include the exact candidateRef. Put sceanWriter first, finalBody second, candidateRef third, and dialogue last.']:[]),'Return finalBody and dialogue together in one response.','Preserve the complete prose and its style; annotations identify exact substrings only.','Use dialogue:[] when no speech can be confidently attributed; never guess a speaker.','The Host preserves a complete body if display metadata is absent or invalid, records the display status and makes no additional model call.']};
+}
+const own=(v,keys)=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).every(k=>keys.includes(k));
+const validId=v=>typeof v==='string'&&/^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/.test(v)&&!/^(?:constructor|prototype)$/i.test(v);
+function decodeWriterDialogue(raw,{candidateRef,postBody=false}={}){
+ const trimmed=raw.trim(),fenced=/^```(?:json)?\s*\n([\s\S]*)\n```$/.exec(trimmed),source=fenced?fenced[1]:trimmed;
+ // Salvage a broken presentation tail, never a complete object with a suffix.
+ if(postBody){let depth=0,quoted=false,escape=false;for(let i=0;i<source.length;i++){const x=source[i];if(quoted){if(x==='"'&&!escape)quoted=false;escape=x==='\\'&&!escape;continue;}if(x==='"'){quoted=true;escape=false;}else if(x==='{'||x==='[')depth++;else if(x==='}'||x===']'){depth--;if(depth===0){if(source.slice(i+1).trim())throw Object.assign(Error('Unexpected JSON suffix.'),{code:'INVALID_MODEL_JSON'});break;}}}}
+ let value;try{value=JSON.parse(source);}catch{}
+ if(postBody&&value&&typeof value==='object'&&Object.hasOwn(value,'finalBody')){if(typeof value.finalBody!=='string')throw Object.assign(Error('Writer body missing.'),{code:'WRITER_BODY_FORMAT'});return {body:value.finalBody,entries:Array.isArray(value.dialogue)?value.dialogue:null,status:!Object.hasOwn(value,'dialogue')?'not_provided':Array.isArray(value.dialogue)?'provided':'invalid_annotations'};}
+ if(postBody&&!value){const start=/^\s*\{\s*"finalBody"\s*:\s*/.exec(source);if(start&&source[start[0].length]==='"'){let escaped=false;for(let i=start[0].length+1;i<source.length;i++){const c=source[i];if(c==='"'&&!escaped){try{return{body:JSON.parse(source.slice(start[0].length,i+1)),entries:null,status:'invalid_annotations'};}catch{break;}}escaped=c==='\\'&&!escaped;}}throw Object.assign(Error('No complete Writer body.'),{code:'WRITER_BODY_FORMAT'});}
+ if(value&&typeof value==='object'&&Object.hasOwn(value,'sceanWriter')){
+  if(typeof value.finalBody!=='string')throw Object.assign(Error('Writer envelope has no complete finalBody.'),{code:'WRITER_BODY_FORMAT'});
+  if(candidateRef&&value.candidateRef!==candidateRef)throw Object.assign(Error('Writer candidate reference differs.'),{code:'TEMPORAL_CANDIDATE_MISMATCH'});
+  const supported=value.sceanWriter===1&&own(value,['sceanWriter','finalBody','dialogue','candidateRef']);
+  const status=!supported?'invalid_annotations':!Object.hasOwn(value,'dialogue')?'not_provided':!Array.isArray(value.dialogue)?'invalid_annotations':'provided';
+  return {body:value.finalBody,entries:status==='provided'?value.dialogue:null,status};
+ }
+ // A broken annotation tail must not discard a complete, valid prose string.
+ const prefix=/^\s*\{\s*"sceanWriter"\s*:\s*1\s*,\s*"finalBody"\s*:\s*/.exec(source);
+ if(prefix){const start=prefix[0].length;if(source[start]==='"'){let escaped=false;for(let i=start+1;i<source.length;i++){const c=source[i];if(c==='"'&&!escaped){
+    if(candidateRef){
+      // The complete body and exact complete reference must precede display
+      // metadata. Broken display data is never a second story/time authority.
+      // A complete JSON envelope followed by noise is NOT display degradation.
+      let depth=0,quoted=false,escape=false,trailing=false;
+      for(let j=0;j<source.length;j++){const x=source[j];if(quoted){if(x==='"'&&!escape)quoted=false;escape=x==='\\'&&!escape;continue;}if(x==='"'){quoted=true;escape=false;}else if(x==='{'||x==='[')depth++;else if(x==='}'||x===']'){depth--;if(depth===0){trailing=source.slice(j+1).trim().length>0;break;}}}
+      const proof=/^\s*,\s*"candidateRef"\s*:\s*("(?:[^"\\]|\\.)*")\s*,\s*"dialogue"\s*:/.exec(source.slice(i+1));
+      if(trailing)throw Object.assign(Error('Unexpected JSON suffix.'),{code:'INVALID_MODEL_JSON'});
+      if(!proof||JSON.parse(proof[1])!==candidateRef)throw Object.assign(Error('Writer candidate reference unavailable.'),{code:'TEMPORAL_CANDIDATE_MISMATCH'});
+    }
+    try{return {body:JSON.parse(source.slice(start,i+1)),entries:null,status:'invalid_annotations'};}catch{break;}}escaped=c==='\\'&&!escaped;}}throw Object.assign(Error('Writer envelope has no complete finalBody.'),{code:'WRITER_BODY_FORMAT'});}
+ if(candidateRef)throw Object.assign(Error('Writer candidate reference unavailable.'),{code:'TEMPORAL_CANDIDATE_MISMATCH'});
+ return {body:raw,entries:null,status:'not_provided'};
+}
+// Exactly one local decision; no repair generation or replay of valid prose.
+function writerDialogueStatus(output,presentation,{bodyChanged=false}={}){
+ if(presentation)return {status:'accepted',spans:presentation.spans.length};
+ if(output?.status==='not_provided')return {status:'not_provided',spans:0};
+ if(output?.status==='provided'&&Array.isArray(output.entries)&&output.entries.length===0)return {status:'unattributed',spans:0};
+ if(bodyChanged&&output?.status==='provided')return {status:'body_changed',spans:0};
+ return {status:'invalid_annotations',spans:0};
+}
+function codeRanges(body){
+ const ranges=[];let offset=0,fence=null,start=0;
+ for(const line of body.split(/(?<=\n)/)){const match=/^\s{0,3}(`{3,}|~{3,})/.exec(line);
+  if(fence){if(match&&match[1][0]===fence[0]&&match[1].length>=fence.length){ranges.push([start,offset+line.length]);fence=null;}}
+  else if(match){fence=match[1];start=offset;}
+  else if(/^\s*>|^(?: {4}|\t)/.test(line))ranges.push([offset,offset+line.length]);
+  else for(const m of line.matchAll(/(`+)([^`\n]*?)\1/g))ranges.push([offset+m.index,offset+m.index+m[0].length]);
+  offset+=line.length;
+ }if(fence)ranges.push([start,body.length]);return ranges;
+}
+function nestedQuotes(body,blocked){
+ const pairs={'「':'」','『':'』','“':'”','‘':'’'},stack=[],ranges=[];let j=0;
+ for(let i=0;i<body.length;i++){
+  while(j<blocked.length&&blocked[j][1]<=i)j++;if(blocked[j]&&i>=blocked[j][0]&&i<blocked[j][1]){i=blocked[j][1]-1;continue;}
+  const c=body[i];if(c==='"'&&body[i-1]!=='\\'){if(stack.at(-1)?.end==='"'){const row=stack.pop();if(stack.length)ranges.push([row.start,i+1]);}else if(stack.length<64)stack.push({end:'"',start:i});}
+  else if(pairs[c]){if(stack.length<64)stack.push({end:pairs[c],start:i});}
+  else if(stack.at(-1)?.end===c){const row=stack.pop();if(stack.length)ranges.push([row.start,i+1]);}
+ }return ranges;
+}
+const intersects=(a,b)=>a[0]<b[1]&&b[0]<a[1];
+function boundaries(body){const result=new Set([0,body.length]);for(const row of new Intl.Segmenter('und',{granularity:'grapheme'}).segment(body))result.add(row.index);return result;}
+function occurrence(body,text,n){let start=0,positions=[];while(positions.length<=256){const i=body.indexOf(text,start);if(i<0)break;positions.push(i);start=i+text.length;}if(positions.length>256||!positions.length||n===undefined&&positions.length!==1)return null;const at=n??1;return Number.isSafeInteger(at)&&at>=1&&at<=positions.length?positions[at-1]:null;}
+function makeDialoguePresentation({body,entries,runId,snapshotHash,commitId,bodyHash,actors=[]}){
+ if(!Array.isArray(entries)||!entries.length||entries.length>64||JSON.stringify(entries).length>48000)return null;
+ const ids=new Set(['player',...actors.map(a=>a.id)]),edges=boundaries(body),blocked=codeRanges(body),nested=nestedQuotes(body,blocked),candidates=[];
+ for(const row of entries){
+  if(!own(row,['kind','speakerId','text','occurrence'])||row.kind!=='speech'||!validId(row.speakerId)||!ids.has(row.speakerId)||typeof row.text!=='string'||!row.text.length||row.text.length>12000||!row.text.isWellFormed()||/[<>]/.test(row.text))continue;
+  const start=occurrence(body,row.text,row.occurrence);if(start===null)continue;const end=start+row.text.length,range=[start,end];
+  if(!edges.has(start)||!edges.has(end)||blocked.some(b=>intersects(range,b)))continue;
+  if(!candidates.some(c=>c.start===start&&c.end===end&&c.speakerId===row.speakerId))candidates.push({start,end,speakerId:row.speakerId});
+ }
+ const safe=candidates.filter((a,i)=>!candidates.some((b,j)=>i!==j&&intersects([a.start,a.end],[b.start,b.end]))),spans=[];
+ for(const row of safe){let parts=[[row.start,row.end]];for(const cut of nested)parts=parts.flatMap(p=>!intersects(p,cut)?[p]:[[p[0],Math.min(p[1],cut[0])],[Math.max(p[0],cut[1]),p[1]]].filter(([a,b])=>b>a));for(const [start,end]of parts)spans.push({start,end,speakerId:row.speakerId,text:body.slice(start,end)});}
+ spans.sort((a,b)=>a.start-b.start);if(!spans.length||spans.length>256)return null;
+ return {schemaVersion:1,runId,snapshotHash,commitId,bodyHash,spans};
+}
+function validDialoguePresentation(value,{body,bodyHash,runId,snapshotHash,commitId,actors=[]}){
+ if(!own(value,['schemaVersion','runId','snapshotHash','commitId','bodyHash','spans'])||value.schemaVersion!==1||value.runId!==runId||value.snapshotHash!==snapshotHash||value.commitId!==commitId||value.bodyHash!==bodyHash||!Array.isArray(value.spans)||!value.spans.length||value.spans.length>256)return null;
+ const ids=new Set(['player',...actors.map(a=>a.id)]),edges=boundaries(body),code=codeRanges(body),blocked=[...code,...nestedQuotes(body,code)];let end=0;
+ for(const s of value.spans){if(!own(s,['start','end','speakerId','text'])||!Number.isSafeInteger(s.start)||!Number.isSafeInteger(s.end)||s.start<end||s.end<=s.start||s.end>body.length||!edges.has(s.start)||!edges.has(s.end)||!validId(s.speakerId)||!ids.has(s.speakerId)||typeof s.text!=='string'||s.text!==body.slice(s.start,s.end)||/[<>]/.test(s.text)||blocked.some(b=>intersects([s.start,s.end],b)))return null;end=s.end;}
+ return {schemaVersion:1,runId,snapshotHash,commitId,bodyHash,spans:value.spans.map(s=>({...s}))};
+}
+function dialoguePalette(actors=[]){
+ const ids=[...new Set(['player',...actors.map(a=>a.id).filter(validId)])].sort(),slots=Array(8).fill(0),result=Object.create(null);
+ for(const id of ids){let n=2166136261;for(const c of id)n=Math.imul(n^c.codePointAt(0),16777619)>>>0;const min=Math.min(...slots);let index=n%8;for(let i=0;i<8;i++){const at=(n+i)%8;if(slots[at]===min){index=at;break;}}slots[index]++;result[id]=index;}
+ return result;
+}
+
+return {DIALOGUE_OUTPUT_GUIDE,writerDialogueContract,decodeWriterDialogue,writerDialogueStatus,makeDialoguePresentation,validDialoguePresentation,dialoguePalette};})();
+const m4=(()=>{const {h}=m1;
+const {validDialoguePresentation}=m5;
+
+// Presentation helpers for Stage v2. Story text is always inserted as text.
+
+
+const CATEGORY = {locations: '地點', tasks: '任務', resources: '資源', equipment: '持有物', time: '時間', effects: '狀態', facts: '已知'};
+const COLORS = 8;
+function castIndex(characters) { const map = new Map(); characters.forEach((c, i) => map.set(c.id, i % COLORS)); return map; }
+function avatar(c, idx, size = 'sm') { return h('span', {class: `avatar avatar-${size} c${idx ?? 0}`, 'aria-hidden': 'true'}, (c?.name ?? '?').slice(0, 1)); }
+
+function valueText(v, unit) {
+  if (v === undefined) return '未知';
+  if (v === null) return '—';
+  if (typeof v === 'boolean') return v ? '是' : '否';
+  if (typeof v === 'number') return unit ? (unit.startsWith('/') ? `${v}${unit}` : `${v} ${unit}`) : String(v);
+  if (typeof v === 'string') return v;
+  if (typeof v === 'object' && typeof v.status === 'string') return v.status + (Number.isFinite(v.progress) && v.progress > 0 && v.progress < 100 ? `（${v.progress}%）` : '');
+  if (typeof v === 'object' && typeof v.summary === 'string') return v.summary;
+  const text = JSON.stringify(v); return text.length > 80 ? text.slice(0, 80) + '…' : text;
+}
+
+// Body → paragraphs; validated speech spans become speaker-tagged quotes.
+function proseNodes(turn, run, {onSpeaker, draft = false} = {}) {
+  const body = turn.body ?? '', actors = run.snapshot?.characters ?? [], idx = castIndex(actors);
+  let spans = [];
+  if (!draft && turn.dialoguePresentation) {
+    try { spans = validDialoguePresentation(turn.dialoguePresentation, {body, bodyHash: turn.bodyHash, runId: run.runId, snapshotHash: run.snapshot?.hash, commitId: turn.commitId, actors})?.spans ?? []; } catch { spans = []; }
+  }
+  const pieces = []; let at = 0;
+  for (const s of spans) { if (s.start > at) pieces.push({text: body.slice(at, s.start)}); pieces.push({text: body.slice(s.start, s.end), speakerId: s.speakerId}); at = s.end; }
+  if (at < body.length) pieces.push({text: body.slice(at)});
+  // Validated spans cover the spoken words only; their quote marks sit in the neighbouring narration.
+  // Move them onto the speech so a split never leaves a stray 「 or 」 behind.
+  pieces.forEach((p, i) => {
+    if (!p.speakerId) return;
+    const prev = pieces[i - 1], next = pieces[i + 1];
+    const open = prev && !prev.speakerId ? /[「『“"]$/.exec(prev.text) : null; if (open) { prev.text = prev.text.slice(0, -1); p.text = open[0] + p.text; }
+    const close = next && !next.speakerId ? /^[」』”"]/.exec(next.text) : null; if (close) { next.text = next.text.slice(1); p.text += close[0]; }
+  });
+  const paragraphs = [[]];
+  for (const p of pieces) {
+    const parts = p.text.split(/\n{2,}|\n/);
+    parts.forEach((t, i) => { if (i > 0) paragraphs.push([]); if (t) paragraphs.at(-1).push({...p, text: t}); });
+  }
+  // A paragraph that mixes a quote with narration is shown as separate pieces: each quote becomes a
+  // dialogue line under its speaker, the narration around it stays narration. Text is unchanged.
+  const residue = t => /^[\s，。、：；！？,.:;!?…—-]*$/.test(t);
+  const line = x => h('p', {class: `line c${idx.get(x.speakerId) ?? 0}`},
+    h('button', {class: 'who', type: 'button', disabled: draft || !onSpeaker, onclick: () => onSpeaker?.(x.speakerId)}, actors.find(a => a.id === x.speakerId)?.name ?? x.speakerId),
+    h('span', {class: 'said'}, h('span', {class: `speech c${idx.get(x.speakerId) ?? 0}`}, x.text)));
+  const rendered = paragraphs.filter(p => p.some(x => x.text.trim())).flatMap(parts => {
+    if (!parts.some(x => x.speakerId && x.speakerId !== 'player')) return [h('p', {class: 'narr'}, parts.map(x => x.text))];
+    const out = []; let narr = [];
+    const flush = () => { const text = narr.join('').trim(); if (text && !residue(text)) out.push(h('p', {class: 'narr'}, text)); narr = []; };
+    for (const x of parts) { if (x.speakerId && x.speakerId !== 'player') { flush(); out.push(line(x)); } else narr.push(x.text); }
+    flush(); return out;
+  });
+  let cursor=0;for(const node of rendered){const textNode=node.querySelector('.speech')??node,text=textNode.textContent,start=body.indexOf(text,cursor);if(start>=0&&text){textNode.dataset.bodyStart=start;textNode.dataset.bodyEnd=start+text.length;cursor=start+text.length;}}
+  return rendered;
+}
+
+// Declared public variables (Blueprint) or the public world projection.
+function stateGroups(run) {
+  const groups = new Map(), add = (category, row) => { if (!groups.has(category)) groups.set(category, []); groups.get(category).push(row); };
+  const declared = run.worldView?.declared;
+  if (Array.isArray(declared)) {
+    for (const v of declared) if (v.scope === 'world' && v.category !== 'time') add(v.category, {label: v.displayName, value: v.known ? v.value : undefined, unit: v.unit, key: v.key});
+  } else {
+    for (const [category, rows] of Object.entries(run.state?.world ?? {})) {
+      if (category === 'time' || !rows || typeof rows !== 'object') continue;
+      for (const [key, value] of Object.entries(rows)) if (key !== 'story_events') add(category, {label: key, value, key});
+    }
+  }
+  return [...groups.entries()].sort((a, b) => Object.keys(CATEGORY).indexOf(a[0]) - Object.keys(CATEGORY).indexOf(b[0]));
+}
+function sceneCard(run) {
+  const scene=run?.sceneSnapshot;
+  if(!scene||!Array.isArray(scene.actors))return null;
+  const names=new Map((run.snapshot?.characters??[]).map(c=>[c.id,c.name]));
+  const fields={position:'站位',posture:'姿勢',action:'動作',clothing:'衣著',items:'持物'};
+  return h('section',{class:'scene-snapshot'},h('h3',{class:'sheet-h'},'現場快照'),h('p',{class:'fine'},scene.stale?'第 '+scene.turn+' 輪的紀錄，尚未更新':'截至第 '+scene.turn+' 輪'),scene.actors.length?h('ul',null,scene.actors.map(row=>h('li',null,h('strong',null,row.actorId==='player'?(run.playerIdentity?.name??'主角'):(names.get(row.actorId)??row.actorId)),'：',Object.entries(fields).flatMap(([k,label])=>row[k]?[label+' '+row[k]]:[]).join('；')))):h('p',null,'沒有需追蹤的人物。'));
+}
+function placeOf(run) {
+  for (const [category, rows] of stateGroups(run)) if (category === 'locations') { const row = rows.find(r => /player|你|主角|位置|地點/.test(r.key + r.label)) ?? rows[0]; if (row && row.value !== undefined) return valueText(row.value, row.unit); }
+  return '';
+}
+
+// "This step changed…" rows from the Host's public per-turn projection.
+function changeRows(turn, run) {
+  const c = turn.changes; if (!c || c.status !== 'available') return [];
+  const names = new Map((run.snapshot?.characters ?? []).map(a => [a.id, a.name]));
+  const rows = [];
+  if (c.clock?.changed) rows.push({kind: 'time', label: '時間', value: `${clockText(c.clock.beforeLabel)} → ${clockText(c.clock.afterLabel)}`, note: c.clock.confirmedByPlayer ? '依你確認的時間' : null});
+  for (const r of c.rows) {
+    const before = r.before === undefined ? null : valueText(r.before, r.unit), after = r.after === undefined ? null : valueText(r.after, r.unit);
+    const tone = typeof r.before === 'number' && typeof r.after === 'number' ? (r.after > r.before ? 'up' : 'down') : null;
+    rows.push({kind: r.category, label: (r.characterId ? (names.get(r.characterId) ?? r.characterId) + '・' : '') + r.label, value: r.kind === 'removed' ? `${before} → 移除` : before === null ? after : `${before} → ${after}`, tone});
+  }
+  return rows;
+}
+function changeSummary(rows) {
+  const parts = rows.slice(0, 3).map(r => r.kind === 'time' ? r.value.split(' → ').pop() : r.tone ? `${r.label}${r.tone === 'up' ? '↑' : '↓'}` : r.label);
+  return rows.length > 3 ? parts.join('　') + `　＋${rows.length - 3}` : parts.join('　');
+}
+function renderChanges(rows) {
+  return h('ul', {class: 'changes'}, rows.map(r => h('li', {class: `change kind-${r.kind}${r.tone ? ' tone-' + r.tone : ''}`},
+    h('span', {class: 'change-kind'}, r.kind === 'time' ? '時間' : CATEGORY[r.kind] ?? r.kind), h('span', {class: 'change-label'}, r.kind === 'time' ? '' : r.label),
+    h('span', {class: 'change-value'}, r.value), r.note ? h('span', {class: 'change-note'}, r.note) : null)));
+}
+// Compact Host clock labels for reading; the Host label stays the authority.
+function clockText(label) {
+  let t = String(label ?? '').replace('（時段）', '').replace('（範圍）', '').trim();
+  const same = /^(.*?) (\d{1,2}:\d{2}) ～ (.*?) (\d{1,2}:\d{2})$/.exec(t);
+  if (same && same[1] === same[3]) t = `${same[1]} ${same[2]}–${same[4]}`;
+  return t.replace(/(\d{4})年 (\d{1,2})月 (\d{1,2})日/g, '$1年$2月$3日');
+}
+
+return {CATEGORY,castIndex,avatar,valueText,proseNodes,stateGroups,sceneCard,placeOf,changeRows,changeSummary,renderChanges,clockText};})();
+const m3=(()=>{const {h}=m1;
+const {clockText}=m4;
+
+// The stage shelf for the work bound to this conversation: continue a
+// performance, or start a new one from a saved script version.
+
+
+const ago = t => { const ms = Date.now() - Date.parse(t ?? ''); if (!Number.isFinite(ms)) return ''; const m = Math.round(ms / 60000); return m < 1 ? '剛剛' : m < 60 ? `${m} 分鐘前` : m < 1440 ? `${Math.round(m / 60)} 小時前` : `${Math.round(m / 1440)} 天前`; };
+const STATUS = {source_missing: '來源工作卡已不存在；既有演出仍可閱讀。', source_recycled: '來源工作卡已移到回收區；既有演出仍可閱讀。', source_pending: '來源工作卡正在處理中，請稍後。', session_archived: '這個創作對話已封存。', unavailable: '目前無法確認作品來源，請稍後重試。'};
+
+function productNav(actions, current) {
+  return h('nav', {class: 'product-nav', 'aria-label': 'SCEAN'},
+    h('span', {class: 'brand'}, h('span', {class: 'brand-mark'}, 'S'), h('span', {class: 'brand-name'}, 'SCEAN')),
+    h('div', {class: 'nav-tabs', role: 'tablist'},
+      [['home', '作品'], ['studio', '創作'], ['stage', '舞台']].map(([id, label]) => h('button', {type: 'button', role: 'tab', 'aria-selected': String(id === current), class: id === current ? 'on' : '', onclick: () => id === 'stage' ? actions.home() : actions.nav(id)}, label))));
+}
+
+function renderShelf(s, actions) {
+  const offerCard = s.pendingOffer ? h('section', {class: 'resume pending-offer'}, h('p', {class: 'eyebrow'}, '準備好了'), h('h2', null, s.pendingOffer.title ?? s.context?.cardScope?.title ?? '新的演出'), h('p', {class: 'meta'}, '開場還沒選。選好開場與你的名字，就能開始。'), h('div', {class: 'row'}, h('button', {class: 'primary big', type: 'button', onclick: () => actions.sheet('opening', s.pendingOffer)}, '選開場並開始'))) : null;
+  const ctx = s.context, scoped = !!ctx?.cardScope;
+  const title = s.latest?.snapshot?.card?.name ?? s.scripts[0]?.title ?? '這個作品';
+  const head = h('header', {class: 'shelf-bar'}, productNav(actions, 'stage'),
+    h('button', {class: 'ghost small', type: 'button', onclick: () => actions.sheet('settings')}, '顯示'));
+  if (!scoped) return h('div', {class: 'shelf'}, head, h('main', {class: 'shelf-main'},
+    h('section', {class: 'empty-state big'}, h('p', {class: 'eyebrow'}, '舞台'), h('h1', null, '這個對話還沒有作品'),
+      h('p', null, '舞台會演出「創作」裡保存好的劇本。先到創作選一張角色卡，或請 AI 從一個想法開始。'),
+      h('div', {class: 'row'}, h('button', {class: 'primary', type: 'button', 'data-autofocus': true, onclick: () => actions.nav('studio')}, '前往創作'), h('button', {class: 'ghost', type: 'button', onclick: () => actions.nav('home')}, '看所有作品'))),
+    s.error ? h('p', {class: 'error'}, s.error.message ?? '') : null));
+
+  const latest = s.latest, lastRow = s.runs[0];
+  const manage=r=>h('button',{class:'ghost small',type:'button','aria-label':`管理這場演出 ${r.runId.slice(-12)}`,onclick:()=>actions.recycleRun(r)},'⋯');
+  const status = ctx.playbackStatus?.status && STATUS[ctx.playbackStatus.status];
+  const resume = latest ? h('article', {class: 'resume'},
+    h('div', {class: 'resume-copy'},
+      h('p', {class: 'eyebrow'}, `繼續演出${latest.playerIdentity?.name ? ' · ' + latest.playerIdentity.name : ''}`),
+      h('h1', {class: 'resume-title'}, title),
+      h('p', {class: 'resume-where'}, [clockText(latest.storyClockLabel), `${latest.turnCount ?? 0} 段`, s.scripts.length > 1 && latest.snapshot?.revision !== undefined ? `劇本版本 r${latest.snapshot.revision}` : null].filter(Boolean).join(' · ')),
+      latest.lastTurn?.body ? h('blockquote', {class: 'resume-line'}, latest.lastTurn.body.split(/\n+/).filter(Boolean).at(-1)) : latest.openingDisplay ? h('blockquote', {class: 'resume-line'}, latest.openingDisplay.slice(0, 120)) : null,
+      h('div', {class: 'row'}, h('button', {class: 'primary big', type: 'button', 'data-autofocus': true, onclick: () => actions.open(latest.runId)}, '繼續閱讀'), h('span', {class: 'meta'}, ago(lastRow?.updatedAt)),manage(lastRow)))) : null;
+
+  const scripts = s.scripts.length ? h('section', {class: 'shelf-section'},
+    h('div', {class: 'section-head'}, h('h2', null, latest ? '開一場新的演出' : '開始演出'), h('p', {class: 'meta'}, '每一場演出固定使用保存當下的劇本版本；之後修改作品不會影響已開始的演出。')),
+    h('ul', {class: 'scripts'}, s.scripts.map((sc, i) => h('li', null, h('div', {class: 'script'},
+      h('div', null, h('strong', null, sc.title ?? title, s.scripts.length > 1 && i === 0 ? h('span', {class: 'tag'}, '最新') : null),
+        h('p', {class: 'meta'}, [`劇本版本 r${sc.revision ?? '—'}`, sc.createdAt ? `保存於 ${ago(sc.createdAt)}` : null, `${s.runs.filter(r => r.scriptId === sc.scriptId).length} 場演出`].filter(Boolean).join(' · '))),
+      h('button', {class: latest ? 'ghost' : 'primary', type: 'button', onclick: () => actions.startScript(sc)}, '選開場並開演')))))) :
+    h('section', {class: 'empty-state'}, h('strong', null, '還沒有保存的劇本'), h('p', null, '在「創作」裡完成檢查並保存劇本後，就能在這裡開演。'), h('button', {class: latest ? 'ghost' : 'primary', type: 'button', onclick: () => actions.nav('studio')}, '前往創作'));
+
+  const others = s.runs.slice(latest ? 1 : 0), versionOf = r => s.scripts.length > 1 ? (s.scripts.find(sc => sc.scriptId === r.scriptId)?.revision ?? r.revision ?? null) : null;
+  const saves = others.length ? h('section', {class: 'shelf-section'}, h('h2', null, '其他演出'),
+    h('ul', {class: 'save-list'}, others.map(r => h('li', {class:'save-manage'}, h('button', {class: 'save-row', type: 'button', onclick: () => actions.open(r.runId)},
+      h('span', {class: 'save-copy'}, h('strong', null, r.playerName ? `${r.playerName} 的故事` : (r.title ?? '演出')), h('span', {class: 'meta'}, [`${r.turnCount ?? 0} 段`, versionOf(r) ? `劇本版本 r${versionOf(r)}` : null, ago(r.updatedAt)].filter(Boolean).join(' · '))),
+      h('span', {class: 'meta'}, '繼續 ›')),manage(r))))) : null;
+
+  return h('div', {class: 'shelf'}, head, h('main', {class: 'shelf-main'},
+    status ? h('p', {class: 'notice warn', role: 'status'}, status) : null,
+    s.notice ? h('p', {class: 'notice', role: 'status'}, s.notice) : null,
+    offerCard,
+    resume ?? h('header', {class: 'work-head'}, h('p', {class: 'eyebrow'}, '舞台'), h('h1', null, title)),
+    scripts, saves,
+    h('footer', {class: 'shelf-foot'},h('button',{class:'link',type:'button',onclick:()=>actions.recycleBin()},'演出回收區'), h('button', {class: 'link', type: 'button', onclick: () => actions.workshop()}, '進階工坊'), h('button', {class: 'link', type: 'button', onclick: () => actions.useLegacy()}, '使用舊版舞台'))));
+}
+
+return {productNav,renderShelf};})();
+const m8=(()=>{
+// Shared bounded predicates. No UI, Host, I/O, model, or State writes.
+const own=(o,k)=>Object.hasOwn(o??{},k);
+const fail=(prefix,suffix,details)=>{throw Object.assign(new Error(prefix+'_'+suffix),{code:prefix+'_'+suffix,...(details?{details}:{})});};
+const fields=(v,keys,prefix)=>{if(!v||typeof v!=='object'||Array.isArray(v)||keys.some(k=>!own(v,k))||Object.keys(v).some(k=>!keys.includes(k)))fail(prefix,'FIELDS');};
+function boundedConditionJSON(value,{prefix='FRONTEND',nodes=20000,depth=32}={}){
+ let n=0;const active=new Set();
+ function visit(v,d){
+  if(++n>nodes||d>depth)fail(prefix,'JSON_LIMIT');
+  if(v===null||['boolean','string'].includes(typeof v)||typeof v==='number'&&Number.isFinite(v))return;
+  if(!v||typeof v!=='object'||!Array.isArray(v)&&![Object.prototype,null].includes(Object.getPrototypeOf(v))||active.has(v)||Object.getOwnPropertySymbols(v).length)fail(prefix,'JSON');
+  active.add(v);for(const [k,x] of Object.entries(Object.getOwnPropertyDescriptors(v))){if(Array.isArray(v)&&k==='length')continue;if(['__proto__','constructor','prototype'].includes(k)||!own(x,'value')||!x.enumerable)fail(prefix,'JSON');visit(x.value,d+1);}active.delete(v);
+ }
+ visit(value,0);
+}
+function validateConditionExpression(e,types,budget={n:0},depth=0,prefix='FRONTEND'){
+ if(++budget.n>512||depth>12)fail(prefix,'EXPRESSION_LIMIT');
+ if(own(e,'ref')){fields(e,['ref'],prefix);if(!types.has(e.ref))fail(prefix,'REFERENCE_MISSING',{alias:e.ref});return types.get(e.ref);}
+ if(own(e,'literal')){fields(e,['literal'],prefix);if(!['boolean','string','number'].includes(typeof e.literal)||typeof e.literal==='number'&&!Number.isFinite(e.literal)||typeof e.literal==='string'&&e.literal.length>500)fail(prefix,'LITERAL');return typeof e.literal;}
+ fields(e,['op','args'],prefix);if(!Array.isArray(e.args)||!['and','or','not','eq','ne','lt','lte','gt','gte'].includes(e.op))fail(prefix,'OPERATOR');
+ if(['and','or'].includes(e.op)?e.args.length<1||e.args.length>32:e.args.length!==(e.op==='not'?1:2))fail(prefix,'ARITY');
+ const t=e.args.map(x=>validateConditionExpression(x,types,budget,depth+1,prefix));
+ if(['and','or','not'].includes(e.op)?t.some(x=>x!=='boolean'):['lt','lte','gt','gte'].includes(e.op)?t.some(x=>x!=='number'):t[0]!==t[1]||t[0]==='json')fail(prefix,'EXPRESSION_TYPE');
+ return 'boolean';
+}
+function evaluateCondition(expr,values,freshness='current',budget={n:0},depth=0){
+ if(freshness!=='current')return {status:'stale'};
+ if(++budget.n>512||depth>12||!expr||typeof expr!=='object')return {status:'unavailable'};
+ if(own(expr,'ref'))return values[expr.ref]??{status:'unavailable'};
+ if(own(expr,'literal'))return {status:'known',value:expr.literal};
+ if(!Array.isArray(expr.args)||!['and','or','not','eq','ne','lt','lte','gt','gte'].includes(expr.op))return {status:'unavailable'};
+ if(['and','or'].includes(expr.op)?expr.args.length<1||expr.args.length>32:expr.args.length!==(expr.op==='not'?1:2))return {status:'unavailable'};
+ const args=expr.args.map(e=>evaluateCondition(e,values,freshness,budget,depth+1));
+ const known=args.filter(x=>x.status==='known'),numeric=['lt','lte','gt','gte'].includes(expr.op),logical=['and','or','not'].includes(expr.op);
+ if(known.some(x=>logical?typeof x.value!=='boolean':numeric?typeof x.value!=='number'||!Number.isFinite(x.value):!['number','string','boolean'].includes(typeof x.value))||!logical&&!numeric&&known.length===2&&typeof known[0].value!==typeof known[1].value)return {status:'unavailable'};
+ const absent=()=>({status:args.some(x=>x.status==='unavailable')?'unavailable':args.some(x=>x.status==='stale')?'stale':'unknown'});
+ if(expr.op==='and')return args.some(x=>x.status==='known'&&x.value===false)?{status:'known',value:false}:args.every(x=>x.status==='known')?{status:'known',value:true}:absent();
+ if(expr.op==='or')return args.some(x=>x.status==='known'&&x.value===true)?{status:'known',value:true}:args.every(x=>x.status==='known')?{status:'known',value:false}:absent();
+ if(args.some(x=>x.status!=='known'))return absent();const [a,b]=args.map(x=>x.value);
+ return {status:'known',value:expr.op==='not'?!a:expr.op==='eq'?a===b:expr.op==='ne'?a!==b:expr.op==='lt'?a<b:expr.op==='lte'?a<=b:expr.op==='gt'?a>b:a>=b};
+}
+
+return {boundedConditionJSON,validateConditionExpression,evaluateCondition};})();
+const m7=(()=>{const {evaluateCondition}=m8;
+
+
+function evaluateDisplay(expr,values,freshness='current'){return evaluateCondition(expr,values,freshness);}
+// W01 v1 presentation ABI. Browser/Node shared, no Host, filesystem or model access.
+const FRONTEND_API = 1;
+const frontendError = code => Object.assign(new Error(code), {code});
+const escapeHtml = v => String(v).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
+const own = (o,k) => Object.hasOwn(o??{},k);
+function displayValues(frontend,projection) {
+  const values={...projection.values};
+  for(const [name,expr] of Object.entries(frontend.conditions))values[name]=evaluateDisplay(expr,projection.values,projection.freshness);
+  return values;
+}
+function renderFrontendDocument(frontend,projection,{authoringInitial=false}={}) {
+  let emitted=0;
+  const values=displayValues(frontend,projection),status=v=>projection.freshness!=='current'?'stale':v?.status??'unavailable';
+  const show=v=>status(v)==='known'?(typeof v.value==='object'?JSON.stringify(v.value):String(v.value)):{unknown:'未知',unavailable:'不可取得',stale:'資料過期'}[status(v)];
+  function render(n){
+    if(own(n,'text'))return escapeHtml(n.text);
+    const attrs={...n.attrs},textAlias=attrs['data-scean-text'],stateAlias=attrs['data-scean-state'],when=attrs['data-scean-when'],progress=attrs['data-scean-progress'];
+    if(stateAlias){const v=values[stateAlias],s=status(v);attrs['data-state']=s==='known'?String(v.value):s;attrs.class=((attrs.class??'')+' scean-'+attrs['data-state']).trim();}
+    if(when){const v=values[when];if(status(v)!=='known'||v.value!==true)attrs.hidden='';}
+    if(progress){const v=values[progress];if(status(v)==='known')attrs.value=String(Math.max(0,Math.min(Number(attrs.max??100),v.value)));else delete attrs.value;attrs['aria-label']=show(v);}
+    if(n.tag==='progress'&&!progress)delete attrs.value;
+    const attr=Object.entries(attrs).map(([k,v])=>' '+k+'="'+escapeHtml(v)+'"').join('');
+    const result='<'+n.tag+attr+'>'+(['br','hr'].includes(n.tag)?'':(textAlias?escapeHtml(show(values[textAlias])):n.children.map(render).join(''))+'</'+n.tag+'>');
+    emitted+=result.length;if(emitted>1024*1024)throw frontendError('FRONTEND_RENDER_LIMIT');return result;
+  }
+  // No scripts, network, forms, navigation, embedded documents, or Host bridge.
+  // Future isolated JS needs a different, explicitly admitted runtime profile.
+  return '<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'none\'; style-src \'unsafe-inline\'; img-src \'none\'; connect-src \'none\'; font-src \'none\'; base-uri \'none\'; form-action \'none\'"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;padding:16px;font:18px system-ui;overflow-wrap:anywhere}*{box-sizing:border-box;max-width:100%}[hidden]{display:none!important}progress{width:100%}'+frontend.safeCss+'</style></head><body><div role="status">'+escapeHtml(authoringInitial?'作者設定初值（非遊玩狀態）':projection.freshness==='current'?'已提交狀態 v'+projection.canonical.version:'資料過期／同步中')+'</div>'+frontend.tree.map(render).join('')+'</body></html>';
+}
+
+return {evaluateDisplay,FRONTEND_API,frontendError,escapeHtml,displayValues,renderFrontendDocument};})();
+const m6=(()=>{const {h, replace, friendly}=m1;
+const {PHASES, phaseIndex}=m2;
+const {proseNodes, changeRows, changeSummary, renderChanges, stateGroups, placeOf, valueText, avatar, castIndex, CATEGORY, clockText}=m4;
+const {renderFrontendDocument}=m7;
+
+// Reading screen: one story column, a quiet "此刻" margin, a sticky composer.
+// Anything not yet committed lives in the pending zone, never in the story.
+
+
+
+
+// Post-body settlement reports time problems with these codes; a player time confirmation on a new turn resolves them.
+const TIME_CODES = new Set(['POST_TIME_INVALID', 'NEEDS_TIME_PRECISION', 'TIME_CONFIRMATION_ENDPOINT_REQUIRED', 'TEMPORAL_BODY_CONFLICT']);
+const timeIssue = f => TIME_CODES.has(f?.code);
+
+/* BODY_READING_ANCHOR */
+const nearBottom = () => window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 180;
+
+function createReader(actions) {
+  const {store, ops} = actions;
+  const bar = h('header', {class: 'reader-bar'}), flow = h('div', {class: 'flow', role: 'log', 'aria-label': '故事正文'});
+  const pending = h('div', {class: 'pending-zone', 'aria-live': 'polite'}), composer = createComposer(actions);
+  const preview = h('div', {'data-stat-preview-region': ''}), pendingInput = h('div', {class: 'pending-input'});
+  const margin = h('aside', {class: 'margin', 'aria-label': '此刻'});
+  const el = h('div', {class: 'reader'}, bar, h('div', {class: 'reader-grid'}, h('main', {class: 'flow-col'}, flow, pendingInput, preview, pending, composer.el), margin));
+  const keys = {}; const changed = (k, v) => { const j = JSON.stringify(v); if (keys[k] === j) return false; keys[k] = j; return true; };
+  let lastSaved=false,lastPreview=null,lastScope=null,hiddenAnchor=null,workPanel=null,feedFlow=null,feedMargin=null;
+  const scopeOf=s=>JSON.stringify([s.runId,s.run?.snapshot?.hash,s.run?.lifecycleRevision??0]);
+  const previewIdentity=s=>s.op?.savedBody&&s.op?.savedBodyHash&&!s.op.adopted&&['turn','stageResume','settlementResume'].includes(s.op.kind)?{scope:scopeOf(s),requestId:s.op.requestId,attemptId:s.op.previewAttempt,hash:s.op.savedBodyHash}:null;
+  const committed=(identity,s)=>{const t=s.run?.lastTurn;return identity&&identity.scope===scopeOf(s)&&t?.requestId===identity.requestId&&t.bodyHash===identity.hash&&(!identity.attemptId||t.attemptId===identity.attemptId)?t:null;};
+  const findCommit=id=>[...flow.querySelectorAll('.turn[data-commit]')].find(n=>n.dataset.commit===id)?.querySelector('.prose');
+  function capture(){
+    for(const prose of [...flow.querySelectorAll('.turn .prose'),preview.querySelector('.prose')].filter(Boolean)){
+      const position=captureBodyPosition(prose);if(!position)continue;
+      const commit=prose.closest('.turn')?.dataset.commit;
+      return {position,scope:lastScope,commit,identity:commit?null:lastPreview};
+    }return null;
+  }
+  function target(mark,s){if(!mark||mark.scope!==scopeOf(s))return null;if(mark.commit)return findCommit(mark.commit);
+    const turn=committed(mark.identity,s);if(turn)return findCommit(turn.commitId);
+    return mark.identity&&JSON.stringify(mark.identity)===JSON.stringify(previewIdentity(s))?preview.querySelector('.prose'):null;
+  }
+  const visible=()=>{if(document.visibilityState==='hidden')hiddenAnchor=capture();else{const s=store.get();restoreBodyPosition(hiddenAnchor?.position,target(hiddenAnchor,s));hiddenAnchor=null;}};
+  const interacted=()=>{hiddenAnchor=null;};
+  document.addEventListener('visibilitychange',visible);
+  for(const type of ['pointerdown','wheel','keydown','touchstart'])window.addEventListener(type,interacted,{passive:true,capture:true});
+  function update(s) {
+    if (!s.run) { replace(flow, h('p', {class: 'loading'}, '正在打開這場演出…')); composer.update(s); return; }
+    const stick=nearBottom(),mark=document.visibilityState==='visible'?capture():hiddenAnchor;
+    if(lastScope!==scopeOf(s))hiddenAnchor=null;
+    const identity=previewIdentity(s),promoted=committed(identity,s);
+    if (changed('bar', [s.run.version, s.run.storyClockLabel, s.op?.phase])) replace(bar, renderBar(s, actions));
+    const flowChanged = changed('flow', [s.run.version, s.turns.length, s.turns[0]?.commitId, s.highlight, s.confirm, !!s.op, s.op?.kind === 'regenerate' && s.op.phase, s.notice, s.history?.hasMore]);
+    if (flowChanged) replace(flow, renderFlow(s, actions));
+    // The author's work panel follows the newest committed section only; earlier sections never show it.
+    const panelChanged = changed('panel', [s.run.cardFrontend?.status ?? null, s.run.cardFrontend?.projection?.canonical ?? null]);
+    if (panelChanged) { workPanel?.remove(); workPanel = renderWorkPanel(s.run); }
+    if ((flowChanged || panelChanged) && workPanel) flow.append(workPanel);
+    // World feed: top of the 此刻 column on wide screens, end of the story on narrow ones (CSS picks one).
+    const feedChanged = changed('feed', [s.feed?.status, (s.feed?.items ?? []).map(i => i.id)]);
+    if (feedChanged || flowChanged || panelChanged) { feedFlow?.remove(); feedFlow = renderFeed(s, actions, 'feed-flow'); if (feedFlow) flow.append(feedFlow); }
+    const savedBody = s.op?.phase !== 'unknown'&&!promoted ? s.op?.savedBody : null;
+    if (changed('stat-preview', [savedBody,identity])) {
+      replace(preview, savedBody ? h('figure', {class: 'draft-body', 'data-stat-preview': '', 'aria-label': '暫存正文，尚未計入故事'},
+        h('figcaption', null, '暫存正文 · 尚未計入故事'), h('div', {class: 'prose'}, proseNodes({body: savedBody}, s.run, {draft: true}))) : null);
+    }
+    if (changed('pending', [s.op && {...s.op, stage: null, savedBody: !!savedBody}])) {
+      const [input, status] = s.op ? renderPending(s, actions) : [null, null];
+      replace(pendingInput, input); replace(pending, status);
+    }
+    if (s.op?.phase === 'running') { const at = phaseIndex(s.op.stage); pending.querySelectorAll('.phases li').forEach((li, i) => { li.className = i < at ? 'done' : i === at ? 'now' : ''; if (i === at) li.setAttribute('aria-current', 'step'); else li.removeAttribute('aria-current'); }); }
+    const marginChanged = changed('margin', [s.run.version, s.run.cardFrontend?.projection?.canonical ?? null]);
+    if (marginChanged) replace(margin, renderMargin(s, actions));
+    if (feedChanged || marginChanged) { feedMargin?.remove(); feedMargin = renderFeed(s, actions, 'feed-margin'); if (feedMargin) margin.prepend(feedMargin); }
+    composer.update(s);
+    if(document.visibilityState==='visible'){
+      if(stick&&savedBody&&!lastSaved&&identity&&!s.sheet)jumpToBody(preview.querySelector('.prose'));else restoreBodyPosition(mark?.position,target(mark,s));
+    }
+    // Ownership survives reload -> op-clear rendering in separate frames.
+    if(hiddenAnchor&&!hiddenAnchor.commit){const t=committed(hiddenAnchor.identity,s);if(t)hiddenAnchor={...hiddenAnchor,commit:t.commitId,identity:null};}
+    lastSaved=!!savedBody;lastPreview=savedBody?identity:null;lastScope=scopeOf(s);
+  }
+  // 記下: selecting text inside one committed section offers to pin it to 我已知的設定.
+  const pin = h('button', {class: 'pin-note', type: 'button', hidden: true}, '記下'); el.append(pin);
+  let pinned = null;
+  const placePin = () => {
+    const sel = document.getSelection(), text = sel?.toString().trim() ?? '';
+    const box = sel?.rangeCount ? sel.getRangeAt(0).commonAncestorContainer : null, node = box?.nodeType === 1 ? box : box?.parentElement;
+    // Story text of one committed section only; never the player's own input line.
+    const turnEl = node && !node.closest('.you') ? node.closest('.turn[data-commit]') : null;
+    if (!text || text.length > 600 || !turnEl) { pin.hidden = true; pinned = null; return; }
+    const r = sel.getRangeAt(0).getBoundingClientRect(); pinned = {commitId: turnEl.dataset.commit, excerpt: text};
+    pin.hidden = false; pin.style.top = `${window.scrollY + r.top - 40}px`; pin.style.left = `${Math.max(8, window.scrollX + r.left + r.width / 2 - 28)}px`;
+  };
+  let pinTimer = null; const onSelection = () => { clearTimeout(pinTimer); pinTimer = setTimeout(placePin, 180); };
+  document.addEventListener('selectionchange', onSelection);
+  pin.addEventListener('mousedown', e => e.preventDefault());
+  pin.addEventListener('click', () => { if (!pinned) return; const note = pinned; pin.hidden = true; pinned = null; document.getSelection()?.removeAllRanges(); void actions.addNote(note); });
+  const scrollEnd = () => window.scrollTo({top: document.documentElement.scrollHeight, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'});
+  const ticker = setInterval(() => { const t = pending.querySelector('.elapsed'); if (t) t.textContent = `${Math.max(0, Math.round((Date.now() - Number(t.dataset.start)) / 1000))} 秒`; }, 1000);
+  return {el,update,scrollEnd,latestBody(){return preview.querySelector('.prose')??[...flow.querySelectorAll('.turn .prose')].at(-1)??null;},dispose(){hiddenAnchor=null;clearInterval(ticker);composer.dispose();document.removeEventListener('selectionchange',onSelection);document.removeEventListener('visibilitychange',visible);for(const type of ['pointerdown','wheel','keydown','touchstart'])window.removeEventListener(type,interacted,{capture:true});}};
+}
+
+
+function renderBar(s, actions) {
+  const run = s.run, place = placeOf(run);
+  return [
+    h('button', {class: 'ghost back', type: 'button', 'aria-label': '回到舞台書架', onclick: () => actions.home()}, h('span', {'aria-hidden': 'true'}, '‹'), h('span', {class: 'back-label'}, '舞台')),
+    h('div', {class: 'bar-title'}, h('strong', null, run.snapshot?.card?.name ?? '演出'), h('span', {class: 'bar-sub'}, run.playerIdentity?.name ? `${run.playerIdentity.name} 的故事` : `${run.turnCount ?? 0} 段`)),
+    run.storyClockLabel || place ? h('button', {class: 'now-chip', type: 'button', onclick: () => actions.sheet('now'), 'aria-label': `此刻：${clockText(run.storyClockLabel)} ${place}`},
+      h('span', {class: 'now-clock'}, clockText(run.storyClockLabel) || '此刻'), place ? h('span', {class: 'now-place'}, place) : null) : null,
+    h('nav', {class: 'bar-tools', 'aria-label': '故事工具'},
+      h('button', {class: 'ghost', type: 'button', onclick: () => actions.sheet('recap')}, '回顧'),
+      h('button', {class: 'ghost', type: 'button', onclick: () => actions.sheet('calendar')}, '日曆'),
+      h('button', {class: 'ghost', type: 'button', onclick: () => actions.sheet('forum')}, '論壇'),
+      h('button', {class: 'ghost', type: 'button', onclick: () => actions.sheet('lore')}, '設定集')),
+    h('button', {class: 'ghost more', type: 'button', 'aria-label': '更多', onclick: () => actions.sheet('menu')}, h('span', {'aria-hidden': 'true'}, '⋯')),
+  ];
+}
+
+function renderFlow(s, actions) {
+  const run = s.run, out = [], onSpeaker = id => actions.sheet('character', id);
+  if (s.history?.hasMore) out.push(h('div', {class: 'earlier'}, h('button', {class: 'ghost small', type: 'button', onclick: () => actions.earlier()}, '載入更早的段落')));
+  else {
+    out.push(h('header', {class: 'chapter-head'}, h('p', {class: 'eyebrow'}, '開場'), h('h1', null, run.snapshot?.opening?.title && !/已保存主開場/.test(run.snapshot.opening.title) ? run.snapshot.opening.title : run.snapshot?.card?.name ?? '')));
+    if (run.openingDisplay) out.push(h('section', {class: 'turn opening'}, h('div', {class: 'prose'}, proseNodes({body: run.openingDisplay}, run, {draft: true}))));
+  }
+  s.turns.forEach((t, i) => {
+    const last = i === s.turns.length - 1, regenerating = last && s.op?.kind === 'regenerate', rows = changeRows(t, run);
+    out.push(h('section', {class: `turn${t.commitId === s.highlight ? ' is-new' : ''}${regenerating ? ' is-replacing' : ''}`, id: `turn-${t.turn}`, 'data-commit': t.commitId, 'aria-label': `第 ${t.turn} 段`},
+      h('div', {class: 'you'}, h('span', {class: 'you-tag'}, '你'), h('p', null, t.input)),
+      h('div', {class: 'prose'}, proseNodes(t, run, {onSpeaker})),
+      regenerating ? h('p', {class: 'replacing-note'}, '正在重寫這一段；新版本保存前，這段仍是故事的一部分。') : null,
+      rows.length ? h('details', {class: 'receipt', open: last || null}, h('summary', null, h('span', {class: 'receipt-title'}, '這一步之後'), h('span', {class: 'receipt-peek'}, changeSummary(rows))), renderChanges(rows)) : null,
+      last && !s.op ? lastTools(s, actions) : null));
+    if (t.changes?.clock?.changed) out.push(h('div', {class: `time-divider${t.changes.clock.dayChanged ? ' is-day' : ''}`, role: 'separator'}, h('span', null, clockText(t.changes.clock.afterLabel))));
+  });
+  if (!s.turns.length && !s.op) out.push(h('p', {class: 'first-hint'}, '寫下你想說的話或想做的事，故事就會從這裡繼續。'));
+  if (s.notice) out.push(h('p', {class: 'notice', role: 'status'}, s.notice, h('button', {class: 'link', type: 'button', onclick: () => actions.store.set({notice: null})}, '知道了')));
+  return out;
+}
+
+function lastTools(s, {store, ops}) {
+  if (s.confirm === 'regenerate') { const note=h('textarea',{rows:3,maxlength:2000,value:s.rewriteNote??'',oninput:e=>store.set({rewriteNote:e.target.value}),placeholder:'例如：讓主角多接一句，其他照舊','aria-label':'本輪修改意見'}); return h('div', {class: 'confirm-row', role: 'group', 'aria-label': '確認重寫'}, h('p', null, '用同一個行動重新寫這一段？新版本保存成功後才會取代目前這段。'), note,
+    h('button', {class: 'ghost small', type: 'button', onclick: () => { store.set({confirm: null}); ops.regenerate('',s.rewriteTarget); }}, '用同一行動重抽'),
+    h('button', {class: 'primary small', type: 'button', onclick: () => { const guidance=note.value.trim(); if(!guidance){note.focus();return;} store.set({confirm: null}); ops.regenerate(guidance,s.rewriteTarget); }}, '依意見修改'), h('button', {class: 'ghost small', type: 'button', onclick: () => store.set({confirm: null})}, '取消')); }
+  if (s.confirm === 'rollback') return h('div', {class: 'confirm-row', role: 'group', 'aria-label': '確認收回'}, h('p', null, '收回後，這一步的正文、世界變化、時間和記憶會一起撤銷。'),
+    h('button', {class: 'danger small', type: 'button', onclick: () => { store.set({confirm: null}); ops.rollback(); }}, '收回'), h('button', {class: 'ghost small', type: 'button', onclick: () => store.set({confirm: null})}, '取消'));
+  return h('div', {class: 'turn-tools'}, h('button', {class: 'link', type: 'button', onclick: () => store.set({confirm: 'regenerate',rewriteTarget:s.turns.at(-1)?.commitId,rewriteNote:''})}, '重寫這段'), h('button', {class: 'link', type: 'button', onclick: () => store.set({confirm: 'rollback'})}, '收回這一步'));
+}
+
+// scean-stat-frozen-v1
+function renderPending(s, actions) {
+  const {ops} = actions, op = s.op, label = {regenerate: '重寫這段', settlementResume: '繼續整理', rollback: '收回這一步'}[op.kind] ?? '你';
+  const input = op.input ? h('div', {class: 'you is-pending'}, h('span', {class: 'you-tag'}, label), h('p', null, op.input), h('span', {class: 'unsaved'}, '尚未保存')) : null;
+  const btn = (text, fn, cls = 'ghost') => h('button', {class: `${cls} small`, type: 'button', onclick: fn}, text);
+  const card = (tone, title, text, ...buttons) => h('div', {class: `status-card tone-${tone}`, role: tone === 'bad' ? 'alert' : 'status'}, h('strong', {class: 'status-title'}, title), text ? h('p', null, text) : null, buttons.length ? h('div', {class: 'row'}, buttons) : null);
+  let status;
+  switch (op.phase) {
+    case 'running': {
+      const at = phaseIndex(op.stage);
+      status = h('div', {class: 'status-card tone-busy', role: 'status'},
+        op.kind === 'rollback' ? h('strong', {class: 'status-title'}, '正在收回上一步…') : h('ol', {class: 'phases', 'aria-label': '進度'}, PHASES.map((p, i) => h('li', {class: i < at ? 'done' : i === at ? 'now' : ''}, p.label))),
+        op.savedBody ? h('p', {class: 'meta'}, '正文已暫存，正在整理世界；完成前不會寫入故事。') : null,
+        h('div', {class: 'status-row'},
+          op.cancelRefused === 'commit_in_progress' ? h('span', {class: 'meta'}, '已開始保存，來不及取消。') : op.cancelling ? h('span', {class: 'meta'}, '正在取消…') : h('span', {class: 'meta elapsed', 'data-start': String(op.startedAt)}, '0 秒'),
+          op.cancelRefused || op.kind === 'rollback' ? null : btn(op.cancelling ? '取消中…' : '取消', () => ops.cancel())));
+      break;
+    }
+    case 'needs_time': status = card('ask', '這一步需要你確認時間', '故事無法判斷這個行動從何時開始或做到何時。確認只套用在這一次送出。', btn('確認時間', () => actions.sheet('time', 'needs'), 'primary'), btn('修改行動', () => ops.dismiss())); break;
+    case 'stage_failed': {
+      const name={character:'角色諮詢',director:'導演',writer:'Writer',adjudicate:'裁定',writer_repair:'正文修補'}[op.failure.resumeStage]??'原步驟';
+      status=card('neutral','已保存本輪進度',op.failure.canStageResume?'沿用已完成的回覆與查詢。':'此檢查點無法繼續，請檢查失敗原因與剩餘次數。',
+        op.failure.canStageResume?btn('繼續'+name,()=>ops.resumeStage(),'primary'):null,btn('關閉',()=>ops.dismiss()));break;
+    }
+    case 'settlement_failed':
+      status = h('div', {class: 'status-card tone-warn', role: 'alert'}, h('strong', {class: 'status-title'}, '正文寫好了，世界還沒有更新'),
+        h('p', null, '這段正文還不算故事的一部分。「繼續整理世界」會用同一段正文更新狀態與時間，不會重寫。'),
+        timeIssue(op.failure) ? h('p', {class: 'time-issue'}, '這次卡在時間：故事無法確定這一步做到何時。你可以指定時間，故事會用同一個行動重新寫這一段（暫存正文會被取代）。') : null,
+        h('div', {class: 'row'}, timeIssue(op.failure) ? btn('指定時間後重寫', () => actions.sheet('time', 'needs'), op.failure?.canResume === false ? 'primary' : undefined) : null, op.failure?.canResume === false ? null : btn('只繼續整理世界', () => ops.resume(), 'primary'), op.savedBody ? null : btn('讀取暫存正文', () => ops.readSaved()), btn('放棄這段，修改行動', () => ops.dismiss())),
+        op.failure?.canResume === false ? h('p', {class: 'meta'}, timeIssue(op.failure) ? '這段暫存正文已用完整理次數；請指定時間後重寫，或修改行動。' : '這段暫存正文已用完整理次數，請修改行動後重新送出。') : null);
+      break;
+    case 'unknown': status = card('busy', op.checking ? '正在確認是否已保存…' : '還無法確認是否已保存', op.checking ? '連線在送出途中中斷。正在向存檔查詢這一輪的結果；確認前不會顯示正文。' : '暫時查不到結果。原本的操作可能仍在進行。', op.checking ? null : btn('再查一次', () => ops.recheck(), 'primary')); break;
+    case 'not_saved': status = card('bad', '確認結果：這一輪沒有保存', '存檔裡沒有這一輪。可以用同一段行動再試一次，不會重複保存。', op.kind === 'settlementResume' ? null : btn('再試一次', () => ops.retry(), 'primary'), btn('修改行動', () => ops.dismiss())); break;
+    case 'cancelled': status = card('neutral', '已取消，沒有保存任何內容', null, op.kind === 'settlementResume' ? null : btn('再送一次', () => ops.retry(), 'primary'), btn('修改行動', () => ops.dismiss())); break;
+    default: status = card('bad', '這一輪沒有保存', friendly(op.failure) || '操作沒有完成。', ['rollback', 'settlementResume'].includes(op.kind) ? null : btn('再試一次', () => ops.retry(), 'primary'), btn(op.kind === 'turn' ? '修改行動' : '關閉', () => ops.dismiss()));
+  }
+  return [input, status];
+}
+
+// World news as an interlude where the story is now (after the newest section). It is a projection of
+// unread worldFeed items only: nothing is written into the story, nothing is invented, and news is never
+// placed between older sections, because which section a post "followed" cannot be known reliably.
+// Announcements are labelled as plans; forum posts as a character's own claim, never as world fact.
+function renderFeed(s, actions, where) {
+  const items = s.feed?.items ?? []; if (!items.length) return null;
+  const markAll = () => actions.feedSeen({ids: s.feed.latest?.ids ?? items.map(i => i.id)});
+  if (where === 'feed-margin') return h('section', {class: 'feed feed-margin'}, h('button', {class: 'feed-jump', type: 'button', onclick: () => document.querySelector('.interlude')?.scrollIntoView({behavior: 'smooth', block: 'center'})},
+    h('span', {class: 'feed-dot', 'aria-hidden': 'true'}), `世界有 ${s.feed.unread} 則新消息`, h('span', {'aria-hidden': 'true'}, ' ↓')));
+  const open = item => { void actions.feedSeen({ids: [item.id]}); if (item.kind === 'calendar_event') actions.sheet('calendar', {day: item.day}); else actions.sheet('forum', {threadId: item.threadId}); };
+  const notices = items.filter(i => i.kind === 'calendar_event'), rumours = items.filter(i => i.kind !== 'calendar_event');
+  const row = (item, body) => h('li', null, h('button', {class: 'interlude-item', type: 'button', onclick: () => open(item)}, body));
+  const group = (label, note, rows) => rows.length ? h('div', {class: 'interlude-group'}, h('p', {class: 'interlude-label'}, label, h('small', null, note)), h('ul', null, rows)) : null;
+  return h('details', {class: `interlude ${where}`, open: true, 'aria-label': '世界動態'},
+    h('summary', null, h('span', {class: 'interlude-title'}, '與此同時'), h('span', {class: 'interlude-count'}, `${s.feed.unread} 則新消息`)),
+    group('公告', '已公告的安排；是否真的發生，以故事正文為準', notices.slice(0, 4).map(n => row(n, [h('strong', null, n.title), h('small', null, clockText(`${n.startLabel} ～ ${n.endLabel}`))]))),
+    group('傳聞', '論壇上的說法，是角色自己的看法，不代表事實', rumours.slice(0, 5).map(p => row(p, [h('strong', null, p.kind === 'forum_reply' ? `${p.author} 回覆「${p.title}」` : `${p.author}：「${p.title}」`), h('small', null, p.excerpt)]))),
+    h('div', {class: 'interlude-foot'}, items.length > 9 ? h('span', {class: 'meta'}, `還有 ${items.length - 9} 則，打開日曆或論壇查看。`) : h('span'), h('button', {class: 'link', type: 'button', onclick: markAll}, '都看過了')));
+}
+
+// Author panels run in an opaque, script-less sandbox, so their content height cannot be measured.
+// Start at the legacy stage's 460px; the reader can drag it, and the height is kept for this session.
+let panelHeight = 460;
+function renderWorkPanel(run) {
+  if (run.cardFrontend?.status !== 'ready') return null;
+  let frame; try { frame = h('iframe', {class: 'card-panel', title: '作品面板（作者製作，唯讀）', sandbox: '', referrerpolicy: 'no-referrer', srcdoc: renderFrontendDocument(run.cardFrontend.frontend, {...run.cardFrontend.projection, freshness: 'current'})}); } catch { return null; }
+  const box = h('div', {class: 'panel-frame', style: `height:${panelHeight}px`}, frame);
+  if (typeof ResizeObserver === 'function') new ResizeObserver(() => { const hgt = Math.round(box.getBoundingClientRect().height); if (hgt > 120) panelHeight = hgt; }).observe(box);
+  return h('section', {class: 'work-panel', 'aria-label': '作品面板'}, h('p', {class: 'eyebrow'}, '作品面板 · 目前狀態'), box, h('p', {class: 'meta panel-hint'}, '由作者製作，唯讀。可拖曳右下角調整高度。'));
+}
+
+function renderMargin(s, actions) {
+  const run = s.run, groups = stateGroups(run), cast = run.snapshot?.characters ?? [], idx = castIndex(cast);
+  return [
+    h('section', {class: 'm-card now'}, h('p', {class: 'eyebrow'}, '此刻'),
+      run.storyClockLabel ? h('p', {class: 'm-clock'}, clockText(run.storyClockLabel)) : null,
+      ...groups.slice(0, 5).map(([category, rows]) => h('div', {class: 'm-group'}, h('p', {class: 'm-cat'}, CATEGORY[category] ?? category), h('ul', {class: 'm-items'}, rows.slice(0, 6).map(r => h('li', null, h('span', null, r.label), h('strong', null, valueText(r.value, r.unit))))))),
+      h('button', {class: 'link', type: 'button', onclick: () => actions.sheet('now')}, '完整狀態與變化紀錄')),
+    cast.length ? h('section', {class: 'm-card'}, h('p', {class: 'eyebrow'}, '角色'), h('ul', {class: 'm-cast'}, cast.map(c => h('li', null, h('button', {class: 'cast-row', type: 'button', onclick: () => actions.sheet('character', c.id)}, avatar(c, idx.get(c.id)), h('span', null, h('strong', null, c.name))))))) : null,
+    h('section', {class: 'm-card'}, h('p', {class: 'eyebrow'}, '故事世界'), h('div', {class: 'row'}, h('button', {class: 'ghost small', type: 'button', onclick: () => actions.sheet('calendar')}, '日曆'), h('button', {class: 'ghost small', type: 'button', onclick: () => actions.sheet('forum')}, '論壇'))),
+  ];
+}
+
+/* PLOT_COMPASS_UI */
+function createComposer(actions) {
+  const {store, ops, call} = actions;
+  const input = h('textarea', {id: 'composer-input', rows: 1, maxlength: 20000, placeholder: '你要說什麼、做什麼？', 'aria-label': '你的行動或對話', 'aria-keyshortcuts': 'Control+Enter Meta+Enter'});
+  const send = h('button', {class: 'send', type: 'submit', 'aria-label': '送出行動'}, h('span', {class: 'send-label'}, '送出'), h('span', {'aria-hidden': 'true'}, '↑'));
+  const ideasBtn = h('button', {class: 'tool', type: 'button', 'aria-expanded': 'false'}, '想法'), waitBtn = h('button', {class: 'tool', type: 'button', 'aria-expanded': 'false'}, '時間…');
+  const attached = h('span', {class: 'attached', hidden: true}), hint = h('span', {class: 'composer-hint'}, 'Ctrl + Enter 送出');
+  const tray = h('div', {class: 'tray', hidden: true}), blocked = h('p', {class: 'composer-blocked', hidden: true});
+  const latestBtn=h('button',{class:'tool latest-body',type:'button','aria-label':'回到最新正文開頭',title:'回到最新正文開頭',onclick:()=>actions.latestBody()},'正文開頭 ↑');
+  const form = h('form', {class: 'composer'}, tray, blocked, h('div', {class: 'composer-box'}, input, send), h('div', {class: 'composer-tools'}, ideasBtn, waitBtn, latestBtn, attached, hint));
+  const compass=mountCompass({document,composerElement:form,actionsElement:form.querySelector('.composer-tools'),triggerClass:'tool',topSelector:'.stage-bar',
+    request:(action,payload,signal)=>call(action,payload,{signal,timeout:action==='compassGenerate'?180000:15000}),
+    getContext:()=>{const s=store.get();return s.run?{...s.run,runId:s.runId,head:s.run.head??s.run.lastTurn?.commitId??null,disabled:!!s.op}:null;}});
+  let trayKind = null, lastDraft = null;
+  const autosize = () => { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, Math.max(120, innerHeight * .28)) + 'px'; };
+  input.addEventListener('input', () => { store.set({draft: input.value}); autosize(); });
+  input.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.isComposing) { e.preventDefault(); form.requestSubmit(); } });
+  form.addEventListener('submit', e => { e.preventDefault(); const s = store.get(); if (!input.value.trim() || s.op) return; close(); const text = input.value, time = s.attachedTime?.value; store.set({draft: '', attachedTime: null}); input.value = ''; autosize(); ops.send(text, time); });
+  const insert = text => { input.value = input.value.trim() ? `${input.value.trim()}\n${text}` : text; store.set({draft: input.value}); autosize(); input.focus(); close(); };
+  const close = () => { trayKind = null; tray.hidden = true; ideasBtn.setAttribute('aria-expanded', 'false'); waitBtn.setAttribute('aria-expanded', 'false'); };
+  const open = (kind, btn) => { trayKind = kind; tray.hidden = false; ideasBtn.setAttribute('aria-expanded', String(btn === ideasBtn)); waitBtn.setAttribute('aria-expanded', String(btn === waitBtn)); };
+  ideasBtn.addEventListener('click', async () => {
+    if (trayKind === 'ideas') return close(); open('ideas', ideasBtn); replace(tray, h('p', {class: 'meta'}, '正在想幾個方向…'));
+    const s = store.get();
+    try {
+      // Background routines can move the head at any time: read it fresh, retry once if stale.
+      const ask = async () => { const fresh = await call('runView', {runId: s.runId}); return call('playerIdeas', {runId: s.runId, expectedHead: fresh.head ?? fresh.lastTurn?.commitId ?? null, expectedVersion: fresh.version, requestId: globalThis.crypto.randomUUID()}, {timeout: 180000}); };
+      let value; try { value = await ask(); } catch (e) { if (e.code !== 'IDEAS_STALE') throw e; value = await ask(); }
+      if (trayKind !== 'ideas') return;
+      replace(tray, h('p', {class: 'tray-note'}, '點一個想法放進輸入框，可以再修改；不會自動送出。'), h('ul', {class: 'ideas'}, (value.ideas ?? []).map(i => h('li', null, h('button', {class: 'idea', type: 'button', onclick: () => insert(i.text)}, h('span', {class: 'idea-cat'}, i.category), h('span', null, i.text))))));
+    } catch (e) { replace(tray, h('p', {class: 'error'}, `沒有取得想法：${friendly(e)}`)); }
+  });
+  waitBtn.addEventListener('click', () => {
+    if (trayKind === 'wait') return close(); open('wait', waitBtn);
+    const s = store.get(), periods = Object.entries(s.run.timeControls?.definition?.periods ?? {}), place = placeOf(s.run) || '這裡';
+    const current = s.run.storyClock?.periodId, i = periods.findIndex(([id]) => id === current), next = periods[i + 1], first = periods[0];
+    const label = p => p?.[1]?.label ?? p?.[0];
+    const options = [['稍等片刻', `我在${place}稍等一下，看看接下來會發生什麼。`], next ? [`等到${label(next)}`, `我在${place}等到${label(next)}。`] : null, first ? [`等到隔天${label(first)}`, `今天先到這裡，我等到隔天${label(first)}再行動。`] : null].filter(Boolean);
+    replace(tray, h('p', {class: 'tray-note'}, '等待會寫成你的一個行動放進輸入框；實際經過多久由故事判斷，不會直接撥動時鐘。'),
+      h('ul', {class: 'ideas'}, options.map(([l, text]) => h('li', null, h('button', {class: 'idea', type: 'button', onclick: () => insert(text)}, h('span', {class: 'idea-cat'}, l), h('span', null, text))))),
+      s.run.timeControls ? h('button', {class: 'link', type: 'button', onclick: () => { close(); actions.sheet('time', 'attach'); }}, '進階：替下一個行動指定確切時間') : null);
+  });
+  return {
+    el: form,
+    update(s) {
+      if (s.draft !== lastDraft && s.draft !== input.value) { input.value = s.draft; autosize(); }
+      lastDraft = s.draft;
+      const busy = !!s.op || !s.run; input.disabled = busy; ideasBtn.disabled = busy; waitBtn.disabled = busy || !s.run?.timeControls && !Object.keys(s.run?.state?.world ?? {}).length;
+      send.disabled = busy || !input.value.trim();
+      latestBtn.disabled=!s.op?.savedBody&&!s.turns.some(t=>t.body?.trim());
+      blocked.hidden = !s.op; blocked.textContent = s.op?.phase === 'running' ? '這一輪處理中。' : '請先處理上面這一輪，再寫下一個行動。';
+      attached.hidden = !s.attachedTime; replace(attached, s.attachedTime ? [`已附加時間：${s.attachedTime.label}`, h('button', {class: 'link', type: 'button', 'aria-label': '移除附加時間', onclick: () => store.set({attachedTime: null})}, '✕')] : null);
+      if (busy) {close();compass.close();}
+      compass.update();
+    },
+    dispose() {compass.dispose();},
+  };
+}
+
+return {createReader};})();
+const m10=(()=>{
+// Shared with the opaque UI. No parser, DOM, code or recursive macro evaluation.
+function resolvePlayerText(value,name){
+  return typeof value==='string'&&typeof name==='string'&&name ? value.replace(/\{\{user\}\}/g,()=>name) : value;
+}
+function resolveTemplateSegments(value,name,segments){
+  if(segments===null||typeof value!=='string'||!name)return value;
+  if(segments===undefined)return resolvePlayerText(value,name);
+  const escaped=name.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
+  let result=value;
+  for(const {start,end} of [...segments].reverse())result=result.slice(0,start)+resolvePlayerText(value.slice(start,end),escaped)+result.slice(end);
+  return result;
+}
+
+return {resolvePlayerText,resolveTemplateSegments};})();
+const m9=(()=>{const {h, friendly}=m1;
+const {stateGroups, sceneCard, changeRows, renderChanges, valueText, avatar, castIndex, CATEGORY, clockText}=m4;
+const {resolveTemplateSegments}=m10;
+
+// Read-only and confirmation sheets: right drawer on desktop, bottom sheet on phones.
+
+
+// Search over saved story text (your inputs and the committed prose). Host-side, newest first, 10 per page.
+function recapSearch(s, actions, arg, tabs, sub) {
+  const q = (arg.q ?? '').trim(), offset = arg.offset ?? 0;
+  const input = h('input', {type: 'search', class: 'recap-query', value: q, placeholder: '人名、地名、一句話…', 'aria-label': '搜尋已保存的原文', 'data-autofocus': true});
+  const go = () => { const v = input.value.trim(); if (v) actions.sheet('recap', {tab: 'search', q: v, offset: 0}); };
+  input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); go(); } });
+  const form = h('div', {class: 'recap-search'}, input, h('button', {class: 'primary small', type: 'button', onclick: go}, '搜尋'));
+  if (!q) return {title: '回顧', sub, body: [tabs, form, h('p', {class: 'fine'}, '只搜尋已保存的正文與你寫下的行動；不會搜尋角色的私密記憶或尚未揭露的設定，也不會呼叫模型。')]};
+  const d = useData(s, actions, ['recap-search', q, offset], () => actions.call('historySearch', {runId: s.runId, query: q, mode: 'literal', limit: 10, offset, order: 'newest'}));
+  if (!d) return {title: '回顧', sub, body: [tabs, form, wait()]}; if (d.error) return {title: '回顧', sub, body: [tabs, form, failed(d)]};
+  const v = d.value, hits = v.hits ?? [];
+  return {title: '回顧', sub, body: [tabs, form,
+    h('p', {class: 'meta'}, v.total ? `找到 ${v.total} 段，從最新的開始` : '沒有找到。'),
+    hits.length ? h('ul', {class: 'hits'}, hits.map(hit => h('li', null, h('button', {class: 'hit-row', type: 'button', onclick: () => actions.sheet('recap', {passage: hit.commitId, q, from: 'search', offset})},
+      h('p', {class: 'eyebrow'}, `第 ${hit.turn} 段${hit.snippetField === 'input' ? '・你的行動' : ''}`), h('p', {class: 'hit-text'}, highlight(hit.snippet, q)))))) : null,
+    h('div', {class: 'row'}, offset > 0 ? h('button', {class: 'ghost small', type: 'button', onclick: () => actions.sheet('recap', {tab: 'search', q, offset: Math.max(0, offset - 10)})}, '‹ 較新的') : null,
+      v.nextOffset !== null && v.nextOffset !== undefined ? h('button', {class: 'ghost small', type: 'button', onclick: () => actions.sheet('recap', {tab: 'search', q, offset: v.nextOffset})}, '較舊的 ›') : null)]};
+}
+
+// One saved section (with its neighbours for navigation), exactly as stored.
+function recapPassage(s, actions, arg, sub) {
+  const d = useData(s, actions, ['recap-passage', arg.passage], () => actions.call('historyRead', {runId: s.runId, commitId: arg.passage, radius: 1}));
+  const back = arg.from === 'search' ? h('button', {class: 'link', type: 'button', onclick: () => actions.sheet('recap', {tab: 'search', q: arg.q, offset: arg.offset ?? 0})}, '‹ 回到搜尋結果')
+    : arg.chapterId ? h('button', {class: 'link', type: 'button', onclick: () => actions.sheet('recap', {chapterId: arg.chapterId})}, '‹ 回到章節')
+    : h('button', {class: 'link', type: 'button', onclick: () => actions.sheet('recap', {tab: 'chapters'})}, '‹ 所有章節');
+  const home = h('button', {class: 'primary small', type: 'button', onclick: () => actions.closeSheet()}, '回到目前進度');
+  if (!d) return {title: '回顧', sub, body: [back, wait()]}; if (d.error) return {title: '回顧', sub, body: [back, failed(d)]};
+  const turns = d.value.turns ?? [], i = turns.findIndex(t => t.commitId === arg.passage), t = turns[i];
+  if (!t) return {title: '回顧', sub, body: [back, h('p', {class: 'meta'}, '這一段已不在故事中（可能被收回或重寫）。'), home]};
+  const step = other => other ? actions.sheet('recap', {...arg, passage: other.commitId}) : null, prev = turns[i - 1], next = turns[i + 1];
+  return {title: `第 ${t.turn} 段`, sub: '已保存的原文', body: [back,
+    h('article', {class: 'passage'}, t.input ? h('div', {class: 'you'}, h('span', {class: 'you-tag'}, '你'), h('p', null, highlight(t.input, arg.q))) : null,
+      ...String(t.body ?? '').split(/\n+/).filter(x => x.trim()).map(par => h('p', {class: 'narr'}, highlight(par, arg.q)))),
+    h('div', {class: 'row passage-nav'}, h('button', {class: 'ghost small', type: 'button', disabled: !prev, onclick: () => step(prev)}, '‹ 上一段'),
+      h('button', {class: 'ghost small', type: 'button', disabled: !next, onclick: () => step(next)}, '下一段 ›'), home)]};
+}
+
+function highlight(text, q) {
+  const value = String(text ?? ''); if (!q) return value;
+  const parts = [], lower = value.toLocaleLowerCase(), needle = q.toLocaleLowerCase(); let at = 0, i;
+  while ((i = lower.indexOf(needle, at)) >= 0) { parts.push(value.slice(at, i), h('mark', null, value.slice(i, i + q.length))); at = i + q.length; }
+  parts.push(value.slice(at)); return parts;
+}
+
+// Notes travel as their own small file: run backups do not include them (see the note in the tab).
+function exportNotes(s, notes) {
+  const data = {format: 'scean-player-notes', version: 1, runId: s.runId, title: s.run?.snapshot?.card?.name ?? null, exportedAt: new Date().toISOString(),
+    notes: notes.filter(n => !n.stale).map(n => ({commitId: n.commitId, turn: n.turn, excerpt: n.excerpt, memo: n.memo ?? ''}))};
+  const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 1)], {type: 'application/json'})), a = document.createElement('a');
+  a.href = url; a.download = `scean-notes-${String(s.runId).replace(/[^a-zA-Z0-9_-]/g, '_')}.json`; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+async function importNotes(s, actions, file) {
+  let data; try { data = JSON.parse(await file.text()); } catch { actions.store.set({notice: '這不是筆記檔案。'}); return; }
+  if (data?.format !== 'scean-player-notes' || !Array.isArray(data.notes)) { actions.store.set({notice: '這不是 SCEAN 筆記檔案。'}); return; }
+  let added = 0, skipped = 0;
+  for (const n of data.notes.slice(0, 500)) { try { await actions.call('playerNoteAdd', {runId: s.runId, commitId: String(n.commitId), excerpt: String(n.excerpt), memo: String(n.memo ?? '')}); added++; } catch { skipped++; } }
+  actions.store.set(x => ({...x, sheetData: null, notice: skipped ? `匯入 ${added} 則筆記；${skipped} 則在這場演出裡找不到對應段落，沒有匯入。` : `匯入 ${added} 則筆記。`}));
+}
+
+// Viewing the forum or calendar marks exactly the unread feed items that were on screen.
+const shownMarked = new Set();
+function markShown(s, actions, ids) {
+  const unread = new Set((s.feed?.items ?? []).map(i => i.id)), todo = ids.filter(id => unread.has(id) && !shownMarked.has(id));
+  if (!todo.length || typeof actions.feedSeen !== 'function') return;
+  todo.forEach(id => shownMarked.add(id)); queueMicrotask(() => void actions.feedSeen({ids: todo}));
+}
+
+const loading = new Set();
+function useData(s, actions, key, loader) {
+  const stamp = JSON.stringify([key, s.run?.version ?? null]);
+  if (s.sheetData?.stamp === stamp) return s.sheetData;
+  if (!loading.has(stamp)) {
+    loading.add(stamp);
+    loader().then(value => { if (actions.store.get().sheet?.kind === s.sheet.kind) actions.store.set({sheetData: {stamp, value}}); })
+      .catch(error => { if (actions.store.get().sheet?.kind === s.sheet.kind) actions.store.set({sheetData: {stamp, error}}); })
+      .finally(() => loading.delete(stamp));
+  }
+  return null;
+}
+const wait = () => h('p', {class: 'meta sheet-loading'}, '讀取中…');
+const failed = (d, retry) => h('div', {class: 'empty-state is-warn'}, h('strong', null, '暫時無法讀取'), h('p', null, friendly(d.error)), retry ? h('button', {class: 'ghost small', type: 'button', onclick: retry}, '重新讀取') : null);
+const seg = (name, value, options, onchange) => h('div', {class: 'segmented', role: 'radiogroup', 'aria-label': name}, options.map(([v, label]) => h('button', {type: 'button', role: 'radio', 'aria-checked': String(v === value), class: v === value ? 'on' : '', onclick: () => onchange(v)}, label)));
+
+function renderSheet(s, actions) {
+  const def = SHEETS[s.sheet.kind]; if (!def) return null;
+  const {title, sub, body, wide} = def(s, actions, s.sheet.arg);
+  return h('div', {class: 'sheet-layer'}, h('div', {class: 'scrim', onclick: () => actions.closeSheet()}),
+    h('section', {class: `sheet sheet-${s.sheet.kind}${wide ? ' is-wide' : ''}`, role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'sheet-title'},
+      h('span', {class: 'grabber', 'aria-hidden': 'true'}),
+      h('header', {class: 'sheet-head'}, h('div', null, h('h2', {id: 'sheet-title'}, title), sub ? h('p', {class: 'sheet-sub'}, sub) : null), h('button', {class: 'ghost sheet-close', type: 'button', onclick: () => actions.closeSheet()}, '關閉')),
+      h('div', {class: 'sheet-body'}, body)));
+}
+
+// Settings are owned by the same Stage v2 sheet module as the button.
+async function openRuntimeSettings(run,lastTurn) {
+  const api=globalThis.__SCEAN_NATIVE__?.request;
+  if(!run?.runId || !api || document.querySelector('#stage-runtime-settings')) return;
+  const dialog=document.createElement('dialog'); dialog.id='stage-runtime-settings';
+  dialog.setAttribute('aria-label','Agent 與結算設定');
+  dialog.style.cssText='width:min(94vw,38rem);max-height:82vh;overflow:auto;padding:1rem;background:Canvas;color:CanvasText';
+  const add=(tag,txt,parent=dialog)=>{const el=document.createElement(tag);if(txt!==undefined)el.textContent=txt;parent.append(el);return el;};
+  const field=label=>add('select',undefined,add('label',label+' '));
+  const opt=(sel,id,label)=>{const o=add('option',label,sel);o.value=id;};
+  add('h2','Agent 與結算設定');
+  const role=field('職位'), model=field('供應商與模型'), effort=field('推理強度'), policy=field('PostStat 結算');
+  for(const [v,t] of [['legacy','完整上下文'],['optimized','精簡上下文（試用）'],['shadow','完整結算＋背景影子比對（另計用量）']])opt(policy,v,t);
+  if(lastTurn?.runId===run.runId){
+    const log=add('details');add('summary','最近回合的玩家端時間',log);
+    for(const [key,label] of [['receiptAt','收到 Host 回執'],['previewReadableAt','首次顯示凍結正文'],['firstReadableAt','首次可讀正文'],['safeInputAt','可安全輸入']]){
+      const value=lastTurn[key]; add('p',label+'：'+(value==null?'未觀測':((value-lastTurn.sentAt)/1000).toFixed(2)+' 秒'),log);
+    }
+  }
+  const msg=add('p','正在讀取…'), save=add('button','儲存'), exit=add('button','關閉');
+  for(const el of [role,model,effort,policy])el.parentElement.style.display='block';
+  document.body.append(dialog);dialog.showModal();dialog.addEventListener('close',()=>dialog.remove(),{once:true});exit.onclick=()=>dialog.close();
+  let snapshot,catalog,loading=0; save.disabled=true;
+  const labels={director:'導演',writer:'Writer',character:'角色',stat:'PostStat',adjudicator:'裁定',summary:'章節摘要',calendar:'日曆',forum:'論壇',ideas:'靈感'};
+  const pair=x=>JSON.stringify([x.provider,x.model]);
+  async function refreshEfforts(existing) {
+    const ticket=++loading;save.disabled=true;effort.replaceChildren();
+    if(!model.value){opt(effort,'','沿用來源設定');effort.disabled=true;save.disabled=false;return;}
+    try{
+      const [provider,id]=JSON.parse(model.value);
+      const c=await api('agentModelCatalog',{selection:{provider,model:id}});
+      if(ticket!==loading||!dialog.open)return;
+      opt(effort,'','依職位初始設定');opt(effort,'provider_default','供應商預設');
+      for(const v of c.efforts)opt(effort,v,v);
+      effort.value=existing??'';if(effort.selectedIndex<0){msg.textContent='原推理設定目前無法使用，請重新選擇。';effort.selectedIndex=0;}
+      effort.disabled=false;save.disabled=false;
+    }catch{if(ticket===loading)msg.textContent='無法確認模型支援的推理設定。';}
+  }
+  function roleChanged(){
+    const r=role.value,sel=snapshot.settings.roles[r],effective=snapshot.effective?.[r];
+    model.value=sel?pair(sel):'';
+    msg.textContent=effective?'本輪以後的有效設定：'+effective.provider+' / '+effective.model+' · '+(effective.reasoningEffort??'供應商預設'):'使用繼承設定';
+    return refreshEfforts(sel?.reasoningEffort);
+  }
+  try{
+    [catalog,snapshot]=await Promise.all([api('agentModelCatalog',{}),api('agentModels',{runId:run.runId})]);
+    if(!dialog.open)return;
+    for(const r of catalog.roles)opt(role,r,labels[r]??r);
+    opt(model,'','繼承設定');for(const p of catalog.providers)for(const m of p.models)opt(model,JSON.stringify([p.id,m.id]),p.name+' / '+m.name);
+    policy.value=snapshot.settings.settlementMode??'legacy';
+    role.onchange=roleChanged;model.onchange=()=>refreshEfforts();await roleChanged();
+    save.onclick=async()=>{save.disabled=true;
+      try{
+        const roles={...snapshot.settings.roles};const r=role.value;
+        if(model.value){const [provider,id]=JSON.parse(model.value);roles[r]={provider,model:id,...(effort.value?{reasoningEffort:effort.value}:{})};}else roles[r]=null;
+        snapshot=await api('agentModelsSave',{runId:run.runId,roles,settlementMode:policy.value,expectedRevision:snapshot.settings.revision,operationId:crypto.randomUUID()});
+        msg.textContent='已儲存。新回合將使用這項設定。';save.disabled=false;
+      }catch{msg.textContent='儲存失敗。請關閉後重新讀取設定。';}
+    };
+  }catch{msg.textContent='無法讀取這場演出的模型設定。';}
+}
+function openSceanReferenceSettings(run){
+ const rpc=globalThis.__SCEAN_NATIVE__?.request;
+ if(!run?.runId||!rpc||document.querySelector('[data-stage-reference-settings]'))return;
+ const make=(tag,text)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;return e;};
+ const dialog=make('dialog'),form=make('form'),mode=make('select'),interval=make('input'),lore=make('input'),message=make('p'),history=make('div'),save=make('button','儲存設定'),close=make('button','關閉');
+ dialog.dataset.stageReferenceSettings='';dialog.setAttribute('aria-label','查書與靈感');
+ Object.assign(dialog.style,{maxWidth:'min(94vw,36rem)',width:'100%',boxSizing:'border-box',color:'CanvasText',background:'Canvas',padding:'1rem',border:'1px solid GrayText',borderRadius:'12px',maxHeight:'85dvh',overflow:'auto'});
+ Object.assign(form.style,{display:'grid',gap:'.55rem'});
+ interval.type='number';interval.min='1';interval.max='1000';interval.step='1';interval.required=true;
+ lore.type='checkbox';save.type='submit';save.disabled=true;close.type='button';
+ message.setAttribute('role','status');history.setAttribute('aria-label','靈感批次');
+ const addLabel=(text,input)=>{const l=make('label',text+' ');l.append(input);form.append(l);};
+ form.append(make('h2','查書與靈感'));
+ addLabel('允許導演按需查世界書（單 Writer 模式）',lore);
+ addLabel('靈感來源',mode);
+ addLabel('每幾個有效回合準備一批',interval);
+ form.append(make('small','兩項各自開關。更改靈感模式或間隔後從現在計數；啟用聯想或搜尋可能產生用量。'),save,close,message,history);
+ dialog.append(form);document.body.append(dialog);
+ close.onclick=()=>dialog.close();
+ dialog.addEventListener('close',()=>dialog.remove(),{once:true});
+ dialog.showModal();
+ const common={runId:run.runId,expectedLifecycleRevision:run.lifecycleRevision??0};
+ const labels={off:'關閉',model:'模型聯想',search:'外部搜尋（DeepSeek）'};
+ const states={ready:'已備妥',injected:'已送入 Writer',running:'背景準備中',expired:'已過期',failed:'未取得素材（舊紀錄）',missed:'本次略過',interrupted:'重啟中斷'};
+ let current;
+ const show=value=>{
+  current=value;mode.replaceChildren(...[...new Set([...value.availableModes,value.mode])].map(key=>{const o=make('option',labels[key]);o.value=key;if(!value.availableModes.includes(key))o.disabled=true;return o;}));
+  mode.value=value.mode;interval.value=value.interval;lore.checked=value.loreEnabled===true;save.disabled=false;
+  const open=new Set([...history.querySelectorAll('details[open]')].map(d=>d.dataset.id));
+  history.replaceChildren(make('h3','最近批次'),...value.batches.slice(0,10).map(b=>{
+   const d=make('details');d.dataset.id=b.id;d.open=open.has(b.id);
+   const failures={search_empty:'搜尋沒找到可用素材',search_failed:'外部搜尋失敗',compose_timeout:'搜尋成功，整理逾時',compose_limit:'搜尋成功，整理輸出遭截斷',compose_failed:'搜尋成功，整理失敗',model_timeout:'模型聯想逾時',model_limit:'模型聯想輸出遭截斷',model_failed:'模型聯想失敗',provider_unavailable:'素材來源未設定'};
+   d.append(make('summary',String(b.turn)+' 輪 · '+(failures[b.failure]??states[b.state]??b.state)+(b.injectedTurn?' → 第 '+b.injectedTurn+' 輪':'')));
+   if(b.reference)d.append(make('p',b.reference));if(b.query)d.append(make('p','查詢：'+b.query));for(const s of b.sources??[])d.append(make('p',s));return d;
+  }));
+ };
+ const refresh=async()=>{try{const value=await rpc('inspirationSettings',common);if(dialog.open)show(value);}catch{message.textContent='目前無法載入這場演出的設定。';}};
+ form.onsubmit=async e=>{
+  e.preventDefault();if(!current||save.disabled)return;
+  if(!Number.isInteger(interval.valueAsNumber)||interval.valueAsNumber<1||interval.valueAsNumber>1000){message.textContent='回合數必須是 1～1000 的整數。';return;}
+  save.disabled=true;
+  try{const v=await rpc('inspirationSettingsSave',{...common,mode:mode.value,interval:interval.valueAsNumber,loreEnabled:lore.checked,expectedRevision:current.revision,expectedLookupRevision:current.lookupRevision});if(dialog.open){show(v);message.textContent='已儲存。';}}
+  catch(e){message.textContent=e.code==='INSPIRATION_SETTINGS_CHANGED'?'設定已變動，請關閉視窗再開一次。':'尚未儲存。若正在生成，請等本輪結束再試。';}
+  finally{save.disabled=false;}
+ };
+ void refresh();
+}
+
+
+const SHEETS = {
+  opening(s, actions, offer) {
+    let name = offer.defaultPlayerName ?? '', choice = offer.options?.[0]?.index ?? 0;
+    const preview = h('p', {class: 'opening-text'}), err = h('p', {class: 'error', role: 'alert', hidden: true});
+    const paint = () => { const o = offer.options.find(x => x.index === choice); preview.textContent = resolveTemplateSegments(o?.text ?? '', name.trim(), o?.textSpans); };
+    const submit = h('button', {class: 'primary wide', type: 'submit', 'data-autofocus': true}, '開始這場演出');
+    const form = h('form', {class: 'start-form', onsubmit: async e => {
+      e.preventDefault(); if (!name.trim()) { err.textContent = '請填寫這一局主角的名字。'; err.hidden = false; return; }
+      submit.disabled = true; submit.textContent = '正在建立…';
+      try { await actions.startOpening(offer, choice, name.trim()); } catch (error) { err.textContent = friendly(error); err.hidden = false; submit.disabled = false; submit.textContent = '開始這場演出'; }
+    }},
+      h('fieldset', {class: 'openings'}, h('legend', null, '選擇開場'), offer.options.map((o, i) => h('label', {class: 'opening-choice'},
+        h('input', {type: 'radio', name: 'opening', value: String(o.index), checked: i === 0, onchange: () => { choice = o.index; paint(); }}), h('span', null, h('strong', null, o.title), h('span', {class: 'opening-text'}, (o.text ?? '').slice(0, 90) + ((o.text ?? '').length > 90 ? '…' : '')))))),
+      h('label', {class: 'field'}, h('span', null, '這一局主角的名字'), h('input', {id: 'player-name', value: name, maxlength: 80, autocomplete: 'off', oninput: e => { name = e.target.value; paint(); }}), h('small', null, '只用在這一局；作品與其他演出不受影響。')),
+      h('figure', {class: 'opening-preview'}, h('figcaption', null, '開場預覽'), preview), err, submit);
+    paint();
+    return {title: '開一場新的演出', sub: `劇本版本 r${offer.revision}`, wide: true, body: form};
+  },
+
+  character(s, actions, id) {
+    const cast = s.run?.snapshot?.characters ?? [], c = cast.find(x => x.id === id), idx = castIndex(cast);
+    if (!c) return {title: '角色', body: h('p', {class: 'meta'}, '找不到這個角色。')};
+    const lines = [];
+    for (const t of [...s.turns].reverse()) { for (const sp of (t.dialoguePresentation?.spans ?? [])) if (sp.speakerId === id && lines.length < 3) lines.push({turn: t.turn, text: sp.text}); }
+    return {title: c.name, sub: c.identity?.pronouns ? `代稱：${c.identity.pronouns}` : null, body: [
+      h('div', {class: `char-hero c${idx.get(id)}`}, avatar(c, idx.get(id), 'lg'), h('p', null, c.description ?? '作者沒有提供這個角色的公開介紹。')),
+      h('h3', {class: 'sheet-h'}, '最近說過的話'),
+      lines.length ? h('ul', {class: 'quotes'}, lines.map(l => h('li', null, h('a', {href: `#turn-${l.turn}`, onclick: () => actions.closeSheet()}, `第 ${l.turn} 段`), h('q', null, l.text)))) : h('p', {class: 'meta'}, '這場演出裡還沒有標記到台詞。'),
+      h('p', {class: 'fine'}, '只顯示作品標為公開的角色介紹與已保存的正文。角色的私人狀態與記憶不會出現在玩家畫面。')]};
+  },
+
+  now(s, actions) {
+    const run = s.run, groups = stateGroups(run), history = s.turns.map(t => ({t, rows: changeRows(t, run)})).filter(x => x.rows.length).reverse();
+    return {title: '此刻', sub: clockText(run.storyClockLabel), body: [
+      sceneCard(run),
+      groups.length ? h('div', {class: 'world-grid'}, groups.map(([category, rows]) => h('section', null, h('h3', {class: 'sheet-h'}, CATEGORY[category] ?? category), h('ul', {class: 'm-items'}, rows.map(r => h('li', null, h('span', null, r.label), h('strong', null, valueText(r.value, r.unit)))))))) : h('p', {class: 'meta'}, '這部作品沒有公開的世界狀態。'),
+      h('h3', {class: 'sheet-h'}, '變化紀錄'),
+      history.length ? h('ol', {class: 'history'}, history.map(({t, rows}) => h('li', null, h('a', {class: 'history-turn', href: `#turn-${t.turn}`, onclick: () => actions.closeSheet()}, `第 ${t.turn} 段`), renderChanges(rows)))) : h('p', {class: 'meta'}, '目前載入的段落沒有記錄到變化。'),
+      h('p', {class: 'fine'}, '只顯示已保存的公開狀態；每一項都來自已提交的段落。')]};
+  },
+
+  calendar(s, actions, params = {}) {
+    const d = useData(s, actions, ['calendar', params], () => actions.call('worldRoutineRead', {runId: s.runId, expectedSnapshotHash: s.run.snapshot?.hash, view: 'player', kind: 'calendar', limit: 12, ...params}));
+    if (!d) return {title: '日曆', body: wait()}; if (d.error) return {title: '日曆', body: failed(d, () => actions.sheet('calendar', {...params}))};
+    markShown(s, actions, (d.value?.entries ?? []).map(e => e.id));
+    const v = d.value, STATUS = {planned_not_occurred: '預定', active: '進行中', completed: '已結束', pending_resolution: '條件未知', did_not_occur: '未發生'};
+    if (v.status === 'not_enabled') return {title: '日曆', body: h('div', {class: 'empty-state'}, h('strong', null, '這部作品沒有啟用日曆'), h('p', null, '作者可以在創作時為作品開啟「世界日常」，讓角色和世界有自己的安排。'))};
+    return {title: '日曆', sub: v.clockLabel ? '現在：' + clockText(v.clockLabel) : null, body: [
+      h('p', {class: 'fine top'}, '這裡是已公告的公共安排。是否真的發生，仍以故事正文為準。'),
+      h('nav', {class: 'day-strip', 'aria-label': '故事日期'}, (v.days ?? []).map(day => h('button', {type: 'button', class: day.day === v.selectedDay ? 'on' : '', 'aria-pressed': String(day.day === v.selectedDay), onclick: () => actions.sheet('calendar', {windowStart: v.windowStart, day: day.day})}, h('span', null, clockText(day.label)), day.count ? h('b', null, day.count) : null))),
+      (v.entries ?? []).length ? h('ul', {class: 'events'}, v.entries.map(e => h('li', {class: `event status-${e.status}`}, h('span', {class: 'event-label'}, h('strong', null, e.label), h('small', null, clockText(`${e.startLabel} ～ ${e.endLabel}`))), h('span', {class: 'event-status'}, STATUS[e.status] ?? e.status)))) : h('p', {class: 'meta'}, '這一天沒有已公告的安排。'),
+      h('div', {class: 'row'}, v.previousWindow !== null && v.previousWindow !== undefined ? h('button', {class: 'ghost small', type: 'button', onclick: () => actions.sheet('calendar', {windowStart: v.previousWindow})}, '‹ 較早七日') : null, v.nextWindow !== null && v.nextWindow !== undefined ? h('button', {class: 'ghost small', type: 'button', onclick: () => actions.sheet('calendar', {windowStart: v.nextWindow})}, '較後七日 ›') : null)]};
+  },
+
+  forum(s, actions, params = {}) {
+    const thread = params.threadId;
+    const d = useData(s, actions, ['forum', params], () => actions.call('worldRoutineRead', {runId: s.runId, expectedSnapshotHash: s.run.snapshot?.hash, view: 'player', kind: thread ? 'thread' : 'forum', limit: 12, ...params}));
+    if (!d) return {title: '論壇', body: wait()}; if (d.error) return {title: '論壇', body: failed(d, () => actions.sheet('forum', {...params}))};
+    const v = d.value, authors = v.authors ?? [], cast = s.run.snapshot?.characters ?? [], idx = castIndex(cast);
+    markShown(s, actions, [v.parent?.id, ...(v.entries ?? []).map(e => e.id)].filter(Boolean));
+    if (v.status === 'not_enabled') return {title: '論壇', body: h('div', {class: 'empty-state'}, h('strong', null, '這部作品沒有啟用論壇'), h('p', null, '作者可以在創作時為作品設定論壇媒介。'))};
+    const who = row => { const id = row?.author?.kind === 'character' ? row.author.characterId : row?.authorId; return row?.author?.kind === 'ambient' ? {name: '路人・' + row.author.displayName, i: 7} : {name: authors.find(a => a.id === id)?.name ?? cast.find(a => a.id === id)?.name ?? id, i: idx.get(id) ?? 0, id}; };
+    const by = row => { const w = who(row); return h('p', {class: 'post-by'}, avatar({name: w.name}, w.i), h('span', null, h('strong', null, w.name), h('small', null, clockText(row.timeLabel ?? '')))); };
+    if (thread) return {title: v.parent?.title ?? '文章', sub: v.mediumLabel ?? null, body: [
+      h('button', {class: 'link', type: 'button', onclick: () => actions.sheet('forum', {})}, '‹ 所有文章'),
+      v.parent ? h('article', {class: 'post'}, by(v.parent), h('p', {class: 'post-text'}, v.parent.text)) : h('p', {class: 'meta'}, '文章目前不可讀。'),
+      h('h3', {class: 'sheet-h'}, '留言'), (v.entries ?? []).length ? h('ul', {class: 'replies'}, v.entries.map(r => h('li', null, by(r), h('p', null, r.text)))) : h('p', {class: 'meta'}, '還沒有留言。'),
+      h('p', {class: 'fine'}, '角色的發言是他們自己的說法，不代表事實，也不會改變世界狀態。')]};
+    return {title: '論壇', sub: v.mediumLabel ?? '故事世界裡的貼文・只能閱讀', body: [
+      (v.entries ?? []).length ? h('ul', {class: 'posts'}, v.entries.map(p => h('li', null, h('button', {class: 'post-row', type: 'button', onclick: () => actions.sheet('forum', {threadId: p.id})}, h('strong', null, p.title || '（無標題）'), by(p))))) : h('div', {class: 'empty-state'}, h('strong', null, '還沒有文章'), h('p', null, '角色會在故事時間推進後，依自己的日常發文。')),
+      v.nextCursor !== null && v.nextCursor !== undefined ? h('button', {class: 'ghost small', type: 'button', onclick: () => actions.sheet('forum', {beforeSequence: v.nextCursor})}, '更早的文章') : null,
+      h('p', {class: 'fine'}, '角色的發言是他們自己的說法，不代表事實。第一版不提供發文。')]};
+  },
+
+  lore(s, actions, mode = 'known') {
+    const tabs = seg('設定集視角', mode, [['known', '我已知的'], ['public', '公開設定'], ['owner', '完整（含劇透）']], v => actions.sheet('lore', v));
+    if (mode === 'known') {
+      const d = useData(s, actions, ['notes', s.run?.version], () => actions.call('playerNotes', {runId: s.runId}));
+      if (!d) return {title: '設定集', body: [tabs, wait()]}; if (d.error) return {title: '設定集', body: [tabs, failed(d)]};
+      const notes = d.value.notes ?? [], live = notes.filter(n => !n.stale), stale = notes.filter(n => n.stale);
+      const row = n => h('li', {class: `note${n.stale ? ' is-stale' : ''}`}, h('blockquote', null, n.excerpt), h('p', {class: 'meta'}, n.stale ? '這段已被收回或重寫' : `第 ${n.turn} 段`, ' · ', h('button', {class: 'link', type: 'button', onclick: () => actions.deleteNote(n.id)}, '刪除')));
+      return {title: '設定集', body: [tabs,
+        h('p', {class: 'fine top'}, '這裡只放你自己記下的內容：在故事裡選取文字，按「記下」。不會自動把作者的設定或尚未揭露的祕密放進來。'),
+        live.length ? h('ul', {class: 'notes'}, live.map(row)) : h('div', {class: 'empty-state'}, h('strong', null, '還沒有記下任何事'), h('p', null, '讀到想記住的線索、名字或規則時，選取那段文字，按跳出的「記下」。')),
+        stale.length ? h('details', {class: 'stale-notes'}, h('summary', null, `已不在故事中的筆記（${stale.length}）`), h('ul', {class: 'notes'}, stale.map(row))) : null,
+        h('div', {class: 'row'}, h('button', {class: 'ghost small', type: 'button', onclick: () => actions.sheet('lore', 'public')}, '看作者公開的設定'),
+          notes.length ? h('button', {class: 'ghost small', type: 'button', onclick: () => exportNotes(s, notes)}, '匯出筆記') : null,
+          h('label', {class: 'ghost small file-pick'}, '匯入筆記', h('input', {type: 'file', accept: '.json,application/json', hidden: true, onchange: e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void importNotes(s, actions, f); }}))),
+        h('p', {class: 'fine'}, '演出備份（進階工坊 › 備份與匯入匯出）不包含筆記與世界動態的已讀紀錄。要保留筆記，請另外「匯出筆記」；重新匯入同一場演出後，再「匯入筆記」就能接回原本的段落。')]};
+    }
+    if (mode === 'owner' && !s.spoilerOk[s.runId]) return {title: '設定集', body: [tabs, h('div', {class: 'empty-state is-warn'}, h('strong', null, '完整設定集包含劇透'),
+      h('p', null, '這是本局固定版本的全部設定，包括故事還沒揭露的祕密。閱讀不會改變角色知道的事。'),
+      h('button', {class: 'primary', type: 'button', onclick: () => actions.store.set(x => ({...x, spoilerOk: {...x.spoilerOk, [x.runId]: true}}))}, '我了解，顯示完整設定集'))]};
+    const entryId = typeof mode === 'object' ? mode.entryId : null, tier = typeof mode === 'object' ? mode.tier : mode;
+    const action = tier === 'owner' ? 'ownerWorldbook' : 'playerWorldbook';
+    const d = useData(s, actions, ['lore', tier, entryId], () => actions.call(action, {runId: s.runId, expectedSnapshotHash: s.run.snapshot?.hash, ...(entryId ? {entryId} : {})}));
+    const banner = tier === 'owner' ? h('p', {class: 'spoiler-banner', role: 'note'}, '完整設定集・含劇透・不代表你已知') : h('p', {class: 'public-banner', role: 'note'}, '作者標為公開的設定・不代表你在故事中已經得知');
+    if (!d) return {title: '設定集', body: [tabs, banner, wait()]}; if (d.error) return {title: '設定集', body: [tabs, banner, failed(d)]};
+    const v = d.value;
+    if (entryId) return {title: v.entry?.title ?? '設定', body: [h('button', {class: 'link', type: 'button', onclick: () => actions.sheet('lore', tier)}, '‹ 回到列表'), banner, h('p', {class: 'lore-text'}, v.entry?.content ?? '')]};
+    return {title: '設定集', body: [typeof mode === 'string' ? tabs : null, banner,
+      (v.entries ?? []).length ? h('ul', {class: 'lore'}, v.entries.map(e => h('li', null, h('button', {class: 'lore-row', type: 'button', onclick: () => actions.sheet('lore', {tier, entryId: e.id})}, h('strong', null, e.title || '未命名條目'), e.bookTitle ? h('small', null, e.bookTitle) : null)))) : h('p', {class: 'meta'}, '沒有可以顯示的條目。')]};
+  },
+
+  // 回顧: chapters, full summaries, search over saved story text, and a passage view. The passage view
+  // reads one saved section (±1 for context) on demand, so long stories never load all history, and
+  // the main reader keeps its position: 回到目前進度 simply closes this sheet.
+  recap(s, actions, arg = {}) {
+    const tab = arg.passage ? 'passage' : arg.chapterId ? 'chapter' : arg.tab ?? 'chapters';
+    const tabs = seg('回顧', tab === 'passage' || tab === 'chapter' ? (arg.from ?? 'chapters') : tab, [['chapters', '章節'], ['search', '搜尋原文'], ['known', '我已知的']], v => v === 'known' ? actions.sheet('lore', 'known') : actions.sheet('recap', {tab: v}));
+    const sub = `${s.run.turnCount ?? 0} 段已保存的正文`;
+    if (tab === 'passage') return recapPassage(s, actions, arg, sub);
+    if (tab === 'search') return recapSearch(s, actions, arg, tabs, sub);
+    if (tab === 'chapter') {
+      const d = useData(s, actions, ['recap-chapter', arg.chapterId], () => actions.call('playerRecap', {runId: s.runId, expectedSnapshotHash: s.run.snapshot?.hash, chapterId: arg.chapterId}));
+      if (!d) return {title: '回顧', sub, body: wait()}; if (d.error) return {title: '回顧', sub, body: failed(d)};
+      const c = d.value.chapter ?? {}, sum = c.summary ?? null;
+      const list = (label, rows) => Array.isArray(rows) && rows.length ? h('p', {class: 'meta'}, `${label}：${rows.map(r => typeof r === 'string' ? r : r?.name ?? r?.title ?? '').filter(Boolean).join('、')}`) : null;
+      return {title: c.title ?? '章節', sub: `第 ${c.order ?? '—'} 章・第 ${c.startTurn}–${c.endTurn} 段`, body: [
+        h('button', {class: 'link', type: 'button', onclick: () => actions.sheet('recap', {tab: 'chapters'})}, '‹ 所有章節'),
+        sum ? h('div', {class: 'chapter-summary'}, ...String(sum.summary ?? '').split(/\n+/).filter(Boolean).map(t => h('p', null, t))) : h('p', {class: 'meta'}, '這一章還沒有摘要。'),
+        sum ? list('人物', sum.characters) : null, sum ? list('地點', sum.locations) : null, sum ? list('線索與伏筆', sum.plotThreads) : null,
+        c.source?.startCommitId ? h('div', {class: 'row'}, h('button', {class: 'primary small', type: 'button', onclick: () => actions.sheet('recap', {passage: c.source.startCommitId, from: 'chapters', chapterId: arg.chapterId})}, '讀這一章的原文')) : null,
+        h('p', {class: 'fine'}, '摘要是閱讀輔助；原文與已保存狀態才是依據。')]};
+    }
+    const d = useData(s, actions, ['recap'], () => actions.call('playerRecap', {runId: s.runId, expectedSnapshotHash: s.run.snapshot?.hash}));
+    if (!d) return {title: '回顧', sub, body: [tabs, wait()]}; if (d.error) return {title: '回顧', sub, body: [tabs, failed(d)]};
+    const chapters = d.value.chapters ?? [], open = d.value.unarchived;
+    return {title: '回顧', sub, body: [tabs,
+      chapters.length ? h('ol', {class: 'chapters'}, chapters.map(c => h('li', null, h('button', {class: 'chapter-row', type: 'button', onclick: () => actions.sheet('recap', {chapterId: c.id})},
+        h('p', {class: 'eyebrow'}, `第 ${c.order} 章・第 ${c.startTurn}–${c.endTurn} 段`), h('strong', null, c.title), c.summaryPreview ? h('p', null, c.summaryPreview + (c.summaryTruncated ? '…' : '')) : h('p', {class: 'meta'}, '摘要整理中')))))
+        : h('div', {class: 'empty-state'}, h('strong', null, '還沒有整理好的章節'), h('p', null, '故事累積到一定長度、並開啟自動摘要後，章節會自動整理在這裡。也可以直接「搜尋原文」。')),
+      open ? h('div', {class: 'unarchived'}, h('p', {class: 'eyebrow'}, `${open.title}・第 ${open.startTurn}–${open.endTurn} 段`), h('button', {class: 'ghost small', type: 'button', onclick: () => actions.sheet('recap', {passage: open.source.startCommitId, from: 'chapters'})}, '從這裡開始讀')) : null,
+      h('p', {class: 'fine'}, '摘要是閱讀輔助；原文與已保存狀態才是依據。')]};
+  },
+
+  // 這一步要花多久？ Choices come from this work's StoryClock (its periods and minutes per day) and the
+  // current clock, and only legal endpoints are offered (never before the current earliest point).
+  // One click is the explicit confirmation; the Host still validates the same timeConfirmation contract.
+  time(s, actions, purpose) {
+    const tc = s.run?.timeControls; if (!tc) return {title: '時間', body: h('p', {class: 'meta'}, '這部作品沒有故事時間設定。')};
+    const def = tc.definition ?? {}, perDay = (def.hoursPerDay ?? 24) * (def.minutesPerHour ?? 60);
+    const periods = Object.entries(def.periods ?? {}).sort((a, b) => a[1].start - b[1].start);
+    const now = s.run.storyClock?.position?.earliest ?? {dayOrdinal: 1, minuteOfDay: 0}, today = now.dayOrdinal, nowMin = now.minuteOfDay ?? 0;
+    const op = s.op, needs = purpose === 'needs' && ['needs_time', 'settlement_failed'].includes(op?.phase);
+    const hm = m => `${String(Math.floor(m / (def.minutesPerHour ?? 60))).padStart(2, '0')}:${String(m % (def.minutesPerHour ?? 60)).padStart(2, '0')}`;
+    const choose = async (role, target, label) => {
+      // Re-read the base at the moment of confirming: a background commit may have moved the version.
+      let base = tc.base;
+      try { const fresh = await actions.call('runView', {runId: s.runId}); if (fresh?.timeControls?.base) { if (fresh.timeControls.base.clockHash !== tc.base?.clockHash) { actions.store.set({notice: '故事時間剛剛更新了，請重新選一次。', sheetData: null}); return; } base = fresh.timeControls.base; } } catch {}
+      const value = {schemaVersion: 2, confirmed: true, role, mode: role === 'origin' ? 'refine' : 'advance_to', target, base: structuredClone(base)};
+      actions.closeSheet(); if (needs) actions.ops.confirmTime(value); else actions.store.set({attachedTime: {value, label}});
+    };
+    const quick = [];
+    if (nowMin + 30 < perDay) quick.push({label: '片刻', note: `約半小時，到 ${hm(nowMin + 30)} 左右`, target: {dayOrdinal: today, minuteOfDay: nowMin + 30}});
+    for (const [id, p] of periods) if (p.start > nowMin) quick.push({label: `到${p.label ?? id}`, note: `今天 ${hm(p.start)} 起`, target: {dayOrdinal: today, periodId: id}});
+    quick.push(periods.length ? {label: `到明天${periods[0][1].label ?? ''}`, note: `明天 ${hm(periods[0][1].start)} 起`, target: {dayOrdinal: today + 1, periodId: periods[0][0]}} : {label: '到明天', note: '隔天', target: {dayOrdinal: today + 1}});
+    const verb = needs ? '確認並重新送出' : '附加到下一個行動';
+    const quickList = h('ul', {class: 'time-quick'}, quick.map(q => h('li', null, h('button', {class: 'time-choice', type: 'button', onclick: () => choose('endpoint', q.target, `${q.label}為止`)},
+      h('strong', null, q.label), h('small', null, q.note), h('span', {class: 'time-go'}, verb)))));
+    // 指定時間: start or end, day, and a period or an exact time.
+    let role = 'endpoint', offset = 0, period = periods.find(([, p]) => p.start > nowMin)?.[0] ?? periods[0]?.[0] ?? null, exact = '';
+    const err = h('p', {class: 'error', role: 'alert', hidden: true});
+    const advanced = h('details', {class: 'time-advanced'}, h('summary', null, '指定時間…'),
+      h('form', {class: 'time-form', onsubmit: e => {
+        e.preventDefault();
+        let target = {dayOrdinal: today + offset};
+        if (exact) { const m = /^(\d{1,2}):(\d{2})$/.exec(exact); const v = m ? Number(m[1]) * (def.minutesPerHour ?? 60) + Number(m[2]) : NaN; if (!(v >= 0 && v < perDay)) { err.textContent = '時間格式是 時:分，例如 18:30。'; err.hidden = false; return; } target.minuteOfDay = v; }
+        else if (period) target.periodId = period;
+        if (role === 'endpoint' && target.dayOrdinal === today && (target.minuteOfDay ?? periods.find(p => p[0] === target.periodId)?.[1].start ?? perDay) < nowMin) { err.textContent = '結束時間不能早於現在。'; err.hidden = false; return; }
+        const label = `${['今天', '明天', '後天'][offset]} ${exact || (periods.find(p => p[0] === period)?.[1]?.label ?? '')}${role === 'origin' ? '開始' : '為止'}`;
+        void choose(role, target, label);
+      }},
+        h('fieldset', null, h('legend', null, '要指定的是'), h('div', {class: 'chips'},
+          h('label', {class: 'chip'}, h('input', {type: 'radio', name: 'role', checked: true, onchange: () => { role = 'endpoint'; }}), h('span', null, '做到何時為止')),
+          h('label', {class: 'chip'}, h('input', {type: 'radio', name: 'role', onchange: () => { role = 'origin'; }}), h('span', null, '從何時開始')))),
+        h('fieldset', null, h('legend', null, '哪一天'), h('div', {class: 'chips'}, ['今天', '明天', '後天'].map((l, i) => h('label', {class: 'chip'}, h('input', {type: 'radio', name: 'day', checked: i === 0, onchange: () => { offset = i; }}), h('span', null, l))))),
+        periods.length ? h('fieldset', null, h('legend', null, '哪個時段'), h('div', {class: 'chips'}, periods.map(([id, p]) => h('label', {class: 'chip'}, h('input', {type: 'radio', name: 'period', checked: id === period, onchange: () => { period = id; }}), h('span', null, p.label ?? id))))) : null,
+        h('label', {class: 'time-exact'}, h('span', null, '或精確時間'), h('input', {type: 'text', inputmode: 'numeric', placeholder: '18:30', oninput: e => { exact = e.target.value.trim(); }})),
+        err, h('button', {class: 'primary wide', type: 'submit'}, needs ? '用這個時間重新送出' : '附加到下一個行動')));
+    return {title: needs ? '這一步要花多久？' : '附加時間', sub: '目前：' + clockText(s.run.storyClockLabel), body: [
+      needs && op.input ? h('blockquote', {class: 'quoted-input'}, op.input) : h('p', {class: 'fine top'}, '這不是「跳過時間」。它只替你下一次送出的行動補充時間資訊；想讓時間過去，請把等待寫成行動。'),
+      needs ? h('p', {class: 'fine'}, op.phase === 'settlement_failed' ? '選好後，故事會用同一個行動重新寫這一段，暫存正文會被取代。' : '選好後就會用這個時間重新送出；只套用在這一次。') : null,
+      quickList, advanced]};
+  },
+
+  settings(s, actions) {
+    return {title: '顯示設定', body: [
+      h('div', {class: 'setting'}, h('span', null, '外觀主題'), seg('外觀主題', s.prefs.theme, [['auto', '跟隨作品'], ['neutral', '中性'], ['campus', '校園'], ['road', '公路'], ['fantasy', '奇幻']], v => actions.setPref('theme', v))),
+      h('div', {class: 'setting'}, h('span', null, '字級'), seg('字級', s.prefs.size, [['normal', '標準'], ['large', '大字']], v => actions.setPref('size', v))),
+      h('p', {class: 'fine'}, '深淺色跟隨 DSH 與系統設定。'),
+      h('h3', {class: 'sheet-h'}, '進階'),
+      h('div', {class: 'empty-state'}, h('strong', null, '進階工坊'), h('p', null, '模型分派、摘要服務、文風與禁用詞、章節記憶、備份與匯入匯出、診斷與授權。打開後只顯示管理工具，完成後按「回到舞台」。'),
+        h('div', {class: 'row'}, h('button', {class: 'primary small', type: 'button', onclick: () => actions.workshop()}, '打開進階工坊'), h('button', {class: 'ghost small', type: 'button', onclick: () => actions.useLegacy()}, '改用舊版舞台閱讀')))]};
+  },
+
+  menu(s, actions) {
+    const item = (label, note, fn) => h('li', null, h('button', {class: 'menu-row', type: 'button', onclick: fn}, h('span', null, h('strong', null, label), note ? h('small', null, note) : null), h('span', {'aria-hidden': 'true'}, '›')));
+    const run = s.run;
+    return {title: run?.snapshot?.card?.name ?? '舞台', sub: run?.playerIdentity?.name ? `${run.playerIdentity.name} 的故事` : null, body: h('ul', {class: 'menu'},
+      item('Agent 與結算設定', null, () => openRuntimeSettings(run,s.lastTurnPerformance)),
+      item('查書與靈感', null, () => openSceanReferenceSettings(run)),
+      item('此刻', clockText(run?.storyClockLabel), () => actions.sheet('now')),
+      item('角色', (run?.snapshot?.characters ?? []).map(c => c.name).join('、'), () => actions.sheet('cast')),
+      item('回顧', '章節與摘要', () => actions.sheet('recap')),
+      item('日曆', '已公告的安排', () => actions.sheet('calendar')),
+      item('論壇', '故事世界裡的貼文', () => actions.sheet('forum')),
+      item('設定集', '公開設定與完整版', () => actions.sheet('lore')),
+      item('顯示設定', '主題、字級', () => actions.sheet('settings')),
+      item('移入回收區','只處理這場演出，可恢復',()=>actions.recycleRun(s.run)),
+      item('演出回收區',null,()=>actions.recycleBin()),
+      item('進階工坊', '模型、文風、摘要、備份、診斷', () => actions.workshop()),
+      item('回到創作', '修改這部作品', () => actions.nav('studio')),
+      item('所有作品', null, () => actions.nav('home')))};
+  },
+
+  cast(s, actions) {
+    const cast = s.run?.snapshot?.characters ?? [], idx = castIndex(cast);
+    return {title: '角色', body: h('ul', {class: 'm-cast'}, cast.map(c => h('li', null, h('button', {class: 'cast-row', type: 'button', onclick: () => actions.sheet('character', c.id)}, avatar(c, idx.get(c.id), 'md'), h('span', null, h('strong', null, c.name), c.description ? h('small', null, c.description.slice(0, 40)) : null)))))};
+  },
+};
+
+return {renderSheet};})();
+const m0=(()=>{const {h, replace, createStore, createTransport, friendly, sleep}=m1;
+const {createOperations}=m2;
+const {renderShelf}=m3;
+const {createReader}=m6;
+const {renderSheet}=m9;
+
+// SCEAN Stage v2 — reading-first player ("書頁"). Shared by DSH Desktop and
+// DSH Web through the authenticated native bridge; all authority stays in Host.
+
+
+
+
+
+const native = globalThis.__SCEAN_NATIVE__;
+// A silently refreshed card context (same card, new Studio generation) is kept in the store as well.
+const {call} = createTransport(native, {getRun:()=>store.get().run,getEpoch:()=>selectionEpoch,onRunUnavailable:()=>{void actions.home();},onContext: context => { if (context?.cardScope) store.set({context}); }});
+const store = createStore({
+  screen: 'loading', context: null, scripts: [], runs: [], latest: null, runId: null, run: null, turns: [], history: null,
+  op: null, draft: '', sheet: null, sheetData: null, confirm: null, notice: null, flash: 0, highlight: null, ideas: null,
+  prefs: {theme: 'auto', size: 'normal', dark: false}, spoilerOk: {}, error: null, viewerId: null, feed: null,
+});
+let reader = null, view = null, readerScope=null,sheetKey = null, selectionEpoch = 0;
+
+async function loadShelf() {
+  const epoch=selectionEpoch;
+  let context = await call('native.context').catch(error => ({error}));
+  // Right after the stage document is swapped (workshop/legacy round trip) the Studio record can be
+  // momentarily unbound; an available conversation is retried briefly instead of showing an empty shelf.
+  for (let i = 0; i < 4 && !context?.cardScope && context?.playbackStatus?.status === 'available'; i++) { await sleep(1200); context = await call('native.context').catch(error => ({error})); }
+  if(epoch!==selectionEpoch)return;
+  store.set({context});
+  if (!context?.cardScope) { store.set({screen: 'shelf', scripts: [], runs: [], latest: null}); return; }
+  const [runs, scripts] = await Promise.all([call('list').catch(() => []), call('scriptList').catch(() => [])]);
+  const sorted = [...(Array.isArray(runs) ? runs : [])].sort((a, b) => String(b.updatedAt ?? '').localeCompare(String(a.updatedAt ?? '')));
+  let latest = null;
+  if (sorted[0]) latest = await call('runView', {runId: sorted[0].runId}).catch(() => null);
+  // A direct start from Studio (試玩 / 直接試玩) leaves an opening offer waiting for the player's choice.
+  const offer = await call('openingOffer').catch(() => null);
+  if(epoch!==selectionEpoch)return;
+  store.set({runs: sorted, scripts: Array.isArray(scripts) ? scripts : scripts?.scripts ?? [], latest, pendingOffer: offer ?? null});
+  if (offer && offer.offerId !== shownOffer && !store.get().sheet) { shownOffer = offer.offerId; store.set({sheet: {kind: 'opening', arg: offer}, sheetData: null}); }
+}
+let shownOffer = null;
+function jumpToLatestBody(){const body=reader?.latestBody();if(body){const bar=document.querySelector('.reader-bar')?.getBoundingClientRect().bottom??0;window.scrollBy({top:body.getBoundingClientRect().top-Math.max(12,bar+12),behavior:'instant'});}}
+
+async function reload({highlight = false} = {}) {
+  const runId = store.get().runId; if (!runId) return;
+  const epoch = selectionEpoch;
+  const [run, history] = await Promise.all([call('runView', {runId}), call('historyPage', {runId, limit: 20, changes: true})]);
+  if (epoch !== selectionEpoch) return; // a newer selection owns the view
+  store.set(s => ({...s, run, turns: history.turns ?? [], history: {hasMore: !!history.hasMore, beforeCursor: history.beforeCursor ?? null}, highlight: highlight ? history.turns?.at(-1)?.commitId ?? null : s.highlight}));
+}
+
+const ops = createOperations({store,call,reload,onRunUnavailable:()=>{void actions.home();},getViewerId: () => store.get().viewerId});
+
+/* RUN_RECYCLE_NEXT */
+const recycle=createRunRecycle({h,call,store,scopeKey:()=>{const c=store.get().context?.cardScope;return JSON.stringify([c?.provider,c?.cardId,c?.authoringSessionId]);},onChanged:async value=>{if(value.runId===store.get().runId){await actions.home();}else await loadShelf();store.set({notice:value.status==='trashed'?'演出已移入回收區，進度保留。':'演出已恢復，可從書架繼續。'});}});
+const actions = {
+  recycleRun(row){const r=store.get().run;recycle.confirm(row.runId===r?.runId?{...row,title:r.snapshot?.card?.name,playerName:r.playerIdentity?.name,revision:r.snapshot?.revision,turnCount:r.turnCount}:row,'runTrash');},
+  recycleBin(){void recycle.show();},
+  async home() { recycle.reset();selectionEpoch++; ops.stop(); store.set({screen: 'shelf', runId: null, run: null, turns: [], op: null, sheet: null, confirm: null, ideas: null}); await loadShelf().catch(error => store.set({error})); },
+  async open(runId) {
+    const epoch=++selectionEpoch;recycle.reset();ops.stop();
+    store.set({screen: 'reader', runId, run: null, turns: [], op: null, sheet: null, confirm: null, ideas: null, draft: '', notice: null, highlight: null, feed: null});
+    try {
+      await reload();
+      const draft = await call('draftGet', {runId}).catch(() => null);
+      if(epoch!==selectionEpoch)return;
+      if (draft?.input && !store.get().draft) store.set({draft: draft.input});
+      store.flushNow();const openedReader=reader;requestAnimationFrame(()=>{if(epoch===selectionEpoch&&reader===openedReader)openedReader?.scrollEnd();});
+      void ops.adopt(runId);
+    } catch (error) { if(epoch===selectionEpoch){store.set({error,screen:'shelf',runId:null,run:null});await loadShelf();} }
+  },
+  async earlier() {
+    const s = store.get(); if (!s.history?.beforeCursor) return;
+    const page = await call('historyPage', {runId: s.runId, limit: 20, changes: true, cursor: s.history.beforeCursor, expectedHead: s.run.lastTurn?.commitId ?? null});
+    store.set(x => ({...x, turns: [...(page.turns ?? []), ...x.turns], history: {hasMore: !!page.hasMore, beforeCursor: page.beforeCursor ?? null}}));
+  },
+  nav(screen) { return call('native.navigate', {screen}).catch(error => store.set({notice: friendly(error)})); },
+  sheet(kind, arg) { store.set({sheet: {kind, arg}, sheetData: null}); },
+  closeSheet() { store.set({sheet: null, sheetData: null}); },
+  setPref(key, value) { store.set(s => ({...s, prefs: {...s.prefs, [key]: value}})); },
+  async startScript(script) {
+    store.set({notice: '正在準備開場…'});
+    try {
+      const saved = await call('scriptGet', {scriptId: script.scriptId});
+      const value = await call('scriptStart', {scriptId: saved.scriptId, scriptHash: saved.scriptHash, expectedRevision: saved.revision, operationId: globalThis.crypto.randomUUID()}, {timeout: 30000});
+      store.set({notice: null});
+      if (value.runId) return actions.open(value.runId);
+      const offer = await call('openingOffer');
+      if (offer) actions.sheet('opening', offer); else store.set({notice: '開場尚未準備好，請稍後再試。'});
+    } catch (error) { store.set({notice: friendly(error)}); }
+  },
+  async startOpening(offer, openingIndex, playerName) {
+    const value = await call('openingStart', {offerId: offer.offerId, cardId: offer.cardId, revision: offer.revision, snapshotHash: offer.snapshotHash, openingIndex, playerName}, {timeout: 30000});
+    actions.closeSheet(); if (value.runId) await actions.open(value.runId);
+  },
+  // World feed: refreshed on open, after any version change and every 45 s while reading.
+  // Fetching never marks anything read; only feedSeen (the player viewed items) does.
+  async loadFeed() {
+    const runId = store.get().runId; if (!runId) return;
+    try { const feed = await call('worldFeed', {runId}); if (store.get().runId === runId) store.set({feed}); } catch { /* the feed is optional */ }
+  },
+  async feedSeen({ids = [], forumSequence} = {}) {
+    const runId = store.get().runId; if (!runId || (!ids.length && forumSequence === undefined)) return;
+    const unseen = new Set(ids);
+    store.set(s => s.feed ? {...s, feed: {...s.feed, items: s.feed.items.filter(i => !unseen.has(i.id) && (forumSequence === undefined || !i.sequence || i.sequence > forumSequence)), unread: Math.max(0, s.feed.unread - ids.length)}} : s);
+    for (let i = 0; i < Math.max(ids.length, 1); i += 2000) await call('worldFeedSeen', {runId, ids: ids.slice(i, i + 2000), ...(forumSequence !== undefined && i === 0 ? {forumSequence} : {})}).catch(() => {});
+    await actions.loadFeed();
+  },
+  async addNote({commitId, excerpt}) {
+    const runId = store.get().runId; if (!runId) return;
+    try { await call('playerNoteAdd', {runId, commitId, excerpt}); store.set({notice: '已記下。在「設定集 › 我已知的」可以找到。'}); setTimeout(() => { if (store.get().notice?.startsWith('已記下')) store.set({notice: null}); }, 4000); }
+    catch (error) { store.set({notice: friendly(error)}); }
+  },
+  async deleteNote(noteId) { const runId = store.get().runId; await call('playerNoteDelete', {runId, noteId}).catch(error => store.set({notice: friendly(error)})); store.set(s => ({...s, sheetData: null})); },
+  latestBody(){jumpToLatestBody();},
+  async useLegacy() { await call('native.stageUi', {ui: 'legacy'}).catch(error => store.set({notice: friendly(error)})); },
+  async workshop() { const runId = store.get().runId; await call('native.stageUi', runId ? {ui: 'workshop', runId} : {ui: 'workshop'}).catch(error => store.set({notice: friendly(error)})); },
+  call, ops, store, reload,
+};
+
+function applyTheme(s) {
+  const root = document.documentElement, theme = s.prefs.theme === 'auto' ? (s.screen === 'reader' ? s.run?.snapshot?.presentationTheme ?? 'neutral' : 'neutral') : s.prefs.theme;
+  root.dataset.genre = theme; root.dataset.size = s.prefs.size; root.dataset.mode = s.prefs.dark ? 'dark' : 'light';
+}
+
+function mount() {
+  const app = document.getElementById('app'), screen = h('div', {class: 'screen'}), sheetHost = h('div', {class: 'sheet-host'}), live = h('p', {class: 'sr-only', role: 'status', 'aria-live': 'polite'});
+  app.append(screen, sheetHost, live);
+  let lifecyclePolling=false;
+  const checkLifecycle=async()=>{if(lifecyclePolling||document.visibilityState!=='visible')return;lifecyclePolling=true;const epoch=selectionEpoch;try{const state=store.get();if(state.screen==='shelf'){await loadShelf();}else if(state.run){const value=await call('runLifecycleStatus',{runId:state.runId});if(epoch===selectionEpoch&&(value.status!=='active'||value.lifecycleRevision!==(state.run.lifecycleRevision??0))){await actions.home();store.set({notice:'這場演出的回收狀態已改變，請重新選擇。'});}}}catch{}finally{lifecyclePolling=false;}};
+  setInterval(checkLifecycle,2000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')void checkLifecycle();});
+  let lastFlash = 0, feedVersion = null, lastSheetView = null, readingY = null;
+  setInterval(() => { const s = store.get(); if (s.screen === 'reader' && s.runId && document.visibilityState === 'visible' && !s.op) void actions.loadFeed(); }, 45000);
+  // A shelf shown without a card scope (Studio still starting, or a record being re-created) heals itself.
+  setInterval(() => { const s = store.get(); if (s.screen === 'shelf' && !s.context?.cardScope) void loadShelf().catch(() => {}); }, 4000);
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&store.get().screen==='reader')void actions.loadFeed();});
+  store.subscribe(s => {
+    const fv = s.screen === 'reader' && s.run ? `${s.runId}:${s.run.version}` : null;
+    if (fv && fv !== feedVersion) { feedVersion = fv; void actions.loadFeed(); }
+    applyTheme(s);
+    const nextReaderScope=s.screen==='reader'?JSON.stringify([s.runId,s.run?.snapshot?.hash,s.run?.lifecycleRevision??0]):null;
+    if (s.screen !== view||nextReaderScope!==readerScope) { readerScope=nextReaderScope;view = s.screen; reader?.dispose(); reader = null; if (view === 'reader') { reader = createReader(actions); replace(screen, reader.el); } }
+    if (view === 'shelf') replace(screen, renderShelf(s, actions));
+    else if (view === 'loading') replace(screen, h('p', {class: 'loading'}, '正在打開舞台…'));
+    else reader?.update(s);
+    const key = s.sheet ? JSON.stringify([s.sheet.kind, s.sheet.arg?.offerId ?? s.sheet.arg, s.sheetData?.stamp ?? null, s.run?.version, s.op?.phase, s.prefs, s.spoilerOk]) : null;
+    if (key !== sheetKey) {
+      const wasOpen = !!sheetHost.firstChild, top = sheetHost.querySelector('.sheet-body')?.scrollTop ?? 0;
+      // Reading position survives any sheet (回顧, 日曆, 設定…): remembered on open, restored on close.
+      if (s.sheet && !wasOpen) readingY = window.scrollY;
+      if (!s.sheet && wasOpen && readingY !== null) { const y = readingY; readingY = null; requestAnimationFrame(() => window.scrollTo(0, y)); }
+      sheetKey = key; replace(sheetHost, s.sheet ? renderSheet(s, actions) : null);
+      document.body.classList.toggle('has-sheet', !!s.sheet);
+      // Same view refreshing keeps its scroll; moving to another view (e.g. 回顧 › 下一段) starts at the top.
+      const view = s.sheet ? JSON.stringify([s.sheet.kind, s.sheet.arg]) : null, sameView = view === lastSheetView; lastSheetView = view;
+      if (wasOpen && s.sheet) { sheetHost.querySelector('.sheet')?.classList.add('no-anim'); const b = sheetHost.querySelector('.sheet-body'); if (b) b.scrollTop = sameView ? top : 0; }
+      if (s.sheet && !wasOpen) requestAnimationFrame(() => sheetHost.querySelector('[data-autofocus], .sheet-close')?.focus({preventScroll: true}));
+    }
+    if (s.flash && s.flash !== lastFlash) { lastFlash = s.flash; live.textContent = '這一段已保存。'; }
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && store.get().sheet && !e.isComposing) { e.preventDefault(); actions.closeSheet(); } });
+  // Phone: drag a bottom sheet down by its handle or header to close it.
+  let drag = null;
+  sheetHost.addEventListener('pointerdown', e => { const sheet = e.target.closest?.('.sheet'); if (!sheet || !e.target.closest('.grabber, .sheet-head') || e.target.closest('button') || matchMedia('(min-width: 760px)').matches) return; drag = {sheet, y: e.clientY, dy: 0, id: e.pointerId}; sheet.setPointerCapture?.(e.pointerId); sheet.style.transition = 'none'; });
+  sheetHost.addEventListener('pointermove', e => { if (!drag || e.pointerId !== drag.id) return; drag.dy = Math.max(0, e.clientY - drag.y); drag.sheet.style.transform = `translateY(${drag.dy}px)`; });
+  const endDrag = e => { if (!drag || e.pointerId !== drag.id) return; const {sheet, dy} = drag; drag = null; sheet.style.transition = ''; if (dy > 90) actions.closeSheet(); else sheet.style.transform = ''; };
+  sheetHost.addEventListener('pointerup', endDrag); sheetHost.addEventListener('pointercancel', endDrag);
+  // Phone: when the on-screen keyboard opens, keep the composer in view.
+  globalThis.visualViewport?.addEventListener('resize', () => { const input = document.activeElement; if (input?.id === 'composer-input') requestAnimationFrame(() => input.scrollIntoView({block: 'nearest'})); });
+}
+
+mount();
+native?.onPresentation?.(p => store.set(s => ({...s, prefs: {...s.prefs, dark: p.dark === true}})));
+native?.onSelect?.(selection => { if (selection?.runId) void actions.open(selection.runId); else void actions.home(); });
+void (async () => {
+  const boot = await call('native.bootstrap').catch(() => null);
+  if (boot?.viewerId) store.set({viewerId: boot.viewerId});
+  if (store.get().screen === 'loading') await actions.home();
+})();
+
+return {};})();</script></body>
+</html>

@@ -1093,6 +1093,58 @@
     {
       "path": "packages/scean/isolated/web/dialogue.mjs",
       "source": "isolated/web/dialogue.mjs"
+    },
+    {
+      "path": "packages/scean/adapters/usage-details.mjs",
+      "source": "adapters/usage-details.mjs"
+    },
+    {
+      "path": "packages/scean/core/character-portrayal.mjs",
+      "source": "core/character-portrayal.mjs"
+    },
+    {
+      "path": "packages/scean/core/inspiration.mjs",
+      "source": "core/inspiration.mjs"
+    },
+    {
+      "path": "packages/scean/core/plot-compass.mjs",
+      "source": "core/plot-compass.mjs"
+    },
+    {
+      "path": "packages/scean/core/scene-compat.mjs",
+      "source": "core/scene-compat.mjs"
+    },
+    {
+      "path": "packages/scean/core/scene-snapshot.mjs",
+      "source": "core/scene-snapshot.mjs"
+    },
+    {
+      "path": "packages/scean/core/settlement-context.mjs",
+      "source": "core/settlement-context.mjs"
+    },
+    {
+      "path": "packages/scean/isolated/web/plot-compass-ui.mjs",
+      "source": "isolated/web/plot-compass-ui.mjs"
+    },
+    {
+      "path": "packages/scean/plugin/inspiration-providers.mjs",
+      "source": "plugin/inspiration-providers.mjs"
+    },
+    {
+      "path": "packages/scean/plugin/reference-settings-ui.mjs",
+      "source": "plugin/reference-settings-ui.mjs"
+    },
+    {
+      "path": "packages/scean/runtime-skills/single-writer/v3.md",
+      "source": "runtime-skills/single-writer/v3.md"
+    },
+    {
+      "path": "packages/scean/isolated/web/body-reading-anchor.mjs",
+      "source": "isolated/web/body-reading-anchor.mjs"
+    },
+    {
+      "path": "packages/scean/isolated/web/run-recycle-next.mjs",
+      "source": "isolated/web/run-recycle-next.mjs"
     }
   ]
 }

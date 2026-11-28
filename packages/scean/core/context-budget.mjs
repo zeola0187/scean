@@ -47,18 +47,18 @@ const topFields = {
   chapter_analysis: ['range', 'turns', 'instructions'],
   chapter_summary: ['detail', 'range', 'turns', 'previousChapters', 'instructions'],
   summary: ['previousSummary', 'turns', 'sourceRange', 'instructions'],
-  director: ['assembly', 'conversation', 'writingSkill', 'handoffContract'],
+  director: ['assembly', 'conversation', 'writingSkill', 'handoffContract','optionalPlotDirection'],
   character: ['worldRoutine','outputContract', 'correction', 'character', 'question', 'publicWorld', 'ownState', 'memory', 'playerInput', 'currentEvent', 'lastCommittedTurn', 'temporal', 'characterIdentities', 'worldbook'],
   adjudicate: ['temporal','mode', 'action', 'state', 'worldbook', 'playerInput', 'recentDialogue', 'characterIdentities', 'stateBlueprint'],
-  draft: ['context', 'directorBrief', 'writingSkill'],
-  prose: ['temporal','draft', 'playerInput', 'preset', 'characterIdentities', 'proseStyle'],
-  writer: ['context','directorHandoff','preset','proseStyle','writingSkill','outputContract'],
+  draft: ['context', 'directorBrief', 'writingSkill','revision'],
+  prose: ['temporal','draft', 'playerInput', 'preset', 'characterIdentities', 'proseStyle','optionalInspirationReference'],
+  writer: ['context','directorHandoff','preset','proseStyle','writingSkill','outputContract','optionalInspirationReference','revision'],
   writer_repair: ['bodyHash','ranges','bannedTerms'],
   prose_repair: ['bodyHash', 'ranges', 'bannedTerms'],
-  post_stat: ['playerInput','previousClock','timeDefinition','worldRules','publicEvents','recentDialogue','rollingSummary','chapterContext','playerOverride','correction','temporal','bodyHash','finalBody', 'previousState', 'characters', 'stateBlueprint', 'outputContract'],
+  post_stat: ['priorPublicReferences','evidencePolicy','historicalEvidence','legalTargets','previousSceneSnapshot','playerInput','previousClock','timeDefinition','worldRules','publicEvents','recentDialogue','rollingSummary','chapterContext','playerOverride','correction','temporal','bodyHash','finalBody', 'previousState', 'characters', 'stateBlueprint', 'outputContract'],
 };
 for(const stage of ['director','character','adjudicate','draft','prose','prose_repair','writer','writer_repair','post_stat'])topFields[stage].push('playerIdentity');
-const assemblyFields = new Set(['timeSources','worldRoutine','temporal','playerInput', 'writingGuidance', 'sources', 'chapterSummary', 'rollingSummary', 'chapterContext', 'recentDialogue', 'worldState', 'memory', 'characters', 'characterIdentities', 'stateBlueprint', 'derivedFacts']);
+const assemblyFields = new Set(['timeSources','worldRoutine','temporal','playerInput', 'writingGuidance','sceneSnapshot', 'sources', 'chapterSummary', 'rollingSummary', 'chapterContext', 'recentDialogue', 'worldState', 'memory', 'characters', 'characterIdentities', 'stateBlueprint', 'derivedFacts']);
 const sourceFields = new Set(['snapshot', 'card', 'worldbook', 'preset', 'selectedOpening']);
 const escapePath = value => String(value).replaceAll('~', '~0').replaceAll('/', '~1');
 const pointer = path => '/' + path.map(escapePath).join('/');
@@ -112,6 +112,7 @@ export function budgetStage(stage, prompt, options = {}) {
   function visit(value, path) {
     const key = path.at(-1);
     if(key==='writingSkill')return record(value,path,{visibility:'system'});
+    if(key==='optionalInspirationReference'||key==='optionalPlotDirection')return record(value,path,{mandatory:false,priority:1,visibility:'untrusted_reference'});
     if(key==='proseStyle')return record(value,path,{visibility:'restricted'});
     const visibility = owner && (path.includes('character') || path.includes('ownState') || path.includes('memory') || path.includes('correction')) ? `character:${owner}` : 'public';
     if (key === 'chapterSummary' || key === 'rollingSummary') return record(value, path, { mandatory: key === 'rollingSummary' && options.requireNarrativeCoverage === true, priority: 80, visibility });
@@ -146,13 +147,20 @@ export function budgetStage(stage, prompt, options = {}) {
   const inputCapacity = contextWindow || null;
   const size = packet => estimateContextTokens(packet.system) + estimateContextTokens(packet.input);
   const candidateEstimate = size(sanitized);
-  const requiredEstimate = candidateEstimate;
+  const optionalField=stage==='director'?'optionalPlotDirection':'optionalInspirationReference';
+  const optionalSource=candidates.find(x=>x.path==='/input/'+optionalField);
+  if(optionalSource&&contextWindow>0&&candidateEstimate+toolReserve+overheadReserve>contextWindow){
+    delete sanitized.input[optionalField];
+    optionalSource.included=false;optionalSource.reason='optional_capacity';
+  }
+  const includedEstimate = optionalSource&&!optionalSource.included?size(sanitized):candidateEstimate;
+  const requiredEstimate = optionalSource?.included?size({...sanitized,input:Object.fromEntries(Object.entries(sanitized.input).filter(([k])=>k!==optionalField))}):includedEstimate;
   const diagnostics = { schemaVersion: 1, stage, status: 'ready', estimateMethod: CONTEXT_ESTIMATE_METHOD, estimateOnly: true,
     contextWindow, capacitySource: contextWindow ? 'model_capability' : 'unknown',
-    outputReserve, outputReserveSource, outputReservePhase, providerFinalOutputReserve:null, providerFinalOutputSource:'not_exposed_by_sdk', sdkFinishKind:null, toolReserve, overheadReserve, inputCapacity, candidateEstimate, requiredEstimate, includedEstimate: candidateEstimate,
+    outputReserve, outputReserveSource, outputReservePhase, providerFinalOutputReserve:null, providerFinalOutputSource:'not_exposed_by_sdk', sdkFinishKind:null, toolReserve, overheadReserve, inputCapacity, candidateEstimate, requiredEstimate, includedEstimate,
     actualUsage: null, sources: candidates };
   diagnostics.policy = 'complete_authorized_packet_no_token_quota';
-  diagnostics.estimatedOverflow = contextWindow > 0 && candidateEstimate + toolReserve > contextWindow;
+  diagnostics.estimatedOverflow = contextWindow > 0 && includedEstimate + toolReserve > contextWindow;
   diagnostics.reason = diagnostics.estimatedOverflow ? 'estimate_only_provider_enforces_actual_limit' : 'no_platform_token_quota';
   // Keep a data/transport safety bound, independent of tokens or model capacity.
   const packetBytes=Buffer.byteLength(JSON.stringify(sanitized));

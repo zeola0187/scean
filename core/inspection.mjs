@@ -1,3 +1,4 @@
+import {currentScene} from './scene-snapshot.mjs';
 import {resolveActivityCheckpoint,projectStoryState,timeControlView} from './state-operations.mjs';
 import {readStoryClock,storyClockLabel} from './story-clock.mjs';
 import {publicTurnDialogue} from './dialogue-projection.mjs';
@@ -23,7 +24,7 @@ const safeReason=value=>sourceReasons.has(value)?value:'restricted';
  * visibility is restricted; restricted counts never carry per-source identity. */
 export function publicContextBudget(value){
   if(!value||typeof value!=='object')return {status:'not_recorded'};
-  const result=pick(value,['schemaVersion','stage','status','estimateMethod','estimateOnly','contextWindow','capacitySource','outputReserve','outputReserveSource','outputReservePhase','outputSnapshotBound','preparedContextWindow','providerFinalOutputReserve','providerFinalOutputSource','sdkFinishKind','toolReserve','overheadReserve','inputCapacity','candidateEstimate','requiredEstimate','includedEstimate','actualUsage','reason','policy','estimatedOverflow']);
+  const result=pick(value,['schemaVersion','stage','status','estimateMethod','estimateOnly','contextWindow','capacitySource','outputReserve','outputReserveSource','outputReservePhase','outputSnapshotBound','preparedContextWindow','providerFinalOutputReserve','providerFinalOutputSource','sdkFinishKind','toolReserve','overheadReserve','inputCapacity','candidateEstimate','requiredEstimate','includedEstimate','actualUsage','reason','policy','estimatedOverflow','softTarget']);
   result.sources=[];
   const summary={status:'restricted',count:0,includedCount:0,excludedCount:0,estimatedTokens:0,reasons:{}};
   for(const source of value.sources??[]){
@@ -53,6 +54,7 @@ function publicAssemblyDiagnostics(value){
 }
 function publicStage(stage){
   const result=pick(stage,['stage','status','startedAt','finishedAt','error']);
+  if(stage.performance)result.performance=pick(stage.performance,['route','source','timing','usage']);
   if(stage.modelCall===false){result.modelCall=false;result.checks=(stage.checks??[]).filter(c=>['nonempty_text','well_formed_unicode','literal_banlist'].includes(c));}
   if(stage.access)result.access=stage.access.kind==='character_private'?{kind:'character_private',status:'restricted'}:pick(stage.access,['kind']);
   if(stage.derivedFactsUse)result.derivedFactsUse=pick(stage.derivedFactsUse,['stage','status','providerDispatch','providedFactIds','config','canonical','snapshotHash']);
@@ -98,6 +100,7 @@ export function publicTurnResult(result,run){
 }
 function publicAttempt(attempt,runId){
   const result=pick(attempt,['schemaVersion','attemptId','runId','requestId','operationId','baseVersion','status','startedAt','finishedAt','input','inputSnapshot','directorComplete','requestOutcome','commitId','error','recovery']);
+  if(attempt.performance)result.performance=pick(attempt.performance,['lockAcquiredAt','contextStartAt','contextEndAt','recallStartAt','recallEndAt','bodyValidatedAt','bodyPersistedAt','settlementEndAt','committedAt']);
   if(attempt.writingMode)result.writingMode=publicWritingMode(attempt.writingMode);
   if(attempt.proseStyle)result.proseStyle={...pick(attempt.proseStyle,['schemaVersion','revision','source']),text:restricted()};
   if(['accepted','unattributed','not_provided','invalid_annotations','body_changed'].includes(attempt.dialoguePresentation?.status))result.dialoguePresentation={status:attempt.dialoguePresentation.status,spans:Number.isSafeInteger(attempt.dialoguePresentation.spans)&&attempt.dialoguePresentation.spans>=0&&attempt.dialoguePresentation.spans<=256?attempt.dialoguePresentation.spans:0};
@@ -134,10 +137,11 @@ export function publicInspection(run){
 /** Bounded ordinary view: never walks attempts or transmits the story aggregate. */
 export function publicRunView(run,{requestId}={}){
   const last=run.turns?.at(-1),receipt=requestId?run.receipts?.[requestId]:null;
-  return {settlementPolicy:'post-body-v1',...pick(run,['schemaVersion','runId','version','head','createdAt','updatedAt','banList']),lifecycleRevision:run.recycle?.revision??0,
+  const sceneSnapshot=currentScene(run);
+  return {settlementPolicy:'post-body-v1',...(sceneSnapshot?{sceneSnapshot}:{}),...pick(run,['schemaVersion','runId','version','head','createdAt','updatedAt','banList']),lifecycleRevision:run.recycle?.revision??0,
     turnCount:run.turns?.length??0,...(run.storyClock?{timeControls:timeControlView(run)}:{}),...(run.snapshot?.derivedFacts?{derivedFacts:projectDerivedFacts(run)}:{}),cardFrontend:publicFrontend(run),...(run.playerIdentity?{playerIdentity:pick(run.playerIdentity,['schemaVersion','name','boundVersion','afterTurn']),openingDisplay:openingDisplay(run)}:{}),snapshot:publicSnapshot(run.snapshot),...(run.storyClock?{storyClock:readStoryClock(run),storyClockLabel:storyClockLabel(run)}:{}),state:stateView(projectStoryState(run)),
     ...(run.snapshot?.stateBlueprint?{worldView:publicBlueprintState(run.snapshot.stateBlueprint,projectStoryState(run))}:{}),
-    lastTurn:last?{...publicTurnDialogue(run,last),...pick(last,['turn','requestId','commitId','input','body']),stateBefore:stateView(projectStoryState(run,{state:last.stateBefore,clock:last.clockBefore,activity:run.storyClock?resolveActivityCheckpoint(run,last.worldActivityBefore):last.worldActivityBefore})),stateAfter:stateView(projectStoryState(run,{state:last.stateAfter,clock:last.clockAfter,activity:run.storyClock?resolveActivityCheckpoint(run,last.worldActivityAfter):last.worldActivityAfter}))}:null,
+    lastTurn:last?{...publicTurnDialogue(run,last),...pick(last,['turn','requestId','attemptId','bodyHash','commitId','input','body']),stateBefore:stateView(projectStoryState(run,{state:last.stateBefore,clock:last.clockBefore,activity:run.storyClock?resolveActivityCheckpoint(run,last.worldActivityBefore):last.worldActivityBefore})),stateAfter:stateView(projectStoryState(run,{state:last.stateAfter,clock:last.clockAfter,activity:run.storyClock?resolveActivityCheckpoint(run,last.worldActivityAfter):last.worldActivityAfter}))}:null,
     ...(receipt?{requestReceipt:{requestId,commitId:receipt.commitId,status:receipt.status==='retired'?'retired':run.turns.some(t=>t.commitId===receipt.commitId&&t.requestId===requestId)?'committed':'unknown'}}:{}),
     history:{retiredCount:run.retired?.length??0},diagnostics:{scope:'public',privateContext:'restricted'}};
 }

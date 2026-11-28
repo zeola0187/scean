@@ -1,6 +1,6 @@
 // Authenticated RPC adapter only. No file access, HTTP proxy, or Studio database access.
 export function createNativeBridge({call,selectPanel,openSession,getSessionId=()=>null,getViewerId=()=>null,notifications,enableNotifications,onOpeningStarted,onDiagnose,onRunRecycled,onStageUi,getStageUi,ensureStudioLease}){
-  const allowed=new Set(['scriptList','scriptGet','scriptStart','scriptStatus','runRecycleList','runLifecycleStatus','runTrash','runRestore','playerBind','capabilities','list','openingPrepare','openingOffer','openingStart','openingCancel','progress','draftSave','draftGet','turn','rollback','regenerate','operationSubmit','operationStatus','exportRun','importRun','cancel','settlementBody','runView','historySearch','historyRead','historyPage','summaryStatus','summaryStart','summaryCancel','chapterStatus','chapterSettings','chapterSummarize','chapterAuto','chapterCancel','chapterClose','inspect','diagnosticsGrant','diagnosticsRead','diagnosticsRevoke','banList','writingMode','writingModeSave','proseStyle','proseStyleSave','agentModels','agentModelsSave','writingStylesImport','playerIdeas','playerWorldbook','playerRecap','playerCollaboration','ownerWorldbook','presentation','presentationSource','presentationPreview','presentationApply','presentationRestore','models']);
+  const allowed=new Set(['inspirationSettings','inspirationSettingsSave','scriptList','scriptGet','scriptStart','scriptStatus','runRecycleList','runLifecycleStatus','runTrash','runRestore','playerBind','capabilities','list','openingPrepare','openingOffer','openingStart','openingCancel','progress','draftSave','draftGet','turn','rollback','regenerate','operationSubmit','operationStatus','exportRun','importRun','cancel','settlementBody','runView','historySearch','historyRead','historyPage','summaryStatus','summaryStart','summaryCancel','chapterStatus','chapterSettings','chapterSummarize','chapterAuto','chapterCancel','chapterClose','inspect','diagnosticsGrant','diagnosticsRead','diagnosticsRevoke','banList','writingMode','writingModeSave','proseStyle','proseStyleSave','agentModels','agentModelsSave','writingStylesImport','playerIdeas','compassView','compassReveal','compassGenerate','compassAdopt','compassClear','compassBlind','playerWorldbook','playerRecap','playerCollaboration','ownerWorldbook','presentation','presentationSource','presentationPreview','presentationApply','presentationRestore','models']);
   const grants=new Map();let disposed=false,privacyEpoch=0,contextEpoch=0,cardScope=null;
   const denied=code=>Object.assign(new Error(code),{code});
   const revoke=grant=>call({action:'diagnosticsRevoke',...grant}).catch(()=>{});
@@ -13,6 +13,11 @@ export function createNativeBridge({call,selectPanel,openSession,getSessionId=()
     if(!payload||typeof payload!=='object'||Array.isArray(payload)||Object.hasOwn(payload,'action'))throw denied('NATIVE_REQUEST_INVALID');
     // The iframe has an opaque origin. Presentation settings alone live in
     // parent-origin storage; they never become a Host RPC or Run metadata.
+    if(action==='native.lifecyclePending'){
+      const key='scean.lifecycle.pending.'+String(getSessionId()??'isolated');
+      if(Object.hasOwn(payload,'pending')){const p=payload.pending;if(p!==null&&(!p||typeof p.scope!=='string'||p.scope.length>4096||!['runTrash','runRestore'].includes(p.action)||!['runId','operationId'].every(k=>typeof p[k]==='string'&&/^[\w-]{1,128}$/.test(p[k]))||!Number.isSafeInteger(p.expectedVersion)||!Number.isSafeInteger(p.expectedLifecycleRevision)))throw denied('NATIVE_REQUEST_INVALID');try{if(p===null)sessionStorage.removeItem(key);else sessionStorage.setItem(key,JSON.stringify(p));}catch{}return null;}
+      try{return JSON.parse(sessionStorage.getItem(key)??'null');}catch{return null;}
+    }
     if(action==='native.presentationEnvironment')return {dark:globalThis.matchMedia?.('(prefers-color-scheme: dark)')?.matches===true};
     if(action==='native.presentationGet'){
       const defaults={schemaVersion:1,theme:'system',readingSize:'normal',darkPalette:'forest',readingWidth:'wide',leftCollapsed:false,rightCollapsed:false};
@@ -75,8 +80,8 @@ export function createNativeBridge({call,selectPanel,openSession,getSessionId=()
       if(payload.view!=='player'||!['calendar','forum','thread'].includes(payload.kind)||Object.keys(payload).some(k=>!keys.includes(k)))throw denied('NATIVE_ROUTINE_READ_INVALID');
     }
     if(action==='worldFeed'&&Object.keys(payload).some(k=>k!=='runId'))throw denied('NATIVE_FEED_INVALID');
-    if(action==='worldFeedSeen'&&Object.keys(payload).some(k=>!['runId','forumSequence','ids'].includes(k)))throw denied('NATIVE_FEED_INVALID');
-    const noteKeys={playerNotes:['runId'],playerNoteAdd:['runId','commitId','excerpt','memo'],playerNoteDelete:['runId','noteId']}[action];
+    if(action==='worldFeedSeen'&&Object.keys(payload).some(k=>!['runId','forumSequence','ids','expectedLifecycleRevision'].includes(k)))throw denied('NATIVE_FEED_INVALID');
+    const noteKeys={playerNotes:['runId'],playerNoteAdd:['runId','commitId','excerpt','memo','expectedLifecycleRevision'],playerNoteDelete:['runId','noteId','expectedLifecycleRevision']}[action];
     if(noteKeys&&Object.keys(payload).some(k=>!noteKeys.includes(k)))throw denied('NATIVE_NOTE_INVALID');
     if(!allowed.has(action)&&!noteKeys&&!['worldRoutineRead','worldFeed','worldFeedSeen'].includes(action))throw denied('NATIVE_ACTION_DENIED');
     const request=scoped({...payload,action}),epoch=privacyEpoch,contextToken=contextEpoch;

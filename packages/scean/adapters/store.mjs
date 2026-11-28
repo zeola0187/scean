@@ -160,6 +160,13 @@ export class DurableStore {
     data.entries[lineage]={used:old+1};await this.atomic(path.join(this.runDir(runId),'settlement-dispatches.json'),data);return old+1;
   }
 
+  async assertRunActivityIdle(runId) {
+    try {
+      const record=JSON.parse(await readFile(path.join(this.runDir(runId),'inspiration-trial.json'),'utf8'));
+      if(record.schemaVersion!==1||!Array.isArray(record.batches))throw new SceanError('INSPIRATION_LEDGER_INVALID');
+      if(record.batches.some(row=>['queued','running'].includes(row.state)))throw new SceanError('RUN_BUSY');
+    } catch(error) { if(error.code!=='ENOENT')throw error; }
+  }
   async readAttempts(runId) {
     const dir = path.join(this.runDir(runId), 'attempts');
     let names;
@@ -188,7 +195,8 @@ export class DurableStore {
   async recoverAttempts(runId) {
     if (!this.held.has(runId)) throw new SceanError('LOCK_REQUIRED');
     const run = await this.read(runId);
-    for (const attempt of await this.readAttempts(runId)) {
+    const attempts = await this.readAttempts(runId);
+    for (const attempt of attempts) {
       if (attempt.status !== 'pending') continue;
       const receipt = run.receipts?.[attempt.requestId];
       const owner = receipt?.attemptId ?? receipt?.result?.trace?.attemptId ?? run.turns?.find(t => t.commitId === receipt?.commitId)?.attemptId;
@@ -203,6 +211,7 @@ export class DurableStore {
       for (const stage of attempt.stages ?? []) if (stage.status === 'pending') { stage.status = published ? 'not_recorded' : 'failed'; stage.finishedAt = attempt.finishedAt; if (!published) stage.error = attempt.error; }
       await this.writeAttempt(runId, attempt);
     }
+    return attempts;
   }
   async activeTickets(dir) {
     const owners = new Map();

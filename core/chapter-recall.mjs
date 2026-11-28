@@ -5,18 +5,21 @@ import {budgetStage} from './context-budget.mjs';
 export const CHAPTER_RECALL_LIMITS=Object.freeze({recent:3,retrieved:8,rankedCandidates:24,branchCandidates:40,cache:512,timeoutMs:60000,queryChars:8192,playerQueryChars:2048,sceneInputChars:1024,sceneBodyChars:4096});
 const fail=(code,diagnostics)=>{throw Object.assign(new SceanError(code),{chapterRecallDiagnostics:diagnostics});};
 const sourceHash=t=>hash({commitId:t.commitId,input:t.input,body:t.body});
-function validRange(run,row){
+function validRange(run,row,asOf){
+  const created=Date.parse(row?.provenance?.createdAt);
+  if(!Number.isFinite(created)||created>asOf)return false;
   if(row.runId!==run.runId||row.current!==true||row.status!=='completed'||row.visibility!=='public'||row.perspective!=='public_story'||!Number.isSafeInteger(row.startTurn)||!Number.isSafeInteger(row.endTurn)||row.startTurn<1||row.endTurn<row.startTurn||row.endTurn>run.turns.length)return false;
   const turns=run.turns.slice(row.startTurn-1,row.endTurn),commitIds=turns.map(t=>t.commitId),sourceHashes=turns.map(sourceHash);
   if(turns.some((t,i)=>t.turn!==row.startTurn+i))return false;
   return json(row.commitIds)===json(commitIds)&&json(row.sourceHashes)===json(sourceHashes)&&row.sourceHash===hash({commitIds,sourceHashes})&&!commitIds.some(id=>run.retired?.some(t=>t.commitId===id));
 }
 /** Chapter archive only: never accepts CharacterMemory, worldbook or private records. */
-export function chapterContextSources(run){
+export function chapterContextSources(run,{asOf=Date.now()}={}){
+  if(!Number.isFinite(asOf))throw new SceanError('CHAPTER_ASOF_INVALID');
   const n=run.narrative,records=[],seen=new Set();let excluded=0;
   for(const chapter of n?.chapters??[]){
-    if(!validRange(run,chapter)){excluded++;continue;}
-    const summary=(n.chapterSummaries??[]).filter(s=>{const op=n.operations?.[s.provenance?.operationId];return s.chapterId===chapter.id&&s.chapterVersion===chapter.version&&Number.isSafeInteger(s.version)&&s.version>0&&validRange(run,s)&&s.startTurn===chapter.startTurn&&s.endTurn===chapter.endTurn&&s.sourceHash===chapter.sourceHash&&op?.request?.runId===run.runId&&op.status==='completed'&&op.result?.summaryId===s.id&&op.result.summaryVersion===s.version&&op.result.chapterId===chapter.id;}).sort((a,b)=>b.version-a.version)[0];
+    if(!validRange(run,chapter,asOf)){excluded++;continue;}
+    const summary=(n.chapterSummaries??[]).filter(s=>{const op=n.operations?.[s.provenance?.operationId];return s.chapterId===chapter.id&&s.chapterVersion===chapter.version&&Number.isSafeInteger(s.version)&&s.version>0&&validRange(run,s,asOf)&&s.startTurn===chapter.startTurn&&s.endTurn===chapter.endTurn&&s.sourceHash===chapter.sourceHash&&op?.request?.runId===run.runId&&op.status==='completed'&&op.result?.summaryId===s.id&&op.result.summaryVersion===s.version&&op.result.chapterId===chapter.id;}).sort((a,b)=>b.version-a.version)[0];
     if(!summary||typeof summary.payload?.summary!=='string'||!summary.payload.summary.trim()||summary.payload.summary.length>10000){excluded++;continue;}
     if(seen.has(chapter.id)||seen.has(summary.id)){excluded++;continue;}seen.add(chapter.id);seen.add(summary.id);
     records.push({runId:run.runId,chapterId:chapter.id,chapterVersion:chapter.version,summaryId:summary.id,summaryVersion:summary.version,startTurn:chapter.startTurn,endTurn:chapter.endTurn,startCommitId:chapter.commitIds[0],endCommitId:chapter.commitIds.at(-1),sourceHash:chapter.sourceHash,title:chapter.title,text:summary.payload.summary,keywords:clone(summary.payload.keywords??[])});
@@ -48,7 +51,22 @@ export function buildChapterRecallQuery(run,input){
  const text=parts.join('\n\n');if(text.length>CHAPTER_RECALL_LIMITS.queryChars)throw new SceanError('CHAPTER_QUERY_BOUND');
  return {text,diagnostics:{schemaVersion:1,policy:'player_plus_latest_committed_public_scene_v1',sourceRunId:run.runId,sourceVersion:run.version,sourceHead:run.head??null,queryChars:text.length,queryLimitChars:CHAPTER_RECALL_LIMITS.queryChars,queryHash:hash(text),components}};
 }
-// A failed/missing retrieval port never licenses silently dropping the originals.
+// The archive index has already verified every range against the current public lineage.
+export function degradedChapterContext(run, sources, failure) {
+  if (!sources.records.length) return originalChapterContext(run, {...sources.diagnostics, ...failure});
+  const {recent, older, recentDialogue} = sources;
+  const selected = [...recent, ...older];
+  return {
+    recent: clone(recent), retrieved: clone(older), recentDialogue: clone(recentDialogue),
+    diagnostics: {
+      ...failure, ...sources.diagnostics, status: 'degraded', fallback: 'all_verified_summaries',
+      selectionPolicy: 'all_verified_summaries', coverageReason: 'verified_summaries_and_every_uncovered_original',
+      recentSummaryIds: recent.map(r => r.summaryId), retrievedSummaryIds: older.map(r => r.summaryId),
+      selectedSummaries: selected.map(summaryReceipt),
+      candidates: (failure.candidates ?? []).map(r => ({...r, selected: true, reason: 'verified_archive_fallback'}))
+    }
+  };
+}
 export function originalChapterContext(run,diagnostics={}){
  const recentDialogue=run.turns.map(t=>({turn:t.turn,commitId:t.commitId,input:t.input,body:t.body}));
  return{recent:[],retrieved:[],recentDialogue,diagnostics:{...diagnostics,status:'degraded',fallback:'all_committed_originals',recentSummaryIds:[],retrievedSummaryIds:[],archivedTurns:0,uncoveredTurns:recentDialogue.length,uncoveredBytes:Buffer.byteLength(json(recentDialogue)),coverageStatus:'complete',coverageReason:'retrieval_unavailable_originals_preserved'}};

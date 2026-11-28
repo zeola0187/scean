@@ -21,7 +21,7 @@ export const WRITING_SKILLS=Object.freeze([
   }
 ].map(row=>Object.freeze(row)));
 const LEGACY_SINGLE_SKILLS=[{"id":"single-director","stage":"director","version":2,"sha256":"6a5125cb140958b76619042848e31dcf11ebe511a5629614b06038fa0b4a1518","relative":"../runtime-skills/single-director/v2.md"},{"id":"single-writer","stage":"writer","version":2,"sha256":"e6938f336717e4328429698e455d16470f9180d180002b9994d333a8eff3ad20","relative":"../runtime-skills/single-writer/v2.md"}];
-const acceptedSkill=(mode,a,index)=>{const current=skillsForMode(mode)[index];return mode==='single_writer'&&a.version===2?LEGACY_SINGLE_SKILLS[index]:current;};
+const acceptedSkill=(mode,a,index)=>{const current=skillsForMode(mode)[index];return mode==='single_writer'&&a.version===2?LEGACY_SINGLE_SKILLS[index]:mode==='single_writer'&&index===1&&a.version===3?{...current,version:3,sha256:'34b69ee276ac74f36a5e7feb34ba0015e699f014df30f43c31bd077b93ff0d58',relative:'../runtime-skills/single-writer/v3.md'}:current;};
 const skillsForMode=mode=>mode==='current'?[]:mode==='materials'?WRITING_SKILLS:SINGLE_WRITER_SKILLS;
 export const WRITING_MODE_VERSION=1;
 export function writingModeName(mode){if(!['current','materials','single_writer'].includes(mode))fail('WRITING_MODE_UNKNOWN');return mode;}

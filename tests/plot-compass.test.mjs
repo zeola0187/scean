@@ -1,0 +1,86 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import {SceanEngine} from '../core/engine.mjs';
+import {DurableStore} from '../adapters/store.mjs';
+import {SceanHost} from '../plugin/host.mjs';
+import {resolveSyntheticCreate,createScriptedModel} from '../fixtures/synthetic-catalog.mjs';
+
+const secret='MODEL_PRIVATE_OUTLINE_CANARY';
+const reply=()=>({text:JSON.stringify({routes:['近期','中期','長期'].map((span,i)=>({span,tag:'日常療癒',preview:'港邊的燈光 '+i,detail:secret+i}))})});
+const auth={principal:'isolated-authority',allowGlobalSettings:true};
+async function fixture(t){
+ const root=await fs.mkdtemp(path.join(os.tmpdir(),'scean-compass-')),store=new DurableStore({root:path.join(root,'store')}),calls=[];
+ const base=createScriptedModel({delayMs:1});let override;
+ const model={async generate(a){calls.push(a);return await override?.(a)??(a.stage==='ideas'?reply():base.generate(a));}};
+ const engine=new SceanEngine({store,model,memory:{retrieve:async()=>({records:[]})}});
+ const host=await new SceanHost({engine,root:path.join(root,'host'),worldRoutineAutomatic:false}).init();
+ t.after(()=>host.close());
+ const q=resolveSyntheticCreate({cardId:'synthetic-observatory',revisionId:'r1',openingId:'deck'});
+ q.snapshot.worldbook.entries.push({id:2,constant:true,content:'LOCKED_CANARY',extensions:{scean:{visibility:'private'}}});
+ const created=await host.request(q,undefined,auth);assert(created.ok,JSON.stringify(created));
+ const runId=created.value.runId;
+ const current=()=>store.read(runId);
+ const runReq=async(action,extra={},authority=auth,signal)=>{const r=await current(),result=await host.request({action,runId,expectedHead:r.head,expectedVersion:r.version,...extra},signal,authority);if(!result.ok)throw Object.assign(Error(result.error.message),result.error);return result.value;};
+ const turn=(requestId='first-turn',extra={})=>engine.turn({runId,requestId,input:'Ask about the harbor.',...extra});
+ const plan=async(extra={})=>{const view=await runReq('compassView');return runReq('compassGenerate',{expectedRevision:view.revision,requestId:'plan-'+view.revision,tags:[],...extra});};
+ const adopt=(batch,i=0)=>runReq('compassAdopt',{expectedRevision:batch.revision,batchId:batch.batchId,routeId:batch.routes[i].id});
+ return {store,root,host,engine,model,calls,runId,turn,runReq,current,plan,adopt,set hook(fn){override=fn;}};
+}
+test('Host RPC → optional direction and tags → unselected drafts → selected Director payload only → save/reopen',async t=>{
+ const f=await fixture(t);await f.turn();
+ assert.deepEqual(f.calls.map(x=>x.stage),['director','writer','post_stat']);
+ assert(!f.calls[0].input.optionalPlotDirection);
+ const before=await f.current();
+ await assert.rejects(f.runReq('compassView',{},{}),{code:'PLAYER_ACTION_DENIED'});
+ const batch=await f.plan({direction:'先享受日常',tags:['日常療癒','自訂風格']});
+ const planning=f.calls.at(-1);
+ assert.equal(planning.stage,'ideas');assert.equal(planning.input.direction,'先享受日常');assert.deepEqual(planning.input.tags,['日常療癒','自訂風格']);assert.equal(planning.input.turns.length,1);
+ assert(planning.input.worldReferences.some(s=>s.includes('補給站')));assert(!JSON.stringify(planning).includes('LOCKED_CANARY'));
+ assert(!JSON.stringify(batch).includes(secret));assert.equal(batch.active,null);
+ const reveal=await f.runReq('compassReveal',{routeId:batch.routes[1].id});
+ assert.equal(reveal.routes[1].detail,secret+'1');assert(!reveal.routes[0].detail);
+ await f.adopt(batch,1);assert.deepEqual(await f.current(),before);
+ const dbg=await f.runReq('compassView');assert.equal(dbg.active.stale,false,JSON.stringify(dbg));
+ const captured=await (await import('../core/plot-compass.mjs')).captureCompass(f.store,await f.current());
+ assert(captured,JSON.stringify({dbg,store:typeof f.store.runDir}));
+ await f.turn('second-turn');
+ assert.deepEqual(f.calls.map(x=>x.stage),['director','writer','post_stat','ideas','director','writer','post_stat']);
+ assert.equal(f.calls[4].input.optionalPlotDirection?.detail,secret+'1',JSON.stringify(Object.keys(f.calls[4].input)));assert(!f.calls[4].input.assembly.optionalPlotDirection);
+ assert(!JSON.stringify(f.calls.slice(5)).includes(secret));
+ assert(!JSON.stringify(await f.runReq('inspect')).includes(secret));
+ const disk=await fs.readFile(path.join(f.store.runDir(f.runId),'plot-compass.json'),'utf8');assert(disk.includes(secret+'1'));
+ const reopened=new DurableStore({root:path.join(f.root,'store')});const {captureCompass}=await import('../core/plot-compass.mjs');
+ assert.equal((await captureCompass(reopened,await reopened.read(f.runId))).detail,secret+'1');
+});
+test('rollback and regenerate invalidate a plan based on the removed head',async t=>{
+ const f=await fixture(t);await f.turn();const draft=await f.plan();await f.adopt(draft);
+ let now=await f.current();
+ await f.engine.regenerate({runId:f.runId,requestId:'regen-turn',operationId:'regen-id',expectedHead:now.head,expectedVersion:now.version,confirmation:'regenerate-last-committed-turn'});
+ assert.equal(f.calls.filter(x=>x.stage==='director').at(-1).input.optionalPlotDirection,undefined);
+ assert.equal((await f.runReq('compassView')).active.stale,true);
+ const next=await f.plan();await f.adopt(next);now=await f.current();
+ await f.engine.rollback({runId:f.runId,operationId:'rollback-id',expectedHead:now.head,expectedVersion:now.version,confirmation:'rollback-last-committed-turn'});
+ await f.turn('post-rollback');assert.equal(f.calls.filter(x=>x.stage==='director').at(-1).input.optionalPlotDirection,undefined);
+});
+test('interrupted or malformed output never replaces the existing plan, and drafts cannot be adopted against a later head',async t=>{
+ const f=await fixture(t);await f.turn();const draft=await f.plan();const old=await f.adopt(draft);
+ f.hook=a=>a.stage==='ideas'?{text:'invalid JSON'}:null;
+ await assert.rejects(f.plan(),{code:'COMPASS_INVALID'});assert.deepEqual(await f.runReq('compassView'),old);f.hook=null;
+ const batch=await f.plan();await f.turn('next-turn');await assert.rejects(f.adopt(batch),{code:'COMPASS_STALE'});
+});
+test('same request continues to use the original pin even after the active route changes',async t=>{
+ const f=await fixture(t);await f.turn();await f.adopt(await f.plan());
+ let failed=false;f.hook=a=>{if(!failed&&a.context.requestId==='same-request'&&a.stage==='director'){failed=true;throw Object.assign(Error('transport'),{code:'MODEL_TRANSPORT_ERROR'});}return null;};
+ await assert.rejects(f.turn('same-request'));
+ const original=(await f.store.readAttempts(f.runId)).find(a=>a.requestId==='same-request');
+ await f.adopt(await f.plan(),2);const current=await f.current();
+ await f.runReq('operationSubmit',{kind:'stageResume',operationId:'resume-compass',requestId:'same-request',sourceAttemptId:original.attemptId,baseVersion:current.version,baseHead:current.head});
+ await f.host.jobs.active.get(f.runId)?.promise;
+ const retry=await f.host.jobs.status({runId:f.runId,operationId:'resume-compass'});
+ assert.equal(retry.status,'committed',JSON.stringify(retry));
+ const calls=f.calls.filter(a=>a.context.requestId==='same-request'&&a.stage==='director');assert.equal(calls.length,2);
+ assert(calls.every(a=>a.input.optionalPlotDirection.detail===secret+'0'));
+});

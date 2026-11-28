@@ -1,5 +1,6 @@
 // Reviewed exact DSH RC2/RC3 native port. Credentials and routing belong to existing DSH services.
 import {randomUUID} from 'node:crypto';
+import {usageDetails} from '../adapters/usage-details.mjs';
 import {outputLimits,safeError,safeUsage,safeContext} from '../adapters/model.mjs';
 import {RP_MODEL_STAGES} from '../core/contracts.mjs';
 const codes=new Set(['CLIENT_UPGRADE_REQUIRED','MODEL_UNSUPPORTED','NO_ADAPTER','UNKNOWN_MODEL','INVALID_CONFIG','INVALID_CATALOG','MODEL_CATALOG_UNAVAILABLE','MODEL_CATALOG_CHANGED','UNKNOWN','AUTH','QUOTA','ACCOUNT_QUOTA','RATE_LIMIT','SERVER','CONTEXT_WINDOW_EXCEEDED','TIMEOUT','TRANSPORT','ABORTED','INVALID_REQUEST','REQUEST_EXTENSION','EMPTY_RESPONSE','MALFORMED_RESPONSE','STREAM_CLOSED','MISSING_CREDENTIAL','INVALID_CREDENTIAL','UNSUPPORTED_CONTENT','INVALID_REPLAY_STATE','UNSUPPORTED_REASONING_EFFORT','INVALID_MODEL_INFO','INVALID_MODEL_CONTEXT','INVALID_MODEL_MAX_TOKENS','INVALID_MODEL_REASONING']);
@@ -120,16 +121,28 @@ export function createNativeModelPort({llm,agentDefaultModel,routing,budget,usag
             const freeze=v=>{if(v&&typeof v==='object'&&v!==scope.signal){Object.values(v).forEach(freeze);Object.freeze(v);}};freeze(options);
             if(context.routePin)Object.assign(route,{routePinHash:context.routePin.hash,globalRevision:context.routePin.globalRevision,runRevision:context.routePin.runRevision});
             const blocks=new Map();let finish;
+            const timing=route.timing={dispatchAt:Date.now(),firstReasoningAt:null,firstTextAt:null,firstBodyAt:null,firstToolAt:null,usageAt:null,completeAt:null};
+            let writerPrefix='';let numericUsage;
             for await(const chunk of (prepared?prepared.stream(options):llm.stream(options))){
               scope.signal.throwIfAborted();
+              if(chunk.type==='reasoning-delta'&&chunk.text)timing.firstReasoningAt??=Date.now();
+              if(chunk.type==='text-delta'&&chunk.text){
+                timing.firstTextAt??=Date.now();
+                if(stage==='writer'&&!timing.firstBodyAt&&writerPrefix.length<65536){
+                  writerPrefix+=chunk.text;
+                  if(/"finalBody"\s*:\s*"[^"\s]/u.test(writerPrefix))timing.firstBodyAt=Date.now();
+                }
+              }
+              if(chunk.type==='tool-call-delta'&&chunk.argumentsDelta)timing.firstToolAt??=Date.now();
               if(chunk.type==='text-delta'){const block=blocks.get(chunk.index)??{type:'text',text:''};if(block.type==='text')block.text+=chunk.text??'';blocks.set(chunk.index,block);}
               else if(chunk.type==='tool-call-delta'){const block=blocks.get(chunk.index)??{type:'tool-call',id:'',name:'',arguments:''};if(chunk.id)block.id=chunk.id;if(chunk.name)block.name=chunk.name;block.arguments+=chunk.argumentsDelta??'';blocks.set(chunk.index,block);}
               else if(chunk.type==='block-end'&&['text','tool-call'].includes(chunk.block?.type))blocks.set(chunk.index,chunk.block);
-              else if(chunk.type==='usage'){usage=safeUsage(chunk.usage);route.usageSource='dsh_sdk_usage';}
+              else if(chunk.type==='usage'){timing.usageAt=Date.now();numericUsage=chunk.usage;route.tokenDetails=usageDetails(numericUsage);usage=safeUsage(chunk.usage);route.usageSource='dsh_sdk_usage';}
               else if(chunk.type==='finish'){
                 finish=chunk.reason;
                 finishKind=finishKinds.has(finish?.kind)?finish.kind:'unknown';
                 // Select one public identity field only. Replay blocks may contain hidden metadata.
+                if(numericUsage && chunk.replayState?.response?.kind==='pi-ai')route.tokenDetails=usageDetails(numericUsage,true);
                 const responseModel=chunk.replayState?.response?.responseModel;
                 if(typeof responseModel==='string'&&responseModel.trim().length>0&&responseModel.length<=160){route.responseModel=responseModel;route.responseModelSource='sdk_response_replay_metadata';}
               }
@@ -142,6 +155,7 @@ export function createNativeModelPort({llm,agentDefaultModel,routing,budget,usag
               const code=finish?.kind==='max-tokens'?'MODEL_OUTPUT_TRUNCATED':finish?.kind==='aborted'?'CANCELLED':codes.has(providerCode)||/^HTTP_[1-5]\d\d$/.test(providerCode??'')?providerCode:'STREAM_INCOMPLETE';
               throw error(code,code==='CANCELLED'?'cancelled':'model');
             }
+            timing.completeAt=Date.now();
             const publicBlocks=[...blocks.entries()].sort(([a],[b])=>a-b).map(([,v])=>v);
             let toolCalls;try{toolCalls=publicBlocks.filter(b=>b.type==='tool-call').map(b=>({id:String(b.id??'').split('__thought__')[0],name:b.name,arguments:typeof b.arguments==='string'?JSON.parse(b.arguments):b.arguments}));}catch{throw error('INVALID_TOOL_ARGUMENTS');}
             if(finish.kind==='tool-calls'&&!toolCalls.length)throw error('MISSING_TOOL_CALLS');

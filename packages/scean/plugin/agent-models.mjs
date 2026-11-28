@@ -13,13 +13,17 @@ export class AgentModelRouting {
       catch(e){value.status='unavailable';value.code=['NO_ADAPTER','MISSING_CREDENTIAL','INVALID_CREDENTIAL','INVALID_CATALOG'].includes(e.code)?e.code:'MODEL_CATALOG_UNAVAILABLE';}return value;
     }))};
   }
+  async efforts(provider,model,signal){
+    const info=await this.llm.resolveModelInfo(provider,model,signal);
+    return (info.reasoning?.efforts??[]).map(e=>e.id).filter(id=>typeof id==='string'&&id.length<=64);
+  }
   async validate(selection,signal){
     signal?.throwIfAborted();selection=modelSelection(selection);
     if(!this.llm.listProviders().some(p=>p.id===selection.provider))fail('NO_ADAPTER');
     const models=await this.llm.listModels(selection.provider);signal?.throwIfAborted();
     if(!models.some(m=>m.id===selection.model))fail('UNKNOWN_MODEL');
     const info=await this.llm.resolveModelInfo(selection.provider,selection.model,signal);
-    if(selection.reasoningEffort!==undefined&&!info.reasoning?.efforts?.some(e=>e.id===selection.reasoningEffort))fail('UNSUPPORTED_REASONING_EFFORT');
+    if(selection.reasoningEffort!==undefined&&selection.reasoningEffort!=='provider_default'&&!info.reasoning?.efforts?.some(e=>e.id===selection.reasoningEffort))fail('UNSUPPORTED_REASONING_EFFORT');
     return info;
   }
   async status(scope='@global'){
@@ -37,10 +41,19 @@ export class AgentModelRouting {
   async plan(run){
       const global=await readModelSettings(this.store,'@global'),local=run?await readModelSettings(this.store,run.runId):{revision:0,roles:{}};
       let current=null,readCurrent=false;const dsh=async()=>{if(!readCurrent){readCurrent=true;try{current=modelSelection(await this.agentDefaultModel.currentSelection());}catch{}}return current;};
-      const routes={};
+      const routes={}, effortCatalog=new Map();
       for(const stage of MODEL_STAGES){let role=MODEL_STAGE_ROLES[stage];const inherited=MODEL_ROLE_INHERITANCE[role]&&!local.roles[role]&&!global.roles[role];if(inherited)role=MODEL_ROLE_INHERITANCE[role];
         const candidates=[[local.roles[role],'run_agent'],[run?.stageModelSelections?.[stage],'run_stage'],[run?.modelSelection,'run'],[global.roles[role],'global_agent'],[this.config.stageModelSelections?.[stage],'plugin_stage'],[this.config.modelSelection,'plugin']];
-        const chosen=candidates.find(([v])=>v!=null),requested=chosen?modelSelection(chosen[0]):await dsh();routes[stage]=requested?{requested,selectionSource:inherited?'inherit_'+role:chosen?.[1]??'dsh_current_selection'}:null;
+        const chosen=candidates.find(([v])=>v!=null);
+        const selection=chosen?modelSelection(chosen[0]):await dsh();
+        const requested=selection?{...selection}:null;
+        if(requested?.reasoningEffort==='provider_default')delete requested.reasoningEffort;
+        else if(requested && requested.reasoningEffort===undefined && ['director','writer'].includes(role) && /^(?:[^/]+\/)*gemini-4-neon$/i.test(requested.model)) {
+          const key=JSON.stringify([requested.provider,requested.model]);
+          if(!effortCatalog.has(key))effortCatalog.set(key,await this.efforts(requested.provider,requested.model));
+          if(effortCatalog.get(key).includes('medium'))requested.reasoningEffort='medium';
+        }
+        routes[stage]=requested?{requested,selectionSource:inherited?'inherit_'+role:chosen?.[1]??'dsh_current_selection'}:null;
       }
       const rerank=await this.chapterSelection?.()??{mode:'legacy',revision:0};
       if(rerank.revision>0){

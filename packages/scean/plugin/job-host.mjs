@@ -126,13 +126,11 @@ export class HostJobs {
     const outcome=row?this.outcome(row,run):null,requestOutcome=['turn','settlementResume','stageResume'].includes(row?.kind)?this.turnRequestOutcome(row,run):null,owner=this.active.get(run.runId),progress=this.host.progressByRun.get(run.runId);
     const ownedProgress=owner?.row===row&&progress?.operationId===row?.operationId&&progress?.requestId===row?.requestId?progress:null;
     const interrupted=row?.recovery==='host_shutdown_no_replay'&&!['committed','completed','retired'].includes(outcome?.status);
-    const observed=requestOutcome?.status==='unknown'?'unknown':interrupted?'interrupted':outcome?.status??row?.status??'not_recorded';
-    // A failure becomes actionable only after the final ledger write releases this run.
-    const finishing = owner && owner.row === row && ['failed','cancelled','interrupted'].includes(observed);
-    const status = finishing ? 'running' : observed;
+    const finalizing=!!row && owner?.row===row && !JOB_PENDING.has(outcome?.status??row.status);
+    const status=finalizing?'running':requestOutcome?.status==='unknown'?'unknown':interrupted?'interrupted':outcome?.status??row?.status??'not_recorded';
     return {runId:run.runId,operationId:row?.operationId??null,requestId:row?.requestId??null,kind:row?.kind??null,status,pending:!!row&&JOB_PENDING.has(status),canonical:{version:run.version,head:headOf(run)},
-      ...(row?{acceptedAt:row.acceptedAt,...(row.finishedAt?{finishedAt:row.finishedAt}:{}),...(row.recovery?{recovery:row.recovery}:{}),...(!finishing&&!['committed','completed','retired'].includes(status)&&row.failure?{failure:copy(row.failure)}:{})}:{}),
-      ...(outcome?.result?{result:outcome.result}:{}),...(requestOutcome?{requestOutcome}:{}),...(ownedProgress?{attemptId:ownedProgress.attemptId??null,stage:ownedProgress.stage,sequence:ownedProgress.sequence}:row?.attemptId?{attemptId:row.attemptId}:{}),
+      ...(row?{acceptedAt:row.acceptedAt,...(row.finishedAt?{finishedAt:row.finishedAt}:{}),...(row.recovery?{recovery:row.recovery}:{}),...(!finalizing&&!['committed','completed','retired'].includes(status)&&row.failure?{failure:copy(row.failure)}:{})}:{}),
+      ...(!finalizing&&outcome?.result?{result:outcome.result}:{}),...(!finalizing&&requestOutcome?{requestOutcome}:{}),...(ownedProgress?{attemptId:ownedProgress.attemptId??null,stage:ownedProgress.stage,sequence:ownedProgress.sequence}:row?.attemptId?{attemptId:row.attemptId}:{}),
       generationTiming:this.generationTiming(row,run),...(row?{}:{pending:this.host.mutationBusy(run.runId)})};
   }
   async status(request){

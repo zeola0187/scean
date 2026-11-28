@@ -34,7 +34,7 @@ function targetId(run,options){
   try{safeId(id);}catch{fail('HISTORY_LOCATOR_INVALID');}return id;
 }
 function locate(run,turns,id){const index=turns.findIndex(t=>t.commitId===id);if(index<0)fail((run.retired??[]).some(t=>t.commitId===id)?'HISTORY_COMMIT_RETIRED':'HISTORY_COMMIT_NOT_FOUND');return index;}
-function publicTurn(run,t,presentation=false){return {...(presentation?publicTurnDialogue(run,t):{}),runId:run.runId,turn:t.turn,commitId:t.commitId,active:true,locator:historyLocator(run.runId,t.commitId),input:t.input,body:t.body};}
+function publicTurn(run,t,presentation=false){return {...(presentation?publicTurnDialogue(run,t):{}),runId:run.runId,turn:t.turn,requestId:t.requestId,attemptId:t.attemptId,bodyHash:hash(t.body),commitId:t.commitId,active:true,locator:historyLocator(run.runId,t.commitId),input:t.input,body:t.body};}
 const base=(kind,run)=>({kind,label:HISTORY_REFERENCE_LABEL,runId:run.runId,head:headOf(run)});
 function positions(text,terms,caseSensitive){
   const found=[];
@@ -67,7 +67,7 @@ export function searchHistory(run,options={}){
     const hitPositions=['input','body'].flatMap(field=>positions(t[field],terms,sensitive).map(p=>({field,...p}))).slice(0,HISTORY_RECALL_LIMITS.positions);
     if(mode==='literal'&&!hitPositions.length)continue;
     const field=hitPositions[0]?.field??'body',first=hitPositions.find(p=>p.field===field)?.start??0,start=Math.max(0,first-100),snippet=t[field].slice(start,start+HISTORY_RECALL_LIMITS.snippetChars);
-    hits.push({runId:run.runId,turn:t.turn,commitId:t.commitId,active:true,locator:historyLocator(run.runId,t.commitId),snippet,snippetField:field,snippetStart:start,hitPositions,score});
+    hits.push({runId:run.runId,turn:t.turn,requestId:t.requestId,attemptId:t.attemptId,bodyHash:hash(t.body),commitId:t.commitId,active:true,locator:historyLocator(run.runId,t.commitId),snippet,snippetField:field,snippetStart:start,hitPositions,score});
   }
   const page=hits.slice(offset,offset+limit),more=hits.length>offset+limit;
   return {...base('history_search',run),mode,hits:page,hasMore:more,...(options.offset!==undefined||options.order!==undefined?{total:hits.length,nextOffset:more?offset+limit:null}:{})};

@@ -1,3 +1,4 @@
+import {validScene} from './scene-snapshot.mjs';
 import {validateTemporalRun} from './state-operations.mjs';
 import {publicTurnDialogue} from './dialogue-projection.mjs';
 import {validateWritingMode,validateWritingModeReference} from './writing-mode.mjs';
@@ -141,9 +142,10 @@ function validateRun(run, { narrative=false, player=false }={}) {
   if(!same(normalizeBanList(run.banList),run.banList)||typeof run.createdAt!=='string'||typeof run.updatedAt!=='string'||!Number.isFinite(Date.parse(run.createdAt))||!Number.isFinite(Date.parse(run.updatedAt)))fail('SAVE_RUN_METADATA');
   const turns=new Map(),requests=new Set(),attempts=new Set();let previous;
   for(let index=0;index<run.turns.length;index++) {
-    const t=run.turns[index];fields(t,['clockBefore','clockAfter','worldActivityBefore','worldActivityAfter','timeResolution','timeConfirmation','turn','requestId','commitId','input','body','bodyHash','dialoguePresentation','stateBefore','stateAfter','memoryIds','playerHistoryIds','attemptId','committedAt','commitVersion','stateProvenanceBefore','stateProvenanceAfter'],['turn','requestId','commitId','input','body','bodyHash','stateBefore','stateAfter','memoryIds','playerHistoryIds','attemptId','committedAt']);
+    const t=run.turns[index];fields(t,['clockBefore','clockAfter','worldActivityBefore','worldActivityAfter','timeResolution','timeConfirmation','turn','requestId','commitId','input','body','bodyHash','dialoguePresentation','sceneSnapshot','stateBefore','stateAfter','memoryIds','playerHistoryIds','attemptId','committedAt','commitVersion','stateProvenanceBefore','stateProvenanceAfter'],['turn','requestId','commitId','input','body','bodyHash','stateBefore','stateAfter','memoryIds','playerHistoryIds','attemptId','committedAt']);
     for(const key of ['requestId','commitId','attemptId'])safeId(t[key]);
     if(t.turn!==index+1 || turns.has(t.commitId)||requests.has(t.requestId)||attempts.has(t.attemptId)||typeof t.input!=='string'||!t.input.trim()||t.input.length>20000||typeof t.body!=='string'||!t.body.trim()||t.body.length>200000||t.bodyHash!==hash(t.body)||typeof t.committedAt!=='string'||!Number.isFinite(Date.parse(t.committedAt)))fail('SAVE_TURN');
+    if(t.sceneSnapshot!==undefined&&!validScene(t.sceneSnapshot,snap.characters))fail('SAVE_SCENE_SNAPSHOT');
     validateBlueprintState(bp,t.stateBefore,snap.characters);validateBlueprintState(bp,t.stateAfter,snap.characters);
     if(t.commitVersion!==undefined&&(!integer(t.commitVersion,1)||t.commitVersion>run.version||(index&&run.turns[index-1].commitVersion>=t.commitVersion)))fail('SAVE_TURN_VERSION');
     if(previous&&!same(previous,t.stateBefore))fail('SAVE_STATE_CHAIN');previous=t.stateAfter;turns.set(t.commitId,t);requests.add(t.requestId);attempts.add(t.attemptId);
@@ -255,7 +257,10 @@ export function encodeRunBundle(run) {
   if(portable.head===undefined)portable.head=portable.turns?.at(-1)?.commitId??null;portable.operationReceipts??={};portable.retired??=[];portable.playerHistory??=[];
   portable.receipts=Object.fromEntries(Object.entries(portable.receipts??{}).map(([key,value])=>[key,portableReceipt(value)]));
   portable.operationReceipts=Object.fromEntries(Object.entries(portable.operationReceipts).map(([key,value])=>[key,portableReceipt(value)]));
-  for(const turn of portable.turns??[]){if(turn.dialoguePresentation){try{const display=publicTurnDialogue(portable,turn);if(display.dialoguePresentation){bounded(display.dialoguePresentation);turn.dialoguePresentation=display.dialoguePresentation;}else delete turn.dialoguePresentation;}catch{delete turn.dialoguePresentation;}}}
+  for(const turn of portable.turns??[]){
+    // The native store retains this receipt; the sidecar batch ledger is not portable.
+    delete turn.inspirationBatchId;
+    if(turn.dialoguePresentation){try{const display=publicTurnDialogue(portable,turn);if(display.dialoguePresentation){bounded(display.dialoguePresentation);turn.dialoguePresentation=display.dialoguePresentation;}else delete turn.dialoguePresentation;}catch{delete turn.dialoguePresentation;}}}
   if(Buffer.byteLength(JSON.stringify(portable),'utf8')>SAVE_LIMITS.bytes)for(const turn of portable.turns??[])delete turn.dialoguePresentation;
   bounded(portable);validateRun(portable,{narrative:hasNarrative,player:hasPlayer});
   const bundle={format:SAVE_FORMAT,schemaVersion:postBody(portable)?13:originTime(portable)?12:confirmedTime(portable)?11:portable.worldRoutine?.schemaVersion===2?10:portable.storyClock?9:portable.turns.some(t=>t.dialoguePresentation)?7:(portable.writingMode!==undefined||Object.values(portable.receipts).some(r=>r.result?.trace?.writingMode!==undefined))?6:(portable.proseStyle!==undefined||Object.values(portable.receipts).some(r=>r.result?.trace?.proseStyle!==undefined))?5:hasPlayer?4:hasNarrative?(portable.narrative.schemaVersion===2?3:2):1,manifest:{runId:portable.runId,version:portable.version,head:portable.head,snapshotHash:portable.snapshot.hash,sha256:hash(portable),...(portable.storyClock?{domains:portableDomains(portable)}:{}),...(capabilities(portable).length?{requiredCapabilities:capabilities(portable)}:{})},run:portable};

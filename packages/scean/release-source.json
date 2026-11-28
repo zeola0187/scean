@@ -1,13 +1,8 @@
 {
   "schemaVersion": 1,
-  "license": "AGPL-3.0-only",
-  "status": "LOCAL_CANDIDATE",
-  "version": "1.7.1-local.stagev2.1.dsh022.3",
-  "baselineTag": "v1.7.0-local.stagev2.1.dsh022.3",
-  "releaseTag": "v1.7.1-local.stagev2.1.dsh022.3",
-  "sourceUrl": "https://github.com/zeola0187/scean/tree/v1.7.1-local.stagev2.1.dsh022.3",
-  "anonymousSourceAccessVerified": false,
-  "networkSourceNoticeReady": false,
-  "revision": null,
-  "sourceArchiveSha256": null
+  "status": "TESTED_SOURCE_UPDATE",
+  "version": "1.7.2-local.stagev2.recycle-reading.1.dsh022.3",
+  "baselineRuntimeVersion": "1.7.1-local.stagev2.perf.1.compass.1",
+  "sourceRepository": "https://github.com/zeola0187/scean",
+  "releaseCreated": false
 }
